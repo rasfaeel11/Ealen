@@ -1,3 +1,50 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #141110;
+    background-image: radial-gradient(ellipse at center, rgba(60, 50, 35, 0.25), transparent 70%);
+    color: #cfc6b8;
+    font-family: "EB Garamond", serif;
+  }
+}
+
+/* React Flow — reskin mínimo pra combinar com o códice (fundo escuro, dourado). */
+.react-flow {
+  background-color: #141110;
+}
+
+.react-flow__controls {
+  overflow: hidden;
+  border-radius: 0.25rem;
+  border: 1px solid #3a2f22;
+  background-color: #1c1815;
+}
+
+.react-flow__controls-button {
+  border-bottom: 1px solid #3a2f22;
+  background-color: #1c1815;
+  fill: #c9a15a;
+  color: #c9a15a;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #3a2f22;
+}
+
+.react-flow__edge-path {
+  stroke: #c9a15a;
+  stroke-opacity: 0.5;
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 4 3;
+}
+
+.react-flow__attribution {
+  background-color: transparent;
+  color: #8c8375;
+  opacity: 0.6;
+}

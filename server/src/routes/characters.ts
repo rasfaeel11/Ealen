@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Race, CharacterClass, Attributes } from "@ealen/shared";
+import { MOCK_MAP_NODES } from "@ealen/shared";
 import { requireAuth, type AuthedRequest } from "../middleware/auth";
 import { rowToCharacter, type CharacterRow } from "../lib/characterMapper";
 
@@ -149,6 +150,66 @@ router.patch("/:id", async (req, res) => {
   }
 
   res.json(rowToCharacter(data));
+});
+
+// POST /api/characters/:id/move
+// Move o personagem pra um nó vizinho no mapa. Valida que o destino é uma
+// conexão real do nó atual antes de persistir no Supabase.
+router.post("/:id/move", async (req, res) => {
+  const { supabase } = req as unknown as AuthedRequest;
+  const { id } = req.params;
+  const { destinationNodeId } = req.body as { destinationNodeId?: string };
+
+  if (!destinationNodeId || typeof destinationNodeId !== "string") {
+    res.status(400).json({ error: "destinationNodeId é obrigatório" });
+    return;
+  }
+
+  // RLS garante que só o dono do personagem consegue lê-lo aqui.
+  const { data: characterRow, error: fetchError } = await supabase
+    .from("characters")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle<CharacterRow>();
+
+  if (fetchError) {
+    res.status(500).json({ error: fetchError.message });
+    return;
+  }
+  if (!characterRow) {
+    res.status(404).json({ error: "Personagem não encontrado" });
+    return;
+  }
+
+  const currentNode = MOCK_MAP_NODES.find((node) => node.id === characterRow.current_node_id);
+  if (!currentNode) {
+    res.status(409).json({ error: "Nó atual do personagem é desconhecido" });
+    return;
+  }
+  if (!currentNode.connections.includes(destinationNodeId)) {
+    res.status(400).json({ error: "Destino não é uma conexão válida a partir do nó atual" });
+    return;
+  }
+
+  const destinationNode = MOCK_MAP_NODES.find((node) => node.id === destinationNodeId);
+  if (!destinationNode) {
+    res.status(404).json({ error: "Nó de destino não existe" });
+    return;
+  }
+
+  const { data: updatedRow, error: updateError } = await supabase
+    .from("characters")
+    .update({ current_node_id: destinationNodeId })
+    .eq("id", id)
+    .select("*")
+    .single<CharacterRow>();
+
+  if (updateError) {
+    res.status(400).json({ error: updateError.message });
+    return;
+  }
+
+  res.json({ character: rowToCharacter(updatedRow), node: destinationNode });
 });
 
 export default router;

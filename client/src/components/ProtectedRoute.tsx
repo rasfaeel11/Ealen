@@ -11,7 +11,7 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-950 text-neutral-400">
+      <div className="flex min-h-screen items-center justify-center bg-codex-bg font-cinzel text-sm tracking-wide text-codex-inkDim">
         Carregando...
       </div>
     );

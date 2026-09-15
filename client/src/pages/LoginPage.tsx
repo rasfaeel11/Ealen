@@ -34,15 +34,15 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-950 px-4 text-neutral-100">
-      <div className="w-full max-w-sm rounded-lg border border-neutral-800 bg-neutral-900 p-8">
-        <h1 className="mb-2 text-xl font-semibold">Eälen</h1>
-        <p className="mb-6 text-sm text-neutral-400">
+    <div className="flex min-h-screen items-center justify-center bg-codex-bg px-4 text-codex-ink">
+      <div className="w-full max-w-sm rounded-sm border border-codex-border bg-codex-panel p-8 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+        <h1 className="mb-2 font-cinzel text-xl tracking-wide text-codex-goldBright">Eälen</h1>
+        <p className="mb-6 font-garamond text-sm text-codex-inkDim">
           O Canto das Primeiras Luzes. Entre com seu email pra receber um link de acesso.
         </p>
 
         {status === "sent" ? (
-          <p className="text-sm text-emerald-400">
+          <p className="font-garamond text-sm text-codex-goldBright">
             Link enviado! Confira sua caixa de entrada (e o spam) pra continuar.
           </p>
         ) : (
@@ -54,16 +54,16 @@ function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={status === "sending"}
-              className="rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm outline-none focus:border-neutral-400"
+              className="rounded-sm border border-codex-border bg-codex-bg px-3 py-2 font-garamond text-sm text-codex-ink outline-none focus:border-codex-gold"
             />
             <button
               type="submit"
               disabled={status === "sending"}
-              className="rounded bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-950 disabled:opacity-50"
+              className="rounded-sm border border-codex-gold/60 px-3 py-2 font-cinzel text-xs tracking-wide text-codex-goldBright hover:bg-codex-gold/10 disabled:opacity-50"
             >
               {status === "sending" ? "Enviando..." : "Enviar link"}
             </button>
-            {status === "error" && <p className="text-sm text-red-400">{errorMessage}</p>}
+            {status === "error" && <p className="font-garamond text-sm text-red-400">{errorMessage}</p>}
           </form>
         )}
       </div>
