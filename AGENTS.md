@@ -159,3 +159,5 @@ No /client:
 ## Depois desses 6
 
 Len e Ul (carisma e sabedoria/intelecto) ainda não são usados em nenhum desses prompts — eles existem no tipo `Attributes` mas não têm mecânica ainda. Isso é intencional: diálogo e enigmas são um sistema à parte (telas de diálogo com múltiplas escolhas, checks de Len/Ul pra desbloquear respostas ou resolver puzzles de lore), que vale construir só depois que mapa + combate + leveling estiverem de pé e jogáveis.
+
+Toda vez que terminar uma tarefa, faca o commit. O push eu que faco.

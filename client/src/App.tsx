@@ -1,8 +1,21 @@
+import { Route, Routes } from "react-router-dom";
+import LoginPage from "./pages/LoginPage";
+import HomePage from "./pages/HomePage";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 function App() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-950 text-neutral-100">
-      <p className="text-lg">Eälen: O Canto das Primeiras Luzes — em construção.</p>
-    </div>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }
 
