@@ -5,12 +5,15 @@ export interface Floater {
   id: string;
   amount: number;
   positive: boolean;
+  critical?: boolean;
 }
 
 export interface RollBadge {
   value: number;
   nonce: number;
 }
+
+export type CombatFlash = "hit" | "miss" | "critical" | "fumble" | "block";
 
 interface CombatantCardProps {
   name: string;
@@ -20,7 +23,7 @@ interface CombatantCardProps {
   known: boolean;
   dead: boolean;
   rollBadge: RollBadge | null;
-  flash: "hit" | "miss" | null;
+  flash: CombatFlash | null;
   floaters: Floater[];
   statusIcons: string[];
   align: "left" | "right";
@@ -28,6 +31,20 @@ interface CombatantCardProps {
 
 const ROLL_TICK_MS = 55;
 const ROLL_DURATION_MS = 600;
+
+const FLASH_STYLES: Record<CombatFlash, string> = {
+  hit: "bg-red-600",
+  miss: "bg-neutral-400",
+  critical: "bg-codex-goldBright",
+  fumble: "bg-neutral-700 grayscale",
+  block: "bg-sky-500",
+};
+
+const FLASH_ICONS: Partial<Record<CombatFlash, string>> = {
+  critical: "✦",
+  fumble: "💔",
+  block: "🛡",
+};
 
 function CombatantCard({ name, subtitle, hp, maxHp, known, dead, rollBadge, flash, floaters, statusIcons, align }: CombatantCardProps) {
   const [displayRoll, setDisplayRoll] = useState<number | null>(null);
@@ -66,13 +83,13 @@ function CombatantCard({ name, subtitle, hp, maxHp, known, dead, rollBadge, flas
           <motion.div
             key="flash"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.45 }}
+            animate={{ opacity: flash === "critical" ? 0.6 : 0.45 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className={`pointer-events-none absolute inset-0 rounded-sm ${
-              flash === "hit" ? "bg-red-600" : "bg-neutral-400"
-            }`}
-          />
+            transition={{ duration: flash === "critical" ? 0.4 : 0.25 }}
+            className={`pointer-events-none absolute inset-0 flex items-center justify-center rounded-sm text-4xl ${FLASH_STYLES[flash]}`}
+          >
+            {FLASH_ICONS[flash]}
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -82,12 +99,14 @@ function CombatantCard({ name, subtitle, hp, maxHp, known, dead, rollBadge, flas
           {floaters.map((floater) => (
             <motion.span
               key={floater.id}
-              initial={{ opacity: 0, y: 0 }}
-              animate={{ opacity: 1, y: -36 }}
+              initial={{ opacity: 0, y: 0, scale: floater.critical ? 0.6 : 1 }}
+              animate={{ opacity: 1, y: -36, scale: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8 }}
-              className={`absolute font-cinzel text-lg font-bold ${
-                floater.positive ? "text-emerald-400" : "text-red-400"
+              className={`absolute font-cinzel font-bold ${
+                floater.critical
+                  ? "text-2xl text-codex-goldBright drop-shadow-[0_0_8px_rgba(232,196,122,0.9)]"
+                  : `text-lg ${floater.positive ? "text-emerald-400" : "text-red-400"}`
               }`}
             >
               {floater.positive ? "+" : "-"}

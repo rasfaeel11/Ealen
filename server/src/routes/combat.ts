@@ -9,7 +9,7 @@ import { settleCombat } from "../combat/settle";
 
 const router = Router();
 
-const VALID_ACTIONS: CombatAction[] = ["attack", "defend", "heal"];
+const VALID_ACTIONS: CombatAction[] = ["attack", "quick_attack", "heavy_attack", "defend", "heal"];
 
 function isValidGuestCharacter(value: unknown): value is Character {
   if (typeof value !== "object" || value === null) return false;

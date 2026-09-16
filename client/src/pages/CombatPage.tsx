@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { motion, useAnimation } from "framer-motion";
 import type { CombatAction, LevelUpResult } from "@ealen/shared";
 import { CLASS_INFO } from "@ealen/shared";
 import { useGameSession } from "../hooks/useGameSession";
 import { groupCombatEvents, narrateStep, stepDurationMs, sleep, type AnimStep } from "../lib/combatSteps";
-import CombatantCard, { type Floater, type RollBadge } from "../components/combat/CombatantCard";
+import CombatantCard, { type CombatFlash, type Floater, type RollBadge } from "../components/combat/CombatantCard";
 import CombatLog from "../components/combat/CombatLog";
 import CombatResultModal from "../components/combat/CombatResultModal";
 import LevelUpModal from "../components/combat/LevelUpModal";
@@ -24,10 +25,22 @@ interface ResultState {
   xpGained: number;
 }
 
+/** Ordem de exibição na barra tática, do mais preciso ao mais arriscado. */
+const ACTION_ORDER: CombatAction[] = ["quick_attack", "attack", "heavy_attack", "defend", "heal"];
+
 const ACTION_LABELS: Record<CombatAction, string> = {
-  attack: "Atacar",
-  defend: "Defender",
-  heal: "Habilidade",
+  quick_attack: "Ataque Rápido",
+  attack: "Ataque Padrão",
+  heavy_attack: "Ataque Pesado",
+  defend: "Postura de Guarda",
+  heal: "Cura / Habilidade",
+};
+
+const ACTION_TOOLTIPS: Partial<Record<CombatAction, string>> = {
+  quick_attack: "Alta precisão (+3 no d20), porém menor dano (60% do base).",
+  attack: "Equilibrado — sem modificadores.",
+  heavy_attack: "Baixa precisão (-4 no d20), porém dano esmagador (180% do base + Dain).",
+  defend: "Bloqueia dano baseado em Or (Densidade) + 1d6 contra o próximo golpe.",
 };
 
 function CombatPage() {
@@ -48,7 +61,7 @@ function CombatPage() {
   const [levelUp, setLevelUp] = useState<LevelUpResult | null>(null);
 
   const [rollBadges, setRollBadges] = useState<Partial<Record<Side, RollBadge>>>({});
-  const [flashes, setFlashes] = useState<Partial<Record<Side, "hit" | "miss">>>({});
+  const [flashes, setFlashes] = useState<Partial<Record<Side, CombatFlash>>>({});
   const [floaters, setFloaters] = useState<Record<Side, Floater[]>>({ character: [], enemy: [] });
   const [statusIcons, setStatusIcons] = useState<Record<Side, string[]>>({ character: [], enemy: [] });
   const [deadSides, setDeadSides] = useState<Set<Side>>(new Set());
@@ -57,6 +70,7 @@ function CombatPage() {
   const rollNonceRef = useRef(0);
   const pendingLevelUpRef = useRef<LevelUpResult | null>(null);
   const hpInitializedRef = useRef(false);
+  const screenShake = useAnimation();
 
   // Só usamos o currentHp do personagem da sessão pra semear a barra na
   // entrada do combate — a animação de dano/cura controla o valor local
@@ -81,9 +95,9 @@ function CombatPage() {
     return character && id === character.id ? "character" : "enemy";
   }
 
-  function spawnFloater(side: Side, amount: number, positive: boolean) {
+  function spawnFloater(side: Side, amount: number, positive: boolean, critical = false) {
     const id = `${side}-${Date.now()}-${Math.random()}`;
-    setFloaters((prev) => ({ ...prev, [side]: [...prev[side], { id, amount, positive }] }));
+    setFloaters((prev) => ({ ...prev, [side]: [...prev[side], { id, amount, positive, critical }] }));
     setTimeout(() => {
       setFloaters((prev) => ({ ...prev, [side]: prev[side].filter((f) => f.id !== id) }));
     }, 850);
@@ -101,16 +115,26 @@ function CombatPage() {
       setRollBadges((prev) => ({ ...prev, [actorSide]: { value: step.roll, nonce: rollNonceRef.current } }));
       await sleep(600);
 
-      setFlashes((prev) => ({ ...prev, [targetSide]: step.hit ? "hit" : "miss" }));
+      if (step.fumble) {
+        setFlashes((prev) => ({ ...prev, [actorSide]: "fumble" }));
+      } else if (step.critical) {
+        setFlashes((prev) => ({ ...prev, [targetSide]: "critical" }));
+        void screenShake.start({ x: [0, -10, 10, -7, 7, -3, 3, 0], transition: { duration: 0.5 } });
+      } else if (step.blocked) {
+        setFlashes((prev) => ({ ...prev, [targetSide]: "block" }));
+      } else {
+        setFlashes((prev) => ({ ...prev, [targetSide]: step.hit ? "hit" : "miss" }));
+      }
+
       if (step.hit && step.damage !== undefined && step.remainingHp !== undefined) {
-        spawnFloater(targetSide, step.damage, false);
+        spawnFloater(targetSide, step.damage, false, step.critical);
         if (targetSide === "character") setCharacterHp(step.remainingHp);
         else setEnemyHp(step.remainingHp);
         if (step.targetId === enemyId) totalDamageRef.current += step.damage;
       }
 
       await sleep(duration - 600);
-      setFlashes((prev) => ({ ...prev, [targetSide]: undefined }));
+      setFlashes((prev) => ({ ...prev, [actorSide]: undefined, [targetSide]: undefined }));
       setRollBadges((prev) => ({ ...prev, [actorSide]: undefined }));
       return;
     }
@@ -229,7 +253,10 @@ function CombatPage() {
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6 md:flex-row md:overflow-visible">
+      <motion.div
+        animate={screenShake}
+        className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6 md:flex-row md:overflow-visible"
+      >
         <div className="flex flex-1 flex-col items-center justify-center gap-8 md:flex-row md:justify-around">
           <CombatantCard
             name={character.name}
@@ -265,16 +292,20 @@ function CombatPage() {
         <div className="h-64 w-full shrink-0 md:h-full md:w-80">
           <CombatLog lines={log} />
         </div>
-      </div>
+      </motion.div>
 
-      <div className="flex shrink-0 justify-center gap-3 border-t border-codex-border/70 px-6 py-4">
-        {(["attack", "defend", "heal"] as CombatAction[]).map((action) => (
+      <div className="flex shrink-0 flex-wrap justify-center gap-3 border-t border-codex-border/70 px-6 py-4">
+        {ACTION_ORDER.map((action) => (
           <button
             key={action}
             onClick={() => handleAction(action)}
             disabled={resolving || combatEnded || (action === "heal" && !canUseAbility)}
-            title={action === "heal" && !canUseAbility ? "Esta classe ainda não tem habilidade de cura" : undefined}
-            className="rounded-sm border border-codex-gold/60 px-5 py-2 font-cinzel text-xs tracking-wide text-codex-goldBright hover:bg-codex-gold/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+            title={
+              action === "heal" && !canUseAbility
+                ? "Esta classe ainda não tem habilidade de cura"
+                : ACTION_TOOLTIPS[action]
+            }
+            className="rounded-sm border border-codex-gold/60 px-4 py-2 font-cinzel text-xs tracking-wide text-codex-goldBright hover:bg-codex-gold/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
           >
             {ACTION_LABELS[action]}
           </button>
