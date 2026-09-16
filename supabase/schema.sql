@@ -47,31 +47,33 @@ alter table public.characters enable row level security;
 alter table public.combat_log enable row level security;
 
 create policy "characters_select_own" on public.characters
-  for select using (auth.uid() = user_id);
+  for select to authenticated using ((select auth.uid()) = user_id);
 
 create policy "characters_insert_own" on public.characters
-  for insert with check (auth.uid() = user_id);
+  for insert to authenticated with check ((select auth.uid()) = user_id);
 
 create policy "characters_update_own" on public.characters
-  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 create policy "characters_delete_own" on public.characters
-  for delete using (auth.uid() = user_id);
+  for delete to authenticated using ((select auth.uid()) = user_id);
 
 -- combat_log não tem user_id direto; a posse é resolvida via characters.user_id.
 create policy "combat_log_select_own" on public.combat_log
-  for select using (
+  for select to authenticated using (
     exists (
       select 1 from public.characters c
-      where c.id = combat_log.character_id and c.user_id = auth.uid()
+      where c.id = combat_log.character_id and c.user_id = (select auth.uid())
     )
   );
 
 create policy "combat_log_insert_own" on public.combat_log
-  for insert with check (
+  for insert to authenticated with check (
     exists (
       select 1 from public.characters c
-      where c.id = combat_log.character_id and c.user_id = auth.uid()
+      where c.id = combat_log.character_id and c.user_id = (select auth.uid())
     )
   );
 
@@ -79,3 +81,38 @@ create policy "combat_log_insert_own" on public.combat_log
 -- policies de combat_log vão precisar de uma policy de select adicional
 -- (ex: liberar leitura pública, ou uma view materializada agregada) —
 -- por ora, cada usuário só lê o próprio histórico, como pedido.
+
+-- ============================================================
+-- character_abilities — habilidades desbloqueadas por level up (Prompt 6)
+-- ============================================================
+-- As habilidades em si (id, nome, descrição, atributo de escala, unlockLevel)
+-- são dados estáticos definidos em /shared (não há tabela "abilities" — o
+-- ability_id aqui referencia o Ability.id definido em código). Esta tabela
+-- só registra QUAIS habilidades cada personagem já desbloqueou.
+create table if not exists public.character_abilities (
+  character_id uuid not null references public.characters(id) on delete cascade,
+  ability_id text not null,
+  unlocked_at timestamptz not null default now(),
+  primary key (character_id, ability_id)
+);
+
+-- Nenhum índice extra em character_id: a primary key (character_id, ability_id)
+-- já serve como índice para buscas por character_id (coluna mais à esquerda).
+
+alter table public.character_abilities enable row level security;
+
+create policy "character_abilities_select_own" on public.character_abilities
+  for select to authenticated using (
+    exists (
+      select 1 from public.characters c
+      where c.id = character_abilities.character_id and c.user_id = (select auth.uid())
+    )
+  );
+
+create policy "character_abilities_insert_own" on public.character_abilities
+  for insert to authenticated with check (
+    exists (
+      select 1 from public.characters c
+      where c.id = character_abilities.character_id and c.user_id = (select auth.uid())
+    )
+  );
