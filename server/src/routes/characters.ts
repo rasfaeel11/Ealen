@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Race, CharacterClass, Attributes } from "@ealen/shared";
-import { MOCK_MAP_NODES } from "@ealen/shared";
+import { ATTRIBUTE_KEYS, MOCK_MAP_NODES } from "@ealen/shared";
 import { requireAuth, type AuthedRequest } from "../middleware/auth";
 import { rowToCharacter, type CharacterRow } from "../lib/characterMapper";
 
@@ -17,7 +17,6 @@ const VALID_CLASSES: CharacterClass[] = [
   "sombrilico",
   "rachador",
 ];
-const ATTRIBUTE_KEYS: (keyof Attributes)[] = ["dain", "eir", "nath", "il", "or", "len", "ul"];
 
 function isValidAttributes(value: unknown): value is Attributes {
   if (typeof value !== "object" || value === null) return false;

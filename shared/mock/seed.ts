@@ -101,4 +101,31 @@ export const MOCK_ABILITIES: Ability[] = [
       "Um disparo calculado que ignora parte da armadura do alvo, com precisão escalando pela Percepção (Il) do Rachador.",
     unlockLevel: 1,
   },
+  {
+    id: "ability-marca-entropica",
+    name: "Marca Entrópica",
+    characterClass: "entropista",
+    scalingAttribute: "ul",
+    description:
+      "Grava um selo de decadência no alvo, corroendo sua defesa proporcionalmente ao Mistério (Ul) do Entropista.",
+    unlockLevel: 2,
+  },
+  {
+    id: "ability-golpe-sismico",
+    name: "Golpe Sísmico",
+    characterClass: "guardiao",
+    scalingAttribute: "dain",
+    description:
+      "Um golpe de escudo que abala o solo ao redor, atordoando o alvo com força escalando pela Força (Dain) do Guardião.",
+    unlockLevel: 2,
+  },
+  {
+    id: "ability-refrao-do-silencio",
+    name: "Refrão do Silêncio",
+    characterClass: "cantor_de_ealen",
+    scalingAttribute: "len",
+    description:
+      "Um verso que suprime a vontade do alvo, reduzindo sua ação seguinte com intensidade escalando pela Voz (Len) do Cantor.",
+    unlockLevel: 2,
+  },
 ];

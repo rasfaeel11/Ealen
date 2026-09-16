@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import type { Character, CombatAction, CombatEvent } from "@ealen/shared";
+import type { Character, CombatAction, CombatActionResult, LevelUpResult } from "@ealen/shared";
 import { CLASS_INFO } from "@ealen/shared";
 import { apiFetch } from "../lib/api";
 import { groupCombatEvents, narrateStep, stepDurationMs, sleep, type AnimStep } from "../lib/combatSteps";
 import CombatantCard, { type Floater, type RollBadge } from "../components/combat/CombatantCard";
 import CombatLog from "../components/combat/CombatLog";
 import CombatResultModal from "../components/combat/CombatResultModal";
+import LevelUpModal from "../components/combat/LevelUpModal";
 
 type Side = "character" | "enemy";
 
@@ -45,6 +46,7 @@ function CombatPage() {
   const [resolving, setResolving] = useState(false);
   const [combatEnded, setCombatEnded] = useState(false);
   const [result, setResult] = useState<ResultState | null>(null);
+  const [levelUp, setLevelUp] = useState<LevelUpResult | null>(null);
 
   const [rollBadges, setRollBadges] = useState<Partial<Record<Side, RollBadge>>>({});
   const [flashes, setFlashes] = useState<Partial<Record<Side, "hit" | "miss">>>({});
@@ -54,6 +56,7 @@ function CombatPage() {
 
   const totalDamageRef = useRef(0);
   const rollNonceRef = useRef(0);
+  const pendingLevelUpRef = useRef<LevelUpResult | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -96,7 +99,7 @@ function CombatPage() {
     }, 850);
   }
 
-  async function playStep(step: AnimStep, enemyId: string) {
+  async function playStep(step: AnimStep, enemyId: string, xpGained: number) {
     setLog((prev) => [...prev, narrateStep(step, nameOf)]);
     const duration = stepDurationMs(step);
 
@@ -152,7 +155,7 @@ function CombatPage() {
 
     if (step.kind === "victory") {
       const victory = character ? step.winnerId === character.id : false;
-      setResult({ victory, totalDamage: totalDamageRef.current, xpGained: victory ? (enemy?.level ?? 1) * 10 : 0 });
+      setResult({ victory, totalDamage: totalDamageRef.current, xpGained: victory ? xpGained : 0 });
       setCombatEnded(true);
       await sleep(duration);
     }
@@ -166,10 +169,10 @@ function CombatPage() {
     setStatusIcons({ character: [], enemy: [] });
 
     try {
-      const response = await apiFetch<{ events: CombatEvent[]; characterState: Character; enemyState: Character }>(
-        `/api/combat/${nodeId}/action`,
-        { method: "POST", body: JSON.stringify({ characterId: character.id, action }) },
-      );
+      const response = await apiFetch<CombatActionResult>(`/api/combat/${nodeId}/action`, {
+        method: "POST",
+        body: JSON.stringify({ characterId: character.id, action }),
+      });
 
       if (!enemy) {
         setEnemy({
@@ -181,9 +184,11 @@ function CombatPage() {
         setEnemyHp(response.enemyState.currentHp);
       }
 
+      pendingLevelUpRef.current = response.levelUp.leveledUp ? response.levelUp : null;
+
       const steps = groupCombatEvents(response.events, character.id, response.enemyState.id);
       for (const step of steps) {
-        await playStep(step, response.enemyState.id);
+        await playStep(step, response.enemyState.id, response.xpGained);
       }
 
       setCharacter(response.characterState);
@@ -291,6 +296,22 @@ function CombatPage() {
           victory={result.victory}
           totalDamage={result.totalDamage}
           xpGained={result.xpGained}
+          onContinue={() => {
+            setResult(null);
+            if (pendingLevelUpRef.current) {
+              setLevelUp(pendingLevelUpRef.current);
+              pendingLevelUpRef.current = null;
+            } else {
+              navigate("/map");
+            }
+          }}
+        />
+      )}
+
+      {levelUp?.leveledUp && (
+        <LevelUpModal
+          newLevel={levelUp.newLevel ?? character.level}
+          newAbility={levelUp.newAbility}
           onContinue={() => navigate("/map")}
         />
       )}

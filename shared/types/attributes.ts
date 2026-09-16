@@ -18,3 +18,5 @@ export interface Attributes {
   /** Ul — Mistério. Sabedoria/Intelecto — checks de lore/enigma. */
   ul: number;
 }
+
+export const ATTRIBUTE_KEYS: (keyof Attributes)[] = ["dain", "eir", "nath", "il", "or", "len", "ul"];

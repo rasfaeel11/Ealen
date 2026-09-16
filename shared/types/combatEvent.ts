@@ -1,3 +1,6 @@
+import type { Character } from "./character";
+import type { LevelUpResult } from "./levelUp";
+
 /**
  * Eventos ordenados que descrevem o que aconteceu em um turno de combate.
  * O servidor NUNCA anima nada — só calcula e devolve esta lista; a
@@ -15,3 +18,12 @@ export type CombatEvent =
 
 /** Ações que um combatente (jogador ou inimigo) pode escolher em seu turno. */
 export type CombatAction = "attack" | "defend" | "heal";
+
+/** Corpo da resposta de POST /api/combat/:nodeId/action. */
+export interface CombatActionResult {
+  events: CombatEvent[];
+  characterState: Character;
+  enemyState: Character;
+  xpGained: number;
+  levelUp: LevelUpResult;
+}
