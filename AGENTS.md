@@ -1,6 +1,6 @@
 # AGENTS.md — Eälen: O Canto das Primeiras Luzes
 
-> RPG de navegador (React + Node + Supabase). Cole cada prompt abaixo no Cursor/Claude Code, na ordem. Rode um, teste, confirme que funciona, só então vá pro próximo — não cole os 6 de uma vez numa sessão só, o agente perde contexto e mistura decisões de passos diferentes.
+> RPG de navegador (React + Node + Supabase). Cole cada prompt abaixo no Cursor/Claude Code, na ordem. Rode um, teste, confirme que funciona, só então vá pro próximo — não cole os prompts de uma vez numa sessão só, o agente perde contexto e mistura decisões de passos diferentes.
 
 ## Projeto relacionado (repo separado, sem dependência de código)
 
@@ -20,6 +20,10 @@ Existe um segundo projeto, "Balanceador de Combate + IA de Inimigo" (Python, sta
 
 **Povos:** Althirim, Miraven, Taharim, Kelbar
 **Ordens (classes):** Luminar (Tank/Suporte), Entropista (Debuffer), Cantor de Eälen (Controle), Guardião (Tank Ofensivo), Sombrílico (Anti-Mago), Rachador (Sniper Físico)
+
+---
+
+## Fase 1 — Fundamentos, Combate Básico e Progressão
 
 ## Prompt 1 — Estrutura do monorepo + modelagem de dados
 
@@ -156,8 +160,189 @@ No /client:
 2. Se ganhou habilidade nova, mostre ela destacada no mesmo modal
 ```
 
-## Depois desses 6
+---
 
-Len e Ul (carisma e sabedoria/intelecto) ainda não são usados em nenhum desses prompts — eles existem no tipo `Attributes` mas não têm mecânica ainda. Isso é intencional: diálogo e enigmas são um sistema à parte (telas de diálogo com múltiplas escolhas, checks de Len/Ul pra desbloquear respostas ou resolver puzzles de lore), que vale construir só depois que mapa + combate + leveling estiverem de pé e jogáveis.
+## Fase 2 — Combate Tático, Inventário com Generics, Inimigos Únicos e Lore Profunda
 
-Toda vez que terminar uma tarefa, faca o commit. O push eu que faco.
+## Prompt 7 — Combate Tático: Tipos de Ataque, Defesa Dinâmica e Críticos (d20 = 1 / 20)
+
+```
+Vamos aprofundar o sistema de combate para que não seja apenas spammar o botão de atacar. O jogador precisa de opções táticas com risco vs recompensa, defesa estratégica e a emoção de acertos e falhas críticas no d20.
+
+No /shared/types/combatEvent.ts:
+1. Expanda CombatAction para incluir:
+   - "attack": ataque padrão (equilibrado)
+   - "quick_attack": ataque rápido (+3 bônus de acerto no d20, porém causa 60% do dano base)
+   - "heavy_attack": ataque pesado (-4 penalidade de acerto no d20, porém causa 180% do dano base + bônus de Dain)
+   - "defend": postura defensiva (ativa cálculo de bloqueio)
+   - "heal": ação de cura (mantém a lógica já existente)
+2. Adicione novas variantes ao union type CombatEvent:
+   - { type: "criticalHit", actor: string, naturalRoll: 20, multiplier: number }
+   - { type: "fumble", actor: string, naturalRoll: 1, penaltyDescription: string }
+   - { type: "block", defender: string, blockedAmount: number, remainingDamage: number }
+
+No /server/src/combat/engine.ts:
+1. Atualize a mecânica de rolagem de ataque:
+   - Capture o valor PURO do d20 sorteado (1 a 20) antes de somar atributos.
+   - Se d20 === 20 (Crítico Natural): o ataque ACERTA AUTOMATICAMENTE ignorando a defesa. Causa dano dobrado (ou dados extras) e empilha o evento "criticalHit".
+   - Se d20 === 1 (Falha Crítica / Fumble): o ataque ERRA AUTOMATICAMENTE. O atacante perde o equilíbrio e fica com debuff temporário de "Desequilibrado" (-3 em Or até seu próximo turno) e empilha o evento "fumble".
+2. Implemente a Defesa Dinâmica baseada em Or (Densidade):
+   - Se o defensor escolheu "defend", o poder de bloqueio é calculado como: Or + d6.
+   - Se o ataque do oponente acertar, o dano é reduzido pelo poder de bloqueio.
+   - Se o poder de bloqueio cobrir todo o dano: emite evento "block" com remainingDamage: 0 (bloqueio perfeito).
+   - Se cobrir parte do dano: emite evento "block" informando blockedAmount e remainingDamage restante aplicado ao HP.
+3. Atualize a IA do inimigo para também utilizar as novas ações (ex: usa quick_attack contra alvos esquivos/com pouca vida, heavy_attack se estiver buffado, defend se o jogador estiver em postura ameaçadora).
+
+No /client:
+1. Em client/src/lib/combatSteps.ts:
+   - Atualize o agrupador de passos de animação e o narrador (narrateStep) para incluir os eventos "criticalHit", "fumble" e "block".
+   - Narrativa épica: "20 NATURAL! Um golpe devastador que fende a armadura!" / "FALHA CRÍTICA (1)! A lâmina desliza em falso e Rafael perde o equilíbrio!".
+2. Em client/src/pages/CombatPage.tsx:
+   - Substitua os botões simples por uma barra tática de habilidades/ações:
+     * [Ataque Rápido]: Tooltip com "Alta precisão (+3), menor dano (60%)"
+     * [Ataque Padrão]: Equilibrado
+     * [Ataque Pesado]: Tooltip com "Baixa precisão (-4), dano esmagador (180%)"
+     * [Postura de Guarda]: "Bloqueia dano baseado em Or (Densidade)"
+     * [Cura / Habilidade]: se aplicável
+   - Animações Framer Motion:
+     * No 20 Natural: leve tremor de tela (camera shake), flash dourado vibrante e número de dano saltando com brilho intenso.
+     * No 1 Natural: efeito de desfoque/cinza com ícone de lâmina quebrada.
+     * No Bloqueio: ícone de brasão/escudo rúnico absorvendo o impacto.
+```
+
+## Prompt 8 — Sistema de Inventário com Generics & Consumíveis de Run
+
+```
+Vamos criar um sistema de inventário extensível utilizando TypeScript Generics para armazenar diferentes categorias de itens obtidos durante as runs, com foco imediato em itens consumíveis que podem ser usados no mapa ou durante o combate.
+
+No /shared:
+1. Crie /shared/types/inventory.ts definindo modelos base com Generics:
+   - export type ItemCategory = "consumable" | "relic" | "material" | "rune";
+   - export interface Item<TCategory extends ItemCategory = ItemCategory, TData = unknown> {
+       id: string;
+       name: string;
+       description: string;
+       category: TCategory;
+       rarity: "common" | "uncommon" | "rare" | "sacred";
+       data: TData;
+     }
+   - export type ConsumableEffect =
+       | { kind: "heal_hp"; amount: number }
+       | { kind: "buff_stat"; stat: keyof Attributes; bonus: number; durationTurns: number }
+       | { kind: "cure_status" }
+       | { kind: "focus_charge"; guaranteedCritNextHit: boolean };
+   - export type ConsumableItem = Item<"consumable", { effect: ConsumableEffect; usesRemaining: number; maxUses: number }>;
+   - export interface InventorySlot<TItem extends Item = Item> {
+       slotIndex: number;
+       item: TItem;
+       quantity: number;
+     }
+   - export interface Inventory<TItem extends Item = Item> {
+       slots: InventorySlot<TItem>[];
+       maxSlots: number;
+     }
+2. Em /shared/mock/items.ts, crie 4-5 itens consumíveis do lore de Eälen:
+   - "Lágrima de Eir": cura 15 HP através de ressonância mística.
+   - "Bálsamo de Pedra de Taharim": concede +4 de Densidade (Or) por 2 turnos.
+   - "Óleo da Coruja de Miraven": concede foco ao próximo golpe, garantindo acerto crítico.
+   - "Incenso Purificador de Althir": remove status negativos e restaura 5 HP.
+3. Adicione ao Character a propriedade opcional inventory: Inventory<ConsumableItem>.
+
+No /server:
+1. Suporte a ação de item no combate:
+   - Adicione { action: "use_item", itemId: string } ao CombatAction e endpoint POST /api/combat/:nodeId/action.
+   - O motor valida se o personagem possui o item no inventário, consome 1 unidade, aplica o efeito imediato ou buff persistente de turno, e gera o evento CombatEvent:
+     { type: "itemUsed", actor: string, itemId: string, itemName: string, effectDescription: string }.
+2. Garanta a persistência do inventário: atualize a coluna `inventory` (jsonb) na tabela `characters` no Supabase e garanta suporte no modo local de convidado (guest).
+
+No /client:
+1. Crie o componente de Inventário / Mochila de Viagem:
+   - Um painel retrátil ou modal com visual de bolsa de aventureiro / códice antigo.
+   - Mostra slots com ícones rúnicos, contadores de quantidade e tooltip com detalhes do item.
+2. Na tela de combate:
+   - Adicione o botão "Bolsa de Itens": abre uma gaveta rápida com consumíveis utilizáveis em combate.
+   - Clicar em um item consome o turno e dispara a chamada com animação Framer Motion de brilho rúnico.
+3. Na tela de mapa:
+   - Permitir abrir a mochila para inspecionar itens coletados ou usar poções de cura antes de entrar no próximo combate.
+```
+
+## Prompt 9 — Inimigos Táticos, Sistema de Intenções e Arquétipos Únicos
+
+```
+Atualmente os combates usam inimigos genéricos com a mesma IA básica. Vamos transformar os inimigos em desafios táticos com arquétipos distintos e um sistema de "Intenções Telegrafadas" (estilo Slay the Spire), onde o jogador vê a intenção do inimigo para o próximo turno e pode planejar sua resposta.
+
+No /shared/types:
+1. Crie o tipo EnemyIntent em /shared/types/enemyIntent.ts:
+   export type EnemyIntent =
+     | { type: "intent_heavy_attack"; estimatedDamage: number; description: "Preparando Golpe Esmagador" }
+     | { type: "intent_quick_strike"; description: "Postura Ágil de Ataque Rápido" }
+     | { type: "intent_defensive_guard"; description: "Erguendo Barreira de Pedra" }
+     | { type: "intent_status_curse"; status: string; description: "Canalizando Sussurro Entrópico" }
+     | { type: "intent_drain"; description: "Preparando Dreno de Ressonância" };
+2. Adicione ao retorno da API de combate o campo `nextEnemyIntent?: EnemyIntent`.
+
+No /server:
+1. Em /server/src/combat/enemyTemplates.ts, crie 4 arquétipos de inimigos ricos com lore de Tirán:
+   - "Sentinela de Quartzo" (Tanque): Alta Or, telegrafa ataques pesados devastadores a cada 2 turnos e usa barreira defensiva.
+   - "Rastejador da Praga de Tháran" (Ágil/Debuffer): Alta Il, usa ataques rápidos repetidos e aplica o status "Corrupção de Sombra" que drena 2 HP por turno.
+   - "Eco Silenciado de Miraven" (Mago Místico): Ataca com Eir, imune a acertos pesados lentos e drena vida do jogador.
+   - "Besta de Escória de Taharim" (Bruto): Ganha +2 de Dain sempre que toma dano, forçando o jogador a finalizar rápido ou bloquear com perfeição.
+2. Atualize o motor de combate (engine.ts):
+   - Cada template de inimigo possui um padrão ou árvore de decisão (State Machine) para definir sua próxima ação e intenção telegrafada.
+   - Retorne `nextEnemyIntent` junto com o estado inicial do combate e após cada turno resolvido.
+
+No /client:
+1. Na tela de combate (CombatPage.tsx):
+   - Exiba um badge/ícone dinâmico acima do retrato do inimigo mostrando sua intenção telegrafada atual (ex: ícone de espada brilhante com tooltip "Preparando Golpe Esmagador (Dano Alto) — Recomenda-se postura defensiva!").
+   - Adicione animação de aviso pulsante com Framer Motion quando o inimigo for desferir um ataque pesado.
+2. Crie feedback visual para os status aplicados pelos inimigos (ex: aura roxa para Corrupção de Sombra, ícone de rachadura para armadura partida).
+```
+
+## Prompt 10 — Crônica de Eälen: Jornada Narrativa, Atos e Encontros Sociais (Len & Ul)
+
+```
+Vamos dar propósito e alma à jornada do jogador: construir a história do mundo de Eälen, definir o objetivo da campanha ("Onde precisamos ir e o que faremos"), e dar utilidade real aos atributos Len (Som/Voz/Persuasão) e Ul (Mistério/Sabedoria/Enigmas) que até agora estavam inativos.
+
+1. O Lore e Objetivo da Campanha:
+   - Premissa: As Primeiras Luzes de Eälen estão sendo extintas pela maré do Silêncio de Tháran. Se o último santuário cair, o mundo mergulhará na mudez eterna.
+   - O Peregrino (jogador) deve percorrer o Caminho dos Primeiros Povos através de 3 Regiões/Atos no Grafo de Mapa:
+     * Ato 1 — Os Bosques Velados de Miraven (Nós 1 a 6): Terras da memória e do luar pálido, infestadas por ecos corrompidos. Chefe: O Guardião dos Murmúrios.
+     * Ato 2 — As Gargantas de Pedra de Taharim (Nós 7 a 13): Desfiladeiros e forjas antigas dominadas por construtos sem mestre. Chefe: O Colosso da Forja Extinta.
+     * Ato 3 — A Agulha do Primeiro Alvorecer de Althirim (Nós 14 a 20): O santuário supremo onde o jogador deve entoar a Grande Canção de Eälen. Chefe Final: O Arauto do Silêncio.
+
+2. No /shared/types/mapNode.ts:
+   - Expanda MapNode e crie a tipagem para encontros de diálogo e lore:
+     export interface DialogueChoice {
+       id: string;
+       text: string;
+       requiredAttribute?: "len" | "ul"; // Len = Canto/Voz/Carisma, Ul = Sabedoria/Enigma/Misticismo
+       difficultyCheck?: number; // DC do teste de d20 + atributo
+       onSuccess: { text: string; rewardItemId?: string; xp?: number; unlockPathNodeId?: string };
+       onFailure?: { text: string; penaltyDamage?: number; triggerCombat?: boolean };
+     }
+     export interface DialogueEncounter {
+       id: string;
+       speakerName: string;
+       speakerTitle: string;
+       prose: string; // texto narrativo evocativo
+       choices: DialogueChoice[];
+     }
+
+3. No /server:
+   - Crie o endpoint POST /api/map/encounter/:nodeId/choice:
+     * Recebe { characterId, choiceId }.
+     * Se a escolha exigir teste de Len ou Ul, o servidor rola d20 + atributo correspondente vs difficultyCheck.
+     * Atualiza o estado do personagem (concede XP, adiciona item consumível ao inventário ou desconta dano se falhar).
+     * Retorna o resultado da rolagem, sucesso/falha e o texto do desfecho.
+
+4. No /client:
+   - Crie o componente DialogueModal / NarrativeModal:
+     * Design no estilo "Página de Códice Antigo": borda dourada ornamental, texto em prosa evocativa em fonte Garamond/Cinzel, e retrato rúnico do interlocutor.
+     * Cada opção de escolha exibe uma insígnia dourada indicando o teste de atributo: "[Len - Canto Ritual (Dificuldade 12)]" ou "[Ul - Decifrar Glifo Ancestral (Dificuldade 14)]".
+     * Ao clicar, o modal exibe uma animação do dado d20 rolando antes de revelar o desfecho dramático (Sucesso ou Fracasso).
+   - Adicione na barra superior um botão "Códice de Eälen" para o jogador consultar a história descoberta e os fragmentos de runas coletados na sua jornada.
+```
+
+---
+
+Toda vez que terminar uma tarefa, faça o commit. O push o usuário fará.
