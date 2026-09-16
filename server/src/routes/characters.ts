@@ -1,6 +1,13 @@
 import { Router } from "express";
 import type { Race, CharacterClass, Attributes } from "@ealen/shared";
-import { ATTRIBUTE_KEYS, MOCK_MAP_NODES } from "@ealen/shared";
+import {
+  ATTRIBUTE_KEYS,
+  MOCK_MAP_NODES,
+  createStartingInventory,
+  applyImmediateHeal,
+  consumeInventoryCharge,
+  findInventorySlot,
+} from "@ealen/shared";
 import { requireAuth, type AuthedRequest } from "../middleware/auth";
 import { rowToCharacter, type CharacterRow } from "../lib/characterMapper";
 
@@ -96,6 +103,7 @@ router.post("/", async (req, res) => {
       current_hp: body.maxHp,
       max_hp: body.maxHp,
       current_node_id: body.currentNodeId,
+      inventory: createStartingInventory(),
     })
     .select("*")
     .single<CharacterRow>();
@@ -209,6 +217,67 @@ router.post("/:id/move", async (req, res) => {
   }
 
   res.json({ character: rowToCharacter(updatedRow), node: destinationNode });
+});
+
+// POST /api/characters/:id/use-item
+// Usa um consumível fora de combate (ex: uma poção de cura no mapa, antes
+// de entrar no próximo encontro). Só aceita efeitos que fazem sentido sem
+// uma sessão de combate ativa (heal_hp, cure_status) — buffs de atributo e
+// crítico garantido só existem durante uma luta (ver /api/combat).
+router.post("/:id/use-item", async (req, res) => {
+  const { supabase } = req as unknown as AuthedRequest;
+  const { id } = req.params;
+  const { itemId } = req.body as { itemId?: string };
+
+  if (!itemId || typeof itemId !== "string") {
+    res.status(400).json({ error: "itemId é obrigatório" });
+    return;
+  }
+
+  const { data: row, error: fetchError } = await supabase
+    .from("characters")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle<CharacterRow>();
+
+  if (fetchError) {
+    res.status(500).json({ error: fetchError.message });
+    return;
+  }
+  if (!row) {
+    res.status(404).json({ error: "Personagem não encontrado" });
+    return;
+  }
+
+  const character = rowToCharacter(row);
+  const slot = findInventorySlot(character, itemId);
+  if (!slot || slot.quantity <= 0) {
+    res.status(404).json({ error: "Item não encontrado na mochila" });
+    return;
+  }
+
+  const { effect } = slot.item.data;
+  if (effect.kind !== "heal_hp" && effect.kind !== "cure_status") {
+    res.status(400).json({ error: "Este item só pode ser usado em combate" });
+    return;
+  }
+
+  const { healed, description } = applyImmediateHeal(character, effect);
+  consumeInventoryCharge(character, slot);
+
+  const { data: updatedRow, error: updateError } = await supabase
+    .from("characters")
+    .update({ current_hp: character.currentHp, inventory: character.inventory })
+    .eq("id", id)
+    .select("*")
+    .single<CharacterRow>();
+
+  if (updateError) {
+    res.status(400).json({ error: updateError.message });
+    return;
+  }
+
+  res.json({ character: rowToCharacter(updatedRow), healed, description });
 });
 
 export default router;

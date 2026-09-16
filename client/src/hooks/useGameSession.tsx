@@ -7,7 +7,14 @@ import type {
   MapNode,
   Race,
 } from "@ealen/shared";
-import { createStartingAttributes, startingMaxHp } from "@ealen/shared";
+import {
+  applyImmediateHeal,
+  consumeInventoryCharge,
+  createStartingAttributes,
+  createStartingInventory,
+  findInventorySlot,
+  startingMaxHp,
+} from "@ealen/shared";
 import { useAuth } from "./useAuth";
 import { supabase } from "../lib/supabaseClient";
 import { apiFetch, ApiError } from "../lib/api";
@@ -37,7 +44,9 @@ interface GameSessionValue {
   needsCharacter: boolean;
   createCharacter(input: NewCharacterInput): Promise<Character>;
   moveCharacter(destinationNodeId: string, mapNodes: MapNode[]): Promise<{ character: Character; node: MapNode }>;
-  resolveCombatAction(nodeId: string, action: CombatAction): Promise<CombatActionResult>;
+  resolveCombatAction(nodeId: string, action: CombatAction, itemId?: string): Promise<CombatActionResult>;
+  /** Usa um item fora de combate (ex: poção no mapa). Só aceita heal_hp/cure_status. */
+  useItemOutsideCombat(itemId: string): Promise<{ healed: number; description: string }>;
   enterGuestMode(): void;
   exitSession(): Promise<void>;
 }
@@ -136,6 +145,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
         currentHp: maxHp,
         maxHp,
         currentNodeId: input.currentNodeId,
+        inventory: createStartingInventory(),
       };
       saveGuestCharacter(guestCharacter);
       setCharacterState(guestCharacter);
@@ -172,15 +182,46 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const resolveCombatAction = useCallback(
-    async (nodeId: string, action: CombatAction): Promise<CombatActionResult> => {
+    async (nodeId: string, action: CombatAction, itemId?: string): Promise<CombatActionResult> => {
       if (!character) throw new Error("Nenhum personagem ativo");
 
       const path = mode === "account" ? `/api/combat/${nodeId}/action` : `/api/combat/${nodeId}/guest-action`;
-      const body = mode === "account" ? { characterId: character.id, action } : { character, action };
+      const body =
+        mode === "account" ? { characterId: character.id, action, itemId } : { character, action, itemId };
 
       const result = await apiFetch<CombatActionResult>(path, { method: "POST", body: JSON.stringify(body) });
       setCharacter(result.characterState);
       return result;
+    },
+    [character, mode, setCharacter],
+  );
+
+  const useItemOutsideCombat = useCallback(
+    async (itemId: string): Promise<{ healed: number; description: string }> => {
+      if (!character) throw new Error("Nenhum personagem ativo");
+
+      if (mode === "account") {
+        const result = await apiFetch<{ character: Character; healed: number; description: string }>(
+          `/api/characters/${character.id}/use-item`,
+          { method: "POST", body: JSON.stringify({ itemId }) },
+        );
+        setCharacterState(result.character);
+        return { healed: result.healed, description: result.description };
+      }
+
+      const updated = structuredClone(character);
+      const slot = findInventorySlot(updated, itemId);
+      if (!slot) throw new Error("Item não encontrado na mochila");
+
+      const { effect } = slot.item.data;
+      if (effect.kind !== "heal_hp" && effect.kind !== "cure_status") {
+        throw new Error("Este item só pode ser usado em combate");
+      }
+
+      const { healed, description } = applyImmediateHeal(updated, effect);
+      consumeInventoryCharge(updated, slot);
+      setCharacter(updated);
+      return { healed, description };
     },
     [character, mode, setCharacter],
   );
@@ -211,6 +252,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
       createCharacter,
       moveCharacter,
       resolveCombatAction,
+      useItemOutsideCombat,
       enterGuestMode,
       exitSession,
     }),
@@ -222,6 +264,7 @@ export function GameSessionProvider({ children }: { children: ReactNode }) {
       createCharacter,
       moveCharacter,
       resolveCombatAction,
+      useItemOutsideCombat,
       enterGuestMode,
       exitSession,
     ],

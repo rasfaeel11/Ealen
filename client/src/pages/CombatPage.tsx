@@ -9,6 +9,7 @@ import CombatantCard, { type CombatFlash, type Floater, type RollBadge } from ".
 import CombatLog from "../components/combat/CombatLog";
 import CombatResultModal from "../components/combat/CombatResultModal";
 import LevelUpModal from "../components/combat/LevelUpModal";
+import InventoryPanel from "../components/inventory/InventoryPanel";
 
 type Side = "character" | "enemy";
 
@@ -34,6 +35,7 @@ const ACTION_LABELS: Record<CombatAction, string> = {
   heavy_attack: "Ataque Pesado",
   defend: "Postura de Guarda",
   heal: "Cura / Habilidade",
+  use_item: "Usar Item",
 };
 
 const ACTION_TOOLTIPS: Partial<Record<CombatAction, string>> = {
@@ -59,6 +61,8 @@ function CombatPage() {
   const [combatEnded, setCombatEnded] = useState(false);
   const [result, setResult] = useState<ResultState | null>(null);
   const [levelUp, setLevelUp] = useState<LevelUpResult | null>(null);
+  const [showInventory, setShowInventory] = useState(false);
+  const [usingItemId, setUsingItemId] = useState<string | null>(null);
 
   const [rollBadges, setRollBadges] = useState<Partial<Record<Side, RollBadge>>>({});
   const [flashes, setFlashes] = useState<Partial<Record<Side, CombatFlash>>>({});
@@ -155,6 +159,14 @@ function CombatPage() {
       return;
     }
 
+    if (step.kind === "item") {
+      const side = sideOf(step.actorId);
+      setFlashes((prev) => ({ ...prev, [side]: "item" }));
+      await sleep(duration);
+      setFlashes((prev) => ({ ...prev, [side]: undefined }));
+      return;
+    }
+
     if (step.kind === "death") {
       const side = sideOf(step.actorId);
       setDeadSides((prev) => new Set(prev).add(side));
@@ -175,7 +187,7 @@ function CombatPage() {
     }
   }
 
-  async function handleAction(action: CombatAction) {
+  async function handleAction(action: CombatAction, itemId?: string) {
     if (!character || !nodeId || resolving || combatEnded) return;
 
     setResolving(true);
@@ -183,7 +195,7 @@ function CombatPage() {
     setStatusIcons({ character: [], enemy: [] });
 
     try {
-      const response = await resolveCombatAction(nodeId, action);
+      const response = await resolveCombatAction(nodeId, action, itemId);
 
       if (!enemy) {
         setEnemy({
@@ -208,7 +220,14 @@ function CombatPage() {
       setError(err instanceof Error ? err.message : "Não foi possível resolver o combate");
     } finally {
       setResolving(false);
+      setUsingItemId(null);
     }
+  }
+
+  async function handleUseItem(itemId: string) {
+    setUsingItemId(itemId);
+    setShowInventory(false);
+    await handleAction("use_item", itemId);
   }
 
   const canUseAbility = character ? CLASS_INFO[character.characterClass].primaryAttributes.includes("eir") : false;
@@ -310,7 +329,25 @@ function CombatPage() {
             {ACTION_LABELS[action]}
           </button>
         ))}
+        <button
+          onClick={() => setShowInventory(true)}
+          disabled={resolving || combatEnded}
+          title="Consumíveis usáveis em combate"
+          className="rounded-sm border border-violet-500/60 px-4 py-2 font-cinzel text-xs tracking-wide text-violet-300 hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+        >
+          Bolsa de Itens
+        </button>
       </div>
+
+      {showInventory && (
+        <InventoryPanel
+          inventory={character.inventory}
+          onClose={() => setShowInventory(false)}
+          onUseItem={handleUseItem}
+          usingItemId={usingItemId}
+          title="Bolsa de Itens"
+        />
+      )}
 
       {result && (
         <CombatResultModal

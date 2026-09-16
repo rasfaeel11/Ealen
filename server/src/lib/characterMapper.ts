@@ -1,4 +1,4 @@
-import type { Attributes, Character, CharacterClass, Race } from "@ealen/shared";
+import type { Attributes, Character, CharacterClass, ConsumableItem, Inventory, Race } from "@ealen/shared";
 
 /** Formato de uma linha da tabela `characters` no Supabase (snake_case). */
 export interface CharacterRow {
@@ -13,6 +13,7 @@ export interface CharacterRow {
   current_hp: number;
   max_hp: number;
   current_node_id: string;
+  inventory: Inventory<ConsumableItem>;
   created_at: string;
 }
 
@@ -28,5 +29,6 @@ export function rowToCharacter(row: CharacterRow): Character {
     currentHp: row.current_hp,
     maxHp: row.max_hp,
     currentNodeId: row.current_node_id,
+    inventory: row.inventory,
   };
 }

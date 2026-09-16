@@ -25,6 +25,7 @@ export type AnimStep =
     }
   | { kind: "status"; targetId: string; status: string }
   | { kind: "heal"; targetId: string; amount: number; remainingHp: number }
+  | { kind: "item"; actorId: string; itemName: string; effectDescription: string }
   | { kind: "death"; actorId: string }
   | { kind: "victory"; winnerId: string };
 
@@ -102,6 +103,11 @@ export function groupCombatEvents(events: CombatEvent[], characterId: string, en
       i += 1;
       continue;
     }
+    if (event.type === "itemUsed") {
+      steps.push({ kind: "item", actorId: event.actor, itemName: event.itemName, effectDescription: event.effectDescription });
+      i += 1;
+      continue;
+    }
     if (event.type === "death") {
       steps.push({ kind: "death", actorId: event.actor });
       i += 1;
@@ -150,6 +156,8 @@ export function narrateStep(step: AnimStep, nameOf: (id: string) => string): str
       return `${nameOf(step.targetId)} recebe o status "${step.status}".`;
     case "heal":
       return `${nameOf(step.targetId)} se cura em ${step.amount} (HP: ${step.remainingHp}).`;
+    case "item":
+      return `${nameOf(step.actorId)} usa ${step.itemName}: ${step.effectDescription}`;
     case "death":
       return `${nameOf(step.actorId)} caiu em combate!`;
     case "victory":
@@ -169,6 +177,8 @@ export function stepDurationMs(step: AnimStep): number {
       return 500;
     case "heal":
       return 700;
+    case "item":
+      return 900;
     case "death":
       return 900;
     case "victory":

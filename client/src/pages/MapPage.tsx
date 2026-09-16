@@ -8,18 +8,22 @@ import { useGameSession } from "../hooks/useGameSession";
 import { computeLayeredLayout } from "../lib/mapLayout";
 import MysticNode, { type MysticNodeData } from "../components/map/MysticNode";
 import LoreModal from "../components/map/LoreModal";
+import InventoryPanel from "../components/inventory/InventoryPanel";
 
 const nodeTypes = { mystic: MysticNode };
 
 function MapPage() {
   const navigate = useNavigate();
-  const { character, needsCharacter, loading: sessionLoading, moveCharacter } = useGameSession();
+  const { character, needsCharacter, loading: sessionLoading, moveCharacter, useItemOutsideCombat } = useGameSession();
 
   const [mapNodes, setMapNodes] = useState<MapNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [loreNode, setLoreNode] = useState<MapNode | null>(null);
+  const [showInventory, setShowInventory] = useState(false);
+  const [usingItemId, setUsingItemId] = useState<string | null>(null);
+  const [itemFeedback, setItemFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -126,6 +130,19 @@ function MapPage() {
     }
   };
 
+  async function handleUseItem(itemId: string) {
+    setUsingItemId(itemId);
+    setItemFeedback(null);
+    try {
+      const { description } = await useItemOutsideCombat(itemId);
+      setItemFeedback(description);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível usar o item");
+    } finally {
+      setUsingItemId(null);
+    }
+  }
+
   if (!sessionLoading && needsCharacter) {
     return <Navigate to="/character/new" replace />;
   }
@@ -134,16 +151,30 @@ function MapPage() {
     <div className="flex h-screen w-screen flex-col bg-codex-bg text-codex-ink">
       <header className="flex items-center justify-between border-b border-codex-border/70 px-6 py-4">
         <h1 className="font-cinzel text-lg tracking-wide text-codex-goldBright">Mapa de Eälen</h1>
-        {character && (
-          <p className="font-garamond text-sm text-codex-inkDim">
-            {character.name} · Nível {character.level} · {currentNode?.name ?? "???"}
-          </p>
-        )}
+        <div className="flex items-center gap-4">
+          {character && (
+            <p className="font-garamond text-sm text-codex-inkDim">
+              {character.name} · Nível {character.level} · {currentNode?.name ?? "???"}
+            </p>
+          )}
+          <button
+            onClick={() => setShowInventory(true)}
+            className="rounded-sm border border-codex-gold/60 px-3 py-1.5 font-cinzel text-xs tracking-wide text-codex-goldBright hover:bg-codex-gold/10"
+          >
+            Mochila
+          </button>
+        </div>
       </header>
 
       {error && (
         <div className="border-b border-red-900/50 bg-red-950/40 px-6 py-2 font-garamond text-sm text-red-300">
           {error}
+        </div>
+      )}
+
+      {itemFeedback && (
+        <div className="border-b border-codex-gold/40 bg-codex-gold/5 px-6 py-2 font-garamond text-sm text-codex-goldBright">
+          {itemFeedback}
         </div>
       )}
 
@@ -173,6 +204,16 @@ function MapPage() {
       </div>
 
       {loreNode && <LoreModal node={loreNode} onClose={() => setLoreNode(null)} />}
+
+      {showInventory && (
+        <InventoryPanel
+          inventory={character?.inventory}
+          onClose={() => setShowInventory(false)}
+          onUseItem={handleUseItem}
+          usingItemId={usingItemId}
+          isItemUsable={(item) => item.data.effect.kind === "heal_hp" || item.data.effect.kind === "cure_status"}
+        />
+      )}
     </div>
   );
 }

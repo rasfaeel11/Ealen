@@ -15,6 +15,7 @@ export type CombatEvent =
   | { type: "block"; defender: string; blockedAmount: number; remainingDamage: number }
   | { type: "damage"; target: string; amount: number; remainingHp: number }
   | { type: "heal"; target: string; amount: number; remainingHp: number }
+  | { type: "itemUsed"; actor: string; itemId: string; itemName: string; effectDescription: string }
   | { type: "statusApplied"; target: string; status: string }
   | { type: "death"; actor: string }
   | { type: "victory"; winner: string };
@@ -29,8 +30,11 @@ export type CombatEvent =
  * - defend: postura defensiva; ativa o cálculo de bloqueio (Or + d6) contra
  *   o próximo ataque recebido neste turno.
  * - heal: ação de cura (só disponível pra classes com afinidade a Eir).
+ * - use_item: consome um consumível da mochila (ver ConsumableItem em
+ *   inventory.ts) — qual item usar vai à parte, no campo `itemId` do body
+ *   de POST /api/combat/:nodeId/action.
  */
-export type CombatAction = "attack" | "quick_attack" | "heavy_attack" | "defend" | "heal";
+export type CombatAction = "attack" | "quick_attack" | "heavy_attack" | "defend" | "heal" | "use_item";
 
 /** Corpo da resposta de POST /api/combat/:nodeId/action. */
 export interface CombatActionResult {

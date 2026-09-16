@@ -3,13 +3,14 @@ import type { Character, CombatAction } from "@ealen/shared";
 import { ATTRIBUTE_KEYS } from "@ealen/shared";
 import { requireAuth, type AuthedRequest } from "../middleware/auth";
 import { rowToCharacter, type CharacterRow } from "../lib/characterMapper";
-import { getOrCreateEnemy, clearEnemy } from "../combat/sessions";
+import { getOrCreateSession, clearSession } from "../combat/sessions";
 import { resolveCombatTurn } from "../combat/engine";
 import { settleCombat } from "../combat/settle";
+import { tickBuffs } from "../combat/buffs";
 
 const router = Router();
 
-const VALID_ACTIONS: CombatAction[] = ["attack", "quick_attack", "heavy_attack", "defend", "heal"];
+const VALID_ACTIONS: CombatAction[] = ["attack", "quick_attack", "heavy_attack", "defend", "heal", "use_item"];
 
 function isValidGuestCharacter(value: unknown): value is Character {
   if (typeof value !== "object" || value === null) return false;
@@ -26,7 +27,7 @@ function isValidGuestCharacter(value: unknown): value is Character {
 // no navegador) e recebe de volta o mesmo shape que o modo autenticado usa.
 router.post("/:nodeId/guest-action", (req, res) => {
   const { nodeId } = req.params;
-  const { character, action } = req.body as { character?: unknown; action?: string };
+  const { character, action, itemId } = req.body as { character?: unknown; action?: string; itemId?: string };
 
   if (!isValidGuestCharacter(character)) {
     res.status(400).json({ error: "Personagem de convidado inválido" });
@@ -41,17 +42,22 @@ router.post("/:nodeId/guest-action", (req, res) => {
     return;
   }
 
-  const enemy = getOrCreateEnemy(character.id, nodeId);
-  if (!enemy) {
+  const session = getOrCreateSession(character.id, nodeId);
+  if (!session) {
     res.status(404).json({ error: "Nenhum encontro de combate ativo neste nó" });
     return;
   }
 
-  const events = resolveCombatTurn(character, enemy, action as CombatAction);
-  const { combatEnded, xpGained, levelUp } = settleCombat(character, enemy, events);
-  if (combatEnded) clearEnemy(character.id, nodeId);
+  const events = resolveCombatTurn(character, session.enemy, action as CombatAction, {
+    itemId,
+    activeBuffs: session.buffs,
+  });
+  tickBuffs(session.buffs);
 
-  res.json({ events, characterState: character, enemyState: enemy, xpGained, levelUp });
+  const { combatEnded, xpGained, levelUp } = settleCombat(character, session.enemy, events);
+  if (combatEnded) clearSession(character.id, nodeId);
+
+  res.json({ events, characterState: character, enemyState: session.enemy, xpGained, levelUp });
 });
 
 router.use(requireAuth);
@@ -59,7 +65,11 @@ router.use(requireAuth);
 router.post("/:nodeId/action", async (req, res) => {
   const { supabase } = req as unknown as AuthedRequest;
   const { nodeId } = req.params;
-  const { characterId, action } = req.body as { characterId?: string; action?: string };
+  const { characterId, action, itemId } = req.body as {
+    characterId?: string;
+    action?: string;
+    itemId?: string;
+  };
 
   if (!characterId || !action) {
     res.status(400).json({ error: "characterId e action são obrigatórios" });
@@ -92,23 +102,28 @@ router.post("/:nodeId/action", async (req, res) => {
     return;
   }
 
-  const enemy = getOrCreateEnemy(characterId, nodeId);
-  if (!enemy) {
+  const session = getOrCreateSession(characterId, nodeId);
+  if (!session) {
     res.status(404).json({ error: "Nenhum encontro de combate ativo neste nó" });
     return;
   }
 
-  const events = resolveCombatTurn(character, enemy, action as CombatAction);
-  const { combatEnded, playerWon, xpGained, levelUp } = settleCombat(character, enemy, events);
+  const events = resolveCombatTurn(character, session.enemy, action as CombatAction, {
+    itemId,
+    activeBuffs: session.buffs,
+  });
+  tickBuffs(session.buffs);
+
+  const { combatEnded, playerWon, xpGained, levelUp } = settleCombat(character, session.enemy, events);
 
   if (combatEnded) {
-    clearEnemy(characterId, nodeId);
+    clearSession(characterId, nodeId);
 
     // "Salão das Lendas": histórico de combates concluídos. Não bloqueia a
     // resposta se falhar — é um registro secundário, não crítico pro jogo.
     const { error: logError } = await supabase.from("combat_log").insert({
       character_id: character.id,
-      enemy_name: enemy.name,
+      enemy_name: session.enemy.name,
       result: playerWon ? "victory" : "defeat",
       xp_gained: xpGained,
     });
@@ -131,6 +146,7 @@ router.post("/:nodeId/action", async (req, res) => {
       level: character.level,
       attributes: character.attributes,
       max_hp: character.maxHp,
+      inventory: character.inventory,
     })
     .eq("id", character.id)
     .select("*")
@@ -144,7 +160,7 @@ router.post("/:nodeId/action", async (req, res) => {
   res.json({
     events,
     characterState: rowToCharacter(updatedRow),
-    enemyState: enemy,
+    enemyState: session.enemy,
     xpGained,
     levelUp,
   });

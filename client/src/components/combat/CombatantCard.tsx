@@ -13,7 +13,7 @@ export interface RollBadge {
   nonce: number;
 }
 
-export type CombatFlash = "hit" | "miss" | "critical" | "fumble" | "block";
+export type CombatFlash = "hit" | "miss" | "critical" | "fumble" | "block" | "item";
 
 interface CombatantCardProps {
   name: string;
@@ -38,12 +38,14 @@ const FLASH_STYLES: Record<CombatFlash, string> = {
   critical: "bg-codex-goldBright",
   fumble: "bg-neutral-700 grayscale",
   block: "bg-sky-500",
+  item: "bg-violet-500",
 };
 
 const FLASH_ICONS: Partial<Record<CombatFlash, string>> = {
   critical: "✦",
   fumble: "💔",
   block: "🛡",
+  item: "❖",
 };
 
 function CombatantCard({ name, subtitle, hp, maxHp, known, dead, rollBadge, flash, floaters, statusIcons, align }: CombatantCardProps) {

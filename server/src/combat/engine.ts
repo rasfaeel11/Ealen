@@ -1,5 +1,6 @@
 import type { Attributes, Character, CombatAction, CombatEvent } from "@ealen/shared";
-import { CLASS_INFO } from "@ealen/shared";
+import { CLASS_INFO, applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "@ealen/shared";
+import { buffBonus, consumeGuaranteedCrit, hasGuaranteedCrit, type ActiveBuff } from "./buffs";
 
 type AttackAction = "attack" | "quick_attack" | "heavy_attack";
 
@@ -41,18 +42,22 @@ function canHeal(character: Character): boolean {
  */
 type OrPenalty = Record<string, number>;
 
-function effectiveOr(unit: Character, orPenalty: OrPenalty): number {
-  return Math.max(0, unit.attributes.or - (orPenalty[unit.id] ?? 0));
+/** Valor efetivo de um atributo: base + buffs ativos (multi-turno) - penalidade de Or do turno atual. */
+function effectiveAttr(unit: Character, stat: keyof Attributes, activeBuffs: ActiveBuff[], orPenalty: OrPenalty): number {
+  const penalty = stat === "or" ? (orPenalty[unit.id] ?? 0) : 0;
+  return Math.max(0, unit.attributes[stat] + buffBonus(unit, stat, activeBuffs) - penalty);
 }
 
 /**
  * Dano bruto de um ataque, antes da mitigação pela defesa do alvo: atributo
- * primário do atacante + 1d6, escalado pelo tipo de ataque. Ataques pesados
- * somam um bônus fixo de Dain (o golpe puxa força bruta, não só técnica).
+ * primário do atacante (+ buffs ativos) + 1d6, escalado pelo tipo de
+ * ataque. Ataques pesados somam um bônus fixo de Dain (o golpe puxa força
+ * bruta, não só técnica).
  */
-function rawAttackDamage(attacker: Character, action: AttackAction): number {
+function rawAttackDamage(attacker: Character, action: AttackAction, activeBuffs: ActiveBuff[]): number {
   const attackAttr = primaryAttribute(attacker);
-  const base = attacker.attributes[attackAttr] + rollDamageDie();
+  const attrValue = attacker.attributes[attackAttr] + buffBonus(attacker, attackAttr, activeBuffs);
+  const base = attrValue + rollDamageDie();
 
   if (action === "quick_attack") return Math.round(base * 0.6);
   if (action === "heavy_attack") return Math.round(base * 1.8) + Math.floor(attacker.attributes.dain / 2);
@@ -87,10 +92,10 @@ function decideEnemyAction(enemy: Character, opponent: Character, opponentAction
 /**
  * Resolve um ataque de `attacker` contra `defender`, considerando o tipo de
  * ataque (attack/quick_attack/heavy_attack), crítico/falha críticos no d20
- * puro e o bloqueio dinâmico caso o defensor esteja em postura defensiva.
- * Muta `defender` (currentHp) e `orPenalty` (debuff de Desequilibrado ao
- * tirar 1 natural), empilhando os eventos correspondentes. Retorna true se
- * o defensor morreu.
+ * puro (ou um crítico garantido por item), e o bloqueio dinâmico caso o
+ * defensor esteja em postura defensiva. Muta `defender` (currentHp) e
+ * `orPenalty` (debuff de Desequilibrado ao tirar 1 natural), empilhando os
+ * eventos correspondentes. Retorna true se o defensor morreu.
  */
 function resolveAttack(
   attacker: Character,
@@ -99,16 +104,19 @@ function resolveAttack(
   events: CombatEvent[],
   defendingIds: Set<string>,
   orPenalty: OrPenalty,
+  activeBuffs: ActiveBuff[],
 ): boolean {
   const attackAttr = primaryAttribute(attacker);
   const naturalRoll = rollD20();
-  const attackValue = naturalRoll + attacker.attributes[attackAttr] + TO_HIT_MODIFIER[action];
-  const defenderOr = effectiveOr(defender, orPenalty);
+  const guaranteedCrit = hasGuaranteedCrit(attacker, activeBuffs);
+  const attrValue = effectiveAttr(attacker, attackAttr, activeBuffs, orPenalty);
+  const attackValue = naturalRoll + attrValue + TO_HIT_MODIFIER[action];
+  const defenderOr = effectiveAttr(defender, "or", activeBuffs, orPenalty);
   const defenseTarget = 10 + defenderOr;
 
   events.push({ type: "roll", actor: attacker.id, value: attackValue, target: defenseTarget });
 
-  if (naturalRoll === 1) {
+  if (naturalRoll === 1 && !guaranteedCrit) {
     orPenalty[attacker.id] = (orPenalty[attacker.id] ?? 0) + 3;
     events.push({
       type: "fumble",
@@ -120,7 +128,9 @@ function resolveAttack(
     return false;
   }
 
-  const isCritical = naturalRoll === 20;
+  const isCritical = naturalRoll === 20 || guaranteedCrit;
+  if (guaranteedCrit) consumeGuaranteedCrit(attacker, activeBuffs);
+
   const hit = isCritical || attackValue >= defenseTarget;
 
   if (isCritical) {
@@ -129,7 +139,7 @@ function resolveAttack(
   events.push({ type: hit ? "hit" : "miss", actor: attacker.id });
   if (!hit) return false;
 
-  let damage = rawAttackDamage(attacker, action);
+  let damage = rawAttackDamage(attacker, action, activeBuffs);
   if (isCritical) damage *= 2;
   damage = Math.max(1, damage - Math.floor(defenderOr / 2));
 
@@ -150,6 +160,68 @@ function resolveAttack(
 }
 
 /**
+ * Usa um consumível da mochila de `unit`: valida posse, aplica o efeito
+ * (cura imediata, buff de atributo, crítico garantido no próximo golpe ou
+ * purificação) e consome uma carga do item. Não causa dano nem morte —
+ * ocupa a ação do turno como qualquer outra escolha.
+ */
+function useItem(unit: Character, itemId: string | undefined, events: CombatEvent[], activeBuffs: ActiveBuff[]): void {
+  const slot = itemId ? findInventorySlot(unit, itemId) : undefined;
+
+  if (!slot || slot.quantity <= 0) {
+    events.push({
+      type: "itemUsed",
+      actor: unit.id,
+      itemId: itemId ?? "desconhecido",
+      itemName: "Item indisponível",
+      effectDescription: "O item não foi encontrado na mochila.",
+    });
+    return;
+  }
+
+  // Anuncia o uso do item ANTES de eventuais eventos derivados (heal),
+  // pra narração ler "X usa Y: <efeito>" seguido do resultado mecânico.
+  function finish(effectDescription: string, derivedEvents: CombatEvent[] = []): void {
+    consumeInventoryCharge(unit, slot!);
+    events.push({ type: "itemUsed", actor: unit.id, itemId: slot!.item.id, itemName: slot!.item.name, effectDescription });
+    events.push(...derivedEvents);
+  }
+
+  const { effect } = slot.item.data;
+
+  switch (effect.kind) {
+    case "heal_hp":
+    case "cure_status": {
+      const { healed, description } = applyImmediateHeal(unit, effect);
+      const derived: CombatEvent[] =
+        healed > 0 ? [{ type: "heal", target: unit.id, amount: healed, remainingHp: unit.currentHp }] : [];
+      finish(description, derived);
+      return;
+    }
+    case "buff_stat": {
+      activeBuffs.push({
+        kind: "stat",
+        targetId: unit.id,
+        stat: effect.stat,
+        bonus: effect.bonus,
+        turnsRemaining: effect.durationTurns,
+      });
+      finish(`+${effect.bonus} de ${effect.stat.toUpperCase()} por ${effect.durationTurns} turnos.`);
+      return;
+    }
+    case "focus_charge": {
+      // turnsRemaining começa em 2, não 1: o tick de fim-de-rodada já roda
+      // na mesma chamada em que o item foi usado (ver settle/tickBuffs no
+      // caller), então precisa sobreviver a esse primeiro tick pra ainda
+      // valer no próximo golpe do personagem.
+      activeBuffs.push({ kind: "guaranteed_crit", targetId: unit.id, turnsRemaining: 2 });
+      finish("Garante um acerto crítico no próximo golpe.");
+      return;
+    }
+  }
+}
+
+/**
  * Resolve a ação de `unit` contra `opponent`. Muta o estado envolvido e
  * empilha os eventos correspondentes. Retorna true se `opponent` morreu.
  */
@@ -157,9 +229,11 @@ function performAction(
   unit: Character,
   opponent: Character,
   action: CombatAction,
+  itemId: string | undefined,
   events: CombatEvent[],
   defendingIds: Set<string>,
   orPenalty: OrPenalty,
+  activeBuffs: ActiveBuff[],
 ): boolean {
   if (action === "defend") {
     defendingIds.add(unit.id);
@@ -167,18 +241,35 @@ function performAction(
     return false;
   }
 
+  if (action === "use_item") {
+    useItem(unit, itemId, events, activeBuffs);
+    return false;
+  }
+
   if (action === "heal") {
     if (!canHeal(unit)) {
       // Classe sem afinidade com Eir não tem cura — cai pro ataque padrão.
-      return resolveAttack(unit, opponent, "attack", events, defendingIds, orPenalty);
+      return resolveAttack(unit, opponent, "attack", events, defendingIds, orPenalty, activeBuffs);
     }
-    const amount = Math.min(unit.maxHp - unit.currentHp, unit.attributes.eir + rollDamageDie());
+    const eirValue = effectiveAttr(unit, "eir", activeBuffs, orPenalty);
+    const amount = Math.min(unit.maxHp - unit.currentHp, eirValue + rollDamageDie());
     unit.currentHp += amount;
     events.push({ type: "heal", target: unit.id, amount, remainingHp: unit.currentHp });
     return false;
   }
 
-  return resolveAttack(unit, opponent, action, events, defendingIds, orPenalty);
+  return resolveAttack(unit, opponent, action, events, defendingIds, orPenalty, activeBuffs);
+}
+
+export interface ResolveCombatTurnOptions {
+  /** Necessário quando `action` (do personagem) é "use_item". */
+  itemId?: string;
+  /**
+   * Buffs ativos da sessão de combate (ver server/src/combat/sessions.ts),
+   * passada por referência: este turno pode empurrar novos buffs nela
+   * (item usado) — quem chama é responsável por, depois, chamar tickBuffs.
+   */
+  activeBuffs?: ActiveBuff[];
 }
 
 /**
@@ -193,7 +284,9 @@ export function resolveCombatTurn(
   character: Character,
   enemy: Character,
   action: CombatAction,
+  options: ResolveCombatTurnOptions = {},
 ): CombatEvent[] {
+  const { itemId, activeBuffs = [] } = options;
   const events: CombatEvent[] = [];
   const defendingIds = new Set<string>();
   const orPenalty: OrPenalty = {};
@@ -209,18 +302,27 @@ export function resolveCombatTurn(
   const turnOrder =
     characterInitiative >= enemyInitiative
       ? [
-          { unit: character, opponent: enemy, action },
-          { unit: enemy, opponent: character, action: enemyAction },
+          { unit: character, opponent: enemy, action, itemId },
+          { unit: enemy, opponent: character, action: enemyAction, itemId: undefined },
         ]
       : [
-          { unit: enemy, opponent: character, action: enemyAction },
-          { unit: character, opponent: enemy, action },
+          { unit: enemy, opponent: character, action: enemyAction, itemId: undefined },
+          { unit: character, opponent: enemy, action, itemId },
         ];
 
   for (const turn of turnOrder) {
     if (turn.unit.currentHp <= 0) continue; // já morto, não age
 
-    const opponentDied = performAction(turn.unit, turn.opponent, turn.action, events, defendingIds, orPenalty);
+    const opponentDied = performAction(
+      turn.unit,
+      turn.opponent,
+      turn.action,
+      turn.itemId,
+      events,
+      defendingIds,
+      orPenalty,
+      activeBuffs,
+    );
     if (opponentDied) {
       events.push({ type: "death", actor: turn.opponent.id });
       events.push({ type: "victory", winner: turn.unit.id });

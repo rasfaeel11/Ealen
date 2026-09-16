@@ -20,6 +20,10 @@ create table if not exists public.characters (
   current_hp integer not null check (current_hp >= 0),
   max_hp integer not null check (max_hp >= 1),
   current_node_id text not null,
+  -- Inventory<ConsumableItem> (ver /shared/types/inventory.ts) — os itens em
+  -- si (efeito, raridade, descrição) são dados estáticos definidos em
+  -- código; aqui só persistimos quais o personagem tem e em que quantidade.
+  inventory jsonb not null default '{"slots":[],"maxSlots":12}'::jsonb,
   created_at timestamptz not null default now()
 );
 
