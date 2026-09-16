@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { ReactFlow, Background, Controls, type Node, type Edge, type NodeMouseHandler } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { Character, MapNode } from "@ealen/shared";
-import { apiFetch, ApiError } from "../lib/api";
+import type { MapNode } from "@ealen/shared";
+import { apiFetch } from "../lib/api";
+import { useGameSession } from "../hooks/useGameSession";
 import { computeLayeredLayout } from "../lib/mapLayout";
 import MysticNode, { type MysticNodeData } from "../components/map/MysticNode";
 import LoreModal from "../components/map/LoreModal";
@@ -12,10 +13,9 @@ const nodeTypes = { mystic: MysticNode };
 
 function MapPage() {
   const navigate = useNavigate();
+  const { character, needsCharacter, loading: sessionLoading, moveCharacter } = useGameSession();
 
   const [mapNodes, setMapNodes] = useState<MapNode[]>([]);
-  const [character, setCharacter] = useState<Character | null>(null);
-  const [needsCharacter, setNeedsCharacter] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
@@ -23,29 +23,16 @@ function MapPage() {
 
   useEffect(() => {
     let active = true;
-
-    async function load() {
-      try {
-        const [nodesData, characterData] = await Promise.all([
-          apiFetch<MapNode[]>("/api/map/nodes"),
-          apiFetch<Character>("/api/characters/me").catch((err) => {
-            if (err instanceof ApiError && err.status === 404) return null;
-            throw err;
-          }),
-        ]);
-        if (!active) return;
-        setMapNodes(nodesData);
-        setCharacter(characterData);
-        setNeedsCharacter(characterData === null);
-      } catch (err) {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : "Erro ao carregar o mapa");
-      } finally {
+    apiFetch<MapNode[]>("/api/map/nodes")
+      .then((data) => {
+        if (active) setMapNodes(data);
+      })
+      .catch((err) => {
+        if (active) setError(err instanceof Error ? err.message : "Erro ao carregar o mapa");
+      })
+      .finally(() => {
         if (active) setLoading(false);
-      }
-    }
-
-    load();
+      });
     return () => {
       active = false;
     };
@@ -125,12 +112,7 @@ function MapPage() {
     setError(null);
 
     try {
-      const result = await apiFetch<{ character: Character; node: MapNode }>(
-        `/api/characters/${character.id}/move`,
-        { method: "POST", body: JSON.stringify({ destinationNodeId: node.id }) },
-      );
-
-      setCharacter(result.character);
+      const result = await moveCharacter(node.id, mapNodes);
 
       if (result.node.encounterType === "combat") {
         navigate(`/combat/${result.node.id}`);
@@ -143,6 +125,10 @@ function MapPage() {
       setMoving(false);
     }
   };
+
+  if (!sessionLoading && needsCharacter) {
+    return <Navigate to="/character/new" replace />;
+  }
 
   return (
     <div className="flex h-screen w-screen flex-col bg-codex-bg text-codex-ink">
@@ -162,21 +148,13 @@ function MapPage() {
       )}
 
       <div className="relative flex-1">
-        {loading && (
+        {(loading || sessionLoading) && (
           <div className="absolute inset-0 flex items-center justify-center font-cinzel text-sm tracking-wide text-codex-inkDim">
             Desenrolando o mapa...
           </div>
         )}
 
-        {!loading && needsCharacter && (
-          <div className="absolute inset-0 flex items-center justify-center px-4">
-            <p className="max-w-sm text-center font-garamond text-base text-codex-inkDim">
-              Você ainda não tem um personagem em Eälen. A criação de personagens chega em breve.
-            </p>
-          </div>
-        )}
-
-        {!loading && !needsCharacter && mapNodes.length > 0 && (
+        {!loading && !sessionLoading && character && mapNodes.length > 0 && (
           <ReactFlow
             nodes={flowNodes}
             edges={flowEdges}

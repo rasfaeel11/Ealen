@@ -1,16 +1,60 @@
 import { Router } from "express";
-import type { CombatAction, CombatEvent, LevelUpResult } from "@ealen/shared";
+import type { Character, CombatAction } from "@ealen/shared";
+import { ATTRIBUTE_KEYS } from "@ealen/shared";
 import { requireAuth, type AuthedRequest } from "../middleware/auth";
 import { rowToCharacter, type CharacterRow } from "../lib/characterMapper";
 import { getOrCreateEnemy, clearEnemy } from "../combat/sessions";
 import { resolveCombatTurn } from "../combat/engine";
-import { applyXpGain, xpForEnemy } from "../combat/leveling";
+import { settleCombat } from "../combat/settle";
 
 const router = Router();
 
-router.use(requireAuth);
-
 const VALID_ACTIONS: CombatAction[] = ["attack", "defend", "heal"];
+
+function isValidGuestCharacter(value: unknown): value is Character {
+  if (typeof value !== "object" || value === null) return false;
+  const c = value as Record<string, unknown>;
+  if (typeof c.id !== "string" || !c.id.startsWith("guest-")) return false;
+  if (typeof c.currentHp !== "number" || typeof c.maxHp !== "number") return false;
+  if (typeof c.attributes !== "object" || c.attributes === null) return false;
+  const attrs = c.attributes as Record<string, unknown>;
+  return ATTRIBUTE_KEYS.every((key) => typeof attrs[key] === "number");
+}
+
+// POST /api/combat/:nodeId/guest-action — modo convidado: não exige login e
+// não toca o Supabase. O cliente manda o personagem completo (guardado só
+// no navegador) e recebe de volta o mesmo shape que o modo autenticado usa.
+router.post("/:nodeId/guest-action", (req, res) => {
+  const { nodeId } = req.params;
+  const { character, action } = req.body as { character?: unknown; action?: string };
+
+  if (!isValidGuestCharacter(character)) {
+    res.status(400).json({ error: "Personagem de convidado inválido" });
+    return;
+  }
+  if (!action || !VALID_ACTIONS.includes(action as CombatAction)) {
+    res.status(400).json({ error: `action inválida. Use uma de: ${VALID_ACTIONS.join(", ")}` });
+    return;
+  }
+  if (character.currentHp <= 0) {
+    res.status(400).json({ error: "Personagem está incapacitado e não pode agir" });
+    return;
+  }
+
+  const enemy = getOrCreateEnemy(character.id, nodeId);
+  if (!enemy) {
+    res.status(404).json({ error: "Nenhum encontro de combate ativo neste nó" });
+    return;
+  }
+
+  const events = resolveCombatTurn(character, enemy, action as CombatAction);
+  const { combatEnded, xpGained, levelUp } = settleCombat(character, enemy, events);
+  if (combatEnded) clearEnemy(character.id, nodeId);
+
+  res.json({ events, characterState: character, enemyState: enemy, xpGained, levelUp });
+});
+
+router.use(requireAuth);
 
 router.post("/:nodeId/action", async (req, res) => {
   const { supabase } = req as unknown as AuthedRequest;
@@ -54,22 +98,11 @@ router.post("/:nodeId/action", async (req, res) => {
     return;
   }
 
-  const events: CombatEvent[] = resolveCombatTurn(character, enemy, action as CombatAction);
-  const victoryEvent = events.find(
-    (event): event is Extract<CombatEvent, { type: "victory" }> => event.type === "victory",
-  );
+  const events = resolveCombatTurn(character, enemy, action as CombatAction);
+  const { combatEnded, playerWon, xpGained, levelUp } = settleCombat(character, enemy, events);
 
-  let levelUp: LevelUpResult = { leveledUp: false };
-  let xpGained = 0;
-
-  if (victoryEvent) {
+  if (combatEnded) {
     clearEnemy(characterId, nodeId);
-
-    const playerWon = victoryEvent.winner === character.id;
-    xpGained = playerWon ? xpForEnemy(enemy) : 0;
-    if (playerWon) {
-      levelUp = applyXpGain(character, xpGained);
-    }
 
     // "Salão das Lendas": histórico de combates concluídos. Não bloqueia a
     // resposta se falhar — é um registro secundário, não crítico pro jogo.

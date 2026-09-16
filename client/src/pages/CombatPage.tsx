@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import type { Character, CombatAction, CombatActionResult, LevelUpResult } from "@ealen/shared";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import type { CombatAction, LevelUpResult } from "@ealen/shared";
 import { CLASS_INFO } from "@ealen/shared";
-import { apiFetch } from "../lib/api";
+import { useGameSession } from "../hooks/useGameSession";
 import { groupCombatEvents, narrateStep, stepDurationMs, sleep, type AnimStep } from "../lib/combatSteps";
 import CombatantCard, { type Floater, type RollBadge } from "../components/combat/CombatantCard";
 import CombatLog from "../components/combat/CombatLog";
@@ -33,9 +33,8 @@ const ACTION_LABELS: Record<CombatAction, string> = {
 function CombatPage() {
   const { nodeId } = useParams<{ nodeId: string }>();
   const navigate = useNavigate();
+  const { character, needsCharacter, loading, resolveCombatAction } = useGameSession();
 
-  const [character, setCharacter] = useState<Character | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [characterHp, setCharacterHp] = useState(0);
@@ -57,26 +56,17 @@ function CombatPage() {
   const totalDamageRef = useRef(0);
   const rollNonceRef = useRef(0);
   const pendingLevelUpRef = useRef<LevelUpResult | null>(null);
+  const hpInitializedRef = useRef(false);
 
+  // Só usamos o currentHp do personagem da sessão pra semear a barra na
+  // entrada do combate — a animação de dano/cura controla o valor local
+  // a partir daí, turno a turno.
   useEffect(() => {
-    let active = true;
-    apiFetch<Character>("/api/characters/me")
-      .then((data) => {
-        if (!active) return;
-        setCharacter(data);
-        setCharacterHp(data.currentHp);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : "Erro ao carregar personagem");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (character && !hpInitializedRef.current) {
+      setCharacterHp(character.currentHp);
+      hpInitializedRef.current = true;
+    }
+  }, [character]);
 
   const nameOf = useCallback(
     (id: string) => {
@@ -169,10 +159,7 @@ function CombatPage() {
     setStatusIcons({ character: [], enemy: [] });
 
     try {
-      const response = await apiFetch<CombatActionResult>(`/api/combat/${nodeId}/action`, {
-        method: "POST",
-        body: JSON.stringify({ characterId: character.id, action }),
-      });
+      const response = await resolveCombatAction(nodeId, action);
 
       if (!enemy) {
         setEnemy({
@@ -191,7 +178,6 @@ function CombatPage() {
         await playStep(step, response.enemyState.id, response.xpGained);
       }
 
-      setCharacter(response.characterState);
       setCharacterHp(response.characterState.currentHp);
       setEnemyHp(response.enemyState.currentHp);
     } catch (err) {
@@ -202,6 +188,10 @@ function CombatPage() {
   }
 
   const canUseAbility = character ? CLASS_INFO[character.characterClass].primaryAttributes.includes("eir") : false;
+
+  if (!loading && needsCharacter) {
+    return <Navigate to="/character/new" replace />;
+  }
 
   if (loading) {
     return (
@@ -228,7 +218,7 @@ function CombatPage() {
   if (!character) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-codex-bg text-codex-ink">
+    <div className="flex h-screen flex-col overflow-hidden bg-codex-bg text-codex-ink">
       <header className="border-b border-codex-border/70 px-6 py-4">
         <h1 className="font-cinzel text-lg tracking-wide text-codex-goldBright">Combate</h1>
       </header>
@@ -239,7 +229,7 @@ function CombatPage() {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-6 p-6 md:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6 md:flex-row md:overflow-visible">
         <div className="flex flex-1 flex-col items-center justify-center gap-8 md:flex-row md:justify-around">
           <CombatantCard
             name={character.name}
@@ -272,12 +262,12 @@ function CombatPage() {
           />
         </div>
 
-        <div className="h-64 w-full md:h-auto md:w-80">
+        <div className="h-64 w-full shrink-0 md:h-full md:w-80">
           <CombatLog lines={log} />
         </div>
       </div>
 
-      <div className="flex justify-center gap-3 border-t border-codex-border/70 px-6 py-4">
+      <div className="flex shrink-0 justify-center gap-3 border-t border-codex-border/70 px-6 py-4">
         {(["attack", "defend", "heal"] as CombatAction[]).map((action) => (
           <button
             key={action}

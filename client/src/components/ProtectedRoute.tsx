@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useGameSession } from "../hooks/useGameSession";
 
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
 function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { mode, loading } = useGameSession();
 
   if (loading) {
     return (
@@ -17,7 +17,7 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user) {
+  if (!mode) {
     return <Navigate to="/login" replace />;
   }
 
