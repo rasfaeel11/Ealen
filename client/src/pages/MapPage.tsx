@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ReactFlow, Background, Controls, type Node, type Edge, type NodeMouseHandler } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { MapNode } from "@ealen/shared";
+import { findBestiaryEntry } from "@ealen/shared";
 import { apiFetch } from "../lib/api";
 import { useGameSession } from "../hooks/useGameSession";
 import { computeLayeredLayout } from "../lib/mapLayout";
@@ -57,9 +58,14 @@ function MapPage() {
     () =>
       mapNodes.map((node) => {
         const isCurrent = node.id === character?.currentNodeId;
+        // Um nó de combate anuncia quem espera lá: escolher o caminho sem
+        // saber contra o que se anda é decisão no escuro, não tática.
+        const entry = node.encounterId ? findBestiaryEntry(node.encounterId) : undefined;
         const data: MysticNodeData = {
           label: node.name,
           encounterType: node.encounterType,
+          encounterName: entry?.template.name,
+          encounterLevel: entry?.template.level,
           isCurrent,
           isReachable: reachableIds.has(node.id),
         };
@@ -144,22 +150,28 @@ function MapPage() {
   }
 
   if (!sessionLoading && needsCharacter) {
-    return <Navigate to="/character/new" replace />;
+    return <Navigate to="/prologo" replace />;
   }
 
   return (
     <div className="flex h-screen w-screen flex-col bg-codex-bg text-codex-ink">
       <header className="flex items-center justify-between border-b border-codex-border/70 px-6 py-4">
-        <h1 className="font-cinzel text-lg tracking-wide text-codex-goldBright">Mapa de Eälen</h1>
-        <div className="flex items-center gap-4">
+        <h1 className="font-cinzel text-lg tracking-wide text-codex-goldBright">Mapa de Talys</h1>
+        <div className="flex items-center gap-3">
           {character && (
-            <p className="font-garamond text-sm text-codex-inkDim">
+            <p className="mr-1 font-garamond text-sm text-codex-inkDim">
               {character.name} · Nível {character.level} · {currentNode?.name ?? "???"}
             </p>
           )}
+          <Link
+            to="/codice"
+            className="battle-frame-dim px-3 py-1.5 font-cinzel text-xs tracking-wide text-codex-ink hover:text-codex-goldBright"
+          >
+            Códice
+          </Link>
           <button
             onClick={() => setShowInventory(true)}
-            className="rounded-sm border border-codex-gold/60 px-3 py-1.5 font-cinzel text-xs tracking-wide text-codex-goldBright hover:bg-codex-gold/10"
+            className="battle-frame px-3 py-1.5 font-cinzel text-xs tracking-wide text-codex-goldBright hover:bg-codex-gold/10"
           >
             Mochila
           </button>

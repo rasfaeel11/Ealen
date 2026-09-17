@@ -48,3 +48,32 @@
   color: #8c8375;
   opacity: 0.6;
 }
+
+/* --- Estética de combate: caixas quadradas, molduras grossas ---
+   A tela de batalha abandona os painéis suaves do resto do códice e adota
+   caixas de borda dupla, cantos retos e um chão quadriculado — a leitura de
+   um RPG de turno clássico, onde cada elemento é uma "peça" recortada. */
+.battle-frame {
+  border: 2px solid #c9a15a;
+  background-color: #1c1815;
+  box-shadow:
+    inset 0 0 0 2px #141110,
+    inset 0 0 0 3px rgba(201, 161, 90, 0.4),
+    0 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+.battle-frame-dim {
+  border: 2px solid #3a2f22;
+  background-color: #1c1815;
+  box-shadow:
+    inset 0 0 0 2px #141110,
+    inset 0 0 0 3px rgba(58, 47, 34, 0.8);
+}
+
+.battle-arena {
+  background-color: #141110;
+  background-image:
+    linear-gradient(rgba(201, 161, 90, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 161, 90, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}

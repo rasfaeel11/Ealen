@@ -1,4 +1,5 @@
 import type { Character } from "./character";
+import type { ConsumableItem } from "./inventory";
 import type { LevelUpResult } from "./levelUp";
 
 /**
@@ -7,6 +8,13 @@ import type { LevelUpResult } from "./levelUp";
  * animação em sequência é responsabilidade exclusiva do frontend.
  */
 export type CombatEvent =
+  /**
+   * Anúncio da Arte escolhida, emitido antes de qualquer rolagem daquela
+   * ação. É o que permite a narração no estilo "Fulano usa Peso do Mundo!"
+   * — sem ele o cliente não teria como saber o nome da ação do inimigo, já
+   * que a escolha dele acontece dentro do motor.
+   */
+  | { type: "action"; actor: string; action: CombatAction; artName: string }
   | { type: "roll"; actor: string; value: number; target: number }
   | { type: "hit"; actor: string }
   | { type: "miss"; actor: string }
@@ -21,7 +29,9 @@ export type CombatEvent =
   | { type: "victory"; winner: string };
 
 /**
- * Ações que um combatente (jogador ou inimigo) pode escolher em seu turno:
+ * Ações que um combatente (jogador ou inimigo) pode escolher em seu turno.
+ * O nome EXIBIDO de cada uma vem de shared/combatArts.ts e depende da Ordem
+ * de quem age — aqui ficam só os efeitos numéricos:
  * - attack: equilibrado, sem modificadores.
  * - quick_attack: +3 de acerto no d20, mas só 60% do dano base — prioriza
  *   consistência sobre poder.
@@ -29,7 +39,7 @@ export type CombatEvent =
  *   Dain — risco alto, retorno alto.
  * - defend: postura defensiva; ativa o cálculo de bloqueio (Or + d6) contra
  *   o próximo ataque recebido neste turno.
- * - heal: ação de cura (só disponível pra classes com afinidade a Eir).
+ * - heal: restaura HP com base em Eir (só as Ordens com afinidade a Eir).
  * - use_item: consome um consumível da mochila (ver ConsumableItem em
  *   inventory.ts) — qual item usar vai à parte, no campo `itemId` do body
  *   de POST /api/combat/:nodeId/action.
@@ -43,4 +53,6 @@ export interface CombatActionResult {
   enemyState: Character;
   xpGained: number;
   levelUp: LevelUpResult;
+  /** Itens deixados pela criatura derrotada, já somados ao inventário. */
+  loot: ConsumableItem[];
 }

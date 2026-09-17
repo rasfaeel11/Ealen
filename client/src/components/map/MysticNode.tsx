@@ -4,6 +4,9 @@ import type { EncounterType } from "@ealen/shared";
 export interface MysticNodeData extends Record<string, unknown> {
   label: string;
   encounterType: EncounterType;
+  /** Nome da criatura do nó, quando o encontro é de combate. */
+  encounterName?: string;
+  encounterLevel?: number;
   isCurrent: boolean;
   isReachable: boolean;
 }
@@ -15,30 +18,43 @@ const ENCOUNTER_LABEL: Record<EncounterType, string> = {
   none: "",
 };
 
+const ENCOUNTER_MARK: Record<EncounterType, string> = {
+  combat: "✶",
+  dialogue: "❝",
+  lore: "❖",
+  none: "·",
+};
+
 function MysticNode({ data }: NodeProps) {
-  const { label, encounterType, isCurrent, isReachable } = data as MysticNodeData;
+  const { label, encounterType, encounterName, encounterLevel, isCurrent, isReachable } = data as MysticNodeData;
   const clickable = isReachable && !isCurrent;
 
   return (
     <div
       className={[
-        "w-44 rounded-sm border px-3 py-2.5 text-center shadow-[0_0_18px_rgba(0,0,0,0.5)] transition-all",
-        "font-cinzel text-xs tracking-wide",
+        "w-48 px-3 py-2.5 text-center font-cinzel text-xs tracking-wide transition-all",
         isCurrent
-          ? "cursor-default border-codex-goldBright bg-codex-panel text-codex-goldBright shadow-[0_0_22px_rgba(232,196,122,0.35)]"
+          ? "battle-frame cursor-default text-codex-goldBright"
           : clickable
-            ? "cursor-pointer border-codex-gold/60 bg-codex-panel text-codex-ink hover:border-codex-goldBright hover:text-codex-goldBright"
-            : "cursor-not-allowed border-codex-border/60 bg-codex-panel/60 text-codex-inkDim opacity-40",
+            ? "battle-frame cursor-pointer text-codex-ink hover:bg-codex-gold/10 hover:text-codex-goldBright"
+            : "battle-frame-dim cursor-not-allowed text-codex-inkDim opacity-45",
       ].join(" ")}
     >
       <Handle type="target" position={Position.Left} className="!border-codex-gold !bg-codex-bg" />
-      <div className="leading-snug">{label}</div>
+
+      <div className="text-codex-gold/70">{ENCOUNTER_MARK[encounterType]}</div>
+      <div className="mt-0.5 leading-snug">{label}</div>
+
       {encounterType !== "none" && (
-        <div className="mt-1 text-[10px] font-garamond italic tracking-wider opacity-80">
-          {ENCOUNTER_LABEL[encounterType]}
+        <div className="mt-1 font-garamond text-[10px] italic tracking-wider opacity-80">
+          {encounterName ? `${encounterName}${encounterLevel ? ` · Nv ${encounterLevel}` : ""}` : ENCOUNTER_LABEL[encounterType]}
         </div>
       )}
-      {isCurrent && <div className="mt-1 text-[10px] font-garamond uppercase tracking-widest">você está aqui</div>}
+
+      {isCurrent && (
+        <div className="mt-1 font-garamond text-[10px] uppercase tracking-widest">você está aqui</div>
+      )}
+
       <Handle type="source" position={Position.Right} className="!border-codex-gold !bg-codex-bg" />
     </div>
   );

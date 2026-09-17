@@ -1,6 +1,6 @@
 import { Router } from "express";
-import type { Character, CombatAction } from "@ealen/shared";
-import { ATTRIBUTE_KEYS } from "@ealen/shared";
+import type { Character, CombatAction, EncounterSummary } from "@ealen/shared";
+import { ATTRIBUTE_KEYS, MOCK_MAP_NODES, findBestiaryEntry } from "@ealen/shared";
 import { requireAuth, type AuthedRequest } from "../middleware/auth";
 import { rowToCharacter, type CharacterRow } from "../lib/characterMapper";
 import { getOrCreateSession, clearSession } from "../combat/sessions";
@@ -21,6 +21,34 @@ function isValidGuestCharacter(value: unknown): value is Character {
   const attrs = c.attributes as Record<string, unknown>;
   return ATTRIBUTE_KEYS.every((key) => typeof attrs[key] === "number");
 }
+
+// GET /api/combat/:nodeId/encounter — quem está esperando neste nó.
+// Público e sem efeito colateral: a tela de combate precisa mostrar a
+// criatura (nome, nível, HP máximo, símbolo) antes do primeiro turno, senão
+// o jogador escolhe a primeira ação às cegas.
+router.get("/:nodeId/encounter", (req, res) => {
+  const node = MOCK_MAP_NODES.find((n) => n.id === req.params.nodeId);
+  if (!node || node.encounterType !== "combat" || !node.encounterId) {
+    res.status(404).json({ error: "Nenhum encontro de combate neste nó" });
+    return;
+  }
+
+  const entry = findBestiaryEntry(node.encounterId);
+  if (!entry) {
+    res.status(404).json({ error: "Encontro sem ficha no bestiário" });
+    return;
+  }
+
+  const encounter: EncounterSummary = {
+    id: entry.template.id,
+    name: entry.template.name,
+    level: entry.template.level,
+    maxHp: entry.template.maxHp,
+    glyph: entry.glyph,
+    summary: entry.summary,
+  };
+  res.json(encounter);
+});
 
 // POST /api/combat/:nodeId/guest-action — modo convidado: não exige login e
 // não toca o Supabase. O cliente manda o personagem completo (guardado só
@@ -54,10 +82,15 @@ router.post("/:nodeId/guest-action", (req, res) => {
   });
   tickBuffs(session.buffs);
 
-  const { combatEnded, xpGained, levelUp } = settleCombat(character, session.enemy, events);
+  const { combatEnded, xpGained, levelUp, loot } = settleCombat(
+    character,
+    session.enemy,
+    events,
+    session.encounterId,
+  );
   if (combatEnded) clearSession(character.id, nodeId);
 
-  res.json({ events, characterState: character, enemyState: session.enemy, xpGained, levelUp });
+  res.json({ events, characterState: character, enemyState: session.enemy, xpGained, levelUp, loot });
 });
 
 router.use(requireAuth);
@@ -114,7 +147,12 @@ router.post("/:nodeId/action", async (req, res) => {
   });
   tickBuffs(session.buffs);
 
-  const { combatEnded, playerWon, xpGained, levelUp } = settleCombat(character, session.enemy, events);
+  const { combatEnded, playerWon, xpGained, levelUp, loot } = settleCombat(
+    character,
+    session.enemy,
+    events,
+    session.encounterId,
+  );
 
   if (combatEnded) {
     clearSession(characterId, nodeId);
@@ -163,6 +201,7 @@ router.post("/:nodeId/action", async (req, res) => {
     enemyState: session.enemy,
     xpGained,
     levelUp,
+    loot,
   });
 });
 

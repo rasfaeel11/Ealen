@@ -1,6 +1,8 @@
 import { Route, Routes } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
+import ProloguePage from "./pages/ProloguePage";
+import CodexPage from "./pages/CodexPage";
 import CharacterCreatePage from "./pages/CharacterCreatePage";
 import MapPage from "./pages/MapPage";
 import CombatPage from "./pages/CombatPage";
@@ -17,6 +19,22 @@ function App() {
           element={
             <ProtectedRoute>
               <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/prologo"
+          element={
+            <ProtectedRoute>
+              <ProloguePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/codice"
+          element={
+            <ProtectedRoute>
+              <CodexPage />
             </ProtectedRoute>
           }
         />

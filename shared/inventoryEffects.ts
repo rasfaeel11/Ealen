@@ -1,5 +1,5 @@
 import type { Character } from "./types/character";
-import type { ConsumableItem, InventorySlot } from "./types/inventory";
+import type { ConsumableItem, Inventory, InventorySlot } from "./types/inventory";
 
 /**
  * Helpers puros de inventário, compartilhados entre o motor de combate do
@@ -22,6 +22,37 @@ export function consumeInventoryCharge(character: Character, slot: InventorySlot
   if (slot.quantity <= 0 && character.inventory) {
     character.inventory.slots = character.inventory.slots.filter((s) => s !== slot);
   }
+}
+
+const DEFAULT_MAX_SLOTS = 12;
+
+/**
+ * Guarda um item na mochila: empilha no slot existente se o personagem já
+ * tiver aquele item, senão ocupa um slot novo. Retorna false quando a
+ * mochila está cheia — o item é perdido, e quem chama decide se avisa.
+ */
+export function addItemToInventory(character: Character, item: ConsumableItem): boolean {
+  const inventory: Inventory<ConsumableItem> = character.inventory ?? { slots: [], maxSlots: DEFAULT_MAX_SLOTS };
+  character.inventory = inventory;
+
+  const existing = inventory.slots.find((slot) => slot.item.id === item.id);
+  if (existing) {
+    existing.quantity += 1;
+    // Uma pilha que tinha zerado as cargas volta a ter um item inteiro.
+    if (existing.item.data.usesRemaining <= 0) {
+      existing.item.data.usesRemaining = existing.item.data.maxUses;
+    }
+    return true;
+  }
+
+  if (inventory.slots.length >= inventory.maxSlots) return false;
+
+  const usedIndexes = new Set(inventory.slots.map((slot) => slot.slotIndex));
+  let slotIndex = 0;
+  while (usedIndexes.has(slotIndex)) slotIndex += 1;
+
+  inventory.slots.push({ slotIndex, item: structuredClone(item), quantity: 1 });
+  return true;
 }
 
 export interface ImmediateHealResult {

@@ -1,5 +1,5 @@
 import type { Attributes, Character, CombatAction, CombatEvent } from "@ealen/shared";
-import { CLASS_INFO, applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "@ealen/shared";
+import { CLASS_INFO, applyImmediateHeal, artNameFor, consumeInventoryCharge, findInventorySlot } from "@ealen/shared";
 import { buffBonus, consumeGuaranteedCrit, hasGuaranteedCrit, type ActiveBuff } from "./buffs";
 
 type AttackAction = "attack" | "quick_attack" | "heavy_attack";
@@ -224,6 +224,13 @@ function useItem(unit: Character, itemId: string | undefined, events: CombatEven
 /**
  * Resolve a ação de `unit` contra `opponent`. Muta o estado envolvido e
  * empilha os eventos correspondentes. Retorna true se `opponent` morreu.
+ *
+ * Toda ação que não seja um item é anunciada antes de qualquer rolagem,
+ * pelo nome que a Arte tem para quem a executa (ver shared/combatArts.ts) —
+ * é isso que permite ao cliente narrar "O Coro Mudo usa Silêncio Absoluto!"
+ * sem precisar saber como o inimigo decidiu. O anúncio usa a ação EFETIVA,
+ * não a pedida: uma Ordem sem cura que peça "heal" acaba atacando, e
+ * anunciar a cura seria mentir pro jogador.
  */
 function performAction(
   unit: Character,
@@ -235,22 +242,27 @@ function performAction(
   orPenalty: OrPenalty,
   activeBuffs: ActiveBuff[],
 ): boolean {
-  if (action === "defend") {
-    defendingIds.add(unit.id);
-    events.push({ type: "statusApplied", target: unit.id, status: "Defendendo" });
-    return false;
-  }
-
+  // Item não é uma Arte — o evento "itemUsed" já narra o que aconteceu.
   if (action === "use_item") {
     useItem(unit, itemId, events, activeBuffs);
     return false;
   }
 
-  if (action === "heal") {
-    if (!canHeal(unit)) {
-      // Classe sem afinidade com Eir não tem cura — cai pro ataque padrão.
-      return resolveAttack(unit, opponent, "attack", events, defendingIds, orPenalty, activeBuffs);
-    }
+  const effectiveAction: CombatAction = action === "heal" && !canHeal(unit) ? "attack" : action;
+  events.push({
+    type: "action",
+    actor: unit.id,
+    action: effectiveAction,
+    artName: artNameFor(unit, effectiveAction),
+  });
+
+  if (effectiveAction === "defend") {
+    defendingIds.add(unit.id);
+    events.push({ type: "statusApplied", target: unit.id, status: "Em guarda" });
+    return false;
+  }
+
+  if (effectiveAction === "heal") {
     const eirValue = effectiveAttr(unit, "eir", activeBuffs, orPenalty);
     const amount = Math.min(unit.maxHp - unit.currentHp, eirValue + rollDamageDie());
     unit.currentHp += amount;
@@ -258,7 +270,7 @@ function performAction(
     return false;
   }
 
-  return resolveAttack(unit, opponent, action, events, defendingIds, orPenalty, activeBuffs);
+  return resolveAttack(unit, opponent, effectiveAction, events, defendingIds, orPenalty, activeBuffs);
 }
 
 export interface ResolveCombatTurnOptions {

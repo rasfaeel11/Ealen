@@ -1,10 +1,11 @@
 import type { Character } from "@ealen/shared";
-import { MOCK_MAP_NODES } from "@ealen/shared";
-import { ENEMY_TEMPLATES } from "./enemyTemplates";
+import { MOCK_MAP_NODES, findBestiaryEntry } from "@ealen/shared";
 import type { ActiveBuff } from "./buffs";
 
 export interface CombatSession {
   enemy: Character;
+  /** Id do encontro no bestiário — usado pra resolver o loot na vitória. */
+  encounterId: string;
   /** Efeitos ativos de itens (buffs de atributo, crítico garantido...), de ambos os lados da luta. */
   buffs: ActiveBuff[];
 }
@@ -21,9 +22,9 @@ function sessionKey(characterId: string, nodeId: string): string {
 }
 
 /**
- * Retorna a sessão de combate ativa, criando o inimigo a partir do
- * template do encontro do nó na primeira ação. Retorna undefined se o nó
- * não existir ou não tiver um encontro de combate.
+ * Retorna a sessão de combate ativa, criando a criatura a partir da ficha
+ * do bestiário na primeira ação. Retorna undefined se o nó não existir ou
+ * não tiver um encontro de combate.
  */
 export function getOrCreateSession(characterId: string, nodeId: string): CombatSession | undefined {
   const key = sessionKey(characterId, nodeId);
@@ -33,10 +34,14 @@ export function getOrCreateSession(characterId: string, nodeId: string): CombatS
   const node = MOCK_MAP_NODES.find((n) => n.id === nodeId);
   if (!node || node.encounterType !== "combat" || !node.encounterId) return undefined;
 
-  const template = ENEMY_TEMPLATES[node.encounterId];
-  if (!template) return undefined;
+  const entry = findBestiaryEntry(node.encounterId);
+  if (!entry) return undefined;
 
-  const session: CombatSession = { enemy: structuredClone(template), buffs: [] };
+  const session: CombatSession = {
+    enemy: structuredClone(entry.template),
+    encounterId: node.encounterId,
+    buffs: [],
+  };
   activeSessions.set(key, session);
   return session;
 }
