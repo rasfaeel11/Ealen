@@ -270,6 +270,99 @@ deveria existir, enquanto a pergunta real vira *se* ele vai continuar.
 
 ---
 
+## 9.1 Prompts de referência visual — Ordens (pixel art)
+
+Prompts prontos pra colar num gerador de imagem (ex: Google "Nano Banana" /
+Gemini). Todos seguem o mesmo estilo base pra manter consistência entre as
+seis Ordens — só o corpo do prompt muda. Pixel art, retrato de corpo inteiro,
+sem fundo/fundo neutro, pra depois virar retrato de personagem ou token de
+mapa.
+
+**Prefixo de estilo (repita em todos):** `pixel art, 32-bit RPG character
+sprite, full body, front-facing idle pose, clean pixel outlines, limited
+muted color palette, dark fantasy manuscript aesthetic, plain dark
+background, no text, no watermark —`
+
+**Luminar (Harmonia — Tank/Suporte)**
+```
+pixel art, 32-bit RPG character sprite, full body, front-facing idle pose,
+clean pixel outlines, limited muted color palette, dark fantasy manuscript
+aesthetic, plain dark background, no text, no watermark — a Luminar knight
+of Harmony, heavy polished armor engraved with perfectly symmetrical
+geometric runes, a soft steady golden-white light glowing from the chest and
+the edges of the armor (not fire, not a halo — corrective, geometric light),
+a straight one-handed sword held low and calm, a round shield etched with a
+radial symmetry pattern, posture upright and still like a sentinel,
+color palette: pale gold, ivory, deep blue-grey steel
+```
+
+**Entropista (Entropia — Debuffer)**
+```
+pixel art, 32-bit RPG character sprite, full body, front-facing idle pose,
+clean pixel outlines, limited muted color palette, dark fantasy manuscript
+aesthetic, plain dark background, no text, no watermark — an Entropist mage
+of Decay, tattered ash-grey robes with edges that look like they are
+crumbling into fine dust and rust, one hand raised with fingertips
+dissolving into grey particles, faint rust-colored cracks spreading across
+exposed skin, a twisted dry branch used as a focus instead of a proper
+staff, hollow calm expression, no aggression — just patient decay,
+color palette: ash grey, rust orange, dull brown
+```
+
+**Cantor de Eälen (Eälen — Controle)**
+```
+pixel art, 32-bit RPG character sprite, full body, front-facing idle pose,
+clean pixel outlines, limited muted color palette, dark fantasy manuscript
+aesthetic, plain dark background, no text, no watermark — a Singer of Eälen,
+a mystic bard wrapped in flowing indigo and silver robes that ripple like
+sound waves frozen mid-motion, a resonant stringed instrument shaped from
+pale bone-white wood held against the chest, faint concentric wave-ring
+patterns glowing softly around the hands and instrument, half-closed eyes as
+if listening to something no one else can hear, color palette: deep indigo,
+silver, pale cyan
+```
+
+**Guardião (Singularidade — Tank Ofensivo)**
+```
+pixel art, 32-bit RPG character sprite, full body, front-facing idle pose,
+clean pixel outlines, limited muted color palette, dark fantasy manuscript
+aesthetic, plain dark background, no text, no watermark — a Guardian of the
+Singularity, an immensely heavy armored warrior whose armor plates look
+denser and darker than normal metal should be, a faint gravitational
+distortion warping the air and ground right around the feet, a massive
+oversized two-handed maul or warhammer carried with unnatural ease, wide
+low stance built to never be moved, black iron and dark violet color
+palette, subtle void-like sheen on the armor
+```
+
+**Sombrílico (Ausência — Anti-Mago)**
+```
+pixel art, 32-bit RPG character sprite, full body, front-facing idle pose,
+clean pixel outlines, limited muted color palette, dark fantasy manuscript
+aesthetic, plain dark background, no text, no watermark — a Shadowless
+assassin of the Absence, a slim figure wrapped in dark fabric that seems to
+absorb light rather than reflect it, parts of the silhouette (fingertips,
+edge of the hood, one boot) fading into soft translucent nothingness instead
+of having a clean edge, twin curved blades held close to the body, no visible
+eyes under the hood — just void, color palette: near-black, charcoal, a
+single thin line of deep violet
+```
+
+**Rachador (Fratura Harmônica — Sniper Físico)**
+```
+pixel art, 32-bit RPG character sprite, full body, front-facing idle pose,
+clean pixel outlines, limited muted color palette, dark fantasy manuscript
+aesthetic, plain dark background, no text, no watermark — a Harmony Breaker
+warrior, asymmetrical armor on purpose — one shoulder heavily plated, the
+other bare, cracked crystalline shards embedded along one arm like a
+fracture pattern frozen in glass, a long precise polearm or spear with an
+irregular jagged blade, sharp uneven stance leaning to one side, color
+palette: pale crystal blue-white cracks over dark iron, asymmetrical by
+design
+```
+
+---
+
 ## 10. Lore reservada (ainda não usada no jogo)
 
 Tudo desta seção é canônico, mas **não aparece em nenhuma tela, tipo ou
