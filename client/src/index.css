@@ -7,7 +7,10 @@
     background-color: #141110;
     background-image: radial-gradient(ellipse at center, rgba(60, 50, 35, 0.25), transparent 70%);
     color: #cfc6b8;
-    font-family: "EB Garamond", serif;
+    font-family: "Spectral", Georgia, serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 }
 

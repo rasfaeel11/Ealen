@@ -42,7 +42,7 @@ function ProloguePage() {
             transition={{ duration: 0.35 }}
             className="relative"
           >
-            <p className="font-cinzel text-[0.6rem] uppercase tracking-[0.35em] text-codex-inkDim">
+            <p className="font-cinzel text-xs uppercase tracking-[0.35em] text-codex-inkDim">
               {index + 1} de {PROLOGUE_PAGES.length}
             </p>
             <h1 className="mt-2 font-cinzel text-2xl tracking-wide text-codex-goldBright sm:text-3xl">
@@ -52,7 +52,7 @@ function ProloguePage() {
 
             <div className="space-y-4">
               {page.paragraphs.map((paragraph, i) => (
-                <p key={i} className="font-garamond text-base leading-relaxed text-codex-ink sm:text-lg">
+                <p key={i} className="font-garamond text-lg leading-relaxed text-codex-ink sm:text-xl">
                   {paragraph}
                 </p>
               ))}
@@ -63,7 +63,7 @@ function ProloguePage() {
         <div className="relative mt-8 flex items-center justify-between gap-4">
           <button
             onClick={finish}
-            className="font-garamond text-xs text-codex-inkDim hover:text-codex-ink"
+            className="font-garamond text-sm text-codex-inkDim hover:text-codex-ink"
           >
             {character ? "Voltar ao mapa" : "Pular e forjar meu destino"}
           </button>
@@ -81,14 +81,14 @@ function ProloguePage() {
             {index > 0 && (
               <button
                 onClick={() => setIndex((prev) => prev - 1)}
-                className="battle-frame-dim px-3 py-1.5 font-cinzel text-[10px] uppercase tracking-widest text-codex-inkDim hover:text-codex-ink"
+                className="battle-frame-dim px-3 py-1.5 font-cinzel text-xs uppercase tracking-widest text-codex-inkDim hover:text-codex-ink"
               >
                 Voltar
               </button>
             )}
             <button
               onClick={() => (isLast ? finish() : setIndex((prev) => prev + 1))}
-              className="battle-frame px-4 py-1.5 font-cinzel text-[10px] uppercase tracking-widest text-codex-goldBright hover:bg-codex-gold/10"
+              className="battle-frame px-4 py-1.5 font-cinzel text-xs uppercase tracking-widest text-codex-goldBright hover:bg-codex-gold/10"
             >
               {isLast ? (character ? "Concluir" : "Forjar meu destino") : "Continuar"}
             </button>
