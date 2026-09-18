@@ -8,16 +8,18 @@ import mapRouter from "./routes/map";
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
-const DEFAULT_CLIENT_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
-const allowedOrigins = process.env.CLIENT_ORIGIN
-  ? process.env.CLIENT_ORIGIN.split(",").map((origin) => origin.trim())
-  : DEFAULT_CLIENT_ORIGINS;
+const allowedOrigins = process.env.CLIENT_ORIGIN?.split(",").map((origin) => origin.trim());
+
+// O Vite muda de porta sozinho quando a 5173 já está ocupada (5174, 5175...)
+// — comum em dev quando sobra processo travado de uma sessão anterior. Em
+// vez de fixar uma porta, aceita qualquer localhost/127.0.0.1 em dev.
+const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 app.use(
   cors({
     origin(origin, callback) {
       // Sem header Origin (curl, apps nativos) ou origem conhecida: libera.
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins?.includes(origin) || (!allowedOrigins && LOCALHOST_ORIGIN.test(origin))) {
         callback(null, true);
         return;
       }
