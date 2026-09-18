@@ -5,6 +5,7 @@ import type { CombatAction, ConsumableItem, EncounterSummary, LevelUpResult } fr
 import { CLASS_COMBAT_ARTS, STANCE_MECHANICS, type CombatStance } from "@ealen/shared";
 import { apiFetch } from "../lib/api";
 import { CLASS_GLYPH } from "../lib/glyphs";
+import { CLASS_PORTRAIT } from "../lib/portraits";
 import { useGameSession } from "../hooks/useGameSession";
 import { groupCombatEvents, narrateStep, stepDurationMs, sleep, type AnimStep } from "../lib/combatSteps";
 import type { CombatFlash, Floater, RollBadge } from "../components/combat/battleTypes";
@@ -60,6 +61,7 @@ function CombatPage() {
   const [floaters, setFloaters] = useState<Record<Side, Floater[]>>({ character: [], enemy: [] });
   const [statusIcons, setStatusIcons] = useState<Record<Side, string[]>>({ character: [], enemy: [] });
   const [deadSides, setDeadSides] = useState<Set<Side>>(new Set());
+  const [attackingSide, setAttackingSide] = useState<Side | null>(null);
 
   const totalDamageRef = useRef(0);
   const rollNonceRef = useRef(0);
@@ -139,6 +141,7 @@ function CombatPage() {
 
       rollNonceRef.current += 1;
       setRollBadges((prev) => ({ ...prev, [actorSide]: { value: step.roll, nonce: rollNonceRef.current } }));
+      setAttackingSide(actorSide);
       await sleep(ROLL_MS);
 
       if (lines[1]) setMessage(lines[1]);
@@ -164,6 +167,7 @@ function CombatPage() {
       await sleep(Math.max(300, duration - ROLL_MS));
       setFlashes((prev) => ({ ...prev, [actorSide]: undefined, [targetSide]: undefined }));
       setRollBadges((prev) => ({ ...prev, [actorSide]: undefined }));
+      setAttackingSide(null);
       return;
     }
 
@@ -345,6 +349,7 @@ function CombatPage() {
                 flash={flashes.enemy ?? null}
                 floaters={floaters.enemy}
                 rollBadge={rollBadges.enemy ?? null}
+                attacking={attackingSide === "enemy"}
                 side="enemy"
               />
             </div>
@@ -353,11 +358,13 @@ function CombatPage() {
             <div className="flex items-end justify-between gap-4">
               <CombatantSprite
                 glyph={CLASS_GLYPH[character.characterClass]}
+                portrait={CLASS_PORTRAIT[character.characterClass]}
                 known
                 dead={deadSides.has("character")}
                 flash={flashes.character ?? null}
                 floaters={floaters.character}
                 rollBadge={rollBadges.character ?? null}
+                attacking={attackingSide === "character"}
                 side="player"
               />
               <StatusBox

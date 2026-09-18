@@ -5,12 +5,16 @@ import type { CombatFlash, Floater, RollBadge } from "./battleTypes";
 interface CombatantSpriteProps {
   /** Símbolo que representa o combatente (ver client/src/lib/glyphs.ts). */
   glyph: string;
+  /** Retrato em pixel art (ver client/src/lib/portraits.ts). Sem isso, cai pro glyph. */
+  portrait?: string | null;
   /** false enquanto o inimigo ainda não foi revelado — mostra uma silhueta. */
   known: boolean;
   dead: boolean;
   flash: CombatFlash | null;
   floaters: Floater[];
   rollBadge: RollBadge | null;
+  /** true enquanto este lado está executando o passo de ataque atual. */
+  attacking?: boolean;
   /** "enemy" cai pra trás ao morrer; "player" cai pra frente. */
   side: "player" | "enemy";
 }
@@ -42,7 +46,17 @@ const FLASH_MARK: Partial<Record<CombatFlash, string>> = {
  * flash de acerto, número de dano subindo, queda na morte) acontece neste
  * quadrado — a caixa de status fica separada, como nos RPGs de turno.
  */
-function CombatantSprite({ glyph, known, dead, flash, floaters, rollBadge, side }: CombatantSpriteProps) {
+function CombatantSprite({
+  glyph,
+  portrait,
+  known,
+  dead,
+  flash,
+  floaters,
+  rollBadge,
+  attacking = false,
+  side,
+}: CombatantSpriteProps) {
   const [displayRoll, setDisplayRoll] = useState<number | null>(null);
 
   useEffect(() => {
@@ -114,13 +128,38 @@ function CombatantSprite({ glyph, known, dead, flash, floaters, rollBadge, side 
         transition={{ duration: 0.85, ease: "easeIn" }}
         className="battle-frame relative flex h-28 w-28 items-center justify-center overflow-hidden sm:h-32 sm:w-32"
       >
-        <span
-          className={`select-none font-cinzel text-5xl leading-none sm:text-6xl ${
-            known ? "text-codex-goldBright" : "text-codex-border"
-          }`}
+        {/* sprite: balança em pé como um idle de RPG antigo; avança na direção
+            do oponente durante o próprio golpe de ataque. */}
+        <motion.div
+          animate={
+            attacking
+              ? { x: side === "player" ? [0, 26, 0] : [0, -26, 0], y: 0 }
+              : { x: 0, y: [0, -5, 0] }
+          }
+          transition={
+            attacking
+              ? { duration: 0.4, ease: "easeOut" }
+              : { duration: 1.4, repeat: Infinity, ease: "easeInOut" }
+          }
+          className="flex h-full w-full items-center justify-center"
         >
-          {known ? glyph : "?"}
-        </span>
+          {known && portrait ? (
+            <img
+              src={portrait}
+              alt=""
+              draggable={false}
+              className="h-full w-full select-none object-cover [image-rendering:pixelated]"
+            />
+          ) : (
+            <span
+              className={`select-none font-cinzel text-5xl leading-none sm:text-6xl ${
+                known ? "text-codex-goldBright" : "text-codex-border"
+              }`}
+            >
+              {known ? glyph : "?"}
+            </span>
+          )}
+        </motion.div>
 
         <AnimatePresence>
           {flash && (
