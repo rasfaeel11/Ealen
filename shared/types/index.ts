@@ -9,3 +9,4 @@ export * from "./levelUp";
 export * from "./inventory";
 export * from "./bestiary";
 export * from "./combatEvent";
+export * from "./iaTuning";

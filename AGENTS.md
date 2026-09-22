@@ -4,7 +4,11 @@
 
 ## Projeto relacionado (repo separado, sem dependência de código)
 
-Existe um segundo projeto, "Balanceador de Combate + IA de Inimigo" (Python, standalone), em outro repositório. Ele reimplementa as regras de combate isoladamente em Python pra balancear classes numericamente e treinar um agente de IA. Não há import de código entre os dois repos — a única ligação é conceitual (mesmas classes/atributos como referência). Se algum dia os parâmetros balanceados por aquele projeto forem incorporados aqui, isso entra como um valor de configuração (ex: JSON com os números finais), não como dependência de código — não assuma isso agora.
+Existe um segundo projeto, "Balanceador de Combate + IA de Inimigo" (Python, standalone), em outro repositório (`../ealen-IA`). Ele reimplementa as regras de combate isoladamente em Python pra balancear classes numericamente e treinar um agente de IA.
+
+**Continua sem import de código entre os dois repos.** A integração existe e está ativa, mas atravessa por um único arquivo de dados versionado aqui, `shared/data/iaTuning.json`, gerado lá por `exportar_para_o_jogo.py`. O jogo não executa Python; o balanceador não importa TypeScript. Três coisas consomem esse artefato: a IA de inimigo (`server/src/combat/enemyPolicy.ts`, política de Q-learning), os atributos iniciais das Ordens (`shared/characterCreation.ts`) e a curva de XP (`server/src/combat/leveling.ts`). Tudo com fallback: sem o artefato, cada um volta à regra escrita à mão.
+
+Leia `INTEGRACAO_COM_O_JOGO.md` antes de mexer em qualquer uma dessas três coisas — ele explica o que encaixa, o que ficou de fora de propósito (o bestiário e as fórmulas de dano não são tocados) e como reexportar. Depois de reexportar, rode `npm run balance:matrix --workspace=server` pra ver o efeito no jogo.
 
 ## Referência: Sistema de Atributos (Tirán)
 

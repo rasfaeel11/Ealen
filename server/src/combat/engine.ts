@@ -1,6 +1,7 @@
 import type { Attributes, Character, CombatAction, CombatEvent } from "@ealen/shared";
 import { CLASS_INFO, applyImmediateHeal, artNameFor, consumeInventoryCharge, findInventorySlot } from "@ealen/shared";
 import { buffBonus, consumeGuaranteedCrit, hasGuaranteedCrit, type ActiveBuff } from "./buffs";
+import { canHeal, decideEnemyAction } from "./enemyPolicy";
 
 type AttackAction = "attack" | "quick_attack" | "heavy_attack";
 
@@ -25,10 +26,6 @@ function rollDamageDie(): number {
 
 function primaryAttribute(character: Character): keyof Attributes {
   return CLASS_INFO[character.characterClass].primaryAttributes[0];
-}
-
-function canHeal(character: Character): boolean {
-  return CLASS_INFO[character.characterClass].primaryAttributes.includes("eir");
 }
 
 /**
@@ -62,31 +59,6 @@ function rawAttackDamage(attacker: Character, action: AttackAction, activeBuffs:
   if (action === "quick_attack") return Math.round(base * 0.6);
   if (action === "heavy_attack") return Math.round(base * 1.8) + Math.floor(attacker.attributes.dain / 2);
   return base;
-}
-
-/**
- * IA simples do inimigo: abaixo de 30% de HP, prioriza cura (se a classe
- * tiver "eir" como atributo primário) ou defesa. Acima disso, reage ao
- * estado do combate: se pressente um golpe pesado vindo, se defende; se o
- * oponente está quase morto, prioriza precisão pra garantir o abate; com
- * folga de HP, arrisca um golpe esmagador; caso contrário, ataque padrão.
- */
-function decideEnemyAction(enemy: Character, opponent: Character, opponentAction: CombatAction): CombatAction {
-  const hpPercent = enemy.currentHp / enemy.maxHp;
-  if (hpPercent < 0.3) {
-    return canHeal(enemy) ? "heal" : "defend";
-  }
-  if (opponentAction === "heavy_attack") {
-    return "defend";
-  }
-  const opponentHpPercent = opponent.currentHp / opponent.maxHp;
-  if (opponentHpPercent < 0.25) {
-    return "quick_attack";
-  }
-  if (hpPercent > 0.7) {
-    return "heavy_attack";
-  }
-  return "attack";
 }
 
 /**
@@ -282,6 +254,12 @@ export interface ResolveCombatTurnOptions {
    * (item usado) — quem chama é responsável por, depois, chamar tickBuffs.
    */
   activeBuffs?: ActiveBuff[];
+  /**
+   * O inimigo entrou neste turno com a guarda do turno anterior ainda de pé
+   * (ver enemyGuardSurvives em ./enemyPolicy). Entra no estado que a
+   * política treinada observa pra decidir a ação dele.
+   */
+  enemyGuardUp?: boolean;
 }
 
 /**
@@ -298,7 +276,7 @@ export function resolveCombatTurn(
   action: CombatAction,
   options: ResolveCombatTurnOptions = {},
 ): CombatEvent[] {
-  const { itemId, activeBuffs = [] } = options;
+  const { itemId, activeBuffs = [], enemyGuardUp = false } = options;
   const events: CombatEvent[] = [];
   const defendingIds = new Set<string>();
   const orPenalty: OrPenalty = {};
@@ -309,7 +287,7 @@ export function resolveCombatTurn(
   events.push({ type: "roll", actor: character.id, value: characterInitiative, target: enemyInitiative });
   events.push({ type: "roll", actor: enemy.id, value: enemyInitiative, target: characterInitiative });
 
-  const enemyAction = decideEnemyAction(enemy, character, action);
+  const enemyAction = decideEnemyAction(enemy, character, action, { enemyGuardUp });
 
   const turnOrder =
     characterInitiative >= enemyInitiative

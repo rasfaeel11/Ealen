@@ -5,3 +5,4 @@ export * from "./mock/bestiary";
 export * from "./characterCreation";
 export * from "./combatArts";
 export * from "./inventoryEffects";
+export * from "./iaTuning";

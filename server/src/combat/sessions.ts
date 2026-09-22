@@ -8,6 +8,13 @@ export interface CombatSession {
   encounterId: string;
   /** Efeitos ativos de itens (buffs de atributo, crítico garantido...), de ambos os lados da luta. */
   buffs: ActiveBuff[];
+  /**
+   * A criatura terminou o turno anterior com a guarda ainda de pé (defendeu
+   * e não foi atacada). Sobrevive entre as chamadas HTTP da mesma luta
+   * porque é parte do estado que a IA treinada observa — ver
+   * enemyGuardSurvives em ./enemyPolicy.
+   */
+  enemyGuardUp: boolean;
 }
 
 /**
@@ -41,6 +48,7 @@ export function getOrCreateSession(characterId: string, nodeId: string): CombatS
     enemy: structuredClone(entry.template),
     encounterId: node.encounterId,
     buffs: [],
+    enemyGuardUp: false,
   };
   activeSessions.set(key, session);
   return session;

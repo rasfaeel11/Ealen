@@ -7,6 +7,7 @@ import { getOrCreateSession, clearSession } from "../combat/sessions";
 import { resolveCombatTurn } from "../combat/engine";
 import { settleCombat } from "../combat/settle";
 import { tickBuffs } from "../combat/buffs";
+import { enemyGuardSurvives } from "../combat/enemyPolicy";
 
 const router = Router();
 
@@ -79,7 +80,9 @@ router.post("/:nodeId/guest-action", (req, res) => {
   const events = resolveCombatTurn(character, session.enemy, action as CombatAction, {
     itemId,
     activeBuffs: session.buffs,
+    enemyGuardUp: session.enemyGuardUp,
   });
+  session.enemyGuardUp = enemyGuardSurvives(session.enemy.id, character.id, events);
   tickBuffs(session.buffs);
 
   const { combatEnded, xpGained, levelUp, loot } = settleCombat(
@@ -144,7 +147,9 @@ router.post("/:nodeId/action", async (req, res) => {
   const events = resolveCombatTurn(character, session.enemy, action as CombatAction, {
     itemId,
     activeBuffs: session.buffs,
+    enemyGuardUp: session.enemyGuardUp,
   });
+  session.enemyGuardUp = enemyGuardSurvives(session.enemy.id, character.id, events);
   tickBuffs(session.buffs);
 
   const { combatEnded, playerWon, xpGained, levelUp, loot } = settleCombat(

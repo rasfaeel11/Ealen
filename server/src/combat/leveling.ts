@@ -1,14 +1,24 @@
 import type { Character, LevelUpResult } from "@ealen/shared";
-import { ATTRIBUTE_KEYS, CLASS_INFO, MOCK_ABILITIES } from "@ealen/shared";
+import { ATTRIBUTE_KEYS, CLASS_INFO, MOCK_ABILITIES, XP_CURVE } from "@ealen/shared";
 
 /** XP concedido por vencer um inimigo, baseado no nível dele. */
 export function xpForEnemy(enemy: Character): number {
   return enemy.level * 10;
 }
 
-/** XP necessário pra sair de `level` e ir pro próximo. */
+/**
+ * XP necessário pra sair de `level` e ir pro próximo: f(n) = a + b*n, uma
+ * reta — o mesmo custo extra a cada nível, sem paredão no fim.
+ *
+ * Os coeficientes vêm de `XP_CURVE` (shared/iaTuning.ts). Esta é a única
+ * parte da integração com o projeto irmão em que o JOGO é a fonte da
+ * verdade: lá a curva foi analisada (derivada constante de 100 XP/nível,
+ * 5.500 de XP acumulado até o nível 10), não proposta. Ler os coeficientes
+ * do artefato serve pra que um descasamento entre a fórmula real e a
+ * analisada apareça, em vez de passar batido.
+ */
 function xpToNextLevel(level: number): number {
-  return level * 100;
+  return Math.max(1, Math.round(XP_CURVE.a + XP_CURVE.b * level));
 }
 
 /**
