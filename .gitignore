@@ -8,3 +8,6 @@ build/
 *.log
 .DS_Store
 *.tsbuildinfo
+
+# Worktrees de sessões do Claude Code
+.claude/worktrees/
