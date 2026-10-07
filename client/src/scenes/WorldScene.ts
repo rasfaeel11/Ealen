@@ -10,6 +10,7 @@ import {
   parseTiledMap,
   pixelOfTile,
   startAreaEncounter,
+  unusedItems,
   syncCharacterFromUnit,
   tileOfPixel,
   walk,
@@ -366,6 +367,7 @@ export default class WorldScene extends Phaser.Scene {
       character,
       fighters.map((enemy) => enemy.creature),
       encounter,
+      unusedItems(encounter, "enemy"),
     );
     markDefeated(this.groupKey(group));
     writeSave(character);

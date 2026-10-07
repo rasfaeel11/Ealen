@@ -158,6 +158,8 @@ export class CombatHud {
         strokeThickness: 5,
       }).setOrigin(0.5),
     );
+    // Nasce maior e assenta: o número "bate" antes de subir.
+    this.scene.tweens.add({ targets: label, scale: { from: 1.6, to: 1 }, duration: 160, ease: "Back.easeOut" });
     this.scene.tweens.add({
       targets: label,
       y: y - 54,

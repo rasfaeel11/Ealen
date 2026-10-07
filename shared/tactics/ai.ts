@@ -2,6 +2,8 @@ import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileIndex
 import { reachableTiles } from "./movement";
 import { STATUSES, type StatusId, type StatusTemplate } from "./statuses";
 import { abilityTargets, affectedUnits, canAimAt } from "./targeting";
+import type { Attributes } from "../types/attributes";
+import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
 import { activeUnit, effectiveAttribute, isAlive, primaryAttribute } from "./units";
 
@@ -16,6 +18,9 @@ import { activeUnit, effectiveAttribute, isAlive, primaryAttribute } from "./uni
  *   - o que as habilidades rendem EM MÉDIA dali: chance de acerto x dano,
  *     chance de derrubar o alvo, cura, guarda — e desconta quem do próprio
  *     lado for pego numa área;
+ *   - o que um item da mochila rende, disputando a ação bônus com as
+ *     habilidades: consumível não volta, então só sai quando não é
+ *     desperdício;
  *   - o que a posição custa: o dano a que fica exposto, o ataque de
  *     oportunidade de quem ele largar pra chegar lá e, enquanto não tiver
  *     ninguém ao alcance, a distância ANDANDO até o inimigo mais próximo
@@ -50,6 +55,10 @@ const PUSH_VALUE = 0.25;
 const STEP_COST = 0.01;
 /** Abaixo disto uma habilidade não vale o gesto. */
 const MIN_VALUE = 0.01;
+/** Abaixo disto um item não vale ser gasto: ele não volta. */
+const MIN_ITEM_VALUE = 3;
+/** Uma cura de item só sai se pelo menos esta fração dela for aproveitada. */
+const MIN_HEAL_USE = 0.8;
 
 /** Uma habilidade mirada num ponto, com a nota que isso recebeu. */
 export interface AiChoice {
@@ -58,12 +67,20 @@ export interface AiChoice {
   value: number;
 }
 
+/** Um item da mochila, com a nota que usá-lo recebeu. */
+export interface AiItemChoice {
+  item: ConsumableItem;
+  value: number;
+}
+
 /** O turno que a IA escolheu: onde parar e o que fazer de lá. */
 export interface AiPlan {
   /** Onde terminar o movimento — o próprio quadrado, se o melhor é não andar. */
   tile: Pos;
   action?: AiChoice;
+  /** A habilidade da ação bônus. Nunca vem junto com `item`: os dois gastam a mesma ação bônus. */
   bonus?: AiChoice;
+  item?: AiItemChoice;
   score: number;
 }
 
@@ -78,6 +95,8 @@ export function chooseCommand(encounter: Encounter): Command {
   const plan = planTurn(encounter);
 
   if (!samePos(plan.tile, unit.pos)) return { type: "move", unitId: unit.id, to: plan.tile };
+  // O item vem antes do golpe: um Foco bebido depois do ataque não serve pra nada.
+  if (plan.item) return { type: "useItem", unitId: unit.id, itemId: plan.item.item.id };
 
   const choice = [plan.action, plan.bonus]
     .filter((candidate) => candidate !== undefined)
@@ -127,15 +146,24 @@ export function planTurn(encounter: Encounter): AiPlan {
       }
     }
 
-    let score = (action?.value ?? 0) + (bonus?.value ?? 0) - STEP_COST * stop.cost;
+    const exposure = threatAt(sim, me, me.pos, false);
+    let item: AiItemChoice | undefined;
+    if (me.turn.bonus) {
+      const fight = { engaged: canStrike || exposure > 0, striking: canStrike && action !== undefined };
+      item = bestItem(me, profile, fight);
+      if (item && item.value > (bonus?.value ?? 0)) bonus = undefined;
+      else item = undefined;
+    }
+
+    let score = (action?.value ?? 0) + (bonus?.value ?? item?.value ?? 0) - STEP_COST * stop.cost;
     if (action && bonus) score -= overkill(sim, me, profile, action, bonus);
-    score -= profile.caution * THREAT_DISCOUNT * threatAt(sim, me, me.pos, false);
+    score -= profile.caution * THREAT_DISCOUNT * exposure;
     score -= profile.caution * opportunityDamage(sim, me, origin, me.pos);
 
     const gap = toFoe[tileIndex(sim.grid, me.pos)];
     if (!canStrike && Number.isFinite(gap)) score -= profile.aggression * APPROACH_VALUE * gap;
 
-    if (!best || score > best.score) best = { tile: { ...stop.pos }, action, bonus, score };
+    if (!best || score > best.score) best = { tile: { ...stop.pos }, action, bonus, item, score };
   }
   return best!;
 }
@@ -254,6 +282,69 @@ function statusFavor(
   if (status.guaranteedCrit) favor += GUARANTEED_CRIT_VALUE;
   for (const points of Object.values(status.attributeBonus ?? {})) favor += ATTRIBUTE_POINT_VALUE * points * turns;
   return favor;
+}
+
+// --- Quanto vale um item ----------------------------------------------------
+
+/** Em que pé está a luta pra quem pensa em gastar um item. */
+interface FightState {
+  /** Já tem inimigo ao alcance, dele ou meu: reforço bebido antes disso passa andando. */
+  engaged: boolean;
+  /** Vai atacar neste turno, deste quadrado. */
+  striking: boolean;
+}
+
+/** O item da mochila que mais vale usar agora, se algum vale. */
+function bestItem(unit: Unit, profile: AiProfile, fight: FightState): AiItemChoice | undefined {
+  let best: AiItemChoice | undefined;
+  for (const slot of unit.inventory?.slots ?? []) {
+    if (slot.quantity <= 0) continue;
+    const value = itemValue(unit, profile, slot.item, fight);
+    if (value >= MIN_ITEM_VALUE && value > (best?.value ?? 0)) best = { item: slot.item, value };
+  }
+  return best;
+}
+
+/** A nota de `unit` usar `item` em si mesmo (ver useItem em ./engine.ts). */
+function itemValue(unit: Unit, profile: AiProfile, item: ConsumableItem, fight: FightState): number {
+  const { effect } = item.data;
+  const missing = unit.maxHp - unit.currentHp;
+  const healWorth = (amount: number) => Math.min(missing, amount) * (1 + missing / unit.maxHp);
+
+  switch (effect.kind) {
+    case "heal_hp":
+      return missing >= effect.amount * MIN_HEAL_USE ? profile.support * healWorth(effect.amount) : 0;
+    case "cure_status": {
+      // Vale pelo que tira do corpo: cada ponto de atributo que as condições ruins ainda iam custar.
+      let burden = 0;
+      for (const status of unit.statuses) {
+        for (const points of Object.values(status.attributeBonus ?? {})) {
+          if (points < 0) burden -= ATTRIBUTE_POINT_VALUE * points * status.turnsLeft;
+        }
+      }
+      return burden > 0 ? profile.support * (burden + healWorth(5)) : 0;
+    }
+    case "buff_stat": {
+      if (!fight.engaged || !reliesOn(unit, effect.stat)) return 0;
+      if (unit.statuses.some((status) => status.id === `buff_${effect.stat}`)) return 0;
+      return profile.support * ATTRIBUTE_POINT_VALUE * effect.bonus * effect.durationTurns;
+    }
+    case "focus_charge":
+      if (!fight.striking || unit.statuses.some((status) => status.guaranteedCrit)) return 0;
+      return profile.aggression * GUARANTEED_CRIT_VALUE;
+  }
+}
+
+/** Se `stat` muda alguma coisa na luta de `unit`: é com o que ele ataca, se defende ou soma num efeito. */
+function reliesOn(unit: Unit, stat: keyof Attributes): boolean {
+  if (stat === "or" || stat === primaryAttribute(unit)) return true;
+  return unit.abilities.some((ability) =>
+    ability.effects.some(
+      (effect) =>
+        ((effect.kind === "damage" || effect.kind === "heal") && effect.attribute === stat) ||
+        (effect.kind === "damage" && effect.bonus?.attribute === stat),
+    ),
+  );
 }
 
 // --- Médias: o que um golpe deve fazer ---------------------------------------

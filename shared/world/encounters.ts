@@ -1,11 +1,11 @@
 import { addItemToInventory } from "../inventoryEffects";
 import { applyXpGain, xpForEnemy } from "../leveling";
-import { findBestiaryEntry } from "../mock/bestiary";
+import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { findItemTemplate } from "../mock/items";
 import { startEncounter } from "../tactics/engine";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
 import { nextRandom, type RngHolder } from "../tactics/rng";
-import type { Encounter, TacticalEvent } from "../tactics/types";
+import type { Encounter, TacticalEvent, TeamId } from "../tactics/types";
 import { unitFromCharacter } from "../tactics/units";
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
@@ -49,10 +49,26 @@ export function startAreaEncounter(
     const entry = findBestiaryEntry(enemy.creature);
     if (!entry) continue;
     units.push(
-      unitFromCharacter(entry.template, { team: "enemy", pos: tileOfPixel(map, enemy), id: enemy.id, ai: entry.ai }),
+      unitFromCharacter(spawnCreature(entry), { team: "enemy", pos: tileOfPixel(map, enemy), id: enemy.id, ai: entry.ai }),
     );
   }
   return startEncounter({ grid: map.grid, units, seed });
+}
+
+/**
+ * O que o lado `team` levou pra luta e não usou, uma entrada por unidade de
+ * item. É o que os vencidos deixam no chão: derrubar o inimigo antes de ele
+ * beber a poção é ficar com ela.
+ */
+export function unusedItems(encounter: Encounter, team: TeamId): ConsumableItem[] {
+  const items: ConsumableItem[] = [];
+  for (const unit of encounter.units) {
+    if (unit.team !== team) continue;
+    for (const slot of unit.inventory?.slots ?? []) {
+      for (let i = 0; i < slot.quantity; i++) items.push(slot.item);
+    }
+  }
+  return items;
 }
 
 export interface EncounterRewards {
@@ -64,12 +80,24 @@ export interface EncounterRewards {
 
 /**
  * O que uma vitória rende: XP de cada criatura vencida, o level up que
- * couber e o que elas deixaram cair. Muta `character`. Item sorteado com a
- * mochila cheia é perdido — não trava a vitória.
+ * couber, o que elas carregavam sem usar (`carried`, ver unusedItems) e o
+ * que deixaram cair por sorteio. Muta `character`. Item que não cabe na
+ * mochila é perdido — não trava a vitória.
  */
-export function grantEncounterRewards(character: Character, creatures: string[], rng: RngHolder): EncounterRewards {
+export function grantEncounterRewards(
+  character: Character,
+  creatures: string[],
+  rng: RngHolder,
+  carried: ConsumableItem[] = [],
+): EncounterRewards {
   let xpGained = 0;
   const loot: ConsumableItem[] = [];
+
+  for (const item of carried) {
+    // O molde, não o item da luta: a mochila guarda itens inteiros.
+    const whole = findItemTemplate(item.id) ?? item;
+    if (addItemToInventory(character, whole)) loot.push(whole);
+  }
 
   for (const creature of creatures) {
     const entry = findBestiaryEntry(creature);

@@ -17,6 +17,7 @@ import {
   parseTiledMap,
   startAreaEncounter,
   tileOfPixel,
+  unusedItems,
   walk,
   type AreaMap,
 } from "../index";
@@ -132,6 +133,32 @@ for (const [areaId, map] of Object.entries(maps)) {
       assert.equal(applyCommand(encounter, chooseCommand(encounter)).ok, true);
     }
     assert.ok(encounter.winner);
+  });
+
+  test("a criatura entra na luta com o que carrega, e o que ela não usou fica pra quem vence", () => {
+    const map = maps.estrada;
+    const servo = { ...map.enemies[0], id: "servo", creature: "encounter-servo-enferrujado" };
+    const tile = tileOfPixel(map, servo);
+    const { encounter } = startAreaEncounter(map, structuredClone(hero), { x: tile.x - 3, y: tile.y }, [servo], 5);
+
+    const unit = encounter.units.find((candidate) => candidate.id === "servo")!;
+    assert.deepEqual(
+      unit.inventory?.slots.map((slot) => slot.item.id),
+      ["item-balsamo-de-pedra-de-taharim"],
+    );
+    // O molde do bestiário não ganha mochila: cada luta monta a sua.
+    assert.equal(findBestiaryEntry("encounter-servo-enferrujado")!.template.inventory, undefined);
+
+    const carried = unusedItems(encounter, "enemy");
+    assert.deepEqual(carried.map((item) => item.id), ["item-balsamo-de-pedra-de-taharim"]);
+
+    const character = structuredClone(hero);
+    const rewards = grantEncounterRewards(character, [], { rngState: 1 }, carried);
+    assert.deepEqual(rewards.loot.map((item) => item.id), ["item-balsamo-de-pedra-de-taharim"]);
+    assert.equal(character.inventory?.slots[0].quantity, 1);
+
+    unit.inventory!.slots = [];
+    assert.deepEqual(unusedItems(encounter, "enemy"), []);
   });
 
   test("vencer rende o XP de cada criatura, e o loot entra na mochila", () => {

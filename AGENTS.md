@@ -51,15 +51,19 @@ O contrato de quem desenha um mapa (detalhado em `shared/world/tiledMap.ts`):
 
 Inimigos ficam de pé no mapa. Chegar a `AGGRO_RANGE` quadrados de um deles, com linha de visão, puxa o grupo inteiro pra luta (`shared/world/encounters.ts`), na grade da própria área. Grupo vencido não volta.
 
+Criatura pode levar consumíveis pra luta (`carries` na entrada do bestiário; `spawnCreature` monta a ficha com a mochila). A IA usa item como o jogador usa, pela ação bônus, e só quando não é desperdício. O que ela NÃO usar fica pra quem vence (`unusedItems` → `grantEncounterRewards`), além do sorteio de `drops`.
+
 ### Cenas (`client/src/scenes/`)
 
 `Boot` (carrega sprites, mapas e tilesets) → `Title` → `Prologue` → `ClassSelect` (Povo, Ordem, nome) → `World`.
 
 A `WorldScene` é exploração e combate na mesma cena, com duas câmeras: a do mundo (zoom 3x, segue o personagem) e a da interface (sem zoom). Todo objeto criado passa por `addWorld` ou `addHud`. O combate em si mora em `client/src/game/combat/`: `CombatController` (entrada → comando, eventos → animação) e `CombatHud` (ordem de turnos, registro, barra de ações, resultado).
 
+O peso dos golpes é todo do client, tirado dos eventos: no `damage` o alvo pisca, a câmera treme e as animações congelam um instante (`hitStop`), tudo proporcional a quanto da vida o golpe levou e maior em crítico ou golpe fatal; o alvo recua de quem bateu, e quem escapa dá um passo de lado. Antes de um inimigo usar uma habilidade, os quadrados que ela vai pegar acendem (`telegraph`). Quem está na vez tem um anel no chão. Tudo isso é provisório como o resto do visual — os números ficam no topo do `CombatController`.
+
 ### Sprites
 
-Quem está no mapa (personagem ou criatura) é uma folha 4x4: uma linha por direção, quatro quadros de caminhada, o primeiro servindo de "parado". Enquanto não há arte final, `client/src/game/mapSprites.ts` gera provisórios em tempo de execução com esse layout. Pra trocar por arte de verdade: salvar a folha em `client/public/sprites/` e registrar em `MAP_SHEETS` nesse arquivo — nada mais muda. Ataque, dano e morte hoje são efeitos (bote, clarão, sumiço); animações próprias entram quando houver arte.
+Quem está no mapa (personagem ou criatura) é uma folha 4x4: uma linha por direção, quatro quadros de caminhada, o primeiro servindo de "parado". Enquanto não há arte final, `client/src/game/mapSprites.ts` gera provisórios em tempo de execução com esse layout. Pra trocar por arte de verdade: salvar a folha em `client/public/sprites/` e registrar em `MAP_SHEETS` nesse arquivo — nada mais muda. Ataque, dano e morte hoje são efeitos (bote, clarão, faísca, recuo, achatar e sumir); animações próprias entram quando houver arte.
 
 ### Save
 

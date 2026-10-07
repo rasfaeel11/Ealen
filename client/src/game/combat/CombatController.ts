@@ -4,7 +4,6 @@ import {
   activeUnit,
   applyCommand,
   chooseCommand,
-  distance,
   findPath,
   findUnit,
   pixelOfTile,
@@ -13,6 +12,7 @@ import {
   tileOfPixel,
   type Ability,
   type AreaMap,
+  type AttackOutcome,
   type Command,
   type CommandError,
   type Encounter,
@@ -22,7 +22,7 @@ import {
   type TeamId,
   type Unit,
 } from "@ealen/shared";
-import { TEXT_COLORS } from "../config";
+import { COLORS, TEXT_COLORS } from "../config";
 import type { MapActor } from "../MapActor";
 import { CombatHud, type ActionButton, type AddHud } from "./CombatHud";
 
@@ -39,8 +39,15 @@ export interface CombatHost {
 
 /** Entre o chão e tudo que fica de pé: os quadrados acesos passam por baixo de árvores e personagens. */
 const OVERLAY_DEPTH = 0;
+/** Faíscas e anéis ficam por cima de quem está de pé, abaixo das barras de vida. */
+const FX_DEPTH = 1_500_000;
 const STEP_MS = 110;
 const ENEMY_THINK_MS = 380;
+/** Quanto tempo os quadrados que um inimigo vai atingir ficam acesos antes do golpe. */
+const ENEMY_TELEGRAPH_MS = 300;
+/** A pausa de um golpe que pega, e a de um que pega forte (crítico ou fatal). */
+const HIT_STOP_MS = 55;
+const HEAVY_HIT_STOP_MS = 120;
 
 const COLOR_MOVE = 0x6fa8dc;
 const COLOR_TARGET = 0xe0566c;
@@ -92,6 +99,10 @@ export class CombatController {
   private readonly hud: CombatHud;
   private readonly overlay: Phaser.GameObjects.Graphics;
   private readonly cursor: Phaser.GameObjects.Graphics;
+  /** Os quadrados que o inimigo da vez está prestes a atingir. */
+  private readonly intent: Phaser.GameObjects.Graphics;
+  /** O golpe em andamento: de quem veio e como saiu a última rolagem. É o que dá peso ao dano que vem depois. */
+  private blow: { actor?: string; target?: string; outcome?: AttackOutcome } = {};
   /** Verdadeiro enquanto eventos estão sendo reproduzidos ou um inimigo joga: a entrada fica surda. */
   private busy = true;
   /** A habilidade escolhida; null = modo de movimento. */
@@ -109,6 +120,7 @@ export class CombatController {
     this.hud = new CombatHud(scene, host.addHud);
     this.overlay = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH));
     this.cursor = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 1));
+    this.intent = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 2));
 
     for (const unit of encounter.units) host.actors.get(unit.id)?.setHp(unit.currentHp, unit.maxHp);
 
@@ -134,9 +146,14 @@ export class CombatController {
     scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     scene.input.keyboard?.off("keydown", this.onKey, this);
 
-    for (const actor of this.host.actors.values()) actor.hideHp();
+    scene.tweens.timeScale = 1;
+    for (const actor of this.host.actors.values()) {
+      actor.hideHp();
+      actor.setTurn(false);
+    }
     this.overlay.destroy();
     this.cursor.destroy();
+    this.intent.destroy();
     this.hud.destroy();
   }
 
@@ -164,9 +181,11 @@ export class CombatController {
 
     while (!encounter.winner && activeUnit(encounter)?.team === "enemy") {
       this.refreshHud();
+      const command = chooseCommand(encounter);
       await this.wait(ENEMY_THINK_MS);
+      if (command.type === "ability") await this.telegraph(command.abilityId, command.target);
 
-      let result = applyCommand(encounter, chooseCommand(encounter));
+      let result = applyCommand(encounter, command);
       // Uma IA que peça o impossível não pode travar a luta: perde a vez.
       if (!result.ok) result = applyCommand(encounter, { type: "endTurn", unitId: activeUnit(encounter)!.id });
       if (!result.ok) break;
@@ -305,6 +324,31 @@ export class CombatController {
     this.drawCursor();
   }
 
+  /** Acende por um instante onde o golpe do inimigo da vez vai cair: dá pra ler a intenção antes do dano. */
+  private async telegraph(abilityId: string, target: Pos): Promise<void> {
+    const unit = activeUnit(this.encounter);
+    const ability = unit?.abilities.find((candidate) => candidate.id === abilityId);
+    if (!unit || !ability || ability.targets === "self") return;
+
+    this.actor(unit.id)?.faceToward(pixelOfTile(this.host.map, target));
+    this.intent.fillStyle(ability.targets === "ally" ? COLOR_ALLY : COLOR_TARGET, 0.5);
+    for (const tile of this.areaTiles(target, ability.radius ?? 0)) this.fillTile(this.intent, tile);
+    await this.wait(ENEMY_TELEGRAPH_MS);
+    this.intent.clear();
+  }
+
+  /** Os quadrados da grade a até `radius` de `center`. */
+  private areaTiles(center: Pos, radius: number): Pos[] {
+    const { grid } = this.host.map;
+    const tiles: Pos[] = [];
+    for (let y = center.y - radius; y <= center.y + radius; y++) {
+      for (let x = center.x - radius; x <= center.x + radius; x++) {
+        if (x >= 0 && y >= 0 && x < grid.width && y < grid.height) tiles.push({ x, y });
+      }
+    }
+    return tiles;
+  }
+
   private clearHighlights(): void {
     this.options = [];
     this.overlay.clear();
@@ -344,15 +388,7 @@ export class CombatController {
       return;
     }
 
-    const radius = this.selected.radius ?? 0;
-    const { grid } = this.host.map;
-    for (let y = hover.y - radius; y <= hover.y + radius; y++) {
-      for (let x = hover.x - radius; x <= hover.x + radius; x++) {
-        if (x >= 0 && y >= 0 && x < grid.width && y < grid.height && distance(hover, { x, y }) <= radius) {
-          this.fillTile(this.cursor, { x, y });
-        }
-      }
-    }
+    for (const tile of this.areaTiles(hover, this.selected.radius ?? 0)) this.fillTile(this.cursor, tile);
   }
 
   // ------------------------------------------------------------- reprodução
@@ -381,6 +417,8 @@ export class CombatController {
 
       case "turnStarted": {
         const actor = this.actor(event.unit);
+        for (const other of this.host.actors.values()) other.setTurn(false);
+        actor?.setTurn(true, this.unit(event.unit).team === "party" ? COLORS.goldBright : COLORS.hpLow);
         if (actor) this.host.scene.cameras.main.startFollow(actor.followTarget, true, 0.12, 0.12);
         this.refreshHud();
         await this.wait(180);
@@ -403,6 +441,7 @@ export class CombatController {
         const actor = this.actor(event.unit);
         const unit = this.unit(event.unit);
         this.hud.log(`${unit.name} usa ${event.name}${event.reaction ? " (reação)" : ""}.`);
+        this.blow = { actor: event.unit };
         if (!actor) return;
 
         const home = actor.pos;
@@ -423,8 +462,9 @@ export class CombatController {
       case "attackRoll": {
         const target = this.unit(event.target);
         const sum = `${event.total} contra ${event.defense}`;
+        this.blow = { actor: event.actor, target: event.target, outcome: event.outcome };
         if (event.outcome === "crit") {
-          this.floatOver(event.target, "Crítico!", TEXT_COLORS.goldBright, -22);
+          this.floatOver(event.target, "Crítico!", TEXT_COLORS.goldBright, -30, 32);
           this.hud.log(`Acerto crítico em ${target.name}!`);
         } else if (event.outcome === "fumble") {
           this.floatOver(event.actor, "Falha crítica", TEXT_COLORS.danger);
@@ -432,26 +472,40 @@ export class CombatController {
         } else if (event.outcome === "miss") {
           this.floatOver(event.target, "Errou", TEXT_COLORS.inkDim);
           this.hud.log(`Errou ${target.name} (${sum}).`);
+          await this.dodge(event.target, event.actor);
         } else {
           this.hud.log(`Acertou ${target.name} (${sum}).`);
         }
-        await this.wait(event.outcome === "hit" ? 60 : 320);
+        await this.wait(event.outcome === "hit" ? 40 : event.outcome === "crit" ? 120 : 220);
         return;
       }
 
-      case "blocked":
+      case "blocked": {
+        const actor = this.actor(event.unit);
         this.floatOver(event.unit, `Bloqueou ${event.amount}`, TEXT_COLORS.guard, -22);
+        if (actor) this.spark(this.center(actor), COLORS.guard, 7);
         return;
+      }
 
       case "damage": {
         const unit = this.unit(event.target);
         const actor = this.actor(event.target);
-        actor?.flash(0xffffff);
+        // O peso do golpe: quanto da vida do alvo ele levou, e se foi crítico ou fatal.
+        const weight = Math.min(1, event.amount / unit.maxHp);
+        const critical = this.blow.outcome === "crit" && this.blow.target === event.target;
+        const heavy = critical || event.remainingHp === 0;
+
+        actor?.flash(0xffffff, heavy ? 170 : 110);
         actor?.setHp(event.remainingHp, unit.maxHp);
-        this.floatOver(event.target, `-${event.amount}`, TEXT_COLORS.danger);
+        this.floatOver(event.target, `-${event.amount}`, TEXT_COLORS.danger, 0, 24 + Math.round(18 * weight) + (critical ? 8 : 0));
         this.hud.log(`${unit.name} sofre ${event.amount} de dano.`);
         this.hud.setTurnOrder(this.encounter);
-        await this.wait(320);
+
+        if (actor) this.spark(this.center(actor), critical ? COLORS.goldBright : 0xffffff, 6 + 8 * weight + (critical ? 4 : 0));
+        this.host.scene.cameras.main.shake(heavy ? 200 : 120, 0.002 + 0.01 * weight + (critical ? 0.004 : 0));
+        await this.hitStop(heavy ? HEAVY_HIT_STOP_MS : HIT_STOP_MS);
+        await this.recoil(event.target, this.blow.actor, 2 + 5 * weight);
+        await this.wait(170);
         return;
       }
 
@@ -459,6 +513,7 @@ export class CombatController {
         const unit = this.unit(event.target);
         const actor = this.actor(event.target);
         actor?.flash(0x7fb069);
+        if (actor) this.ring(actor.pos, COLORS.hp);
         actor?.setHp(event.remainingHp, unit.maxHp);
         this.floatOver(event.target, `+${event.amount}`, TEXT_COLORS.hp);
         this.hud.log(`${unit.name} recupera ${event.amount} de HP.`);
@@ -474,23 +529,30 @@ export class CombatController {
         return;
       }
 
-      case "statusApplied":
+      case "statusApplied": {
+        const actor = this.actor(event.target);
+        if (actor) this.ring(actor.pos, COLORS.guard);
         this.floatOver(event.target, event.name, TEXT_COLORS.guard, -22);
         this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
         await this.wait(200);
         return;
+      }
 
       case "statusExpired":
         return;
 
-      case "itemUsed":
+      case "itemUsed": {
+        const actor = this.actor(event.unit);
         this.hud.log(`${this.unit(event.unit).name} usa ${event.itemName}: ${event.description}`);
-        await this.wait(200);
+        this.floatOver(event.unit, event.itemName, TEXT_COLORS.gold, -22, 20);
+        if (actor) this.ring(actor.pos, COLORS.gold);
+        await this.wait(380);
         return;
+      }
 
       case "death":
         this.hud.log(`${this.unit(event.unit).name} cai.`);
-        await this.actor(event.unit)?.fadeOut(450);
+        await this.actor(event.unit)?.collapse(420);
         return;
 
       case "battleEnded":
@@ -524,8 +586,89 @@ export class CombatController {
     });
   }
 
+  // ---------------------------------------------------------------- impacto
+
+  /** O meio do corpo de alguém: onde o golpe pega. */
+  private center(actor: MapActor): PixelPos {
+    return { x: actor.pos.x, y: (actor.pos.y + actor.top.y) / 2 };
+  }
+
+  /** Congela as animações por um instante: é o que faz o golpe "pegar". */
+  private async hitStop(ms: number): Promise<void> {
+    const { tweens } = this.host.scene;
+    tweens.timeScale = 0;
+    await this.wait(ms);
+    tweens.timeScale = 1;
+  }
+
+  /** Um tranco curto pra longe de `from`, e de volta. */
+  private async nudge(actor: MapActor, direction: PixelPos, pixels: number, out: number, back: number): Promise<void> {
+    const length = Math.hypot(direction.x, direction.y);
+    if (length === 0) return;
+    const home = actor.pos;
+    const away = { x: home.x + (direction.x / length) * pixels, y: home.y + (direction.y / length) * pixels };
+    await this.glide(actor, away, out, false);
+    await this.glide(actor, home, back, false);
+  }
+
+  /** Quem levou o golpe é jogado pra trás, na direção contrária a quem bateu. */
+  private async recoil(targetId: string, attackerId: string | undefined, pixels: number): Promise<void> {
+    const target = this.actor(targetId);
+    const attacker = attackerId === undefined ? undefined : this.actor(attackerId);
+    if (!target || !attacker || target === attacker) return;
+    await this.nudge(target, { x: target.pos.x - attacker.pos.x, y: target.pos.y - attacker.pos.y }, pixels, 45, 110);
+  }
+
+  /** Quem escapou do golpe dá um passo de lado, atravessado à linha do ataque. */
+  private async dodge(targetId: string, attackerId: string): Promise<void> {
+    const target = this.actor(targetId);
+    const attacker = this.actor(attackerId);
+    if (!target || !attacker || target === attacker) return;
+    await this.nudge(target, { x: attacker.pos.y - target.pos.y, y: target.pos.x - attacker.pos.x }, 4, 60, 100);
+  }
+
+  /** Estilhaço no ponto do impacto: riscos que abrem e somem. */
+  private spark(at: PixelPos, color: number, size: number): void {
+    const { scene } = this.host;
+    const burst = this.host.addWorld(scene.add.graphics().setDepth(FX_DEPTH).setPosition(at.x, at.y));
+    burst.lineStyle(1, color, 1);
+    const rays = 6;
+    const twist = Math.random() * Math.PI;
+    for (let i = 0; i < rays; i++) {
+      const angle = twist + (Math.PI * 2 * i) / rays;
+      burst.lineBetween(
+        Math.cos(angle) * size * 0.35,
+        Math.sin(angle) * size * 0.35,
+        Math.cos(angle) * size,
+        Math.sin(angle) * size,
+      );
+    }
+    scene.tweens.add({
+      targets: burst,
+      scale: { from: 0.5, to: 1.3 },
+      alpha: { from: 1, to: 0 },
+      duration: 200,
+      ease: "Cubic.easeOut",
+      onComplete: () => burst.destroy(),
+    });
+  }
+
+  /** Anel que se abre no chão, aos pés de alguém (cura, condição, item). */
+  private ring(at: PixelPos, color: number): void {
+    const { scene } = this.host;
+    const ring = this.host.addWorld(scene.add.ellipse(at.x, at.y - 1, 14, 6).setStrokeStyle(1, color, 1).setDepth(FX_DEPTH));
+    scene.tweens.add({
+      targets: ring,
+      scale: { from: 0.5, to: 2 },
+      alpha: { from: 1, to: 0 },
+      duration: 420,
+      ease: "Cubic.easeOut",
+      onComplete: () => ring.destroy(),
+    });
+  }
+
   /** Texto que sobe da cabeça de alguém. O mundo tem zoom e a interface não: converte mapa -> tela. */
-  private floatOver(unitId: string, text: string, color: string, offsetY = 0): void {
+  private floatOver(unitId: string, text: string, color: string, offsetY = 0, size?: number): void {
     const actor = this.actor(unitId);
     if (!actor) return;
     const camera = this.host.scene.cameras.main;
@@ -535,6 +678,7 @@ export class CombatController {
       (top.y - camera.worldView.y) * camera.zoom + offsetY,
       text,
       color,
+      size,
     );
   }
 

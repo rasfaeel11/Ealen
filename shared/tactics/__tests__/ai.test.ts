@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { BESTIARY } from "../../mock/bestiary";
+import { addItemToInventory } from "../../inventoryEffects";
+import { BESTIARY, spawnCreature } from "../../mock/bestiary";
+import { findItemTemplate } from "../../mock/items";
 import type { CharacterClass } from "../../types/characterClass";
 import {
   activeUnit,
@@ -113,6 +115,53 @@ test("uma área pega dois inimigos juntos, mas não é jogada em cima de um alia
     affectedUnits(mixed, careful.ability, careful.target).map((unit) => unit.id),
     ["X"],
   );
+});
+
+// --- Usar a mochila ---------------------------------------------------------
+
+/** Uma luta corpo a corpo de A (da IA, com `itemId` na mochila) contra E. */
+function withItem(itemId: string, rows: string[], hp = 30) {
+  const carrier = makeCharacter("A", { currentHp: hp, attributes: { il: FIRST } });
+  addItemToInventory(carrier, findItemTemplate(itemId)!);
+  return setup(rows, (at) => [
+    unitFromCharacter(carrier, { team: "enemy", pos: at("A") }),
+    makeUnit("E", "party", at("E")),
+  ]).encounter;
+}
+
+test("ferido, bebe a poção antes de bater; inteiro, guarda", () => {
+  const hurt = withItem("item-lagrima-de-eir", ["AE"], 10);
+  assert.deepEqual(chooseCommand(hurt), { type: "useItem", unitId: "A", itemId: "item-lagrima-de-eir" });
+
+  const events = playTurn(hurt);
+  assert.equal(eventsOf(events, "itemUsed").length, 1);
+  assert.ok(eventsOf(events, "attackRoll").length > 0, "bebeu e esqueceu de atacar");
+
+  const scratched = withItem("item-lagrima-de-eir", ["AE"], 25);
+  assert.equal(planTurn(scratched).item, undefined);
+  assert.equal(findUnit(scratched, "A")!.inventory!.slots.length, 1);
+});
+
+test("o Foco é bebido ANTES do golpe, e o golpe sai crítico", () => {
+  const encounter = withItem("item-oleo-da-coruja-de-miraven", ["AE"]);
+  const events = playTurn(encounter);
+
+  const used = events.findIndex((event) => event.type === "itemUsed");
+  const rolled = events.findIndex((event) => event.type === "attackRoll");
+  assert.ok(used >= 0 && used < rolled);
+  assert.equal(eventsOf(events, "attackRoll")[0].outcome, "crit");
+});
+
+test("reforço não é gasto no caminho: só com o inimigo ao alcance", () => {
+  const far = withItem("item-balsamo-de-pedra-de-taharim", ["A..................E"]);
+  assert.equal(eventsOf(playTurn(far), "itemUsed").length, 0);
+
+  const close = withItem("item-balsamo-de-pedra-de-taharim", ["AE"]);
+  assert.equal(chooseCommand(close).type, "useItem");
+  // Já reforçado, não bebe outro igual.
+  findUnit(close, "A")!.inventory!.slots[0].quantity += 1;
+  run(close, chooseCommand(close));
+  assert.equal(planTurn(close).item, undefined);
 });
 
 // --- Escolher onde ficar ----------------------------------------------------
@@ -237,6 +286,9 @@ test("cada criatura do bestiário, com os pesos dela, luta até o fim contra cad
   const classes: CharacterClass[] = ["luminar", "entropista", "cantor_de_ealen", "guardiao", "sombrilico", "rachador"];
 
   for (const [creatureId, creature] of Object.entries(BESTIARY)) {
+    for (const itemId of creature.carries ?? []) {
+      assert.ok(findItemTemplate(itemId), `${creatureId} carrega um item que não existe: ${itemId}`);
+    }
     for (const [index, characterClass] of classes.entries()) {
       const { encounter } = setup(
         ["H.....#.....", "....o.....E.", "......#..~.."],
@@ -245,7 +297,7 @@ test("cada criatura do bestiário, com os pesos dela, luta até o fim contra cad
             team: "party",
             pos: at("H"),
           }),
-          unitFromCharacter(creature.template, { team: "enemy", pos: at("E"), ai: creature.ai }),
+          unitFromCharacter(spawnCreature(creature), { team: "enemy", pos: at("E"), ai: creature.ai }),
         ],
         index + 1,
       );

@@ -1,4 +1,7 @@
+import { addItemToInventory } from "../inventoryEffects";
 import type { BestiaryEntry } from "../types/bestiary";
+import type { Character } from "../types/character";
+import { findItemTemplate } from "./items";
 
 /**
  * O bestiário de Talys, indexado pelo `encounterId` que os MapNodes
@@ -76,6 +79,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     lore: "A Entropia já comeu as ordens que ele seguia; sobrou o gesto de bater. Bate com o que restou do braço, e o que restou do braço ainda pesa meia tonelada.",
     // Sobrou o gesto de bater: não se guarda, não recua, não escolhe alvo.
     ai: { aggression: 1.3, finisher: 0, caution: 0 },
+    carries: ["item-balsamo-de-pedra-de-taharim"],
     drops: [{ itemId: "item-balsamo-de-pedra-de-taharim", chance: 0.5 }],
     template: {
       id: "enemy-servo-enferrujado",
@@ -104,6 +108,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     lore: "Rouba memórias recentes para se completar, e nunca se completa. Quem escapa dele volta sem lembrar por quê — e às vezes volta chamando o próprio nome errado.",
     // Quer se completar, não morrer: fica longe e se refaz.
     ai: { caution: 1.2, support: 1.3 },
+    carries: ["item-lagrima-de-eir"],
     drops: [
       { itemId: "item-oleo-da-coruja-de-miraven", chance: 0.35 },
       { itemId: "item-lagrima-de-eir", chance: 0.5 },
@@ -136,6 +141,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     lore: "Alguém, muito atrás, determinou que nada atravessasse aquele limiar. Quem determinou já não existe. A determinação, sim — e ela não negocia, não cansa e não pergunta quem você é.",
     // Uma ordem de não deixar passar: guarda-se antes de ferir.
     ai: { aggression: 0.9, caution: 1.5 },
+    carries: ["item-semente-de-horizonte"],
     drops: [{ itemId: "item-estilhaco-de-prumo", chance: 0.55 }],
     template: {
       id: "enemy-vigia-do-umbral",
@@ -164,6 +170,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     lore: "Anda porque um lado seu é sempre mais pesado que o outro, e cair para frente é a única coisa que sabe fazer. Fere só de encostar: perto dela, coisas simétricas deixam de ser.",
     // Cai pra frente em cima do que estiver mais perto de quebrar.
     ai: { aggression: 1.2, finisher: 1.5, caution: 0.2 },
+    carries: ["item-estilhaco-de-prumo", "item-oleo-da-coruja-de-miraven"],
     drops: [
       { itemId: "item-brasa-de-forjardente", chance: 0.5 },
       { itemId: "item-calice-de-aguas-lentas", chance: 0.3 },
@@ -195,6 +202,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     lore: "Onde o Coro Mudo passa, as frequências se cancelam: primeiro somem os ecos, depois os sons, depois a lembrança de ter havido som. Não ataca por raiva — está apenas apagando um trecho, e você está no trecho.",
     // Não tem pressa nem raiva: apaga o trecho inteiro e se mantém de pé.
     ai: { support: 1.2, caution: 1 },
+    carries: ["item-calice-de-aguas-lentas", "item-diapasao-de-bolso"],
     drops: [
       { itemId: "item-diapasao-de-bolso", chance: 0.8 },
       { itemId: "item-semente-de-horizonte", chance: 0.4 },
@@ -220,6 +228,19 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     },
   },
 };
+
+/**
+ * A ficha de uma criatura pronta pra entrar numa luta: uma cópia do molde,
+ * com a mochila cheia do que ela carrega.
+ */
+export function spawnCreature(entry: BestiaryEntry): Character {
+  const character = structuredClone(entry.template);
+  for (const itemId of entry.carries ?? []) {
+    const item = findItemTemplate(itemId);
+    if (item) addItemToInventory(character, item);
+  }
+  return character;
+}
 
 /** Entrada do bestiário de um encontro, se existir. */
 export function findBestiaryEntry(encounterId: string): BestiaryEntry | undefined {

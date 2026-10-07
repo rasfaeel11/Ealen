@@ -27,6 +27,11 @@ export interface BestiaryEntry {
   lore: string;
   /** Como ela luta: os pesos da IA que fogem do padrão (ver AiProfile). */
   ai?: Partial<AiProfile>;
-  /** O que pode deixar cair ao ser derrotada. */
+  /**
+   * Ids dos consumíveis que ela leva pra luta (repita o id pra levar mais de
+   * um). A IA usa quando vale a pena; o que sobrar fica pra quem a vencer.
+   */
+  carries?: string[];
+  /** O que pode deixar cair ao ser derrotada, além do que carregava. */
   drops: LootDrop[];
 }
