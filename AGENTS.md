@@ -14,6 +14,31 @@ Monorepo com npm workspaces:
 
 O motor **nunca anima nada**. `playBattleTurn` (`shared/combat/battle.ts`) resolve um turno inteiro e devolve uma lista ORDENADA de `CombatEvent`; a `BattleScene` agrupa esses eventos em passos (`client/src/game/combatSteps.ts`) e os reproduz um por vez. Regra nova de combate entra no motor e vira evento; a cena só aprende a desenhar o evento.
 
+### Reformulação em andamento: combate tático e mundo aberto
+
+O jogo está saindo do combate 1 contra 1 por posturas (estilo Pokémon) pra um combate tático em grade, aos moldes de D&D/BG3, travado no próprio mapa em que o jogador anda. O que foi decidido:
+
+- **Combate em grade quadrada, no mapa de exploração**, sem tela de batalha. Fora de luta o boneco anda livre; na luta o chão conta em quadrados. Diagonal custa 1.
+- **Grupo opcional**: o motor aceita qualquer número de combatentes de cada lado; herói solo é só um grupo de um.
+- **Mundo aberto como grafo de áreas**: cada nó é um mapa feito à mão (Tiled), as arestas são as saídas, nenhuma travada por história. Nível de inimigo fixo por área.
+- **Câmera top-down 3/4** (Sea of Stars), pixel art.
+- **IA de inimigo por utilidade** (pontuar jogadas possíveis), no lugar da política de Q-learning. O `ealen-IA` será aposentado pra combate; balanceamento passa a rodar o motor real em Node.
+- **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto.
+- Cenários, nomes, falas e kits de habilidade são **placeholder** até a história existir.
+
+Fases: (1) motor tático puro — **feito**, em `shared/tactics/`; (2) cena de mapa: andar, câmera, colisão, troca de área; (3) combate no mapa, substituindo `BattleScene`/`Arena` e apagando `shared/combat/engine.ts`, `battle.ts`, `enemyPolicy.ts` e o `iaTuning`; (4) IA de utilidade; (5) superfícies, destrutíveis e altura; (6) diálogo e flags; (7) save ampliado.
+
+### O motor tático (`shared/tactics/`)
+
+Convive com o motor antigo (`shared/combat/`) até a fase 3 e ainda não é exportado por `shared/index.ts` — importe de `shared/tactics`.
+
+- `startEncounter({ grid, units, seed })` rola a iniciativa e abre a luta; `applyCommand(encounter, command)` aplica UM comando de quem está no turno (`move`, `ability`, `useItem`, `endTurn`) e devolve `TacticalEvent[]` em ordem. Comando recusado não muda nada.
+- `Encounter` é dado puro: `structuredClone` dá uma luta independente, com o dado (seed) junto. Nada de `Math.random` aqui dentro.
+- Cada turno tem movimento, ação, ação bônus e uma reação (ataque de oportunidade).
+- Habilidades são dados (`abilities.ts`): alcance, alvo, área, rolagem de ataque e uma lista de efeitos (`damage`, `heal`, `status`, `push`). Condições também (`statuses.ts`).
+- `reachableTiles`, `abilityTargets` e `affectedUnits` são a mesma regra pra interface, pro motor e pra IA.
+- Testes sem tela: `npm test` (lutas inteiras jogadas por um bot, com seed).
+
 ### Cenas (`client/src/scenes/`)
 
 `Boot` (carrega sprites) → `Title` → `Prologue` → `ClassSelect` (Povo, Ordem, nome) → `Arena` → `Battle`.
@@ -38,6 +63,7 @@ Um personagem, em `localStorage` (`client/src/game/save.ts`). Sem login, sem ser
 ```
 npm run dev:client                              # o jogo, em http://localhost:5173
 npm run build --workspace=client                # typecheck + build
+npm test                                        # testes do motor tático (shared/tactics), sem tela
 npm run balance:matrix --workspace=server       # taxa de vitória de cada Ordem x criatura, pelo motor real
 ```
 

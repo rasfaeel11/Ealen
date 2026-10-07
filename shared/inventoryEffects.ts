@@ -8,12 +8,18 @@ import type { ConsumableItem, Inventory, InventorySlot } from "./types/inventory
  * aconteceu.
  */
 
-export function findInventorySlot(character: Character, itemId: string): InventorySlot<ConsumableItem> | undefined {
+export function findInventorySlot(
+  character: Pick<Character, "inventory">,
+  itemId: string,
+): InventorySlot<ConsumableItem> | undefined {
   return character.inventory?.slots.find((s) => s.item.id === itemId);
 }
 
 /** Remove uma carga do item; se acabarem as cargas, tira uma unidade da pilha (e o slot, se zerar). */
-export function consumeInventoryCharge(character: Character, slot: InventorySlot<ConsumableItem>): void {
+export function consumeInventoryCharge(
+  character: Pick<Character, "inventory">,
+  slot: InventorySlot<ConsumableItem>,
+): void {
   slot.item.data.usesRemaining -= 1;
   if (slot.item.data.usesRemaining <= 0) {
     slot.quantity -= 1;
@@ -66,7 +72,7 @@ export interface ImmediateHealResult {
  * existem dentro de uma luta (ver shared/combat/engine.ts).
  */
 export function applyImmediateHeal(
-  character: Character,
+  character: Pick<Character, "currentHp" | "maxHp">,
   effect: { kind: "heal_hp"; amount: number } | { kind: "cure_status" },
 ): ImmediateHealResult {
   const amount = effect.kind === "heal_hp" ? effect.amount : 5;
