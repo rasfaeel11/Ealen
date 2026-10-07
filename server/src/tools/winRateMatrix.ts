@@ -20,13 +20,13 @@ import {
   BESTIARY,
   CLASS_INFO,
   createStartingAttributes,
+  enemyGuardSurvives,
+  resolveCombatTurn,
   startingMaxHp,
   type Character,
   type CharacterClass,
   type CombatAction,
 } from "@ealen/shared";
-import { enemyGuardSurvives } from "../combat/enemyPolicy";
-import { resolveCombatTurn } from "../combat/engine";
 
 const N = 300;
 

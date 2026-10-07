@@ -1,7 +1,6 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import combatRouter from "./routes/combat";
 import charactersRouter from "./routes/characters";
 import mapRouter from "./routes/map";
 
@@ -29,7 +28,6 @@ app.use(
 );
 app.use(express.json());
 
-app.use("/api/combat", combatRouter);
 app.use("/api/characters", charactersRouter);
 app.use("/api/map", mapRouter);
 

@@ -1,8 +1,9 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  plugins: [react()],
+  // Caminhos relativos no build: o mesmo dist/ abre por http ou por file://
+  // (é o que um empacotador tipo Electron carrega).
+  base: "./",
   server: {
     port: 5173,
   },

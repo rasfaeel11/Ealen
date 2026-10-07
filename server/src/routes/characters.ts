@@ -223,7 +223,7 @@ router.post("/:id/move", async (req, res) => {
 // Usa um consumível fora de combate (ex: uma poção de cura no mapa, antes
 // de entrar no próximo encontro). Só aceita efeitos que fazem sentido sem
 // uma sessão de combate ativa (heal_hp, cure_status) — buffs de atributo e
-// crítico garantido só existem durante uma luta (ver /api/combat).
+// crítico garantido só existem durante uma luta (ver shared/combat).
 router.post("/:id/use-item", async (req, res) => {
   const { supabase } = req as unknown as AuthedRequest;
   const { id } = req.params;

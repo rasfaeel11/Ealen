@@ -27,18 +27,3 @@ export interface BestiaryEntry {
   /** O que pode deixar cair ao ser derrotada. */
   drops: LootDrop[];
 }
-
-/**
- * O que a tela de combate precisa saber sobre a criatura ANTES do primeiro
- * turno (resposta de GET /api/combat/:nodeId/encounter). Deliberadamente
- * não inclui atributos nem loot: o jogador descobre do que ela é capaz
- * lutando, não lendo a ficha.
- */
-export interface EncounterSummary {
-  id: string;
-  name: string;
-  level: number;
-  maxHp: number;
-  glyph: string;
-  summary: string;
-}

@@ -10,7 +10,7 @@ import type { CombatAction } from "./types/combatEvent";
  * ajusta uma frequência, um Rachador procura a falha do padrão — chamar
  * tudo isso de "ataque pesado" joga fora justamente o que diferencia as
  * classes. Por isso o nome exibido vem daqui, e só o efeito numérico vive
- * no motor (server/src/combat/engine.ts).
+ * no motor (shared/combat/engine.ts).
  */
 
 /** Postura de combate: toda ação menos "usar item", que não é uma Arte. */

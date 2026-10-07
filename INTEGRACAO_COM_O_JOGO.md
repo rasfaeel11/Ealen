@@ -62,7 +62,7 @@ simulador têm correspondência direta:
 | `DEFENDER` | `defend` | |
 | `HABILIDADE` | `heavy_attack` | 180% de dano dos dois lados; o acerto cai -20% lá, -4 no d20 aqui |
 
-`server/src/combat/enemyPolicy.ts` decide em duas camadas. Primeiro as regras
+`shared/combat/enemyPolicy.ts` decide em duas camadas. Primeiro as regras
 autorais: uma criatura que cura e está abaixo de 30% de HP cura, ponto — o
 agente nunca viu uma poção e não tem opinião legítima sobre isso. Depois, a
 política treinada. Quando ela não tem opinião (estado nunca visitado no

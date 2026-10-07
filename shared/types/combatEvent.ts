@@ -1,11 +1,8 @@
-import type { Character } from "./character";
-import type { ConsumableItem } from "./inventory";
-import type { LevelUpResult } from "./levelUp";
-
 /**
  * Eventos ordenados que descrevem o que aconteceu em um turno de combate.
- * O servidor NUNCA anima nada — só calcula e devolve esta lista; a
- * animação em sequência é responsabilidade exclusiva do frontend.
+ * O motor (shared/combat) NUNCA anima nada — só calcula e devolve esta
+ * lista; a animação em sequência é responsabilidade exclusiva da cena de
+ * combate no client.
  */
 export type CombatEvent =
   /**
@@ -41,18 +38,7 @@ export type CombatEvent =
  *   o próximo ataque recebido neste turno.
  * - heal: restaura HP com base em Eir (só as Ordens com afinidade a Eir).
  * - use_item: consome um consumível da mochila (ver ConsumableItem em
- *   inventory.ts) — qual item usar vai à parte, no campo `itemId` do body
- *   de POST /api/combat/:nodeId/action.
+ *   inventory.ts) — qual item usar vai à parte, no `itemId` de
+ *   playBattleTurn (shared/combat/battle.ts).
  */
 export type CombatAction = "attack" | "quick_attack" | "heavy_attack" | "defend" | "heal" | "use_item";
-
-/** Corpo da resposta de POST /api/combat/:nodeId/action. */
-export interface CombatActionResult {
-  events: CombatEvent[];
-  characterState: Character;
-  enemyState: Character;
-  xpGained: number;
-  levelUp: LevelUpResult;
-  /** Itens deixados pela criatura derrotada, já somados ao inventário. */
-  loot: ConsumableItem[];
-}
