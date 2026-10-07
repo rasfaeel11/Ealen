@@ -39,6 +39,7 @@ export const SCENES = {
   title: "Title",
   prologue: "Prologue",
   classSelect: "ClassSelect",
+  world: "World",
   arena: "Arena",
   battle: "Battle",
 } as const;

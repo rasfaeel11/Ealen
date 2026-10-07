@@ -13,7 +13,7 @@ import {
 } from "@ealen/shared";
 import { GAME_HEIGHT, REGISTRY_CHARACTER, SCENES, TEXT_COLORS } from "../game/config";
 import { randomCharacterName } from "../game/nameGenerator";
-import { writeSave } from "../game/save";
+import { clearSave, writeSave } from "../game/save";
 import { addBodyText, addPanel, addTitleText } from "../game/ui";
 
 const RACES = Object.keys(RACE_INFO) as Race[];
@@ -220,8 +220,10 @@ export default class ClassSelectScene extends Phaser.Scene {
       inventory: createStartingInventory(),
     };
 
+    // Jogo novo: o lugar onde o personagem anterior parou não vale pra este.
+    clearSave();
     writeSave(character);
     this.registry.set(REGISTRY_CHARACTER, character);
-    this.scene.start(SCENES.arena);
+    this.scene.start(SCENES.world);
   }
 }

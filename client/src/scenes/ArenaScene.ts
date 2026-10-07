@@ -71,6 +71,11 @@ export default class ArenaScene extends Phaser.Scene {
         onFocus: () => this.hint.setText("Recupera todo o HP."),
       },
       {
+        label: "Voltar ao mapa",
+        onSelect: () => this.scene.start(SCENES.world),
+        onFocus: () => this.hint.setText("Volta pra onde você estava."),
+      },
+      {
         label: "Voltar ao título",
         onSelect: () => this.scene.start(SCENES.title),
         onFocus: () => this.hint.setText("O progresso já está salvo."),

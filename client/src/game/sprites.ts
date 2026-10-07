@@ -75,7 +75,7 @@ export function spriteDisplayScale(scene: Phaser.Scene, spriteKey: string): numb
 const PLACEHOLDER_FRAME = 64;
 const PLACEHOLDER_FRAME_COUNT = 14;
 
-const CLASS_COLOR: Record<CharacterClass, string> = {
+export const CLASS_COLOR: Record<CharacterClass, string> = {
   luminar: "#e8c47a",
   entropista: "#b0623a",
   cantor_de_ealen: "#5fb8b0",

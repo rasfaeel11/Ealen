@@ -7,3 +7,4 @@ export * from "./combatArts";
 export * from "./inventoryEffects";
 export * from "./iaTuning";
 export * from "./combat";
+export * from "./world";

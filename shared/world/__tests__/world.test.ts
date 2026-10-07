@@ -1,0 +1,92 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import { stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
+import { AREAS, STARTING_AREA, STARTING_SPAWN, exitAt, isBlocked, parseTiledMap, tileOfPixel, walk, type AreaMap } from "../index";
+
+/**
+ * Estes testes leem os mapas DE VERDADE (client/public/maps). São a rede de
+ * segurança de quem desenha: saída apontando pra área que não existe, ponto
+ * de chegada dentro de uma parede ou pedaço do mapa sem acesso aparecem
+ * aqui, não no meio do jogo.
+ */
+const PUBLIC_DIR = new URL("../../../client/public/", import.meta.url);
+
+function loadArea(areaId: string): AreaMap {
+  return parseTiledMap(JSON.parse(readFileSync(new URL(AREAS[areaId].map, PUBLIC_DIR), "utf8")));
+}
+
+const maps = Object.fromEntries(Object.keys(AREAS).map((areaId) => [areaId, loadArea(areaId)]));
+
+/** Todo quadrado que se alcança andando a partir de `start`. */
+function flood(map: AreaMap, start: Pos): Set<number> {
+  const seen = new Set([tileIndex(map.grid, start)]);
+  const queue = [start];
+  while (queue.length > 0) {
+    for (const next of stepNeighbors(map.grid, queue.pop()!)) {
+      const index = tileIndex(map.grid, next);
+      if (seen.has(index)) continue;
+      seen.add(index);
+      queue.push(next);
+    }
+  }
+  return seen;
+}
+
+test("o jogo começa num ponto que existe", () => {
+  assert.ok(maps[STARTING_AREA].spawns[STARTING_SPAWN]);
+});
+
+for (const [areaId, map] of Object.entries(maps)) {
+  test(`${areaId}: toda saída leva a uma área e a um ponto de chegada que existem`, () => {
+    assert.ok(map.exits.length > 0, "área sem saída");
+    for (const exit of map.exits) {
+      assert.ok(maps[exit.area], `área "${exit.area}" não existe`);
+      assert.ok(maps[exit.area].spawns[exit.spawn], `"${exit.area}" não tem o ponto "${exit.spawn}"`);
+    }
+  });
+
+  test(`${areaId}: todo ponto de chegada cai em chão livre, fora de qualquer saída`, () => {
+    for (const [name, spawn] of Object.entries(map.spawns)) {
+      assert.equal(tileAt(map.grid, tileOfPixel(map, spawn))?.blocksMove, false, `"${name}" está num quadrado bloqueado`);
+      assert.equal(exitAt(map, spawn), undefined, `"${name}" está dentro de uma saída`);
+    }
+  });
+
+  test(`${areaId}: de qualquer ponto de chegada se alcança todos os outros e todas as saídas`, () => {
+    const [first, ...others] = Object.values(map.spawns);
+    const reachable = flood(map, tileOfPixel(map, first));
+
+    for (const spawn of others) assert.ok(reachable.has(tileIndex(map.grid, tileOfPixel(map, spawn))));
+    for (const exit of map.exits) {
+      const middle = { x: exit.x + exit.width / 2, y: exit.y + exit.height / 2 };
+      assert.ok(reachable.has(tileIndex(map.grid, tileOfPixel(map, middle))), `saída pra "${exit.area}" sem acesso`);
+    }
+  });
+}
+
+test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
+  const map: AreaMap = {
+    tileSize: 16,
+    grid: {
+      width: 3,
+      height: 3,
+      tiles: Array.from({ length: 9 }, (_, index) => ({
+        blocksMove: index % 3 === 2,
+        blocksSight: false,
+        moveCost: 1,
+      })),
+    },
+    spawns: {},
+    exits: [],
+  };
+  const body = { halfWidth: 4, height: 4 };
+
+  // A coluna da direita é parede: empurrar na diagonal contra ela só anda pra baixo.
+  let pos = { x: 27, y: 20 };
+  for (let i = 0; i < 20; i++) pos = walk(map, pos, 1, 1, body);
+
+  assert.equal(isBlocked(map, pos, body), false);
+  assert.equal(pos.x, 28);
+  assert.equal(pos.y, 40);
+});

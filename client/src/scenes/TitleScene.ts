@@ -30,7 +30,7 @@ export default class TitleScene extends Phaser.Scene {
           disabled: !save,
           onSelect: () => {
             this.registry.set(REGISTRY_CHARACTER, save);
-            this.scene.start(SCENES.arena);
+            this.scene.start(SCENES.world);
           },
         },
         { label: "Novo jogo", onSelect: () => this.scene.start(SCENES.prologue) },

@@ -26,7 +26,7 @@ O jogo está saindo do combate 1 contra 1 por posturas (estilo Pokémon) pra um 
 - **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto.
 - Cenários, nomes, falas e kits de habilidade são **placeholder** até a história existir.
 
-Fases: (1) motor tático puro — **feito**, em `shared/tactics/`; (2) cena de mapa: andar, câmera, colisão, troca de área; (3) combate no mapa, substituindo `BattleScene`/`Arena` e apagando `shared/combat/engine.ts`, `battle.ts`, `enemyPolicy.ts` e o `iaTuning`; (4) IA de utilidade; (5) superfícies, destrutíveis e altura; (6) diálogo e flags; (7) save ampliado.
+Fases: (1) motor tático puro — **feito**, em `shared/tactics/`; (2) cena de mapa: andar, câmera, colisão, troca de área — **feito**, em `shared/world/` e `WorldScene`; (3) combate no mapa, substituindo `BattleScene`/`Arena` e apagando `shared/combat/engine.ts`, `battle.ts`, `enemyPolicy.ts` e o `iaTuning`; (4) IA de utilidade; (5) superfícies, destrutíveis e altura; (6) diálogo e flags; (7) save ampliado.
 
 ### O motor tático (`shared/tactics/`)
 
@@ -39,9 +39,24 @@ Convive com o motor antigo (`shared/combat/`) até a fase 3 e ainda não é expo
 - `reachableTiles`, `abilityTargets` e `affectedUnits` são a mesma regra pra interface, pro motor e pra IA.
 - Testes sem tela: `npm test` (lutas inteiras jogadas por um bot, com seed).
 
+### O mundo (`shared/world/` + `WorldScene`)
+
+Cada área é um mapa do Tiled (`.tmj`) em `client/public/maps/`, registrado em `shared/world/areas.ts`. O grafo do mundo é o que as saídas dos mapas formam — não existe lista de conexões fora deles. As três áreas atuais (`clareira`, `estrada`, `ruinas`) e o tileset `placeholder` são provisórios.
+
+O contrato de quem desenha um mapa (detalhado em `shared/world/tiledMap.ts`):
+
+- Tiles de 16px, mapa ortogonal e finito, camadas em CSV, **tileset embutido no mapa** e registrado pelo nome em `client/src/game/worldAssets.ts`.
+- Colisão vem de propriedades do tile, definidas no tileset: `blocksMove`, `blocksSight`, `moveCost`. Não há camada de colisão. É a mesma grade que o combate usa.
+- Camada cujo nome começa com `above` é desenhada por cima do personagem.
+- Objetos: `spawn` (ponto; o nome é o id) e `exit` (retângulo; propriedades `area` e `spawn`).
+
+`npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede e trecho sem acesso.
+
+O personagem do mapa usa uma folha de caminhada 4x4 (uma linha por direção); provisórios e registro de arte final em `client/src/game/walkSprites.ts`.
+
 ### Cenas (`client/src/scenes/`)
 
-`Boot` (carrega sprites) → `Title` → `Prologue` → `ClassSelect` (Povo, Ordem, nome) → `Arena` → `Battle`.
+`Boot` (carrega sprites) → `Title` → `Prologue` → `ClassSelect` (Povo, Ordem, nome) → `World`. De lá, a tecla T ainda abre `Arena` → `Battle` (o combate antigo), até a fase 3.
 
 A `Arena` é **andaime de desenvolvimento**, não parte do jogo: uma lista de criaturas pra lutar, no lugar onde o mapa e a história vão entrar.
 
@@ -51,7 +66,7 @@ Cada combatente é uma spritesheet com quatro animações (`idle`, `attack`, `hu
 
 ### Save
 
-Um personagem, em `localStorage` (`client/src/game/save.ts`). Sem login, sem servidor.
+Um personagem e onde ele está (área + posição), em `localStorage` (`client/src/game/save.ts`). Sem login, sem servidor.
 
 ### Restrições que valem ouro
 
@@ -63,7 +78,7 @@ Um personagem, em `localStorage` (`client/src/game/save.ts`). Sem login, sem ser
 ```
 npm run dev:client                              # o jogo, em http://localhost:5173
 npm run build --workspace=client                # typecheck + build
-npm test                                        # testes do motor tático (shared/tactics), sem tela
+npm test                                        # testes sem tela: motor tático e validação dos mapas
 npm run balance:matrix --workspace=server       # taxa de vitória de cada Ordem x criatura, pelo motor real
 ```
 
