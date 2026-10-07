@@ -29,10 +29,18 @@ const FADE_MS = 220;
 /** Um quadro mais longo que isto (aba em segundo plano) não vira um salto pelo mapa. */
 const MAX_FRAME_MS = 50;
 
-const PLAYER_DEPTH = 10;
-/** Camadas cujo nome começa com isto são desenhadas POR CIMA do personagem (copas, telhados). */
+/**
+ * A profundidade é o que dá altura a um mapa chapado. Tudo que fica de pé
+ * (personagem, árvore, parede) é desenhado na ordem do Y da própria BASE:
+ * quem está mais ao sul cobre quem está mais ao norte. É assim que o
+ * personagem passa por trás de uma copa e pela frente do tronco.
+ */
+const FLOOR_DEPTH = -1000;
+const ABOVE_DEPTH = 1_000_000;
+/** Camadas cujo nome começa com isto ficam de pé e entram na ordenação por Y, junto com os personagens. */
+const SORTED_LAYER_PREFIX = "sorted";
+/** Camadas cujo nome começa com isto são desenhadas POR CIMA de tudo (pontes altas, telhados). */
 const ABOVE_LAYER_PREFIX = "above";
-const ABOVE_DEPTH = 20;
 
 interface WorldSceneData {
   /** Chegando por uma saída: a área de destino e o ponto de chegada nela. */
@@ -52,6 +60,7 @@ export default class WorldScene extends Phaser.Scene {
   private area!: AreaDef;
   private map!: AreaMap;
   private player!: Phaser.GameObjects.Sprite;
+  private shadow!: Phaser.GameObjects.Ellipse;
   private pos!: PixelPos;
   private facing: Facing = "down";
   private keys!: MoveKeys;
@@ -77,11 +86,10 @@ export default class WorldScene extends Phaser.Scene {
     const world = this.drawMap();
 
     const spriteKey = classWalkKey(character.characterClass);
-    this.player = this.add
-      .sprite(this.pos.x, this.pos.y, spriteKey, standingFrame(this.facing))
-      .setOrigin(0.5, 1)
-      .setDepth(PLAYER_DEPTH);
-    world.push(this.player);
+    this.shadow = this.add.ellipse(0, 0, 12, 5, 0x000000, 0.3);
+    this.player = this.add.sprite(0, 0, spriteKey, standingFrame(this.facing)).setOrigin(0.5, 1);
+    this.placePlayer();
+    world.push(this.shadow, this.player);
 
     const hud = [
       this.showAreaName(),
@@ -133,7 +141,7 @@ export default class WorldScene extends Phaser.Scene {
     // Na diagonal o passo é dividido entre os eixos: não se anda mais rápido de lado.
     const step = (WALK_SPEED * Math.min(delta, MAX_FRAME_MS)) / 1000 / Math.hypot(dx, dy);
     this.pos = walk(this.map, this.pos, dx * step, dy * step, BODY);
-    this.player.setPosition(this.pos.x, this.pos.y);
+    this.placePlayer();
 
     this.facing = dx !== 0 ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
     this.player.anims.play(walkAnimKey(this.player.texture.key, this.facing), true);
@@ -159,6 +167,12 @@ export default class WorldScene extends Phaser.Scene {
     this.pos = saved && saved.areaId === this.area.id ? { x: saved.x, y: saved.y } : { ...spawn };
   }
 
+  /** Põe o personagem (e a sombra dele) em `pos`, na profundidade dos próprios pés. */
+  private placePlayer(): void {
+    this.player.setPosition(this.pos.x, this.pos.y).setDepth(this.pos.y);
+    this.shadow.setPosition(this.pos.x, this.pos.y - 1).setDepth(this.pos.y - 0.5);
+  }
+
   /** Desenha as camadas do mapa e devolve os objetos criados (pra câmera da interface ignorar). */
   private drawMap(): Phaser.GameObjects.GameObject[] {
     const tilemap = this.make.tilemap({ key: mapKey(this.area.id) });
@@ -166,14 +180,51 @@ export default class WorldScene extends Phaser.Scene {
       .map((tileset) => tilemap.addTilesetImage(tileset.name, tilesetKey(tileset.name)))
       .filter((tileset): tileset is Phaser.Tilemaps.Tileset => tileset !== null);
 
-    const layers: Phaser.GameObjects.GameObject[] = [];
+    const objects: Phaser.GameObjects.GameObject[] = [];
     tilemap.layers.forEach((data, index) => {
+      if (data.name.startsWith(SORTED_LAYER_PREFIX)) {
+        objects.push(...this.drawSortedLayer(tilemap, data, tilesets));
+        return;
+      }
       const layer = tilemap.createLayer(data.name, tilesets);
       if (!layer) return;
-      layer.setDepth(data.name.startsWith(ABOVE_LAYER_PREFIX) ? ABOVE_DEPTH : index);
-      layers.push(layer);
+      layer.setDepth((data.name.startsWith(ABOVE_LAYER_PREFIX) ? ABOVE_DEPTH : FLOOR_DEPTH) + index);
+      objects.push(layer);
     });
-    return layers;
+    return objects;
+  }
+
+  /**
+   * Uma camada "de pé": cada tile vira uma imagem solta, ancorada na base do
+   * próprio quadrado e com a profundidade dessa base. Tiles mais altos que
+   * um quadrado (árvore, parede) sobem por cima do quadrado ao norte.
+   */
+  private drawSortedLayer(
+    tilemap: Phaser.Tilemaps.Tilemap,
+    data: Phaser.Tilemaps.LayerData,
+    tilesets: Phaser.Tilemaps.Tileset[],
+  ): Phaser.GameObjects.Image[] {
+    const images: Phaser.GameObjects.Image[] = [];
+    for (const tile of data.data.flat()) {
+      const tileset = tilesets.find((candidate) => candidate.containsTileIndex(tile.index));
+      const coordinates = tileset?.getTileTextureCoordinates(tile.index) as { x: number; y: number } | null | undefined;
+      if (!tileset?.image || !coordinates) continue;
+
+      // O tileset é uma imagem só; cada tile usado ganha um quadro com nome nela.
+      const frame = `tile:${tile.index - tileset.firstgid}`;
+      if (!tileset.image.has(frame)) {
+        tileset.image.add(frame, 0, coordinates.x, coordinates.y, tileset.tileWidth, tileset.tileHeight);
+      }
+
+      const base = (tile.y + 1) * tilemap.tileHeight;
+      images.push(
+        this.add
+          .image(tile.x * tilemap.tileWidth, base, tileset.image.key, frame)
+          .setOrigin(0, 1)
+          .setDepth(base),
+      );
+    }
+    return images;
   }
 
   /** O nome da área, no alto da tela, sumindo sozinho. */

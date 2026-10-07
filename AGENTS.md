@@ -41,13 +41,14 @@ Convive com o motor antigo (`shared/combat/`) até a fase 3 e ainda não é expo
 
 ### O mundo (`shared/world/` + `WorldScene`)
 
-Cada área é um mapa do Tiled (`.tmj`) em `client/public/maps/`, registrado em `shared/world/areas.ts`. O grafo do mundo é o que as saídas dos mapas formam — não existe lista de conexões fora deles. As três áreas atuais (`clareira`, `estrada`, `ruinas`) e o tileset `placeholder` são provisórios.
+Cada área é um mapa do Tiled (`.tmj`) em `client/public/maps/`, registrado em `shared/world/areas.ts`. O grafo do mundo é o que as saídas dos mapas formam — não existe lista de conexões fora deles. As três áreas atuais (`clareira`, `estrada`, `ruinas`) e os tilesets `placeholder` (chão, 16x16) e `placeholder-tall` (coisas de pé, 16x32) são provisórios.
 
 O contrato de quem desenha um mapa (detalhado em `shared/world/tiledMap.ts`):
 
 - Tiles de 16px, mapa ortogonal e finito, camadas em CSV, **tileset embutido no mapa** e registrado pelo nome em `client/src/game/worldAssets.ts`.
 - Colisão vem de propriedades do tile, definidas no tileset: `blocksMove`, `blocksSight`, `moveCost`. Não há camada de colisão. É a mesma grade que o combate usa.
-- Camada cujo nome começa com `above` é desenhada por cima do personagem.
+- **A altura vem da arte e da ordem de desenho, não da câmera** (é o 3/4 de Sea of Stars, não isométrico). Camada cujo nome começa com `sorted` fica "de pé": cada tile é ordenado pelo Y da própria base junto com os personagens, então se passa por trás de uma copa e pela frente do tronco. Coisas altas vêm de um tileset de tiles mais altos que o quadrado (ex: 16x32), com a base no quadrado que ocupam; parede se desenha com o topo em cima e a face frontal embaixo.
+- Camada cujo nome começa com `above` é desenhada por cima de tudo; as demais são chão.
 - Objetos: `spawn` (ponto; o nome é o id) e `exit` (retângulo; propriedades `area` e `spawn`).
 
 `npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede e trecho sem acesso.

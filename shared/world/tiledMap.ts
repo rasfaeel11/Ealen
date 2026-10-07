@@ -7,8 +7,10 @@ import type { Grid, Pos, Tile } from "../tactics/grid";
  *
  * O contrato com quem desenha o mapa:
  *
- * - Camadas de tiles: quantas quiser, com qualquer nome. O terreno de um
- *   quadrado é a soma de todos os tiles empilhados nele.
+ * - Camadas de tiles: quantas quiser. O terreno de um quadrado é a soma de
+ *   todos os tiles empilhados nele. O NOME da camada só importa pro desenho
+ *   (prefixos `sorted` e `above`, ver WorldScene no client). Um tile mais
+ *   alto que o quadrado (uma árvore de 16x32) ocupa só o quadrado da base.
  * - Propriedades de tile, definidas NO TILESET (não no mapa):
  *     `blocksMove` (bool)  ninguém pisa
  *     `blocksSight` (bool) não se enxerga através

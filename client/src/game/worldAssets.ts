@@ -7,6 +7,7 @@ import { AREAS } from "@ealen/shared";
  */
 export const TILESETS: Record<string, string> = {
   placeholder: "tilesets/placeholder.png",
+  "placeholder-tall": "tilesets/placeholder-tall.png",
 };
 
 export function mapKey(areaId: string): string {
