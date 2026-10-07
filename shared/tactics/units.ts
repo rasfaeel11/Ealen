@@ -3,7 +3,7 @@ import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
 import { abilitiesFor } from "./abilities";
 import { samePos, type Pos } from "./grid";
-import type { Encounter, TeamId, Unit } from "./types";
+import type { AiProfile, Encounter, TeamId, Unit } from "./types";
 
 /** Quadrados de movimento por turno de quem não diz o contrário. */
 export const DEFAULT_SPEED = 6;
@@ -13,6 +13,8 @@ export interface UnitPlacement {
   pos: Pos;
   /** Obrigatório quando a mesma ficha entra mais de uma vez na luta (três lobos = três ids). */
   id?: string;
+  /** Pesos da IA de quem não é comandado pelo jogador (ver AiProfile). */
+  ai?: Partial<AiProfile>;
 }
 
 /**
@@ -35,6 +37,7 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     abilities: abilitiesFor(character),
     statuses: [],
     inventory: character.inventory ? structuredClone(character.inventory) : undefined,
+    ai: placement.ai ? { ...placement.ai } : undefined,
     turn: { movement: 0, action: false, bonus: false, reaction: true },
   };
 }

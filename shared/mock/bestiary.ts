@@ -17,6 +17,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "ealen",
     summary: "Sobra de frequência desgarrada de um canto que ninguém terminou.",
     lore: "Não tem intenção nem apetite: repete o último som que ouviu, alto demais e fora de hora. No silêncio é quase inofensivo. Perto de uma voz, gruda nela.",
+    // Repete o som em quem estiver perto, sem pensar em si.
+    ai: { caution: 0.1, support: 0.4 },
     drops: [{ itemId: "item-lagrima-de-eir", chance: 0.5 }],
     template: {
       id: "enemy-fiapo-de-ruido",
@@ -44,6 +46,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "ausencia",
     summary: "Um lobo comum que aprendeu a não estar onde se olha.",
     lore: "Passou tempo demais numa região que ninguém observava e pegou o vício do lugar. Caça exatamente como caçava antes — só que agora erra muito menos, porque é difícil desviar do que não se viu chegar.",
+    // Caçador: escolhe a presa ferida e não se expõe à toa.
+    ai: { finisher: 2, caution: 0.8 },
     drops: [{ itemId: "item-pao-de-cinza", chance: 0.6 }],
     template: {
       id: "enemy-lobo-de-bruma",
@@ -70,6 +74,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "entropia",
     summary: "Autômato taharim de mineração, abandonado tempo demais.",
     lore: "A Entropia já comeu as ordens que ele seguia; sobrou o gesto de bater. Bate com o que restou do braço, e o que restou do braço ainda pesa meia tonelada.",
+    // Sobrou o gesto de bater: não se guarda, não recua, não escolhe alvo.
+    ai: { aggression: 1.3, finisher: 0, caution: 0 },
     drops: [{ itemId: "item-balsamo-de-pedra-de-taharim", chance: 0.5 }],
     template: {
       id: "enemy-servo-enferrujado",
@@ -96,6 +102,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "entropia",
     summary: "Padrão de informação órfão, procurando um corpo que o guarde.",
     lore: "Rouba memórias recentes para se completar, e nunca se completa. Quem escapa dele volta sem lembrar por quê — e às vezes volta chamando o próprio nome errado.",
+    // Quer se completar, não morrer: fica longe e se refaz.
+    ai: { caution: 1.2, support: 1.3 },
     drops: [
       { itemId: "item-oleo-da-coruja-de-miraven", chance: 0.35 },
       { itemId: "item-lagrima-de-eir", chance: 0.5 },
@@ -126,6 +134,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "ausencia",
     summary: "Não é criatura: é uma instrução que sobreviveu a quem a deu.",
     lore: "Alguém, muito atrás, determinou que nada atravessasse aquele limiar. Quem determinou já não existe. A determinação, sim — e ela não negocia, não cansa e não pergunta quem você é.",
+    // Uma ordem de não deixar passar: guarda-se antes de ferir.
+    ai: { aggression: 0.9, caution: 1.5 },
     drops: [{ itemId: "item-estilhaco-de-prumo", chance: 0.55 }],
     template: {
       id: "enemy-vigia-do-umbral",
@@ -152,6 +162,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "fratura",
     summary: "Uma quebra de simetria que nunca parou de quebrar.",
     lore: "Anda porque um lado seu é sempre mais pesado que o outro, e cair para frente é a única coisa que sabe fazer. Fere só de encostar: perto dela, coisas simétricas deixam de ser.",
+    // Cai pra frente em cima do que estiver mais perto de quebrar.
+    ai: { aggression: 1.2, finisher: 1.5, caution: 0.2 },
     drops: [
       { itemId: "item-brasa-de-forjardente", chance: 0.5 },
       { itemId: "item-calice-de-aguas-lentas", chance: 0.3 },
@@ -181,6 +193,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "ealen",
     summary: "Arauto do Silente. Canta invertido, e o mundo fica menos existente.",
     lore: "Onde o Coro Mudo passa, as frequências se cancelam: primeiro somem os ecos, depois os sons, depois a lembrança de ter havido som. Não ataca por raiva — está apenas apagando um trecho, e você está no trecho.",
+    // Não tem pressa nem raiva: apaga o trecho inteiro e se mantém de pé.
+    ai: { support: 1.2, caution: 1 },
     drops: [
       { itemId: "item-diapasao-de-bolso", chance: 0.8 },
       { itemId: "item-semente-de-horizonte", chance: 0.4 },

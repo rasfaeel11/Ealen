@@ -16,10 +16,10 @@ Monorepo com npm workspaces:
 - **Grupo opcional**: o motor aceita qualquer número de combatentes de cada lado; herói solo é só um grupo de um. (Ainda não existem companheiros — hoje o grupo é sempre o herói.)
 - **Mundo aberto como grafo de áreas**: cada nó é um mapa feito à mão (Tiled), as arestas são as saídas, nenhuma travada por história. Nível de inimigo fixo por área.
 - **Visual top-down 3/4** (Sea of Stars), pixel art. A altura vem da arte e da ordem de desenho, não de uma câmera inclinada — não é isométrico.
-- **IA de inimigo por utilidade** (pontuar todas as jogadas possíveis, com pesos por criatura). Ainda não existe: hoje vale a IA provisória de `shared/tactics/ai.ts`.
+- **IA de inimigo por utilidade**: dá nota a todas as jogadas possíveis e fica com a maior, com pesos por criatura (`shared/tactics/ai.ts`).
 - **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto. Ainda não existe.
 
-Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade; (5) superfícies, destrutíveis, cobertura, flanco e altura; (6) diálogo e flags; (7) save ampliado.
+Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) superfícies, destrutíveis, cobertura, flanco e altura; (6) diálogo e flags; (7) save ampliado.
 
 ### A regra central do combate
 
@@ -32,7 +32,10 @@ O motor **nunca anima nada**. `applyCommand(encounter, command)` (`shared/tactic
 - Cada turno tem movimento, ação, ação bônus e uma reação (ataque de oportunidade).
 - Habilidades são dados (`abilities.ts`): alcance, alvo, área, rolagem de ataque e uma lista de efeitos (`damage`, `heal`, `status`, `push`). Condições também (`statuses.ts`). Os kits atuais das Ordens são provisórios, montados sobre os nomes de `shared/combatArts.ts`.
 - `reachableTiles`, `abilityTargets` e `affectedUnits` são a mesma regra pra interface, pro motor e pra IA: a interface só oferece o que o motor aceitaria.
-- `basicCommand` (`ai.ts`) é a IA provisória: recebe a luta, devolve o próximo comando. A IA de verdade entra no lugar dela sem mudar quem a chama.
+- `chooseCommand` (`ai.ts`) é a IA: recebe a luta, devolve o próximo comando de quem está no turno; chama-se de novo depois de cada comando, até ela devolver `endTurn`. Uma jogada é um quadrado onde parar mais o que fazer de lá, e a nota soma o que as habilidades rendem EM MÉDIA (acerto x dano, chance de derrubar, cura, guarda, fogo amigo em área) com o que a posição custa (dano a que fica exposto, ataque de oportunidade, distância andando até o inimigo). Ela não rola dado, não muta a luta e é determinística. `planTurn` devolve o plano com as notas — é o que os testes conferem.
+- Os pesos (`AiProfile`: `aggression`, `finisher`, `support`, `caution`) vêm de `ai` na entrada do bestiário e viajam na `Unit`. Criatura com jeito novo de lutar é mexer nesses números; os atuais são provisórios.
+- A conta de dano médio da IA (`forecast`) ESPELHA `rollAttack` e o efeito `damage` do motor: mudou a regra no motor, muda na IA também. Efeito novo de habilidade precisa de um `case` em `abilityValue`, senão a IA não vê valor nele.
+- `basicCommand` é a IA antiga (bate em quem alcança, senão anda em linha reta). Fica como linha de base dos testes.
 
 ### O mundo (`shared/world/` + `WorldScene`)
 

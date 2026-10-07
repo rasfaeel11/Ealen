@@ -48,7 +48,9 @@ export function startAreaEncounter(
   for (const enemy of enemies) {
     const entry = findBestiaryEntry(enemy.creature);
     if (!entry) continue;
-    units.push(unitFromCharacter(entry.template, { team: "enemy", pos: tileOfPixel(map, enemy), id: enemy.id }));
+    units.push(
+      unitFromCharacter(entry.template, { team: "enemy", pos: tileOfPixel(map, enemy), id: enemy.id, ai: entry.ai }),
+    );
   }
   return startEncounter({ grid: map.grid, units, seed });
 }

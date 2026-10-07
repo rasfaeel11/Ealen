@@ -75,7 +75,7 @@ export function eventsOf<T extends TacticalEvent["type"]>(
   return events.filter((event): event is Extract<TacticalEvent, { type: T }> => event.type === type);
 }
 
-/** Joga a luta com a IA provisória dos dois lados até acabar (ou até `maxCommands`). Devolve todos os eventos. */
+/** Joga a luta com a IA de linha de base dos dois lados até acabar (ou até `maxCommands`). Devolve todos os eventos. */
 export function playOut(encounter: Encounter, maxCommands = 3000): TacticalEvent[] {
   const log: TacticalEvent[] = [];
   for (let i = 0; i < maxCommands && !encounter.winner; i++) {

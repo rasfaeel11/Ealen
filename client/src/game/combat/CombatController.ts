@@ -3,7 +3,7 @@ import {
   abilityTargets,
   activeUnit,
   applyCommand,
-  basicCommand,
+  chooseCommand,
   distance,
   findPath,
   findUnit,
@@ -166,7 +166,7 @@ export class CombatController {
       this.refreshHud();
       await this.wait(ENEMY_THINK_MS);
 
-      let result = applyCommand(encounter, basicCommand(encounter));
+      let result = applyCommand(encounter, chooseCommand(encounter));
       // Uma IA que peça o impossível não pode travar a luta: perde a vez.
       if (!result.ok) result = applyCommand(encounter, { type: "endTurn", unitId: activeUnit(encounter)!.id });
       if (!result.ok) break;

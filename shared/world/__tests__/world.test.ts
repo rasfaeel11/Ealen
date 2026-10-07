@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { findBestiaryEntry } from "../../mock/bestiary";
-import { applyCommand, basicCommand } from "../../tactics";
+import { applyCommand, chooseCommand } from "../../tactics";
 import { distance, stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
 import type { Character } from "../../types/character";
 import {
@@ -129,7 +129,7 @@ for (const [areaId, map] of Object.entries(maps)) {
 
     // A luta anda até o fim na grade de verdade, com árvores, rio e ponte.
     for (let i = 0; i < 3000 && !encounter.winner; i++) {
-      assert.equal(applyCommand(encounter, basicCommand(encounter)).ok, true);
+      assert.equal(applyCommand(encounter, chooseCommand(encounter)).ok, true);
     }
     assert.ok(encounter.winner);
   });

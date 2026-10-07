@@ -1,18 +1,401 @@
-import { distance, samePos, type Pos } from "./grid";
+import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileIndex, type Grid, type Pos } from "./grid";
 import { reachableTiles } from "./movement";
-import { abilityTargets } from "./targeting";
-import type { Command, Encounter } from "./types";
-import { activeUnit, isAlive } from "./units";
+import { STATUSES, type StatusId, type StatusTemplate } from "./statuses";
+import { abilityTargets, affectedUnits, canAimAt } from "./targeting";
+import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
+import { activeUnit, effectiveAttribute, isAlive, primaryAttribute } from "./units";
 
 /**
- * A IA de inimigo PROVISÓRIA: bate em quem alcança, senão anda na direção
- * do inimigo mais próximo, senão passa a vez. Não foge, não cura, não
- * protege ninguém, não pensa em terreno.
+ * A IA de inimigo, por utilidade.
  *
- * Existe pra que o combate seja jogável e testável de ponta a ponta. A IA
- * de verdade (pontuar todas as jogadas possíveis, com pesos por criatura)
- * substitui esta função sem mudar quem a chama: recebe a luta, devolve o
- * próximo comando de quem está no turno.
+ * Em vez de uma árvore de "se isso, faça aquilo", ela dá NOTA a tudo que
+ * quem está no turno poderia fazer e fica com a maior. Uma jogada é um
+ * quadrado onde parar mais o que fazer de lá com a ação e com a ação bônus;
+ * a nota soma:
+ *
+ *   - o que as habilidades rendem EM MÉDIA dali: chance de acerto x dano,
+ *     chance de derrubar o alvo, cura, guarda — e desconta quem do próprio
+ *     lado for pego numa área;
+ *   - o que a posição custa: o dano a que fica exposto, o ataque de
+ *     oportunidade de quem ele largar pra chegar lá e, enquanto não tiver
+ *     ninguém ao alcance, a distância ANDANDO até o inimigo mais próximo
+ *     (por isso contorna parede e procura a ponte).
+ *
+ * Cada parcela é multiplicada por um peso do combatente (`Unit.ai`, ver
+ * AiProfile): é aí que uma criatura vira covarde, bruta ou carniceira sem
+ * código novo.
+ *
+ * A IA não rola dado nem simula o futuro: trabalha com médias, não mexe na
+ * luta e, pra mesma luta, devolve sempre o mesmo comando. Ela só propõe o
+ * que `abilityTargets` e `reachableTiles` oferecem — o que o motor aceita.
+ */
+
+export const DEFAULT_AI_PROFILE: AiProfile = { aggression: 1, finisher: 1, support: 1, caution: 0.5 };
+
+/** Quanto vale derrubar alguém, na mesma moeda das outras parcelas: pontos de vida. */
+const KILL_VALUE = 12;
+/** Quanto pesa acertar o próprio lado, perto de quanto vale acertar o outro. */
+const FRIENDLY_FIRE = 1.5;
+/** Dano que PODE vir no turno dos outros vale menos que dano certo agora. */
+const THREAT_DISCOUNT = 0.5;
+/** Quanto custa cada quadrado de caminhada que ainda separa de um inimigo, enquanto não há em quem bater. */
+const APPROACH_VALUE = 2;
+/** Quanto vale, por turno, cada ponto de atributo que uma condição dá ou tira. */
+const ATTRIBUTE_POINT_VALUE = 0.5;
+/** Quanto vale garantir um crítico. */
+const GUARANTEED_CRIT_VALUE = 4;
+/** Quanto vale cada quadrado de empurrão. Quase nada: só desempata. */
+const PUSH_VALUE = 0.25;
+/** Desempate: entre jogadas iguais, a que anda menos. */
+const STEP_COST = 0.01;
+/** Abaixo disto uma habilidade não vale o gesto. */
+const MIN_VALUE = 0.01;
+
+/** Uma habilidade mirada num ponto, com a nota que isso recebeu. */
+export interface AiChoice {
+  ability: Ability;
+  target: Pos;
+  value: number;
+}
+
+/** O turno que a IA escolheu: onde parar e o que fazer de lá. */
+export interface AiPlan {
+  /** Onde terminar o movimento — o próprio quadrado, se o melhor é não andar. */
+  tile: Pos;
+  action?: AiChoice;
+  bonus?: AiChoice;
+  score: number;
+}
+
+/**
+ * O próximo comando de quem está no turno. Chame de novo depois de cada
+ * comando aplicado: o plano é refeito sobre o que de fato aconteceu (o golpe
+ * errou, o alvo caiu), até a IA devolver `endTurn`.
+ */
+export function chooseCommand(encounter: Encounter): Command {
+  const unit = activeUnit(encounter);
+  if (!unit) throw new Error("A luta acabou: não há quem comandar.");
+  const plan = planTurn(encounter);
+
+  if (!samePos(plan.tile, unit.pos)) return { type: "move", unitId: unit.id, to: plan.tile };
+
+  const choice = [plan.action, plan.bonus]
+    .filter((candidate) => candidate !== undefined)
+    .sort((a, b) => b.value - a.value)[0];
+  if (choice) return { type: "ability", unitId: unit.id, abilityId: choice.ability.id, target: choice.target };
+
+  return { type: "endTurn", unitId: unit.id };
+}
+
+/** A jogada de maior nota pra quem está no turno. Não muda `encounter`. */
+export function planTurn(encounter: Encounter): AiPlan {
+  const actor = activeUnit(encounter);
+  if (!actor) throw new Error("A luta acabou: não há quem comandar.");
+
+  // Uma cópia rasa onde dá pra mudar quem age de lugar e perguntar "e daqui?".
+  const sim: Encounter = { ...encounter, units: encounter.units.map((unit) => ({ ...unit, pos: { ...unit.pos } })) };
+  const me = sim.units.find((unit) => unit.id === actor.id)!;
+  const profile: AiProfile = { ...DEFAULT_AI_PROFILE, ...me.ai };
+  // Ferido, o mesmo golpe assusta mais: a cautela chega ao dobro perto da morte.
+  profile.caution *= 2 - me.currentHp / me.maxHp;
+
+  const foes = sim.units.filter((unit) => unit.team !== me.team && isAlive(unit));
+  const toFoe = walkingDistances(sim.grid, foes.map((foe) => foe.pos));
+  const origin = { ...actor.pos };
+
+  const stops = [{ pos: origin, cost: 0 }, ...reachableTiles(encounter, actor)];
+  let best: AiPlan | undefined;
+
+  for (const stop of stops) {
+    me.pos = { ...stop.pos };
+
+    let action: AiChoice | undefined;
+    let bonus: AiChoice | undefined;
+    let canStrike = false;
+    for (const ability of me.abilities) {
+      const offensive = isOffensive(ability);
+      for (const target of aimPoints(sim, me, ability, foes)) {
+        if (offensive && affectedUnits(sim, ability, target).some((unit) => unit.team !== me.team)) canStrike = true;
+
+        const value = abilityValue(sim, me, profile, ability, target);
+        if (value < MIN_VALUE) continue;
+        if (ability.cost === "action") {
+          if (me.turn.action && value > (action?.value ?? 0)) action = { ability, target, value };
+        } else if (me.turn.bonus && value > (bonus?.value ?? 0)) {
+          bonus = { ability, target, value };
+        }
+      }
+    }
+
+    let score = (action?.value ?? 0) + (bonus?.value ?? 0) - STEP_COST * stop.cost;
+    if (action && bonus) score -= overkill(sim, me, profile, action, bonus);
+    score -= profile.caution * THREAT_DISCOUNT * threatAt(sim, me, me.pos, false);
+    score -= profile.caution * opportunityDamage(sim, me, origin, me.pos);
+
+    const gap = toFoe[tileIndex(sim.grid, me.pos)];
+    if (!canStrike && Number.isFinite(gap)) score -= profile.aggression * APPROACH_VALUE * gap;
+
+    if (!best || score > best.score) best = { tile: { ...stop.pos }, action, bonus, score };
+  }
+  return best!;
+}
+
+// --- Quanto vale uma habilidade ---------------------------------------------
+
+function isOffensive(ability: Ability): boolean {
+  return ability.targets !== "self" && ability.targets !== "ally" && ability.effects.some((e) => e.kind === "damage");
+}
+
+/**
+ * Onde vale a pena mirar `ability` de onde `unit` está. Igual a
+ * `abilityTargets`, menos numa área: lá só interessam os pontos que pegam
+ * algum inimigo, não a grade inteira.
+ */
+function aimPoints(encounter: Encounter, unit: Unit, ability: Ability, foes: Unit[]): Pos[] {
+  if (ability.targets !== "tile") return abilityTargets(encounter, unit, ability);
+
+  const radius = ability.radius ?? 0;
+  const seen = new Set<number>();
+  const points: Pos[] = [];
+  for (const foe of foes) {
+    for (let y = foe.pos.y - radius; y <= foe.pos.y + radius; y++) {
+      for (let x = foe.pos.x - radius; x <= foe.pos.x + radius; x++) {
+        const pos = { x, y };
+        if (!canAimAt(encounter, unit, ability, pos)) continue;
+        const index = tileIndex(encounter.grid, pos);
+        if (!seen.has(index)) points.push(pos);
+        seen.add(index);
+      }
+    }
+  }
+  return points;
+}
+
+/** A nota de usar `ability` de `actor` mirando `target`: o que rende em média, pesado pelo perfil. */
+function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, ability: Ability, target: Pos): number {
+  let value = 0;
+
+  for (const victim of affectedUnits(encounter, ability, target)) {
+    const ally = victim.team === actor.team;
+    const outlook = forecast(actor, ability, victim, isGuarding(victim));
+    // O que é bom pro alvo: bom se ele é do nosso lado, ruim se não é.
+    let favor = 0;
+
+    for (const effect of ability.effects) {
+      switch (effect.kind) {
+        case "damage":
+          break; // já está em `outlook`, somado abaixo
+        case "heal": {
+          const missing = victim.maxHp - victim.currentHp;
+          const amount = Math.min(missing, attributeOf(actor, effect.attribute) + meanRoll(effect.dice));
+          // Curar quem está por um fio vale o dobro de curar um arranhão.
+          favor += outlook.lands * amount * (1 + missing / victim.maxHp);
+          break;
+        }
+        case "status":
+          favor += outlook.lands * statusFavor(encounter, victim, effect.statusId, effect.turns, profile);
+          break;
+        case "push":
+          favor -= outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
+          break;
+      }
+    }
+
+    const harm = Math.min(outlook.damage, victim.currentHp);
+    if (ally) {
+      value += profile.support * favor - FRIENDLY_FIRE * (harm + KILL_VALUE * outlook.kill);
+    } else {
+      value += profile.aggression * (harm - favor) + profile.finisher * KILL_VALUE * outlook.kill;
+    }
+  }
+  return value;
+}
+
+/**
+ * O que sobra na soma de dois golpes no mesmo alvo: não dá pra tirar mais
+ * vida do que ele tem, nem derrubá-lo duas vezes.
+ */
+function overkill(encounter: Encounter, actor: Unit, profile: AiProfile, first: AiChoice, second: AiChoice): number {
+  const alsoHit = affectedUnits(encounter, second.ability, second.target);
+  let excess = 0;
+
+  for (const victim of affectedUnits(encounter, first.ability, first.target)) {
+    if (victim.team === actor.team || !alsoHit.includes(victim)) continue;
+
+    const guarded = isGuarding(victim);
+    const a = forecast(actor, first.ability, victim, guarded);
+    const b = forecast(actor, second.ability, victim, guarded);
+    const harm = Math.min(a.damage, victim.currentHp) + Math.min(b.damage, victim.currentHp);
+    excess += profile.aggression * Math.max(0, harm - victim.currentHp);
+    excess += profile.finisher * KILL_VALUE * a.kill * b.kill;
+  }
+  return excess;
+}
+
+/** Quanto uma condição ajuda quem a recebe (negativo = atrapalha). */
+function statusFavor(
+  encounter: Encounter,
+  victim: Unit,
+  statusId: StatusId,
+  turns: number,
+  profile: AiProfile,
+): number {
+  // Reaplicar só renova a duração: quase nunca vale o gesto.
+  if (victim.statuses.some((status) => status.id === statusId)) return 0;
+
+  const status: StatusTemplate = STATUSES[statusId];
+
+  let favor = 0;
+  if (status.guard) {
+    // A guarda vale o dano que ela deve segurar — nada, se ninguém alcança.
+    const spared = threatAt(encounter, victim, victim.pos, false) - threatAt(encounter, victim, victim.pos, true);
+    favor += profile.caution * THREAT_DISCOUNT * spared;
+  }
+  if (status.guaranteedCrit) favor += GUARANTEED_CRIT_VALUE;
+  for (const points of Object.values(status.attributeBonus ?? {})) favor += ATTRIBUTE_POINT_VALUE * points * turns;
+  return favor;
+}
+
+// --- Médias: o que um golpe deve fazer ---------------------------------------
+
+interface Forecast {
+  /** Dano médio, já contando a chance de errar. */
+  damage: number;
+  /** Chance de o golpe derrubar o alvo. */
+  kill: number;
+  /** Chance de o golpe pegar (1 pra quem não rola ataque). */
+  lands: number;
+}
+
+function isGuarding(unit: Unit): boolean {
+  return unit.statuses.some((status) => status.guard);
+}
+
+function meanRoll(dice: { count: number; sides: number }): number {
+  return (dice.count * (dice.sides + 1)) / 2;
+}
+
+function attributeOf(actor: Unit, ref: AttributeRef | undefined): number {
+  return ref === undefined ? 0 : effectiveAttribute(actor, ref === "primary" ? primaryAttribute(actor) : ref);
+}
+
+/**
+ * O que `ability` de `actor` deve fazer a `target`, em média. Espelha
+ * rollAttack e o efeito "damage" de ./engine.ts — se a regra de lá mudar,
+ * esta conta muda junto.
+ */
+function forecast(actor: Unit, ability: Ability, target: Unit, guarded: boolean): Forecast {
+  let hit = 1;
+  let crit = 0;
+  if (ability.attack) {
+    if (actor.statuses.some((status) => status.guaranteedCrit)) {
+      hit = 0;
+      crit = 1;
+    } else {
+      const attack = effectiveAttribute(actor, primaryAttribute(actor)) + ability.attack.toHit;
+      const needed = 10 + effectiveAttribute(target, "or") - attack;
+      // Dos 20 lados: o 20 é crítico, o 1 erra sempre, e de 2 a 19 acerta quem alcança a defesa.
+      hit = Math.min(18, Math.max(0, 20 - Math.max(2, needed))) / 20;
+      crit = 1 / 20;
+    }
+  }
+
+  const targetOr = effectiveAttribute(target, "or");
+  const damageOn = (critical: boolean) => {
+    let total = 0;
+    for (const effect of ability.effects) {
+      if (effect.kind !== "damage") continue;
+      let amount = (attributeOf(actor, effect.attribute) + meanRoll(effect.dice)) * (effect.multiplier ?? 1);
+      if (effect.bonus) amount += Math.floor(effectiveAttribute(actor, effect.bonus.attribute) / effect.bonus.divisor);
+      if (critical) amount *= 2;
+      amount = Math.max(1, amount - Math.floor(targetOr / 2));
+      if (guarded) amount -= Math.min(amount, targetOr + 3.5);
+      total += amount;
+    }
+    return total;
+  };
+
+  const normal = damageOn(false);
+  const critical = damageOn(true);
+  return {
+    damage: hit * normal + crit * critical,
+    kill: (normal >= target.currentHp ? hit : 0) + (critical >= target.currentHp ? crit : 0),
+    lands: hit + crit,
+  };
+}
+
+// --- Quanto custa uma posição -----------------------------------------------
+
+/**
+ * O dano médio a que `victim` fica exposto em `pos`: o melhor golpe de cada
+ * inimigo que já o alcança DE ONDE ESTÁ. Quem ainda precisa andar não conta
+ * — é o que deixa sair da linha de tiro valer alguma coisa.
+ */
+function threatAt(encounter: Encounter, victim: Unit, pos: Pos, guarded: boolean): number {
+  let total = 0;
+  for (const foe of encounter.units) {
+    if (foe.team === victim.team || !isAlive(foe)) continue;
+
+    let worst = 0;
+    for (const ability of foe.abilities) {
+      if (!isOffensive(ability)) continue;
+      if (distance(foe.pos, pos) > ability.range + (ability.radius ?? 0)) continue;
+      if (!hasLineOfSight(encounter.grid, foe.pos, pos)) continue;
+      worst = Math.max(worst, forecast(foe, ability, victim, guarded).damage);
+    }
+    total += Math.min(worst, victim.currentHp);
+  }
+  return total;
+}
+
+/** O dano médio dos ataques de oportunidade que `mover` leva indo de `from` a `to` (ver move em ./engine.ts). */
+function opportunityDamage(encounter: Encounter, mover: Unit, from: Pos, to: Pos): number {
+  let total = 0;
+  for (const foe of encounter.units) {
+    if (foe.team === mover.team || !isAlive(foe) || !foe.turn.reaction) continue;
+
+    const ability = foe.abilities.find((candidate) => candidate.opportunity);
+    if (!ability) continue;
+    if (distance(foe.pos, from) <= ability.range && distance(foe.pos, to) > ability.range) {
+      total += forecast(foe, ability, mover, isGuarding(mover)).damage;
+    }
+  }
+  return total;
+}
+
+/**
+ * Quantos pontos de movimento separam cada quadrado do mais próximo de
+ * `sources`, andando pelo terreno (Infinity onde não se chega). Ignora quem
+ * está no caminho: serve pra saber pra que lado ir, não pra contar passos.
+ */
+function walkingDistances(grid: Grid, sources: Pos[]): number[] {
+  const distances = new Array<number>(grid.tiles.length).fill(Infinity);
+  const queue: number[] = [];
+  for (const source of sources) {
+    distances[tileIndex(grid, source)] = 0;
+    queue.push(tileIndex(grid, source));
+  }
+
+  for (let head = 0; head < queue.length; head++) {
+    const current = queue[head];
+    for (const next of stepNeighbors(grid, posOfIndex(grid, current))) {
+      const index = tileIndex(grid, next);
+      const cost = distances[current] + grid.tiles[index].moveCost;
+      if (cost >= distances[index]) continue;
+      distances[index] = cost;
+      queue.push(index);
+    }
+  }
+  return distances;
+}
+
+// --- Linha de base ----------------------------------------------------------
+
+/**
+ * A IA mais burra que ainda luta: bate em quem alcança, senão anda em linha
+ * reta pro inimigo mais próximo, senão passa a vez. Foi a IA provisória do
+ * jogo; fica como linha de base — pros testes do motor, que só precisam de
+ * uma luta que ande, e pra medir quanto a IA de verdade joga melhor.
  */
 export function basicCommand(encounter: Encounter): Command {
   const unit = activeUnit(encounter);

@@ -75,6 +75,23 @@ export interface TurnResources {
 }
 
 /**
+ * Como um combatente comandado pela IA pesa as próprias jogadas (ver
+ * ./ai.ts). Cada peso multiplica uma parcela da nota de uma jogada: 1 é o
+ * normal, 0 é "não liga pra isso". É o que faz dois inimigos com o mesmo kit
+ * lutarem de jeitos diferentes.
+ */
+export interface AiProfile {
+  /** Quanto vale ferir um inimigo. */
+  aggression: number;
+  /** Quanto vale a chance de DERRUBAR alguém neste golpe — é o que faz escolher o alvo ferido. */
+  finisher: number;
+  /** Quanto vale curar e fortalecer aliados (ele mesmo inclusive). */
+  support: number;
+  /** Quanto pesa o dano que pode levar: pôr-se em guarda, sair da linha de tiro, não dar as costas a quem pune. */
+  caution: number;
+}
+
+/**
  * Um combatente dentro de uma luta. É uma CÓPIA do que importa da ficha
  * (ver unitFromCharacter em ./units.ts): a luta nunca mexe no personagem
  * salvo, e o estado inteiro continua sendo dado puro, clonável.
@@ -94,6 +111,8 @@ export interface Unit {
   abilities: Ability[];
   statuses: ActiveStatus[];
   inventory?: Inventory<ConsumableItem>;
+  /** Pesos da IA, quando fogem do padrão. Ignorado em quem o jogador comanda. */
+  ai?: Partial<AiProfile>;
   turn: TurnResources;
 }
 

@@ -1,3 +1,4 @@
+import type { AiProfile } from "../tactics/types";
 import type { Character } from "./character";
 import type { Principle } from "./principle";
 
@@ -24,6 +25,8 @@ export interface BestiaryEntry {
   summary: string;
   /** Duas ou três frases: de onde veio e como se comporta. */
   lore: string;
+  /** Como ela luta: os pesos da IA que fogem do padrão (ver AiProfile). */
+  ai?: Partial<AiProfile>;
   /** O que pode deixar cair ao ser derrotada. */
   drops: LootDrop[];
 }
