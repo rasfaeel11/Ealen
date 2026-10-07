@@ -1,34 +1,36 @@
 /**
- * Matriz de taxa de vitória, rodada pelo motor REAL do jogo (não pelo
- * simulador em Python do projeto irmão): cada Ordem, no nível 1, contra cada
- * criatura do bestiário, com um jogador ingênuo que só ataca.
+ * Matriz de taxa de vitória, rodada pelo motor REAL do jogo: cada Ordem, no
+ * nível 1, sozinha contra cada criatura do bestiário, numa arena aberta.
  *
  *     npm run balance:matrix --workspace=server
  *
- * Existe por causa da integração com o `ealen-IA` (ver INTEGRACAO_COM_O_JOGO.md):
- * o auto-tuner de lá garante 50/50 no modelo DELE, que não é este. A única
- * forma honesta de saber o que os números importados fizeram com o jogo é
- * medir aqui dentro. Use isto depois de cada reexportação do artefato, ou
- * depois de mexer em BASELINE_BLEND / no bestiário.
+ * Os dois lados são jogados pela IA provisória (basicCommand): bate em quem
+ * alcança, senão anda até alcançar. Ninguém cura, se defende ou usa item,
+ * então os números não medem dificuldade — servem pra comparar ANTES e
+ * DEPOIS de mexer em atributos, habilidades ou no bestiário.
  *
- * O jogador simulado não cura nem usa itens, então Ordens com cura
- * (Luminar, Entropista, Cantor) aparecem piores do que são nas mãos de
- * alguém. A matriz serve pra comparar ANTES/DEPOIS de uma mudança, não como
- * medida absoluta de dificuldade.
+ * As lutas usam seeds fixas (1 a N): rodar duas vezes sem mudar nada dá a
+ * mesma tabela, e qualquer diferença é efeito da mudança, não do dado.
  */
 import {
   BESTIARY,
   CLASS_INFO,
+  applyCommand,
+  basicCommand,
   createStartingAttributes,
-  enemyGuardSurvives,
-  resolveCombatTurn,
+  gridFromAscii,
+  startEncounter,
   startingMaxHp,
+  unitFromCharacter,
   type Character,
   type CharacterClass,
-  type CombatAction,
 } from "@ealen/shared";
 
 const N = 300;
+/** Uma luta que passe disto é contada como derrota (dois lados que não se alcançam). */
+const MAX_COMMANDS = 2000;
+
+const ARENA = gridFromAscii(["............", "............", "P..........E", "............", "............"]);
 
 function makePlayer(characterClass: CharacterClass): Character {
   const attributes = createStartingAttributes("althirim", characterClass);
@@ -47,39 +49,34 @@ function makePlayer(characterClass: CharacterClass): Character {
   };
 }
 
-/** Jogador ingênuo: ataca sempre, defende quando está abaixo de 25% de HP. */
-function playerAction(player: Character): CombatAction {
-  return player.currentHp / player.maxHp < 0.25 ? "defend" : "attack";
-}
+function fight(characterClass: CharacterClass, creatureId: string, seed: number): boolean {
+  const { encounter } = startEncounter({
+    grid: ARENA.grid,
+    units: [
+      unitFromCharacter(makePlayer(characterClass), { team: "party", pos: ARENA.markers.P[0] }),
+      unitFromCharacter(BESTIARY[creatureId].template, { team: "enemy", pos: ARENA.markers.E[0] }),
+    ],
+    seed,
+  });
 
-function fight(characterClass: CharacterClass, encounterId: string): boolean {
-  const player = makePlayer(characterClass);
-  const enemy = structuredClone(BESTIARY[encounterId].template);
-  let guardUp = false;
-
-  for (let turn = 0; turn < 60; turn++) {
-    const events = resolveCombatTurn(player, enemy, playerAction(player), { enemyGuardUp: guardUp });
-    guardUp = enemyGuardSurvives(enemy.id, player.id, events);
-    if (enemy.currentHp <= 0) return true;
-    if (player.currentHp <= 0) return false;
+  for (let i = 0; i < MAX_COMMANDS && !encounter.winner; i++) {
+    if (!applyCommand(encounter, basicCommand(encounter)).ok) break;
   }
-  return false;
+  return encounter.winner === "party";
 }
 
-const encounters = Object.keys(BESTIARY);
+const creatures = Object.keys(BESTIARY);
 const classes = Object.keys(CLASS_INFO) as CharacterClass[];
 
-const header = ["Ordem".padEnd(28), ...encounters.map((e) => BESTIARY[e].template.name.slice(0, 14).padEnd(15))].join("");
+const header = ["Ordem".padEnd(28), ...creatures.map((id) => BESTIARY[id].template.name.slice(0, 14).padEnd(15))].join("");
 console.log(header);
 for (const characterClass of classes) {
-  const cells = encounters.map((encounterId) => {
+  const cells = creatures.map((creatureId) => {
     let wins = 0;
-    for (let i = 0; i < N; i++) if (fight(characterClass, encounterId)) wins++;
+    for (let seed = 1; seed <= N; seed++) if (fight(characterClass, creatureId, seed)) wins++;
     return `${Math.round((wins / N) * 100)}%`.padEnd(15);
   });
   console.log([CLASS_INFO[characterClass].name.padEnd(28), ...cells].join(""));
 }
-console.log(
-  `\n(nivel 1, povo althirim, ${N} combates por celula, jogador ingenuo: ataca sempre, defende abaixo de 25% de HP)`,
-);
-console.log("niveis das criaturas:", encounters.map((e) => `${BESTIARY[e].template.name}=${BESTIARY[e].template.level}`).join(", "));
+console.log(`\n(nivel 1, povo althirim, ${N} combates por celula, os dois lados jogados pela IA provisoria)`);
+console.log("niveis das criaturas:", creatures.map((id) => `${BESTIARY[id].template.name}=${BESTIARY[id].template.level}`).join(", "));

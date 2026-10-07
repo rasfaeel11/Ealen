@@ -1,7 +1,7 @@
 import type { Attributes } from "./attributes";
 import type { CharacterClass } from "./characterClass";
 
-export interface Ability {
+export interface UnlockableAbility {
   id: string;
   name: string;
   characterClass: CharacterClass;

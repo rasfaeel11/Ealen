@@ -1,4 +1,4 @@
-import type { Ability, Character, MapNode } from "../types";
+import type { Character, MapNode, UnlockableAbility } from "../types";
 
 /**
  * Conteúdo de Talys: o mapa da jornada, as habilidades das Ordens e alguns
@@ -146,7 +146,7 @@ export const MOCK_CHARACTERS: Character[] = [
  * shared/combatArts.ts), que toda Ordem tem desde o nível 1, estas são
  * técnicas específicas conquistadas ao longo da progressão.
  */
-export const MOCK_ABILITIES: Ability[] = [
+export const MOCK_ABILITIES: UnlockableAbility[] = [
   {
     id: "ability-escudo-de-luz",
     name: "Muralha de Prumo",

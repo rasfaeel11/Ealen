@@ -1,8 +1,8 @@
-import type { Ability } from "./ability";
+import type { UnlockableAbility } from "./ability";
 
 /** Resultado da progressão de nível aplicada ao final de um combate vitorioso. */
 export interface LevelUpResult {
   leveledUp: boolean;
   newLevel?: number;
-  newAbility?: Ability;
+  newAbility?: UnlockableAbility;
 }

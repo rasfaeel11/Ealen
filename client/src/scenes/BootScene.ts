@@ -1,7 +1,6 @@
 import * as Phaser from "phaser";
 import { SCENES } from "../game/config";
-import { preloadSpriteSheets, registerAllSprites } from "../game/sprites";
-import { preloadWalkSheets, registerWalkSprites } from "../game/walkSprites";
+import { preloadMapSheets, registerMapSprites } from "../game/mapSprites";
 import { preloadWorld, prepareWorldTextures } from "../game/worldAssets";
 
 /** Carrega o que o jogo inteiro usa (folhas de sprite, mapas e tilesets) e passa a vez pro título. */
@@ -11,14 +10,12 @@ export default class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    preloadSpriteSheets(this);
-    preloadWalkSheets(this);
+    preloadMapSheets(this);
     preloadWorld(this);
   }
 
   create(): void {
-    registerAllSprites(this);
-    registerWalkSprites(this);
+    registerMapSprites(this);
     prepareWorldTextures(this);
     this.scene.start(SCENES.title);
   }

@@ -40,8 +40,6 @@ export const SCENES = {
   prologue: "Prologue",
   classSelect: "ClassSelect",
   world: "World",
-  arena: "Arena",
-  battle: "Battle",
 } as const;
 
 /** Chave do registry do Phaser onde vive o personagem da sessão atual. */

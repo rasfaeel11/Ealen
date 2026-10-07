@@ -1,7 +1,7 @@
 import type { Attributes } from "./attributes";
 import type { Race } from "./race";
 import type { CharacterClass } from "./characterClass";
-import type { CombatAction } from "./combatEvent";
+import type { CombatStance } from "../combatArts";
 import type { ConsumableItem, Inventory } from "./inventory";
 
 export interface Character {
@@ -24,5 +24,5 @@ export interface Character {
    * o shape de Character mas não deveriam narrar "usa Fome do Vazio" só
    * porque foram modeladas como sombrílicas.
    */
-  arts?: Partial<Record<CombatAction, string>>;
+  arts?: Partial<Record<CombatStance, string>>;
 }

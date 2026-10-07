@@ -1,8 +1,25 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
-import { AREAS, STARTING_AREA, STARTING_SPAWN, exitAt, isBlocked, parseTiledMap, tileOfPixel, walk, type AreaMap } from "../index";
+import { findBestiaryEntry } from "../../mock/bestiary";
+import { applyCommand, basicCommand } from "../../tactics";
+import { distance, stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
+import type { Character } from "../../types/character";
+import {
+  AGGRO_RANGE,
+  AREAS,
+  STARTING_AREA,
+  STARTING_SPAWN,
+  aggroedGroup,
+  exitAt,
+  grantEncounterRewards,
+  isBlocked,
+  parseTiledMap,
+  startAreaEncounter,
+  tileOfPixel,
+  walk,
+  type AreaMap,
+} from "../index";
 
 /**
  * Estes testes leem os mapas DE VERDADE (client/public/maps). São a rede de
@@ -63,6 +80,74 @@ for (const [areaId, map] of Object.entries(maps)) {
       assert.ok(reachable.has(tileIndex(map.grid, tileOfPixel(map, middle))), `saída pra "${exit.area}" sem acesso`);
     }
   });
+
+  test(`${areaId}: todo inimigo é uma criatura do bestiário, em chão livre e ao alcance de quem anda`, () => {
+    const reachable = flood(map, tileOfPixel(map, Object.values(map.spawns)[0]));
+    for (const enemy of map.enemies) {
+      assert.ok(findBestiaryEntry(enemy.creature), `criatura "${enemy.creature}" não existe`);
+      assert.ok(reachable.has(tileIndex(map.grid, tileOfPixel(map, enemy))), `${enemy.id} está fora de alcance`);
+    }
+  });
+
+  test(`${areaId}: ninguém chega na área já dentro de uma luta`, () => {
+    for (const [name, spawn] of Object.entries(map.spawns)) {
+      for (const enemy of map.enemies) {
+        const gap = distance(tileOfPixel(map, spawn), tileOfPixel(map, enemy));
+        assert.ok(gap > AGGRO_RANGE, `"${name}" nasce a ${gap} quadrados de ${enemy.id}`);
+      }
+    }
+  });
+}
+
+{
+  const hero: Character = {
+    id: "hero",
+    name: "Herói",
+    race: "althirim",
+    characterClass: "guardiao",
+    level: 1,
+    xp: 0,
+    attributes: { dain: 8, eir: 3, nath: 7, il: 4, or: 6, len: 5, ul: 5 },
+    currentHp: 48,
+    maxHp: 48,
+    currentNodeId: "",
+  };
+
+  test("chegar perto de um inimigo puxa o grupo dele inteiro pra luta, na grade da área", () => {
+    const map = maps.estrada;
+    const [wolf] = map.enemies;
+    const wolfTile = tileOfPixel(map, wolf);
+    const playerTile = { x: wolfTile.x - 3, y: wolfTile.y };
+
+    assert.equal(aggroedGroup(map, map.enemies, { x: 3, y: 11 }), undefined);
+    assert.equal(aggroedGroup(map, map.enemies, playerTile), "lobos");
+
+    const group = map.enemies.filter((enemy) => enemy.group === "lobos");
+    const { encounter } = startAreaEncounter(map, structuredClone(hero), playerTile, group, 5);
+    assert.equal(encounter.grid, map.grid);
+    assert.deepEqual(encounter.units.map((unit) => unit.team).sort(), ["enemy", "enemy", "party"]);
+
+    // A luta anda até o fim na grade de verdade, com árvores, rio e ponte.
+    for (let i = 0; i < 3000 && !encounter.winner; i++) {
+      assert.equal(applyCommand(encounter, basicCommand(encounter)).ok, true);
+    }
+    assert.ok(encounter.winner);
+  });
+
+  test("vencer rende o XP de cada criatura, e o loot entra na mochila", () => {
+    const character = structuredClone(hero);
+    const rewards = grantEncounterRewards(
+      character,
+      ["encounter-lobo-de-bruma", "encounter-lobo-de-bruma", "encounter-servo-enferrujado"],
+      { rngState: 1 },
+    );
+
+    assert.equal(rewards.xpGained, 30 + 30 + 40);
+    assert.deepEqual(rewards.levelUp, { leveledUp: true, newLevel: 2, newAbility: rewards.levelUp.newAbility });
+    assert.equal(character.level, 2);
+    const carried = (character.inventory?.slots ?? []).reduce((sum, slot) => sum + slot.quantity, 0);
+    assert.equal(carried, rewards.loot.length);
+  });
 }
 
 test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
@@ -79,6 +164,7 @@ test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
     },
     spawns: {},
     exits: [],
+    enemies: [],
   };
   const body = { halfWidth: 4, height: 4 };
 

@@ -7,3 +7,4 @@ export * from "./units";
 export * from "./movement";
 export * from "./targeting";
 export * from "./engine";
+export * from "./ai";

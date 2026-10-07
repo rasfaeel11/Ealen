@@ -1,14 +1,9 @@
 import type { Attributes } from "../../types/attributes";
 import type { Character } from "../../types/character";
 import {
-  abilityTargets,
-  activeUnit,
   applyCommand,
-  distance,
+  basicCommand,
   gridFromAscii,
-  isAlive,
-  reachableTiles,
-  samePos,
   startEncounter,
   unitFromCharacter,
   type Command,
@@ -80,42 +75,11 @@ export function eventsOf<T extends TacticalEvent["type"]>(
   return events.filter((event): event is Extract<TacticalEvent, { type: T }> => event.type === type);
 }
 
-/**
- * Um jogador automático bobo, só pra levar lutas até o fim nos testes: bate
- * em quem alcança, senão anda na direção do inimigo mais próximo, senão
- * passa a vez. Não é a IA do jogo.
- */
-export function botCommand(encounter: Encounter): Command {
-  const unit = activeUnit(encounter)!;
-  const enemies = encounter.units.filter((other) => other.team !== unit.team && isAlive(other));
-
-  for (const ability of unit.abilities) {
-    if (ability.targets === "self" || ability.targets === "ally") continue;
-    if (!(ability.cost === "action" ? unit.turn.action : unit.turn.bonus)) continue;
-
-    const target = abilityTargets(encounter, unit, ability).find((pos) =>
-      enemies.some((enemy) => samePos(enemy.pos, pos)),
-    );
-    if (target) return { type: "ability", unitId: unit.id, abilityId: ability.id, target };
-  }
-
-  if (unit.turn.movement === unit.speed) {
-    const gap = (pos: Pos) => Math.min(...enemies.map((enemy) => distance(enemy.pos, pos)));
-    let best: Pos | undefined;
-    for (const tile of reachableTiles(encounter, unit)) {
-      if (gap(tile.pos) < gap(best ?? unit.pos)) best = tile.pos;
-    }
-    if (best) return { type: "move", unitId: unit.id, to: best };
-  }
-
-  return { type: "endTurn", unitId: unit.id };
-}
-
-/** Joga a luta com o bot até acabar (ou até `maxCommands`). Devolve todos os eventos. */
+/** Joga a luta com a IA provisória dos dois lados até acabar (ou até `maxCommands`). Devolve todos os eventos. */
 export function playOut(encounter: Encounter, maxCommands = 3000): TacticalEvent[] {
   const log: TacticalEvent[] = [];
   for (let i = 0; i < maxCommands && !encounter.winner; i++) {
-    log.push(...run(encounter, botCommand(encounter)));
+    log.push(...run(encounter, basicCommand(encounter)));
   }
   return log;
 }

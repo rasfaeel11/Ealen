@@ -5,6 +5,6 @@ export * from "./mock/bestiary";
 export * from "./characterCreation";
 export * from "./combatArts";
 export * from "./inventoryEffects";
-export * from "./iaTuning";
-export * from "./combat";
+export * from "./leveling";
+export * from "./tactics";
 export * from "./world";

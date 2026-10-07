@@ -3,7 +3,7 @@ import type { ConsumableItem, Inventory, InventorySlot } from "./types/inventory
 
 /**
  * Helpers puros de inventário, compartilhados entre o motor de combate
- * (shared/combat), o client e a rota de uso de item do servidor. Nenhuma
+ * (shared/tactics), o client e a rota de uso de item do servidor. Nenhuma
  * função aqui faz I/O — só muta o `Character` recebido e devolve o que
  * aconteceu.
  */
@@ -69,7 +69,7 @@ export interface ImmediateHealResult {
 /**
  * Aplica um efeito de cura imediata (heal_hp ou cure_status) — os únicos
  * efeitos que fazem sentido fora de combate. buff_stat e focus_charge só
- * existem dentro de uma luta (ver shared/combat/engine.ts).
+ * existem dentro de uma luta (ver shared/tactics/engine.ts).
  */
 export function applyImmediateHeal(
   character: Pick<Character, "currentHp" | "maxHp">,

@@ -1,20 +1,18 @@
-import type { Character } from "./types/character";
 import type { CharacterClass } from "./types/characterClass";
-import type { CombatAction } from "./types/combatEvent";
 
 /**
  * As Artes de combate (ver LORE.md §7).
  *
- * Mecanicamente cada Ordem tem as mesmas cinco escolhas de postura; o que
- * muda é o que elas SÃO. Um Guardião dobra a densidade local, um Cantor
- * ajusta uma frequência, um Rachador procura a falha do padrão — chamar
- * tudo isso de "ataque pesado" joga fora justamente o que diferencia as
- * classes. Por isso o nome exibido vem daqui, e só o efeito numérico vive
- * no motor (shared/combat/engine.ts).
+ * Toda Ordem tem as mesmas cinco posturas; o que muda é o que elas SÃO. Um
+ * Guardião dobra a densidade local, um Cantor ajusta uma frequência, um
+ * Rachador procura a falha do padrão — chamar tudo isso de "ataque pesado"
+ * joga fora justamente o que diferencia as classes. Aqui ficam só o nome e
+ * o que a Arte é no mundo; o que cada uma FAZ em combate (alcance, custo,
+ * efeitos) é montado em shared/tactics/abilities.ts.
  */
 
-/** Postura de combate: toda ação menos "usar item", que não é uma Arte. */
-export type CombatStance = Exclude<CombatAction, "use_item">;
+/** As cinco posturas que toda Ordem tem (menos as que o Princípio dela nega). */
+export type CombatStance = "quick_attack" | "attack" | "heavy_attack" | "defend" | "heal";
 
 export interface CombatArt {
   /** Nome exibido no botão e na narração ("Fulano usa Peso do Mundo!"). */
@@ -22,19 +20,6 @@ export interface CombatArt {
   /** O que a Arte é, no mundo — não o que ela faz em números. */
   flavor: string;
 }
-
-/**
- * Efeito numérico de cada postura, igual pra todas as Ordens. Fica separado
- * do `flavor` porque é a parte que o jogador precisa ler pra decidir, e a
- * única que muda se o balanceamento mudar.
- */
-export const STANCE_MECHANICS: Record<CombatStance, string> = {
-  quick_attack: "+3 de acerto, 60% do dano.",
-  attack: "Equilibrado, sem modificadores.",
-  heavy_attack: "-4 de acerto, 180% do dano + Dain.",
-  defend: "Bloqueia dano por Or (Densidade) + 1d6.",
-  heal: "Restaura HP com base em Eir (Ressonância).",
-};
 
 /** Ordem de exibição das posturas, da mais segura à mais arriscada. */
 export const STANCE_ORDER: CombatStance[] = ["quick_attack", "attack", "heavy_attack", "defend", "heal"];
@@ -175,25 +160,3 @@ export const CLASS_COMBAT_ARTS: Record<CharacterClass, Record<CombatStance, Comb
   },
 };
 
-/** Conjunto de Artes da Ordem de um personagem. */
-export function artsFor(characterClass: CharacterClass): Record<CombatStance, CombatArt | null> {
-  return CLASS_COMBAT_ARTS[characterClass];
-}
-
-/** true se a Ordem tem uma Arte pra essa postura (ex: Guardião não tem cura). */
-export function hasArt(characterClass: CharacterClass, stance: CombatStance): boolean {
-  return CLASS_COMBAT_ARTS[characterClass][stance] !== null;
-}
-
-/**
- * Nome a exibir pra uma ação de `unit`. Criaturas do bestiário trazem seus
- * próprios nomes em `unit.arts` (um Lobo-de-Bruma não usa "Fome do Vazio",
- * ele dá um Bote Silencioso); sem isso, cai nas Artes da Ordem.
- */
-export function artNameFor(unit: Pick<Character, "characterClass" | "arts">, action: CombatAction): string {
-  const own = unit.arts?.[action];
-  if (own) return own;
-
-  if (action === "use_item") return "Item";
-  return CLASS_COMBAT_ARTS[unit.characterClass][action]?.name ?? "Investida";
-}

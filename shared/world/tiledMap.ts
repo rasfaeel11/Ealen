@@ -22,6 +22,9 @@ import type { Grid, Pos, Tile } from "../tactics/grid";
  *     `spawn`  ponto; o Nome é o id do ponto de chegada
  *     `exit`   retângulo; propriedades `area` (id da área de destino) e
  *              `spawn` (ponto de chegada lá)
+ *     `enemy`  ponto; propriedades `creature` (id no bestiário) e `group`
+ *              (inimigos do mesmo grupo entram juntos na luta; sem grupo,
+ *              o inimigo luta sozinho)
  *
  * Limites do formato: mapa ortogonal, finito, camadas sem compressão
  * (Tile Layer Format = CSV) e tileset embutido no mapa — o Phaser não lê
@@ -44,6 +47,16 @@ export interface AreaExit {
   spawn: string;
 }
 
+export interface AreaEnemy {
+  /** Único dentro da área — é também o id da unidade dele em combate. */
+  id: string;
+  /** Id da criatura no bestiário. */
+  creature: string;
+  group: string;
+  x: number;
+  y: number;
+}
+
 export interface AreaMap {
   /** Lado de um quadrado, em pixels do mapa. */
   tileSize: number;
@@ -51,6 +64,7 @@ export interface AreaMap {
   grid: Grid;
   spawns: Record<string, PixelPos>;
   exits: AreaExit[];
+  enemies: AreaEnemy[];
 }
 
 interface TiledProperty {
@@ -59,6 +73,7 @@ interface TiledProperty {
 }
 
 interface TiledObject {
+  id: number;
   name?: string;
   type?: string;
   /** Tiled 1.9 chamava o campo "type" de "class". */
@@ -158,6 +173,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
 
   const spawns: Record<string, PixelPos> = {};
   const exits: AreaExit[] = [];
+  const enemies: AreaEnemy[] = [];
   for (const layer of layers) {
     for (const object of layer.objects ?? []) {
       const kind = object.type || object.class;
@@ -169,6 +185,13 @@ export function parseTiledMap(raw: unknown): AreaMap {
           throw new Error(`Saída "${object.name ?? ""}" precisa das propriedades "area" e "spawn".`);
         }
         exits.push({ x: object.x, y: object.y, width: object.width ?? 0, height: object.height ?? 0, area, spawn });
+      } else if (kind === "enemy") {
+        const { creature, group } = propertiesOf(object);
+        if (typeof creature !== "string") {
+          throw new Error(`Inimigo "${object.name ?? ""}" precisa da propriedade "creature".`);
+        }
+        const id = `enemy-${object.id}`;
+        enemies.push({ id, creature, group: typeof group === "string" ? group : id, x: object.x, y: object.y });
       }
     }
   }
@@ -178,7 +201,13 @@ export function parseTiledMap(raw: unknown): AreaMap {
     grid: { width: map.width, height: map.height, tiles },
     spawns,
     exits,
+    enemies,
   };
+}
+
+/** Onde ficam os pés de quem está parado num quadrado da grade: no meio, um pouco abaixo do centro. */
+export function pixelOfTile(map: AreaMap, tile: Pos): PixelPos {
+  return { x: (tile.x + 0.5) * map.tileSize, y: (tile.y + 0.75) * map.tileSize };
 }
 
 /** O quadrado da grade em que um ponto do mapa cai. */

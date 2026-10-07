@@ -7,6 +7,7 @@ import type { Character } from "@ealen/shared";
  */
 const SAVE_KEY = "ealen:save";
 const LOCATION_KEY = "ealen:location";
+const DEFEATED_KEY = "ealen:defeated";
 const SAVE_VERSION = 1;
 
 interface SaveFile {
@@ -50,7 +51,21 @@ export function writeLocation(location: SaveLocation): void {
   localStorage.setItem(LOCATION_KEY, JSON.stringify(location));
 }
 
+/** Grupos de inimigos já vencidos, como "área:grupo". Vencido não volta. */
+export function loadDefeated(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(DEFEATED_KEY) ?? "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function markDefeated(key: string): void {
+  localStorage.setItem(DEFEATED_KEY, JSON.stringify([...loadDefeated().add(key)]));
+}
+
 export function clearSave(): void {
   localStorage.removeItem(SAVE_KEY);
   localStorage.removeItem(LOCATION_KEY);
+  localStorage.removeItem(DEFEATED_KEY);
 }
