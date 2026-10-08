@@ -2,6 +2,7 @@ import { Story } from "inkjs";
 import { addItemToInventory, findInventorySlot } from "../inventoryEffects";
 import { applyXpGain } from "../leveling";
 import { findItemTemplate } from "../mock/items";
+import { AREAS } from "../world/areas";
 import type { RngHolder } from "../tactics/rng";
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
@@ -32,7 +33,15 @@ import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck 
  *   check("ul", 13)     rola um teste AGORA, no meio do texto, e diz se passou
  *   passed()            se passou o teste da escolha que acabou de ser feita
  *   give_item("id")     põe um item na mochila
+ *   take_item("id")     tira um da mochila; diz se havia o que tirar
  *   grant_xp(30)
+ *   start_fight("grupo")     quando a conversa acabar, luta com esse grupo
+ *                            de inimigos da área em que se está
+ *   travel("area", "ponto")  quando a conversa acabar, leva o personagem a
+ *                            esse ponto de chegada dessa área
+ *
+ * As duas últimas não interrompem o texto: viram acontecimentos (`fight`,
+ * `travel`) que a cena cumpre depois da última fala — ver `aftermath`.
  *
  * Uma escolha com a etiqueta `# check: len 14` é um teste anunciado: a caixa
  * mostra a chance antes, o dado rola quando ela é escolhida, e o texto
@@ -56,7 +65,35 @@ export type StoryEvent =
   | ({ type: "check" } & CheckResult)
   /** `kept` falso = a mochila estava cheia e o item se perdeu. */
   | { type: "item"; item: ConsumableItem; kept: boolean }
-  | { type: "xp"; amount: number; levelUp: LevelUpResult };
+  | { type: "itemTaken"; item: ConsumableItem }
+  | { type: "xp"; amount: number; levelUp: LevelUpResult }
+  /** A conversa termina em luta com este grupo de inimigos da área atual. */
+  | { type: "fight"; group: string }
+  /** A conversa termina com o personagem levado a outro lugar. */
+  | { type: "travel"; area: string; spawn: string };
+
+/** O que uma conversa deixa pra cena fazer quando a última fala passar. */
+export interface Aftermath {
+  fight?: string;
+  travel?: { area: string; spawn: string };
+}
+
+/**
+ * O que os trechos de uma conversa pedem pra depois dela. Pedido repetido,
+ * vale o último; luta e viagem juntas, a luta vem primeiro e a viagem só
+ * acontece se ela for vencida.
+ */
+export function aftermath(steps: readonly DialogueStep[]): Aftermath {
+  const result: Aftermath = {};
+  for (const step of steps) {
+    for (const beat of step.beats) {
+      if (beat.kind !== "event") continue;
+      if (beat.event.type === "fight") result.fight = beat.event.group;
+      else if (beat.event.type === "travel") result.travel = { area: beat.event.area, spawn: beat.event.spawn };
+    }
+  }
+  return result;
+}
 
 /** Uma coisa por vez na caixa: uma fala (ou narração), ou um acontecimento. */
 export type DialogueBeat = { kind: "line"; speaker?: string; text: string } | { kind: "event"; event: StoryEvent };
@@ -143,14 +180,47 @@ export class StoryRunner {
       if (!item) throw new Error(`A história dá um item que não existe: "${id}"`);
       this.pending.push({ type: "item", item, kept: addItemToInventory(host.character, item) });
     });
+    story.BindExternalFunction("take_item", (id: string) => {
+      const item = findItemTemplate(id);
+      if (!item) throw new Error(`A história pede um item que não existe: "${id}"`);
+      const { inventory } = host.character;
+      const slot = findInventorySlot(host.character, id);
+      if (!inventory || !slot || slot.quantity <= 0) return false;
+
+      // Uma unidade inteira da pilha, não uma carga: o item muda de mão.
+      slot.quantity -= 1;
+      if (slot.quantity <= 0) {
+        inventory.slots = inventory.slots.filter((other) => other !== slot);
+      } else {
+        slot.item.data.usesRemaining = slot.item.data.maxUses;
+      }
+      this.pending.push({ type: "itemTaken", item });
+      return true;
+    });
     story.BindExternalFunction("grant_xp", (amount: number) => {
       this.pending.push({ type: "xp", amount, levelUp: applyXpGain(host.character, amount) });
+    });
+    story.BindExternalFunction("start_fight", (group: string) => {
+      this.pending.push({ type: "fight", group: String(group) });
+    });
+    story.BindExternalFunction("travel", (area: string, spawn: string) => {
+      if (!AREAS[area]) throw new Error(`A história leva a uma área que não existe: "${area}"`);
+      this.pending.push({ type: "travel", area, spawn: String(spawn) });
     });
   }
 
   /** Se a história tem um trecho com este nome. */
   hasKnot(name: string): boolean {
     return this.story.KnotContainerWithName(name) !== null;
+  }
+
+  /**
+   * Se o trecho `knot` já foi lido alguma vez (nesta sessão ou no save). É o
+   * que gasta um gatilho de uma vez só. Só funciona em história compilada
+   * contando todas as visitas — é como client/scripts/compileStory.ts compila.
+   */
+  visited(knot: string): boolean {
+    return this.hasKnot(knot) && (this.story.state.VisitCountAtPathString(knot) ?? 0) > 0;
   }
 
   /** Começa a conversa do trecho `knot`. */

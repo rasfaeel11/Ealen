@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Compiler } from "inkjs/full";
+import { Compiler, CompilerOptions } from "inkjs/full";
 import type { Character } from "../../types/character";
-import { StoryRunner, checkChance, rollCheck, type DialogueBeat, type StoryHost } from "../index";
+import { StoryRunner, aftermath, checkChance, rollCheck, type DialogueBeat, type StoryHost } from "../index";
 
 const EXTERNALS = `
 EXTERNAL attr(name)
@@ -14,11 +14,15 @@ EXTERNAL defeated(group)
 EXTERNAL check(name, difficulty)
 EXTERNAL passed()
 EXTERNAL give_item(id)
+EXTERNAL take_item(id)
 EXTERNAL grant_xp(amount)
+EXTERNAL start_fight(group)
+EXTERNAL travel(area, spawn)
 `;
 
+/** Como o jogo compila (client/scripts/compileStory.ts): contando as visitas de todo trecho. */
 function compile(ink: string): string {
-  return new Compiler(EXTERNALS + ink).Compile().ToJson() as string;
+  return new Compiler(EXTERNALS + ink, new CompilerOptions(null, [], true)).Compile().ToJson() as string;
 }
 
 function makeHost(overrides: Partial<Character["attributes"]> = {}, defeated: string[] = []): StoryHost {
@@ -185,4 +189,88 @@ test("o jogo lê e escreve as flags; trecho que não existe e save estragado nã
   const fresh = new StoryRunner(GUARD, makeHost(), "{isto não é um save}");
   assert.equal(fresh.flag("portao_aberto"), false);
   assert.equal(lines(fresh.start("guarda").beats)[0], "Um homem barra o portão.");
+});
+
+test("a história tira item da mochila, e só segue o ramo de quem tinha o que dar", () => {
+  const json = compile(`
+=== pedagio ===
+{take_item("item-pao-de-cinza"): Guarda: Serve. Passa. | Guarda: De mãos vazias não passa.}
+-> END
+`);
+  const empty = new StoryRunner(json, makeHost()).start("pedagio");
+  assert.deepEqual(empty.beats.map((beat) => (beat.kind === "line" ? beat.text : beat.event.type)), ["De mãos vazias não passa."]);
+
+  const giver = makeHost();
+  const give = compile(`
+=== dar ===
+~ give_item("item-pao-de-cinza")
+~ give_item("item-pao-de-cinza")
+-> END
+`);
+  new StoryRunner(give, giver).start("dar");
+  assert.equal(giver.character.inventory?.slots[0].quantity, 2);
+
+  const paid = new StoryRunner(json, giver).start("pedagio");
+  assert.deepEqual(paid.beats.map((beat) => (beat.kind === "line" ? beat.text : beat.event.type)), ["itemTaken", "Serve. Passa."]);
+  assert.equal(giver.character.inventory?.slots[0].quantity, 1);
+
+  new StoryRunner(json, giver).start("pedagio");
+  assert.deepEqual(giver.character.inventory?.slots, []);
+  assert.throws(() => new StoryRunner(compile(`
+=== x ===
+{take_item("item-que-nao-existe"): a | b}
+-> END
+`), makeHost()).start("x"));
+});
+
+test("luta e viagem pedidas pelo texto não cortam a fala: viram o que a cena faz depois da conversa", () => {
+  const json = compile(`
+=== chefe ===
+Chefe: Ninguém passa.
+~ start_fight("guardas")
++ [Recuar.]
+    ~ travel("clareira", "default")
+    Você recua.
+    -> END
++ [Avançar.]
+    Chefe: Então venha.
+    -> END
+`);
+  const runner = new StoryRunner(json, makeHost());
+  const first = runner.start("chefe");
+  assert.deepEqual(aftermath([first]), { fight: "guardas" });
+  // O pedido não tira a fala nem as escolhas de onde estavam.
+  assert.deepEqual(lines(first.beats), ["Chefe> Ninguém passa."]);
+  assert.equal(first.choices.length, 2);
+
+  const retreat = runner.choose(first.choices[0].index);
+  assert.deepEqual(aftermath([first, retreat]), { fight: "guardas", travel: { area: "clareira", spawn: "default" } });
+  assert.deepEqual(aftermath([]), {});
+
+  assert.throws(() => new StoryRunner(compile(`
+=== x ===
+~ travel("lugar-nenhum", "default")
+-> END
+`), makeHost()).start("x"));
+});
+
+test("a história lembra que trechos já foram lidos, e leva isso no save", () => {
+  const json = compile(`
+=== chegada ===
+Você chega.
+-> END
+=== outra ===
+Outra cena.
+-> END
+`);
+  const runner = new StoryRunner(json, makeHost());
+  assert.equal(runner.visited("chegada"), false);
+  runner.start("chegada");
+  assert.equal(runner.visited("chegada"), true);
+  assert.equal(runner.visited("outra"), false);
+  assert.equal(runner.visited("nao_existe"), false);
+
+  const later = new StoryRunner(json, makeHost(), runner.save());
+  assert.equal(later.visited("chegada"), true);
+  assert.equal(later.visited("outra"), false);
 });

@@ -20,6 +20,13 @@ import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
  * Inimigos ficam de pé no mapa, à vista. Cada um pertence a um GRUPO; ver
  * um deles de perto puxa o grupo inteiro pra luta, que acontece ali mesmo,
  * na grade da própria área.
+ *
+ * Uma luta começa de três jeitos:
+ * - o grupo PERCEBE o personagem (aggroedGroup): luta comum;
+ * - o personagem ataca primeiro, antes de ser percebido (ambushableGroup):
+ *   EMBOSCADA, o grupo entra surpreso e perde o primeiro turno;
+ * - a história manda (start_fight no texto, ver ../story/runner.ts): luta
+ *   comum, e o único jeito de lutar com um grupo `passive`.
  */
 
 /**
@@ -44,16 +51,45 @@ export const AGGRO_RANGE = 5;
 /** O grupo que percebeu o jogador em `playerTile`, se algum. `enemies` são só os que ainda estão de pé. */
 export function aggroedGroup(map: AreaMap, enemies: AreaEnemy[], playerTile: Pos): string | undefined {
   return enemies.find((enemy) => {
+    if (enemy.passive) return false;
     const tile = tileOfPixel(map, enemy);
     return distance(tile, playerTile) <= AGGRO_RANGE && hasLineOfSight(map.grid, tile, playerTile);
   })?.group;
 }
 
 /**
+ * De quão longe dá pra armar uma emboscada. Maior que AGGRO_RANGE: a faixa
+ * entre os dois é de onde se ataca à vista sem ter sido visto. Mais perto
+ * que isso, só fora da linha de visão (atrás de uma parede, de uma árvore).
+ */
+export const AMBUSH_RANGE = 9;
+
+/**
+ * O grupo que o jogador, em `playerTile`, pode pegar de surpresa: o do
+ * inimigo mais próximo dentro de AMBUSH_RANGE. Não precisa enxergá-lo — quem
+ * está ali ainda não percebeu ninguém (se tivesse, aggroedGroup já teria
+ * começado a luta). Grupo `passive` não entra: essa luta é da história.
+ */
+export function ambushableGroup(map: AreaMap, enemies: AreaEnemy[], playerTile: Pos): string | undefined {
+  let nearest: AreaEnemy | undefined;
+  let best = AMBUSH_RANGE;
+  for (const enemy of enemies) {
+    if (enemy.passive) continue;
+    const gap = distance(tileOfPixel(map, enemy), playerTile);
+    if (gap <= best && (gap < best || !nearest)) {
+      nearest = enemy;
+      best = gap;
+    }
+  }
+  return nearest?.group;
+}
+
+/**
  * Abre a luta entre o personagem (em `playerTile`) e um grupo de inimigos
  * da área, com os destrutíveis de pé nela (`props`, de standAreaProps).
  * Inimigo cuja criatura não exista no bestiário é ignorado — o teste dos
- * mapas acusa esse erro antes de ele chegar aqui.
+ * mapas acusa esse erro antes de ele chegar aqui. `surprised` é o lado pego
+ * de surpresa, numa emboscada (ver EncounterSetup).
  */
 export function startAreaEncounter(
   map: AreaMap,
@@ -62,6 +98,7 @@ export function startAreaEncounter(
   enemies: AreaEnemy[],
   seed: number,
   props: Prop[] = [],
+  surprised?: TeamId,
 ): { encounter: Encounter; events: TacticalEvent[] } {
   const units = [unitFromCharacter(character, { team: "party", pos: playerTile })];
   for (const enemy of enemies) {
@@ -71,7 +108,7 @@ export function startAreaEncounter(
       unitFromCharacter(spawnCreature(entry), { team: "enemy", pos: tileOfPixel(map, enemy), id: enemy.id, ai: entry.ai }),
     );
   }
-  return startEncounter({ grid: map.grid, units, props, seed });
+  return startEncounter({ grid: map.grid, units, props, surprised, seed });
 }
 
 /**

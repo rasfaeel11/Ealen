@@ -15,6 +15,8 @@ export interface StatusTemplate {
   guard?: boolean;
   /** O próximo ataque do portador é crítico; a condição se gasta nele. */
   guaranteedCrit?: boolean;
+  /** O portador perde o turno em que ela está ativa: a vez começa, a condição conta e a vez passa. */
+  skipsTurn?: boolean;
 }
 
 /**
@@ -30,6 +32,8 @@ export const STATUSES = {
   guarding: { id: "guarding", name: "Em guarda", guard: true },
   off_balance: { id: "off_balance", name: "Desequilibrado", attributeBonus: { or: -3 } },
   focused: { id: "focused", name: "Foco", guaranteedCrit: true },
+  /** Quem foi pego de surpresa (ver `surprised` em EncounterSetup): perde o primeiro turno. */
+  surprised: { id: "surprised", name: "Surpreso", skipsTurn: true },
 } satisfies Record<string, StatusTemplate>;
 
 export type StatusId = keyof typeof STATUSES;

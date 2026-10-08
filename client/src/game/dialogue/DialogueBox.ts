@@ -18,8 +18,12 @@ const INPUT_GRACE_MS = 200;
 
 const ATTRIBUTE_LABEL = (attribute: string) => attribute[0].toUpperCase() + attribute.slice(1);
 
-/** Um acontecimento da história, em uma linha pra quem joga. */
-function describeEvent(event: StoryEvent): { text: string; color: string } {
+/**
+ * Um acontecimento da história, em uma linha pra quem joga. Null é o que não
+ * se anuncia: a luta e a viagem que o texto pede acontecem sozinhas, depois
+ * da conversa.
+ */
+function describeEvent(event: StoryEvent): { text: string; color: string } | null {
   switch (event.type) {
     case "check": {
       const roll =
@@ -40,7 +44,21 @@ function describeEvent(event: StoryEvent): { text: string; color: string } {
           : `+${event.amount} de XP.`,
         color: TEXT_COLORS.goldBright,
       };
+    case "itemTaken":
+      return { text: `Entregou: ${event.item.name}.`, color: TEXT_COLORS.item };
+    case "fight":
+    case "travel":
+      return null;
   }
+}
+
+function isShown(beat: DialogueBeat): boolean {
+  return beat.kind === "line" || describeEvent(beat.event) !== null;
+}
+
+/** Um trecho sem nada pra pôr na tela: nenhuma fala, nenhum acontecimento anunciado, nenhuma escolha. */
+export function isSilent(step: DialogueStep): boolean {
+  return step.choices.length === 0 && !step.beats.some(isShown);
 }
 
 function choiceLabel(choice: DialogueChoice, position: number): string {
@@ -60,7 +78,9 @@ function choiceLabel(choice: DialogueChoice, position: number): string {
  * escolhem.
  */
 export class DialogueBox {
-  private readonly panel: Phaser.GameObjects.Graphics;
+  private panel: Phaser.GameObjects.Graphics;
+  /** Quanto a caixa cresceu pra cima pra caber a fala mais as escolhas. */
+  private lift = 0;
   private readonly speaker: Phaser.GameObjects.Text;
   private readonly body: Phaser.GameObjects.Text;
   private readonly hint: Phaser.GameObjects.Text;
@@ -103,14 +123,14 @@ export class DialogueBox {
    * conversa acabou) e o jogador passou a última fala.
    */
   async play(step: DialogueStep): Promise<number | null> {
-    for (const beat of step.beats) {
+    for (const beat of step.beats.filter(isShown)) {
       this.showBeat(beat);
       await new Promise<void>((resolve) => (this.onAdvance = resolve));
       this.onAdvance = null;
     }
     if (step.choices.length === 0) return null;
 
-    this.showChoices(step.choices, step.beats.length === 0);
+    this.showChoices(step.choices, !step.beats.some(isShown));
     const index = await new Promise<number>((resolve) => (this.onChoose = resolve));
     this.onChoose = null;
     this.clearChoices();
@@ -135,7 +155,7 @@ export class DialogueBox {
         .setColor(beat.speaker ? TEXT_COLORS.ink : TEXT_COLORS.inkDim);
       return;
     }
-    const { text, color } = describeEvent(beat.event);
+    const { text, color } = describeEvent(beat.event) ?? { text: "", color: TEXT_COLORS.ink };
     this.speaker.setText("");
     this.body.setText(text).setFontStyle("normal").setColor(color);
   }
@@ -150,7 +170,12 @@ export class DialogueBox {
     this.choices = choices;
     this.focused = 0;
 
-    const top = Math.max(TEXT_Y + (alone ? 0 : this.body.height + 14), BOX_Y + BOX_HEIGHT - 20 - choices.length * CHOICE_LINE_HEIGHT);
+    // Fala comprida com muitas escolhas não cabe na caixa: ela cresce pra cima o que faltar.
+    const text = alone ? 0 : this.body.height + 14;
+    const needed = TEXT_Y - BOX_Y + text + choices.length * CHOICE_LINE_HEIGHT + 20;
+    this.setLift(Math.max(0, needed - BOX_HEIGHT));
+
+    const top = Math.max(TEXT_Y - this.lift + text, BOX_Y + BOX_HEIGHT - 20 - choices.length * CHOICE_LINE_HEIGHT);
     this.choiceTexts = choices.map((choice, position) => {
       const text = this.addHud(
         addBodyText(this.scene, BOX_X + PADDING, top + position * CHOICE_LINE_HEIGHT, "", { fontSize: "20px" }),
@@ -167,6 +192,19 @@ export class DialogueBox {
     for (const text of this.choiceTexts) text.destroy();
     this.choiceTexts = [];
     this.choices = [];
+    this.setLift(0);
+  }
+
+  /** Estica a caixa `lift` pixels pra cima, levando junto o nome e a fala. */
+  private setLift(lift: number): void {
+    if (lift === this.lift) return;
+    this.lift = lift;
+    this.panel.destroy();
+    this.panel = this.addHud(addPanel(this.scene, BOX_X, BOX_Y - lift, BOX_WIDTH, BOX_HEIGHT + lift));
+    // O painel novo nasce por cima do texto que já estava lá.
+    this.panel.setDepth(this.speaker.depth - 1);
+    this.speaker.setY(BOX_Y + 18 - lift);
+    this.body.setY(TEXT_Y - lift);
   }
 
   private focus(position: number): void {

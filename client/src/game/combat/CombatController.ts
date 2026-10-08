@@ -55,6 +55,8 @@ const OVERLAY_DEPTH = 0;
 const FX_DEPTH = 1_500_000;
 const STEP_MS = 110;
 const ENEMY_THINK_MS = 380;
+/** Quanto dura na tela a vez de quem a perdeu (surpreso). */
+const SKIPPED_TURN_MS = 420;
 /** Quanto tempo os quadrados que um inimigo vai atingir ficam acesos antes do golpe. */
 const ENEMY_TELEGRAPH_MS = 300;
 /** A pausa de um golpe que pega, e a de um que pega forte (crítico ou fatal). */
@@ -161,7 +163,8 @@ export class CombatController {
 
   /** Reproduz a abertura da luta (iniciativa, primeiro turno) e entrega a vez a quem for. */
   async start(events: TacticalEvent[]): Promise<void> {
-    this.hud.log("Combate!");
+    const ambush = events.some((event) => event.type === "battleStarted" && event.surprised === "enemy");
+    this.hud.log(ambush ? "Emboscada! Eles perdem a primeira vez." : "Combate!");
     await this.play(events);
     await this.proceed();
   }
@@ -490,6 +493,12 @@ export class CombatController {
       }
 
       case "turnEnded":
+        return;
+
+      case "turnSkipped":
+        this.floatOver(event.unit, "Perde a vez", TEXT_COLORS.inkDim, -22, 20);
+        this.hud.log(`${this.unit(event.unit).name} está ${event.name.toLowerCase()} e perde a vez.`);
+        await this.wait(SKIPPED_TURN_MS);
         return;
 
       case "moved": {

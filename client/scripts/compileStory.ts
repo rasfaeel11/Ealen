@@ -24,7 +24,8 @@ export function compileStory(dir: string = STORY_DIR): string {
     new CompilerOptions(
       STORY_ENTRY,
       [],
-      false,
+      // Conta as visitas de todo trecho, não só dos que o texto consulta: é o que gasta os gatilhos de uma vez só.
+      true,
       // Aviso (falta de -> END, por exemplo) também barra: é quase sempre uma conversa que trava.
       (message) => problems.push(message),
       {

@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { addItemToInventory } from "../../inventoryEffects";
 import { findItemTemplate } from "../../mock/items";
-import { activeUnit, applyCommand, findUnit, reachableTiles, unitFromCharacter, type Encounter } from "../index";
+import {
+  activeUnit,
+  applyCommand,
+  findUnit,
+  gridFromAscii,
+  reachableTiles,
+  startEncounter,
+  unitFromCharacter,
+  type Encounter,
+  type Pos,
+} from "../index";
 import { FIRST, eventsOf, makeCharacter, makeUnit, playOut, run, setup } from "./helpers";
 
 const SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
@@ -349,4 +359,76 @@ test("uma cópia da luta continua igual à original, sem gastar o dado dela", ()
 
   assert.equal(encounter.rngState, rngBefore);
   assert.deepEqual(playOut(encounter), future);
+});
+
+// --- Surpresa ---------------------------------------------------------------
+
+test("quem é pego de surpresa perde o primeiro turno, mesmo ganhando a iniciativa, e só ele", () => {
+  const { grid, markers } = gridFromAscii(["A....E"]);
+  const { encounter, events } = startEncounter({
+    grid,
+    units: [
+      makeUnit("E", "enemy", markers.E[0], { attributes: { il: FIRST } }),
+      makeUnit("A", "party", markers.A[0]),
+    ],
+    surprised: "enemy",
+    seed: 1,
+  });
+
+  assert.deepEqual(encounter.order, ["E", "A"]);
+  assert.equal(eventsOf(events, "battleStarted")[0].surprised, "enemy");
+  assert.deepEqual(eventsOf(events, "statusApplied").map((event) => [event.target, event.statusId]), [["E", "surprised"]]);
+  // A vez de E chega, passa sozinha, e quem age é A.
+  assert.deepEqual(eventsOf(events, "turnSkipped"), [{ type: "turnSkipped", unit: "E", name: "Surpreso" }]);
+  assert.equal(activeUnit(encounter)!.id, "A");
+  assert.deepEqual(unit(encounter, "E").statuses, []);
+
+  // Na rodada seguinte E joga normalmente.
+  const next = run(encounter, { type: "endTurn", unitId: "A" });
+  assert.deepEqual(eventsOf(next, "turnSkipped"), []);
+  assert.equal(activeUnit(encounter)!.id, "E");
+  assert.equal(unit(encounter, "E").turn.action, true);
+});
+
+test("o surpreendido não tem reação até a própria vez: quem passa por ele não leva ataque de oportunidade", () => {
+  const rows = ["..A..", "..E..", "....."];
+  const place = (at: (marker: string) => Pos) => [
+    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("E", "enemy", at("E")),
+  ];
+  const away = { type: "move", unitId: "A", to: { x: 0, y: 0 } } as const;
+
+  const plain = setup(rows, place);
+  assert.equal(eventsOf(run(plain.encounter, away), "abilityUsed").filter((event) => event.reaction).length, 1);
+
+  const { grid, markers } = gridFromAscii(rows);
+  const ambush = startEncounter({ grid, units: place((marker) => markers[marker][0]), surprised: "enemy", seed: 1 });
+  assert.deepEqual(eventsOf(run(ambush.encounter, away), "abilityUsed"), []);
+
+  // Passada a vez perdida, a reação volta.
+  run(ambush.encounter, { type: "endTurn", unitId: "A" });
+  assert.equal(unit(ambush.encounter, "E").turn.reaction, true);
+});
+
+test("uma emboscada joga até o fim com a IA, e a mesma seed dá a mesma luta", () => {
+  const fight = (seed: number) => {
+    const { grid, markers } = gridFromAscii(["A.....E", "......F"]);
+    const { encounter, events } = startEncounter({
+      grid,
+      units: [
+        makeUnit("A", "party", markers.A[0]),
+        makeUnit("E", "enemy", markers.E[0]),
+        makeUnit("F", "enemy", markers.F[0]),
+      ],
+      surprised: "enemy",
+      seed,
+    });
+    return [...events, ...playOut(encounter)];
+  };
+  for (const seed of SEEDS.slice(0, 8)) {
+    const log = fight(seed);
+    assert.equal(eventsOf(log, "turnSkipped").length, 2);
+    assert.equal(eventsOf(log, "battleEnded").length, 1);
+    assert.deepEqual(log, fight(seed));
+  }
 });

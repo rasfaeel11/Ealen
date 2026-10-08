@@ -49,10 +49,19 @@ export interface EncounterSetup {
   units: Unit[];
   /** Os destrutíveis da luta, JÁ de pé em `grid` (ver standProp em ./props.ts). */
   props?: Prop[];
+  /**
+   * O lado pego de surpresa, numa emboscada: cada um dele entra Surpreso —
+   * perde o primeiro turno e, até lá, não tem reação (não pune quem passa).
+   */
+  surprised?: TeamId;
   seed: number;
 }
 
-/** Começa uma luta: rola a iniciativa (d20 + Il) uma vez e abre o primeiro turno. */
+/**
+ * Começa uma luta: rola a iniciativa (d20 + Il) uma vez e abre o primeiro
+ * turno. A surpresa não mexe na iniciativa: quem foi surpreendido só perde a
+ * vez quando ela chega.
+ */
 export function startEncounter(setup: EncounterSetup): { encounter: Encounter; events: TacticalEvent[] } {
   const encounter: Encounter = {
     grid: setup.grid,
@@ -75,8 +84,17 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
   encounter.order = rolls.map((roll) => roll.unit.id);
 
   const events: TacticalEvent[] = [
-    { type: "battleStarted", order: rolls.map((roll) => ({ unit: roll.unit.id, initiative: roll.initiative })) },
+    {
+      type: "battleStarted",
+      order: rolls.map((roll) => ({ unit: roll.unit.id, initiative: roll.initiative })),
+      ...(setup.surprised ? { surprised: setup.surprised } : {}),
+    },
   ];
+  for (const unit of encounter.units) {
+    if (unit.team !== setup.surprised || !isAlive(unit)) continue;
+    unit.turn.reaction = false;
+    addStatus(unit, STATUSES.surprised, 1, events);
+  }
   if (!concludeIfDecided(encounter, events)) {
     events.push({ type: "roundStarted", round: 1 });
     advanceTurn(encounter, events);
@@ -121,7 +139,8 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
  * Passa a vez pro próximo que ainda está de pé, abrindo uma rodada nova
  * quando a ordem dá a volta. Quem começa o turno em cima de uma superfície
  * que fere leva o dano dela — e, se cair ali, a vez passa adiante (ou a luta
- * acaba, se era o último do lado dele).
+ * acaba, se era o último do lado dele). Quem começa o turno com uma condição
+ * que o faz perder a vez (`skipsTurn`) recebe o turno e o perde na hora.
  */
 function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
   for (;;) {
@@ -137,12 +156,21 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
       next = activeUnit(encounter);
     } while (!next || !isAlive(next));
 
+    // Lida antes de contar: a condição que dura "até o próximo turno" cai neste, e é ele que se perde.
+    const skip = next.statuses.find((status) => status.skipsTurn);
     tickStatuses(next, events);
     next.turn = { movement: next.speed, action: true, bonus: true, reaction: true };
     events.push({ type: "turnStarted", unit: next.id });
 
     touchSurface(encounter, next, events);
-    if (isAlive(next) || concludeIfDecided(encounter, events)) return;
+    if (!isAlive(next)) {
+      if (concludeIfDecided(encounter, events)) return;
+      continue;
+    }
+    if (!skip) return;
+
+    next.turn = { movement: 0, action: false, bonus: false, reaction: true };
+    events.push({ type: "turnSkipped", unit: next.id, name: skip.name }, { type: "turnEnded", unit: next.id });
   }
 }
 

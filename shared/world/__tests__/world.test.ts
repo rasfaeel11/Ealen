@@ -9,19 +9,28 @@ import type { Character } from "../../types/character";
 import { CLASS_INFO } from "../../types/characterClass";
 import {
   AGGRO_RANGE,
+  AMBUSH_RANGE,
   AREAS,
   STARTING_AREA,
   STARTING_SPAWN,
   aggroedGroup,
+  ambushableGroup,
   exitAt,
+  firedTrigger,
   grantEncounterRewards,
+  isActive,
   isBlocked,
+  npcInReach,
   parseTiledMap,
+  peopleTiles,
   standAreaProps,
+  standPeople,
   startAreaEncounter,
+  talkers,
   tileOfPixel,
   unusedItems,
   walk,
+  type AreaEnemy,
   type AreaMap,
 } from "../index";
 
@@ -124,16 +133,44 @@ for (const [areaId, map] of Object.entries(maps)) {
       if (npc.look === undefined) continue;
 
       assert.ok(npc.look in CLASS_INFO, `${npc.name} tem uma cara que não existe: "${npc.look}"`);
-      assert.equal(tileAt(bare[areaId].grid, tile)?.blocksMove, true, `${npc.name} deveria ocupar o quadrado`);
+      assert.equal(tileAt(bare[areaId].grid, tile)?.blocksMove, false, `${npc.name} está num quadrado bloqueado`);
       const others = [...Object.values(map.spawns), ...map.enemies].map((point) => tileOfPixel(map, point));
       assert.ok(!others.some((other) => samePos(other, tile)), `${npc.name} está em cima de alguém`);
       assert.ok(!map.props.some((prop) => samePos(prop.tile, tile)), `${npc.name} está em cima de um destrutível`);
     }
   });
 
+  test(`${areaId}: inimigo que fala é passivo e tem nome, e o passivo fica num quadrado só dele`, () => {
+    for (const enemy of map.enemies) {
+      if (enemy.dialog !== undefined) {
+        assert.ok(enemy.passive, `${enemy.id} tem "dialog" mas não é "passive": atacaria antes de falar`);
+        assert.ok(enemy.name, `${enemy.id} fala mas não tem nome`);
+      }
+      if (!enemy.passive) continue;
+
+      const tile = tileOfPixel(map, enemy);
+      const others = [...Object.values(map.spawns), ...map.npcs, ...map.enemies.filter((other) => other !== enemy)];
+      assert.ok(!others.some((other) => samePos(tileOfPixel(map, other), tile)), `${enemy.id} está em cima de alguém`);
+      const middle = { x: (tile.x + 0.5) * map.tileSize, y: (tile.y + 0.5) * map.tileSize };
+      assert.equal(exitAt(map, middle), undefined, `${enemy.id} está dentro de uma saída`);
+    }
+  });
+
+  test(`${areaId}: todo gatilho tem tamanho e fica onde se pisa`, () => {
+    const reachable = flood(map, tileOfPixel(map, Object.values(map.spawns)[0]));
+    for (const trigger of map.triggers) {
+      assert.ok(trigger.width > 0 && trigger.height > 0, `${trigger.id} não tem tamanho: precisa ser um retângulo`);
+      const tiles: Pos[] = [];
+      for (let y = trigger.y; y < trigger.y + trigger.height; y += map.tileSize) {
+        for (let x = trigger.x; x < trigger.x + trigger.width; x += map.tileSize) tiles.push(tileOfPixel(map, { x, y }));
+      }
+      assert.ok(tiles.some((tile) => reachable.has(tileIndex(map.grid, tile))), `ninguém consegue pisar em ${trigger.id}`);
+    }
+  });
+
   test(`${areaId}: ninguém chega na área já dentro de uma luta`, () => {
     for (const [name, spawn] of Object.entries(map.spawns)) {
-      for (const enemy of map.enemies) {
+      for (const enemy of map.enemies.filter((candidate) => !candidate.passive)) {
         const gap = distance(tileOfPixel(map, spawn), tileOfPixel(map, enemy));
         assert.ok(gap > AGGRO_RANGE, `"${name}" nasce a ${gap} quadrados de ${enemy.id}`);
       }
@@ -252,11 +289,13 @@ test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
         elevation: 0,
       })),
     },
+    occupied: [],
     spawns: {},
     exits: [],
     enemies: [],
     npcs: [],
     props: [],
+    triggers: [],
   };
   const body = { halfWidth: 4, height: 4 };
 
@@ -267,4 +306,256 @@ test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
   assert.equal(isBlocked(map, pos, body), false);
   assert.equal(pos.x, 28);
   assert.equal(pos.y, 40);
+});
+
+// --- Quem está no mapa, gatilhos e emboscada ---------------------------------
+
+/** Uma sala aberta de 12x12, sem nada: o que cada teste precisa entra por `extra`. */
+function room(extra: Partial<AreaMap> = {}): AreaMap {
+  const side = 12;
+  return {
+    tileSize: 16,
+    grid: {
+      width: side,
+      height: side,
+      tiles: Array.from({ length: side * side }, () => ({
+        blocksMove: false,
+        blocksSight: false,
+        moveCost: 1,
+        cover: false,
+        elevation: 0,
+      })),
+    },
+    occupied: [],
+    spawns: {},
+    exits: [],
+    enemies: [],
+    npcs: [],
+    props: [],
+    triggers: [],
+    ...extra,
+  };
+}
+
+/** O meio do quadrado (x, y), em pixels. */
+const at = (x: number, y: number) => ({ x: x * 16 + 8, y: y * 16 + 8 });
+
+function enemy(id: string, x: number, y: number, extra: Partial<AreaEnemy> = {}): AreaEnemy {
+  return { id, name: id, creature: "encounter-lobo-de-bruma", group: id, passive: false, ...at(x, y), ...extra };
+}
+
+test("os objetos do Tiled chegam com condição, gatilho e inimigo passivo; e o mapa sai sem gente na grade", () => {
+  const property = (name: string, value: unknown) => ({ name, value });
+  const map = parseTiledMap({
+    width: 4,
+    height: 4,
+    tilewidth: 16,
+    tileheight: 16,
+    tilesets: [],
+    layers: [
+      {
+        type: "objectgroup",
+        objects: [
+          { id: 1, name: "Guarda", type: "npc", x: 24, y: 24, properties: [property("dialog", "guarda"), property("look", "guardiao"), property("if", "guarda_chegou")] },
+          { id: 2, name: "Chefe", type: "enemy", x: 40, y: 8, properties: [property("creature", "x"), property("group", "chefe"), property("passive", true), property("dialog", "chefe"), property("onDefeat", "chefe_caiu"), property("unless", "chefe_fugiu")] },
+          { id: 3, name: "lobo", type: "enemy", x: 8, y: 40, properties: [property("creature", "x")] },
+          { id: 4, name: "cena", type: "trigger", x: 0, y: 0, width: 32, height: 16, properties: [property("dialog", "cena")] },
+          { id: 5, name: "eco", type: "trigger", x: 0, y: 16, width: 16, height: 16, properties: [property("dialog", "eco"), property("once", false), property("if", "")] },
+          { id: 6, name: "porta", type: "exit", x: 48, y: 48, width: 16, height: 16, properties: [property("area", "a"), property("spawn", "s"), property("if", "porta_aberta")] },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(map.npcs[0].if, "guarda_chegou");
+  assert.deepEqual(
+    map.enemies.map(({ name, group, passive, dialog, onDefeat, unless }) => ({ name, group, passive, dialog, onDefeat, unless })),
+    [
+      { name: "Chefe", group: "chefe", passive: true, dialog: "chefe", onDefeat: "chefe_caiu", unless: "chefe_fugiu" },
+      { name: "lobo", group: "enemy-3", passive: false, dialog: undefined, onDefeat: undefined, unless: undefined },
+    ],
+  );
+  assert.deepEqual(
+    map.triggers.map(({ id, dialog, once }) => ({ id, dialog, once })),
+    [
+      { id: "trigger-4", dialog: "cena", once: true },
+      { id: "trigger-5", dialog: "eco", once: false },
+    ],
+  );
+  // Propriedade vazia é como não ter: o Tiled deixa o campo lá.
+  assert.equal("if" in map.triggers[1], false);
+  assert.equal(map.exits[0].if, "porta_aberta");
+  // Gente não vem escrita na grade: quem a põe de pé é standPeople.
+  assert.ok(map.grid.tiles.every((tile) => !tile.blocksMove));
+  assert.throws(() => parseTiledMap({ width: 1, height: 1, tilewidth: 16, tileheight: 16, tilesets: [], layers: [{ type: "objectgroup", objects: [{ id: 1, type: "trigger", x: 0, y: 0 }] }] }));
+});
+
+test("um objeto com condição existe enquanto a variável de `if` vale e a de `unless` não", () => {
+  const flags: Record<string, unknown> = { sim: true, nao: false, contador: 2, zero: 0 };
+  const flag = (name: string) => flags[name];
+
+  assert.equal(isActive({}, flag), true);
+  assert.equal(isActive({ if: "sim" }, flag), true);
+  assert.equal(isActive({ if: "nao" }, flag), false);
+  assert.equal(isActive({ if: "contador" }, flag), true);
+  assert.equal(isActive({ if: "zero" }, flag), false);
+  assert.equal(isActive({ unless: "sim" }, flag), false);
+  assert.equal(isActive({ unless: "nao" }, flag), true);
+  assert.equal(isActive({ if: "sim", unless: "nao" }, flag), true);
+  assert.equal(isActive({ if: "sim", unless: "contador" }, flag), false);
+  // Variável que a história não declara conta como falsa — o teste da história acusa o nome errado.
+  assert.equal(isActive({ if: "nao_existe" }, flag), false);
+  assert.equal(isActive({ unless: "nao_existe" }, flag), true);
+});
+
+test("gente de pé ocupa o quadrado, e devolve o chão que havia quando sai", () => {
+  const map = room();
+  const wall = { x: 3, y: 3 };
+  tileAt(map.grid, wall)!.blocksMove = true;
+  const blocked = (pos: Pos) => tileAt(map.grid, pos)!.blocksMove;
+
+  standPeople(map, [{ x: 1, y: 1 }, wall, { x: 5, y: 5 }, { x: 99, y: 99 }]);
+  assert.deepEqual([blocked({ x: 1, y: 1 }), blocked(wall), blocked({ x: 5, y: 5 })], [true, true, true]);
+
+  // Trocar a lista: quem saiu libera o quadrado, quem ficou continua, e a parede de baixo não se abre.
+  standPeople(map, [{ x: 5, y: 5 }]);
+  assert.deepEqual([blocked({ x: 1, y: 1 }), blocked(wall), blocked({ x: 5, y: 5 })], [false, true, true]);
+  standPeople(map, [{ x: 5, y: 5 }, { x: 5, y: 5 }]);
+  standPeople(map, []);
+  assert.deepEqual([blocked({ x: 1, y: 1 }), blocked(wall), blocked({ x: 5, y: 5 })], [false, true, false]);
+  assert.deepEqual(map.occupied, []);
+});
+
+test("ocupa quadrado quem tem cara e o inimigo passivo; fala-se com npc e com passivo que tenha o que dizer", () => {
+  const map = room();
+  const npcs = [
+    { id: "npc-1", name: "Guarda", dialog: "guarda", look: "guardiao", ...at(2, 2) },
+    { id: "npc-2", name: "Inscrição", dialog: "inscricao", ...at(4, 2) },
+  ];
+  const enemies = [
+    enemy("lobo", 6, 6),
+    enemy("chefe", 8, 2, { passive: true, dialog: "chefe", name: "Chefe" }),
+    enemy("estatua", 10, 2, { passive: true }),
+  ];
+
+  assert.deepEqual(peopleTiles(map, npcs, enemies), [{ x: 2, y: 2 }, { x: 8, y: 2 }, { x: 10, y: 2 }]);
+  const all = talkers(npcs, enemies);
+  assert.deepEqual(
+    all.map(({ name, dialog, stands }) => ({ name, dialog, stands })),
+    [
+      { name: "Guarda", dialog: "guarda", stands: true },
+      { name: "Inscrição", dialog: "inscricao", stands: false },
+      { name: "Chefe", dialog: "chefe", stands: true },
+    ],
+  );
+  assert.equal(npcInReach(map, at(8, 3), all)?.name, "Chefe");
+  assert.equal(npcInReach(map, at(10, 3), all), undefined);
+  assert.equal(npcInReach(map, at(6, 7), all), undefined);
+});
+
+test("um gatilho dispara ao entrar nele; o de uma vez só se gasta quando o trecho é lido", () => {
+  const rect = { x: 32, y: 32, width: 32, height: 32 };
+  const map = room({
+    triggers: [
+      { id: "cena", dialog: "cena", once: true, ...rect },
+      { id: "eco", dialog: "eco", once: false, ...rect, if: "eco_armado" },
+    ],
+  });
+  const flags: Record<string, unknown> = { eco_armado: false };
+  const seen = new Set<string>();
+  const inside = new Set<string>();
+  const step = (x: number, y: number) =>
+    firedTrigger(map, at(x, y), inside, (name) => flags[name], (knot) => seen.has(knot))?.id;
+
+  assert.equal(step(0, 0), undefined);
+  assert.equal(step(2, 2), "cena");
+  // A cena foi lida; parado ou andando lá dentro, nada dispara de novo.
+  seen.add("cena");
+  assert.equal(step(2, 2), undefined);
+  assert.equal(step(3, 3), undefined);
+  assert.equal(step(0, 0), undefined);
+  assert.equal(step(2, 2), undefined);
+
+  // Armado com o personagem em cima, o outro dispara na hora — e de novo a cada entrada.
+  flags.eco_armado = true;
+  assert.equal(step(2, 2), "eco");
+  assert.equal(step(3, 2), undefined);
+  assert.equal(step(5, 5), undefined);
+  assert.equal(step(3, 3), "eco");
+
+  // Dois prontos no mesmo lugar saem um de cada vez.
+  seen.clear();
+  inside.clear();
+  assert.equal(step(2, 2), "cena");
+  seen.add("cena");
+  assert.equal(step(2, 2), "eco");
+  assert.equal(step(2, 2), undefined);
+});
+
+test("inimigo passivo não percebe ninguém nem pode ser emboscado; o hostil se embosca de longe ou de fora da vista", () => {
+  const map = room();
+  for (let y = 0; y < 12; y++) {
+    const tile = tileAt(map.grid, { x: 6, y })!;
+    tile.blocksMove = true;
+    tile.blocksSight = true;
+  }
+  const wolf = enemy("lobo", 8, 5);
+  const chief = enemy("chefe", 2, 2, { passive: true });
+  const enemies = [wolf, chief];
+
+  // Colado no passivo: nada. Do outro lado da parede, a 3 quadrados do lobo: ele não vê, mas dá pra emboscar.
+  assert.equal(aggroedGroup(map, enemies, { x: 2, y: 3 }), undefined);
+  assert.equal(aggroedGroup(map, enemies, { x: 5, y: 5 }), undefined);
+  assert.equal(ambushableGroup(map, enemies, { x: 5, y: 5 }), "lobo");
+  assert.equal(ambushableGroup(map, [chief], { x: 2, y: 3 }), undefined);
+
+  // À vista: perto demais ele percebe primeiro; na faixa entre os dois alcances, quem ataca primeiro é o jogador.
+  const open = room();
+  const far = enemy("longe", 1, 1);
+  const near = enemy("perto", 10, 10);
+  assert.ok(AMBUSH_RANGE > AGGRO_RANGE);
+  assert.equal(aggroedGroup(open, [far], { x: 1 + AGGRO_RANGE, y: 1 }), "longe");
+  assert.equal(aggroedGroup(open, [far], { x: 1 + AGGRO_RANGE + 1, y: 1 }), undefined);
+  assert.equal(ambushableGroup(open, [far], { x: 1 + AMBUSH_RANGE, y: 1 }), "longe");
+  assert.equal(ambushableGroup(open, [far], { x: 1 + AMBUSH_RANGE + 1, y: 1 }), undefined);
+  // Com dois ao alcance, o mais próximo.
+  assert.equal(ambushableGroup(open, [far, near], { x: 7, y: 7 }), "perto");
+});
+
+test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda até o fim", () => {
+  const map = maps.estrada;
+  const group = map.enemies.filter((candidate) => candidate.group === "lobos");
+  const wolfTile = tileOfPixel(map, group[0]);
+  const hero: Character = {
+    id: "hero",
+    name: "Herói",
+    race: "althirim",
+    characterClass: "rachador",
+    level: 1,
+    xp: 0,
+    attributes: { dain: 6, eir: 3, nath: 6, il: 8, or: 4, len: 5, ul: 5 },
+    currentHp: 40,
+    maxHp: 40,
+    currentNodeId: "",
+  };
+  const playerTile = { x: wolfTile.x - 7, y: wolfTile.y };
+  assert.equal(aggroedGroup(map, group, playerTile), undefined);
+  assert.equal(ambushableGroup(map, group, playerTile), "lobos");
+
+  const { encounter, events } = startAreaEncounter(map, hero, playerTile, group, 3, props.estrada, "enemy");
+  // Quem abre a luta de verdade é o herói: todo lobo que estava na frente dele perdeu a vez.
+  assert.equal(encounter.order[encounter.turnIndex], "hero");
+  assert.equal(encounter.round, 1);
+
+  const log = [...events];
+  for (let i = 0; i < 3000 && !encounter.winner; i++) {
+    const result = applyCommand(encounter, chooseCommand(encounter));
+    assert.equal(result.ok, true);
+    if (result.ok) log.push(...result.events);
+  }
+  assert.ok(encounter.winner);
+  // Cada lobo perde uma vez só (ou nenhuma, se cair antes de ela chegar).
+  const skipped = log.flatMap((event) => (event.type === "turnSkipped" ? [event.unit] : []));
+  assert.ok(skipped.length >= 1 && skipped.length <= 2);
+  assert.equal(new Set(skipped).size, skipped.length);
 });

@@ -1,9 +1,17 @@
 // PROVISÓRIO. A Andarilha existe pra exercitar o sistema de diálogo — fala
 // que muda na segunda visita, na Ordem de quem ouve e no que já aconteceu no
-// mapa; teste anunciado na escolha; teste no meio do texto; item e flag.
+// mapa; teste anunciado na escolha; teste no meio do texto; item e flag;
+// uma conversa que termina levando o personagem a outra área (travel).
 // Nada aqui é canônico: sai quando a história de verdade for escrita.
 
 VAR andarilha_falou_das_ruinas = false
+
+// Um `trigger` no mapa, em cima do ponto onde o jogo começa: abre sozinho,
+// uma vez só (o Ink lembra que o trecho já foi lido).
+=== clareira_chegada ===
+A clareira está quieta, a não ser por um zumbido fino que vem de leste, de trás das árvores.
+O que zumbe ainda não deu por você. Quem chega sem ser percebido escolhe a hora — e bate primeiro.
+-> END
 
 === andarilha ===
 {andarilha == 1:
@@ -36,6 +44,10 @@ Andarilha: Faz três noites que eu não durmo direito. Toma. Não é muito, mas 
         Ela parece saber mais do que conta, mas você não acha a pergunta certa.
     }
     -> perguntas
++ {andarilha_falou_das_ruinas} [Pedir que ela mostre o caminho das ruínas.]
+    Andarilha: Mostro até a porta. Dali pra dentro é com você.
+    ~ travel("ruinas", "from_clareira")
+    -> END
 * [Pedir alguma coisa pra viagem. # check: len 13]
     {passed():
         Andarilha: Você pede bonito. Tá bom. Eu ia guardar pra uma hora ruim, mas a sua parece mais perto que a minha.

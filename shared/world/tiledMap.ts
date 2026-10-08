@@ -28,7 +28,13 @@ import { FLOOR, type Grid, type Pos, type Tile } from "../tactics/grid";
  *              `spawn` (ponto de chegada lá)
  *     `enemy`  ponto; propriedades `creature` (id no bestiário) e `group`
  *              (inimigos do mesmo grupo entram juntos na luta; sem grupo,
- *              o inimigo luta sozinho)
+ *              o inimigo luta sozinho). Opcionais: `passive` (bool; não
+ *              ataca quem chega perto nem pode ser emboscado — só a história
+ *              começa essa luta, com start_fight), `dialog` (um trecho da
+ *              história: dá pra FALAR com ele enquanto está de pé, e o Nome
+ *              do objeto é o que aparece na caixa; só vale em quem é
+ *              `passive`) e `onDefeat` (o trecho que abre quando o grupo
+ *              dele é vencido)
  *     `npc`    ponto; alguém (ou algo) com quem se fala. O Nome é o que
  *              aparece na caixa; a propriedade `dialog` é o trecho (knot)
  *              da história em client/story que a conversa abre. Com `look`
@@ -39,6 +45,15 @@ import { FLOOR, type Grid, type Pos, type Tile } from "../tactics/grid";
  *              pintado numa camada), com a propriedade `kind` (id em PROPS,
  *              ver ../tactics/props.ts). Ocupa o quadrado em que a base do
  *              tile cai. O que ele barra vem de `kind`, não do tile.
+ *     `trigger` retângulo; pisar nele abre o trecho da história em `dialog`,
+ *              sem apertar nada. Uma vez só, a não ser com `once` = false
+ *              (aí abre toda vez que se ENTRA nele). Cobrindo um ponto de
+ *              chegada, é a cena de quem chega na área
+ *
+ *   `npc`, `enemy`, `trigger` e `exit` aceitam ainda `if` e `unless`: o nome
+ *   de uma variável (VAR) da história. O objeto só existe enquanto a de `if`
+ *   for verdadeira e a de `unless` for falsa — é como a história põe e tira
+ *   gente do mapa, arma um gatilho ou tranca uma saída (ver ./presence.ts).
  *
  * Limites do formato: mapa ortogonal, finito, camadas sem compressão
  * (Tile Layer Format = CSV) e tileset embutido no mapa — o Phaser não lê
@@ -50,7 +65,16 @@ export interface PixelPos {
   y: number;
 }
 
-export interface AreaExit {
+/**
+ * Quando um objeto do mapa existe, pelas variáveis da história: enquanto a
+ * de `if` for verdadeira e a de `unless` for falsa. Sem nenhuma, sempre.
+ */
+export interface AreaCondition {
+  if?: string;
+  unless?: string;
+}
+
+export interface AreaExit extends AreaCondition {
   x: number;
   y: number;
   width: number;
@@ -61,17 +85,39 @@ export interface AreaExit {
   spawn: string;
 }
 
-export interface AreaEnemy {
+export interface AreaEnemy extends AreaCondition {
   /** Único dentro da área — é também o id da unidade dele em combate. */
   id: string;
+  /** O nome do objeto no mapa: o que a caixa mostra de quem tem `dialog`. */
+  name: string;
   /** Id da criatura no bestiário. */
   creature: string;
   group: string;
+  /** Não ataca quem chega perto e não pode ser emboscado: só a história começa a luta dele. De pé, ocupa o quadrado. */
+  passive: boolean;
+  /** O trecho da história que se abre falando com ele, enquanto está de pé. */
+  dialog?: string;
+  /** O trecho da história que se abre quando o grupo dele é vencido. */
+  onDefeat?: string;
   x: number;
   y: number;
 }
 
-export interface AreaNpc {
+/** Um pedaço do chão que abre um trecho da história quando se pisa nele. */
+export interface AreaTrigger extends AreaCondition {
+  /** Único dentro da área. */
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** O trecho (knot) da história que ele abre. */
+  dialog: string;
+  /** Só dispara se esse trecho nunca foi lido. Falso = dispara toda vez que se entra nele. */
+  once: boolean;
+}
+
+export interface AreaNpc extends AreaCondition {
   /** Único dentro da área. */
   id: string;
   /** O nome mostrado ao jogador. */
@@ -99,14 +145,18 @@ export interface AreaMap {
   tileSize: number;
   /**
    * O terreno — a mesma grade que o combate usa. Sai daqui SEM os
-   * destrutíveis: quem os põe de pé nela é standAreaProps (./encounters.ts).
+   * destrutíveis e SEM gente: quem os põe de pé nela é standAreaProps
+   * (./encounters.ts) e standPeople (./presence.ts).
    */
   grid: Grid;
+  /** Os quadrados que standPeople ocupou, com o que o terreno dizia antes. */
+  occupied: { pos: Pos; blocksMove: boolean }[];
   spawns: Record<string, PixelPos>;
   exits: AreaExit[];
   enemies: AreaEnemy[];
   npcs: AreaNpc[];
   props: AreaProp[];
+  triggers: AreaTrigger[];
 }
 
 interface TiledProperty {
@@ -158,6 +208,14 @@ const GID_MASK = 0x1fffffff;
 
 function propertiesOf(source: { properties?: TiledProperty[] }): Record<string, unknown> {
   return Object.fromEntries((source.properties ?? []).map((property) => [property.name, property.value]));
+}
+
+/** As propriedades `if` e `unless` de um objeto, quando ele as tem. */
+function conditionOf(properties: Record<string, unknown>): AreaCondition {
+  const condition: AreaCondition = {};
+  if (typeof properties.if === "string" && properties.if !== "") condition.if = properties.if;
+  if (typeof properties.unless === "string" && properties.unless !== "") condition.unless = properties.unless;
+  return condition;
 }
 
 /** Camadas de grupo viram uma lista só. */
@@ -220,26 +278,49 @@ export function parseTiledMap(raw: unknown): AreaMap {
   const enemies: AreaEnemy[] = [];
   const npcs: AreaNpc[] = [];
   const props: AreaProp[] = [];
+  const triggers: AreaTrigger[] = [];
   for (const layer of layers) {
     for (const object of layer.objects ?? []) {
       const kind = object.type || object.class;
       if (kind === "spawn") {
         spawns[object.name ?? ""] = { x: object.x, y: object.y };
       } else if (kind === "exit") {
-        const { area, spawn } = propertiesOf(object);
+        const properties = propertiesOf(object);
+        const { area, spawn } = properties;
         if (typeof area !== "string" || typeof spawn !== "string") {
           throw new Error(`Saída "${object.name ?? ""}" precisa das propriedades "area" e "spawn".`);
         }
-        exits.push({ x: object.x, y: object.y, width: object.width ?? 0, height: object.height ?? 0, area, spawn });
+        exits.push({
+          x: object.x,
+          y: object.y,
+          width: object.width ?? 0,
+          height: object.height ?? 0,
+          area,
+          spawn,
+          ...conditionOf(properties),
+        });
       } else if (kind === "enemy") {
-        const { creature, group } = propertiesOf(object);
+        const properties = propertiesOf(object);
+        const { creature, group, dialog, onDefeat } = properties;
         if (typeof creature !== "string") {
           throw new Error(`Inimigo "${object.name ?? ""}" precisa da propriedade "creature".`);
         }
         const id = `enemy-${object.id}`;
-        enemies.push({ id, creature, group: typeof group === "string" ? group : id, x: object.x, y: object.y });
+        enemies.push({
+          id,
+          name: object.name ?? "",
+          creature,
+          group: typeof group === "string" ? group : id,
+          passive: properties.passive === true,
+          dialog: typeof dialog === "string" ? dialog : undefined,
+          onDefeat: typeof onDefeat === "string" ? onDefeat : undefined,
+          x: object.x,
+          y: object.y,
+          ...conditionOf(properties),
+        });
       } else if (kind === "npc") {
-        const { dialog, look } = propertiesOf(object);
+        const properties = propertiesOf(object);
+        const { dialog, look } = properties;
         if (typeof dialog !== "string") throw new Error(`"${object.name ?? ""}" precisa da propriedade "dialog".`);
         npcs.push({
           id: `npc-${object.id}`,
@@ -248,12 +329,22 @@ export function parseTiledMap(raw: unknown): AreaMap {
           look: typeof look === "string" ? look : undefined,
           x: object.x,
           y: object.y,
+          ...conditionOf(properties),
         });
-        // Quem está de pé ocupa o quadrado, andando ou lutando em volta dele.
-        if (typeof look === "string") {
-          const index = Math.floor(object.y / map.tileheight) * map.width + Math.floor(object.x / map.tilewidth);
-          if (tiles[index]) tiles[index].blocksMove = true;
-        }
+      } else if (kind === "trigger") {
+        const properties = propertiesOf(object);
+        const { dialog } = properties;
+        if (typeof dialog !== "string") throw new Error(`Gatilho "${object.name ?? ""}" precisa da propriedade "dialog".`);
+        triggers.push({
+          id: `trigger-${object.id}`,
+          x: object.x,
+          y: object.y,
+          width: object.width ?? 0,
+          height: object.height ?? 0,
+          dialog,
+          once: properties.once !== false,
+          ...conditionOf(properties),
+        });
       } else if (kind === "prop") {
         const { kind: propKind } = propertiesOf(object);
         if (typeof propKind !== "string" || object.gid === undefined) {
@@ -272,11 +363,13 @@ export function parseTiledMap(raw: unknown): AreaMap {
   return {
     tileSize: map.tilewidth,
     grid: { width: map.width, height: map.height, tiles },
+    occupied: [],
     spawns,
     exits,
     enemies,
     npcs,
     props,
+    triggers,
   };
 }
 
@@ -293,11 +386,19 @@ export function tileOfPixel(map: AreaMap, pos: PixelPos): Pos {
 /** A que distância (em quadrados, do pé de quem anda ao meio do quadrado) dá pra falar com alguém. */
 export const TALK_RANGE = 1.5;
 
-/** Com quem dá pra falar de `pos`: o mais próximo ao alcance, se houver. */
-export function npcInReach(map: AreaMap, pos: PixelPos): AreaNpc | undefined {
-  let nearest: AreaNpc | undefined;
+/**
+ * Com quem dá pra falar de `pos`: o mais próximo ao alcance, se houver.
+ * `candidates` são os que estão no mapa agora (ver ./presence.ts); sem ela,
+ * todos os `npc` do mapa.
+ */
+export function npcInReach<T extends PixelPos = AreaNpc>(
+  map: AreaMap,
+  pos: PixelPos,
+  candidates: readonly T[] = map.npcs as unknown as T[],
+): T | undefined {
+  let nearest: T | undefined;
   let best = TALK_RANGE * map.tileSize;
-  for (const npc of map.npcs) {
+  for (const npc of candidates) {
     const tile = tileOfPixel(map, npc);
     const gap = Math.hypot((tile.x + 0.5) * map.tileSize - pos.x, (tile.y + 0.5) * map.tileSize - pos.y);
     if (gap <= best) {
@@ -308,9 +409,16 @@ export function npcInReach(map: AreaMap, pos: PixelPos): AreaNpc | undefined {
   return nearest;
 }
 
-/** A saída que contém este ponto, se houver. */
-export function exitAt(map: AreaMap, pos: PixelPos): AreaExit | undefined {
-  return map.exits.find(
-    (exit) => pos.x >= exit.x && pos.x < exit.x + exit.width && pos.y >= exit.y && pos.y < exit.y + exit.height,
-  );
+function contains(rect: { x: number; y: number; width: number; height: number }, pos: PixelPos): boolean {
+  return pos.x >= rect.x && pos.x < rect.x + rect.width && pos.y >= rect.y && pos.y < rect.y + rect.height;
+}
+
+/** A saída que contém este ponto, se houver. `exits` são as abertas agora; sem ela, todas as do mapa. */
+export function exitAt(map: AreaMap, pos: PixelPos, exits: readonly AreaExit[] = map.exits): AreaExit | undefined {
+  return exits.find((exit) => contains(exit, pos));
+}
+
+/** Os gatilhos que contêm este ponto. */
+export function triggersAt(map: AreaMap, pos: PixelPos): AreaTrigger[] {
+  return map.triggers.filter((trigger) => contains(trigger, pos));
 }

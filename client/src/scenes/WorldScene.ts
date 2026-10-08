@@ -4,20 +4,28 @@ import {
   STARTING_AREA,
   STARTING_SPAWN,
   StoryRunner,
+  aftermath,
   aggroedGroup,
+  ambushableGroup,
   brokenInArea,
+  distance,
   exitAt,
   findUnit,
+  firedTrigger,
   grantEncounterRewards,
+  isActive,
   isBlocked,
   isDefeated,
   markBroken,
   markDefeated,
   npcInReach,
   parseTiledMap,
+  peopleTiles,
   pixelOfTile,
   standAreaProps,
+  standPeople,
   startAreaEncounter,
+  talkers,
   unusedItems,
   syncCharacterFromUnit,
   tileOfPixel,
@@ -29,6 +37,7 @@ import {
   type AreaNpc,
   type Character,
   type CharacterClass,
+  type DialogueStep,
   type Encounter,
   type GameSave,
   type PixelPos,
@@ -37,7 +46,7 @@ import {
   type WalkBody,
 } from "@ealen/shared";
 import { CombatController } from "../game/combat/CombatController";
-import { DialogueBox } from "../game/dialogue/DialogueBox";
+import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { MapActor } from "../game/MapActor";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
@@ -98,9 +107,21 @@ export default class WorldScene extends Phaser.Scene {
   private player!: MapActor;
   private pos!: PixelPos;
   private keys!: MoveKeys;
-  /** Inimigos ainda de pé nesta área, e o ator de cada um. */
+  /**
+   * Quem está no mapa AGORA, pelo que a história diz (ver `syncPresence`):
+   * os inimigos ainda de pé, quem dá pra encontrar e as saídas abertas.
+   */
   private enemies: AreaEnemy[] = [];
   private enemyActors = new Map<string, MapActor>();
+  private npcs: AreaNpc[] = [];
+  private npcActors = new Map<string, MapActor>();
+  private exits: AreaExit[] = [];
+  /** Os gatilhos em que o personagem já está: só ENTRAR num deles o dispara. */
+  private insideTriggers = new Set<string>();
+  /** Alguém apareceu no quadrado em que o personagem está: só passa a ocupá-lo quando ele sair. */
+  private peoplePending = false;
+  /** Pra onde a história mandou ir depois da luta que ela mesma começou, se for vencida. */
+  private travelAfterFight?: { area: string; spawn: string };
   /** Destrutíveis ainda de pé nesta área (já escritos na grade), e a imagem de cada um. */
   private props: Prop[] = [];
   private propImages = new Map<string, Phaser.GameObjects.Image>();
@@ -130,6 +151,12 @@ export default class WorldScene extends Phaser.Scene {
     this.combat = undefined;
     this.enemies = [];
     this.enemyActors = new Map();
+    this.npcs = [];
+    this.npcActors = new Map();
+    this.exits = [];
+    this.insideTriggers = new Set();
+    this.peoplePending = false;
+    this.travelAfterFight = undefined;
     this.props = [];
     this.propImages = new Map();
   }
@@ -152,14 +179,13 @@ export default class WorldScene extends Phaser.Scene {
     this.enterArea();
     this.drawMap();
     this.standProps();
-    this.standNpcs();
     this.story = new StoryRunner(
       this.cache.text.get(STORY_KEY) as string,
       { character, rng: STORY_RNG, isDefeated: (key) => isDefeated(save, key) },
       save.story,
     );
     this.player = this.addActor(classSpriteKey(character.characterClass), this.pos);
-    this.spawnEnemies();
+    this.syncPresence();
 
     this.statusText = this.addHud(
       addBodyText(this, 24, 20, "", { fontSize: "18px", color: TEXT_COLORS.gold }).setShadow(0, 2, "#000000", 4),
@@ -195,6 +221,7 @@ export default class WorldScene extends Phaser.Scene {
     }) as MoveKeys;
     keyboard.on("keydown-R", this.rest, this);
     keyboard.on("keydown-E", this.interact, this);
+    keyboard.on("keydown-F", this.ambush, this);
     keyboard.on("keydown", this.onKey, this);
     // O botão direito cancela a mira no combate; o menu do navegador só atrapalharia.
     this.input.mouse?.disableContextMenu();
@@ -218,6 +245,14 @@ export default class WorldScene extends Phaser.Scene {
     // Quadro longo demais é aba em segundo plano: não conta como tempo de jogo.
     if (!this.pause) this.save.playTimeMs += Math.min(delta, MAX_FRAME_MS);
     if (this.leaving || this.combat || this.talking || this.pause) return;
+    if (this.peoplePending) this.occupy();
+
+    // Um gatilho dispara com o personagem parado também: é assim que a cena de chegada de uma área abre.
+    const trigger = firedTrigger(this.map, this.pos, this.insideTriggers, this.flag, (knot) => this.story.visited(knot));
+    if (trigger) {
+      void this.converse(trigger.dialog);
+      return;
+    }
 
     const dx = Number(this.keys.right.isDown || this.keys.d.isDown) - Number(this.keys.left.isDown || this.keys.a.isDown);
     const dy = Number(this.keys.down.isDown || this.keys.s.isDown) - Number(this.keys.up.isDown || this.keys.w.isDown);
@@ -235,7 +270,7 @@ export default class WorldScene extends Phaser.Scene {
     this.player.face(facing);
     this.player.setWalking(true);
 
-    const exit = exitAt(this.map, this.pos);
+    const exit = exitAt(this.map, this.pos, this.exits);
     if (exit) {
       this.leave(exit);
       return;
@@ -351,21 +386,66 @@ export default class WorldScene extends Phaser.Scene {
     }
   }
 
-  /** Põe no mapa quem tem cara (`look`). Os outros são só pontos pra examinar no que o mapa já desenha. */
-  private standNpcs(): void {
-    for (const npc of this.map.npcs) {
-      if (!npc.look) continue;
-      this.addActor(classSpriteKey(npc.look as CharacterClass), pixelOfTile(this.map, tileOfPixel(this.map, npc)));
+  /** Uma variável da história, pras condições (`if`/`unless`) dos objetos do mapa. */
+  private readonly flag = (name: string): unknown => this.story.flag(name);
+
+  /**
+   * Acerta o mapa com a história: quem as variáveis dela dizem que está aqui
+   * agora aparece, quem não está some, e as saídas se abrem ou se fecham.
+   * Chamado ao chegar, depois de cada conversa e depois de cada luta — é o
+   * único lugar que decide quem está de pé.
+   */
+  private syncPresence(): void {
+    this.npcs = this.map.npcs.filter((npc) => isActive(npc, this.flag));
+    this.exits = this.map.exits.filter((exit) => isActive(exit, this.flag));
+    this.enemies = this.map.enemies.filter(
+      (enemy) => !isDefeated(this.save, this.groupKey(enemy.group)) && isActive(enemy, this.flag),
+    );
+
+    // Quem tem cara (`look`) fica de pé; os outros `npc` são só pontos pra examinar no que o mapa já desenha.
+    const standing = this.npcs.filter((npc) => npc.look !== undefined);
+    this.syncActors(this.npcActors, standing, (npc) => classSpriteKey(npc.look as CharacterClass));
+    this.syncActors(this.enemyActors, this.enemies, (enemy) => creatureSpriteKey(enemy.creature));
+    this.occupy();
+  }
+
+  /** Cria o ator de quem chegou e desfaz o de quem saiu. */
+  private syncActors<T extends PixelPos & { id: string }>(
+    actors: Map<string, MapActor>,
+    present: T[],
+    spriteKey: (who: T) => string,
+  ): void {
+    for (const [id, actor] of actors) {
+      if (present.some((who) => who.id === id)) continue;
+      actor.destroy();
+      actors.delete(id);
+    }
+    for (const who of present) {
+      if (actors.has(who.id)) continue;
+      actors.set(who.id, this.addActor(spriteKey(who), pixelOfTile(this.map, tileOfPixel(this.map, who))));
     }
   }
 
-  /** Põe no mapa os inimigos da área cujo grupo ainda não foi vencido. */
-  private spawnEnemies(): void {
-    this.enemies = this.map.enemies.filter((enemy) => !isDefeated(this.save, this.groupKey(enemy.group)));
-    for (const enemy of this.enemies) {
-      const feet = pixelOfTile(this.map, tileOfPixel(this.map, enemy));
-      this.enemyActors.set(enemy.id, this.addActor(creatureSpriteKey(enemy.creature), feet));
-    }
+  /**
+   * Escreve na grade os quadrados de quem está de pé e não se atravessa: `npc`
+   * com cara e inimigo `passive`. `fighting` são os que entraram numa luta —
+   * lá quem ocupa o quadrado é a unidade, que anda.
+   */
+  private occupy(fighting: AreaEnemy[] = []): void {
+    const tiles = peopleTiles(
+      this.map,
+      this.npcs,
+      this.enemies.filter((enemy) => !fighting.includes(enemy)),
+    );
+    standPeople(this.map, tiles);
+    // Quem aparece em cima do personagem não o prende: espera ele sair de perto pra ocupar o quadrado.
+    this.peoplePending = isBlocked(this.map, this.pos, BODY);
+    if (!this.peoplePending) return;
+    const here = tileOfPixel(this.map, this.pos);
+    standPeople(
+      this.map,
+      tiles.filter((tile) => distance(tile, here) > 1),
+    );
   }
 
   private groupKey(group: string): string {
@@ -379,11 +459,17 @@ export default class WorldScene extends Phaser.Scene {
     this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}`);
   }
 
-  /** A dica do pé da tela: como andar e, perto de alguém, como falar com ele. */
+  /** Com quem dá pra falar daqui, se houver alguém. */
+  private talkerInReach() {
+    return npcInReach(this.map, this.pos, talkers(this.npcs, this.enemies));
+  }
+
+  /** A dica do pé da tela: como andar e, conforme o que há por perto, como falar e como emboscar. */
   private refreshHint(): void {
-    const npc = npcInReach(this.map, this.pos);
-    const talk = npc ? `  ·  E: ${npc.look ? "falar com" : "examinar"} ${npc.name}` : "";
-    this.hintText.setText(EXPLORE_HINT + talk);
+    const talker = this.talkerInReach();
+    const talk = talker ? `  ·  E: ${talker.stands ? "falar com" : "examinar"} ${talker.name}` : "";
+    const prey = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos));
+    this.hintText.setText(EXPLORE_HINT + talk + (prey ? "  ·  F: emboscar" : ""));
   }
 
   /** Um título no alto da tela, sumindo sozinho (nome da área, avisos). */
@@ -407,48 +493,82 @@ export default class WorldScene extends Phaser.Scene {
 
   private interact(): void {
     if (this.combat || this.leaving || this.talking || this.pause) return;
-    const npc = npcInReach(this.map, this.pos);
-    if (npc) void this.talk(npc);
+    const talker = this.talkerInReach();
+    if (talker) void this.converse(talker.dialog, talker);
   }
 
   /**
-   * Uma conversa, do começo ao fim: a história diz o que mostrar, a caixa
-   * mostra e devolve a escolha. No fim, o que ela mudou (flags, mochila, XP)
-   * vai pro save.
+   * Um trecho da história, do começo ao fim: ela diz o que mostrar, a caixa
+   * mostra e devolve a escolha. Quem abre é uma conversa (`E` perto de
+   * alguém, que fica em `toward`), um gatilho no chão ou a queda de um grupo.
+   * No fim, o que o texto mudou (flags, mochila, XP) vai pro save, o mapa se
+   * acerta com as flags e a cena cumpre o que ele pediu pra depois: uma luta,
+   * uma viagem.
    */
-  private async talk(npc: AreaNpc): Promise<void> {
+  private async converse(knot: string, toward?: PixelPos): Promise<void> {
     this.talking = true;
     this.player.setWalking(false);
-    this.player.faceToward(pixelOfTile(this.map, tileOfPixel(this.map, npc)));
-    this.statusText.setVisible(false);
-    this.hintText.setVisible(false);
+    if (toward) this.player.faceToward(pixelOfTile(this.map, tileOfPixel(this.map, toward)));
 
-    const box = new DialogueBox(this, (object) => this.addHud(object));
+    const steps: DialogueStep[] = [];
+    let box: DialogueBox | undefined;
     try {
-      let step = this.story.start(npc.dialog);
+      let step = this.story.start(knot);
       for (;;) {
-        const choice = await box.play(step);
+        steps.push(step);
+        // Um trecho que só mexe em flags (ou decide que não tem nada a dizer) passa sem abrir a caixa.
+        if (!box && !isSilent(step)) {
+          this.statusText.setVisible(false);
+          this.hintText.setVisible(false);
+          box = new DialogueBox(this, (object) => this.addHud(object));
+        }
+        const choice = box ? await box.play(step) : null;
         if (choice === null) break;
         step = this.story.choose(choice);
       }
     } finally {
       // Um erro no texto não pode deixar o jogador preso numa conversa que não fecha.
-      box.destroy();
+      box?.destroy();
       this.save.story = this.story.save();
+      this.syncPresence();
       this.persist();
       this.statusText.setVisible(true);
       this.hintText.setVisible(true);
       this.refreshStatus();
+      this.refreshHint();
       this.talking = false;
     }
+
+    const { fight, travel } = aftermath(steps);
+    if (fight !== undefined && this.enemies.some((enemy) => enemy.group === fight)) {
+      // A viagem pedida junto com a luta fica pra depois dela, e só pra quem vence.
+      this.travelAfterFight = travel;
+      this.startCombat(fight);
+      return;
+    }
+    if (fight !== undefined) console.warn(`A história pediu luta com "${fight}", mas não há ninguém desse grupo de pé aqui.`);
+    if (travel) this.leave(travel);
   }
 
   // ----------------------------------------------------------------- combate
 
-  /** Um grupo de inimigos percebeu o personagem: a luta começa onde cada um está. */
-  private startCombat(group: string): void {
+  /** `F`: ataca primeiro o grupo mais próximo que ainda não percebeu o personagem. Ele entra na luta surpreso. */
+  private ambush(): void {
+    if (this.combat || this.leaving || this.talking || this.pause) return;
+    const group = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos));
+    if (group !== undefined) this.startCombat(group, "enemy");
+  }
+
+  /**
+   * A luta com um grupo de inimigos começa, onde cada um está: porque ele
+   * percebeu o personagem, porque a história mandou ou — com `surprised` —
+   * porque o personagem o emboscou.
+   */
+  private startCombat(group: string, surprised?: TeamId): void {
     const fighters = this.enemies.filter((enemy) => enemy.group === group);
     const playerTile = tileOfPixel(this.map, this.pos);
+    // Quem estava parado ocupando um quadrado agora é uma unidade, que anda.
+    this.occupy(fighters);
 
     // No combate todo mundo fica no meio de um quadrado.
     this.pos = pixelOfTile(this.map, playerTile);
@@ -456,7 +576,15 @@ export default class WorldScene extends Phaser.Scene {
     this.player.place(this.pos);
 
     const seed = Math.floor(Math.random() * 0xffffffff);
-    const { encounter, events } = startAreaEncounter(this.map, this.character, playerTile, fighters, seed, this.props);
+    const { encounter, events } = startAreaEncounter(
+      this.map,
+      this.character,
+      playerTile,
+      fighters,
+      seed,
+      this.props,
+      surprised,
+    );
 
     const actors = new Map<string, MapActor>([[this.character.id, this.player]]);
     for (const enemy of fighters) actors.set(enemy.id, this.enemyActors.get(enemy.id)!);
@@ -484,6 +612,8 @@ export default class WorldScene extends Phaser.Scene {
     const { character } = this;
     const unit = findUnit(encounter, character.id)!;
     syncCharacterFromUnit(character, unit);
+    const travel = this.travelAfterFight;
+    this.travelAfterFight = undefined;
 
     if (winner === "enemy") {
       await combat.showResult(
@@ -527,17 +657,19 @@ export default class WorldScene extends Phaser.Scene {
 
     combat.destroy();
     this.combat = undefined;
-    this.enemies = this.enemies.filter((enemy) => enemy.group !== group);
-    for (const enemy of fighters) {
-      this.enemyActors.get(enemy.id)?.destroy();
-      this.enemyActors.delete(enemy.id);
-    }
-
     this.player.place(this.pos);
+    this.syncPresence();
+
     this.cameras.main.startFollow(this.player.followTarget, true, 0.2, 0.2);
     this.statusText.setVisible(true);
     this.hintText.setVisible(true);
     this.refreshStatus();
+    this.refreshHint();
+
+    // O que a história tem a dizer sobre a queda do grupo, e depois a viagem que ela tinha deixado marcada.
+    const knot = fighters.find((enemy) => enemy.onDefeat !== undefined)?.onDefeat;
+    if (knot !== undefined) await this.converse(knot);
+    if (travel && !this.combat && !this.leaving) this.leave(travel);
   }
 
   // ------------------------------------------------------------------ pausa
@@ -586,7 +718,8 @@ export default class WorldScene extends Phaser.Scene {
 
   // ------------------------------------------------------------------ saída
 
-  private leave(exit: AreaExit): void {
+  /** Sai pra outra área (ou pra outro ponto desta): por uma saída do mapa, ou levado pela história. */
+  private leave(exit: { area: string; spawn: string }): void {
     this.leaving = true;
     this.player.setWalking(false);
     this.cameras.main.fadeOut(FADE_MS);

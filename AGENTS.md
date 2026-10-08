@@ -14,12 +14,16 @@ Monorepo com npm workspaces:
 
 - **Combate em grade quadrada, no mapa de exploração**, aos moldes de D&D/BG3, sem tela de batalha. Fora de luta o personagem anda livre; na luta o chão conta em quadrados. Diagonal custa 1.
 - **Grupo opcional**: o motor aceita qualquer número de combatentes de cada lado; herói solo é só um grupo de um. (Ainda não existem companheiros — hoje o grupo é sempre o herói.)
-- **Mundo aberto como grafo de áreas**: cada nó é um mapa feito à mão (Tiled), as arestas são as saídas, nenhuma travada por história. Nível de inimigo fixo por área.
+- **Mundo aberto como grafo de áreas**: cada nó é um mapa feito à mão (Tiled), as arestas são as saídas. Uma saída só se tranca se o mapa pedir (`if`/`unless` numa variável da história). Nível de inimigo fixo por área.
+- **A história manda no mapa pelas variáveis dela**: quem está de pé, que gatilho está armado e que saída está aberta se decide perguntando às flags, sem lista paralela. Luta e viagem que o texto pede acontecem depois da última fala.
+- **Quem ataca primeiro sem ser percebido embosca**: a luta pode ser aberta pelo jogador (`F`), e o grupo pego assim perde o primeiro turno.
 - **Visual top-down 3/4** (Sea of Stars), pixel art. A altura vem da arte e da ordem de desenho, não de uma câmera inclinada — não é isométrico.
 - **IA de inimigo por utilidade**: dá nota a todas as jogadas possíveis e fica com a maior, com pesos por criatura (`shared/tactics/ai.ts`).
 - **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto. As flags do jogo são as variáveis da própria história.
 
-Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags — **feito**; (7) save ampliado — **feito**.
+Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags — **feito**; (7) save ampliado — **feito**; (8) ganchos da história no mundo (luta, viagem, item tirado, gente e saídas por flag), gatilhos no chão e emboscada — **feito**.
+
+O que a história ainda vai pedir e não existe: companheiros (o motor aceita grupo; save, mapa, HUD e recompensas não), tela de ficha e mochila fora da luta, diário de pistas, relógio/barra de maré, lutas com fim roteirizado (por turno, por objetivo), equipamento e som.
 
 ### A regra central do combate
 
@@ -28,6 +32,7 @@ O motor **nunca anima nada**. `applyCommand(encounter, command)` (`shared/tactic
 ### O motor tático (`shared/tactics/`)
 
 - `startEncounter({ grid, units, seed })` rola a iniciativa e abre a luta; `applyCommand` aceita `move`, `ability`, `useItem` e `endTurn`. Comando recusado não muda nada.
+- **Surpresa**: `startEncounter({ ..., surprised: "enemy" })` (ou `"party"`) põe o lado inteiro Surpreso. A iniciativa não muda; cada surpreendido perde o primeiro turno quando ele chega (evento `turnSkipped`) e, até lá, não tem reação — passar por ele não provoca ataque de oportunidade. É uma condição como as outras (`surprised`, com a marca `skipsTurn`): qualquer condição com essa marca faz o portador perder o turno em que está ativa.
 - `Encounter` é dado puro: `structuredClone` dá uma luta independente, com o dado (seed) junto. Nada de `Math.random` aqui dentro — mesma seed e mesmos comandos dão a mesma luta.
 - Cada turno tem movimento, ação, ação bônus e uma reação (ataque de oportunidade).
 - Habilidades são dados (`abilities.ts`): alcance, alvo, área, rolagem de ataque e uma lista de efeitos (`damage`, `heal`, `status`, `push`). Condições também (`statuses.ts`). Os kits atuais das Ordens são provisórios, montados sobre os nomes de `shared/combatArts.ts`.
@@ -52,23 +57,43 @@ O contrato de quem desenha um mapa (detalhado em `shared/world/tiledMap.ts`):
 - Terreno de combate também: `cover` (pedra, mureta — barra o passo, não a visão) e `elevation` (altura do chão, em degraus). A altura é só vantagem de combate: um patamar se fecha com tiles de face (`blocksMove`) e se abre com a escada, que é um quadrado comum. O salão das `ruinas` tem um.
 - Camada cujo nome começa com `sorted` fica "de pé": cada tile é ordenado pelo Y da própria base junto com os personagens, então se passa por trás de uma copa e pela frente do tronco. Coisas altas vêm de um tileset de tiles mais altos que o quadrado (ex: 16x32), com a base no quadrado que ocupam; parede se desenha com o topo em cima e a face frontal embaixo.
 - Camada cujo nome começa com `above` é desenhada por cima de tudo; as demais são chão.
-- Objetos: `spawn` (ponto; o nome é o id), `exit` (retângulo; propriedades `area` e `spawn`), `enemy` (ponto; propriedades `creature`, a chave no bestiário, e `group`) `npc` (ponto; o nome é o que aparece na caixa, `dialog` é o trecho da história que a conversa abre e `look`, opcional, é o id da Ordem cujo sprite ele usa por enquanto — com `look` ocupa o quadrado, sem `look` é só um ponto pra examinar, como uma inscrição na parede) e `prop` (um destrutível: um TILE posto como objeto — Insert Tile, não pintado numa camada — com a propriedade `kind`, a chave em `PROPS`; o que ele barra vem de `kind`, o tile é só o desenho).
+- Objetos: `spawn` (ponto; o nome é o id), `exit` (retângulo; propriedades `area` e `spawn`), `enemy` (ponto; propriedades `creature`, a chave no bestiário, e `group`; opcionais `passive`, `dialog` e `onDefeat`, ver abaixo), `trigger` (retângulo; propriedade `dialog`, o trecho da história que abre quando se pisa nele, e `once`, que só precisa ser posta pra dizer `false`), `npc` (ponto; o nome é o que aparece na caixa, `dialog` é o trecho da história que a conversa abre e `look`, opcional, é o id da Ordem cujo sprite ele usa por enquanto — com `look` ocupa o quadrado, sem `look` é só um ponto pra examinar, como uma inscrição na parede) e `prop` (um destrutível: um TILE posto como objeto — Insert Tile, não pintado numa camada — com a propriedade `kind`, a chave em `PROPS`; o que ele barra vem de `kind`, o tile é só o desenho).
 
 `parseTiledMap` devolve a grade SEM os destrutíveis; `standAreaProps` (`encounters.ts`) põe de pé nela os que ainda não foram quebrados, e a partir daí eles barram quem explora e quem luta do mesmo jeito. A luta recebe esses mesmos objetos e a mesma grade, então o que quebra em combate abre o caminho no mundo sem mais nada.
 
-Inimigos ficam de pé no mapa. Chegar a `AGGRO_RANGE` quadrados de um deles, com linha de visão, puxa o grupo inteiro pra luta (`shared/world/encounters.ts`), na grade da própria área. Grupo vencido não volta.
+Inimigos ficam de pé no mapa. Uma luta com um grupo começa de três jeitos (`shared/world/encounters.ts`), sempre na grade da própria área, e grupo vencido não volta:
+
+- **Ele percebe o personagem** (`aggroedGroup`): chegar a `AGGRO_RANGE` (5) quadrados de um deles, com linha de visão. Luta comum.
+- **O personagem ataca primeiro** (`ambushableGroup`, tecla `F`): com um inimigo a até `AMBUSH_RANGE` (9) quadrados que ainda não o percebeu — de longe, na faixa entre os dois alcances, ou de perto e fora da vista dele (atrás de parede, de árvore). É uma **emboscada**: o grupo entra surpreso. A dica do pé da tela mostra `F: emboscar` quando dá. `F` já começa a luta; não há como desfazer.
+- **A história manda** (`start_fight` no texto): luta comum, e o único jeito de lutar com um grupo `passive`.
+
+Um inimigo `passive` não percebe ninguém e não pode ser emboscado: fica de pé ocupando o quadrado, como um `npc`, até a história começar a luta. Com `dialog`, dá pra falar com ele (`E`), e o nome do objeto é o que a caixa mostra — é o personagem que conversa antes de brigar. `onDefeat`, em qualquer inimigo, é o trecho da história que abre quando o grupo dele cai.
+
+### Quem está no mapa agora (`shared/world/presence.ts`)
+
+`npc`, `enemy`, `trigger` e `exit` aceitam as propriedades `if` e `unless`: o nome de uma variável (`VAR`) da história. O objeto só existe enquanto a de `if` for verdadeira e a de `unless` for falsa (`isActive`). Pôr alguém no mapa, tirá-lo sem luta, armar um gatilho ou destrancar uma saída é mudar um `VAR` no texto — nada disso tem estado próprio, nem campo no save.
+
+- A `WorldScene` pergunta de novo em um lugar só, `syncPresence`: ao chegar, depois de cada conversa e depois de cada luta. Quem passou a existir aparece, quem deixou de existir some.
+- `parseTiledMap` devolve a grade SEM gente. `standPeople` escreve nela os quadrados de quem está de pé e não se atravessa (`peopleTiles`: `npc` com `look` e inimigo `passive`) e devolve o chão de baixo quando a lista muda. Quem entra numa luta sai da lista: lá quem ocupa o quadrado é a unidade. Quem aparece em cima do personagem só ocupa o quadrado quando ele sai de perto.
+- **Gatilhos** (`firedTrigger`): disparam ao ENTRAR no retângulo, inclusive parado — um gatilho em cima de um ponto de chegada é a cena de quem chega na área. O de uma vez só (o padrão) se gasta quando o trecho dele é LIDO, e quem lembra disso é o próprio Ink (`StoryRunner.visited`): por isso a história é compilada contando as visitas de todo trecho. Com `once` = `false`, dispara a cada entrada. Dois prontos no mesmo lugar saem um de cada vez.
+- Padrões que saem disso: *chefe que fala antes de lutar* = um gatilho em volta dele cujo trecho termina em `start_fight`; *porta trancada* = uma saída com `if` e, por cima, um gatilho de `once` = `false` com `unless` na mesma variável, dizendo que está trancada; *alguém que aparece depois* = um `npc` com `if`.
+- Um grupo com membros condicionais luta só com os que estão de pé; vencido, o grupo inteiro conta como vencido.
 
 Criatura pode levar consumíveis pra luta (`carries` na entrada do bestiário; `spawnCreature` monta a ficha com a mochila). A IA usa item como o jogador usa, pela ação bônus, e só quando não é desperdício. O que ela NÃO usar fica pra quem vence (`unusedItems` → `grantEncounterRewards`), além do sorteio de `drops`.
 
 ### A história (`client/story/` + `shared/story/`)
 
-Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/main.ink` inclui um arquivo por lugar. Uma só porque o estado dela é o save — as variáveis (`VAR`) são as flags do jogo, e o Ink ainda lembra quantas vezes cada trecho foi lido e que escolhas de uma vez só já foram gastas. O que existe hoje (`andarilha` na clareira, `inscricao` nas ruínas) é provisório, feito pra exercitar o sistema.
+Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/main.ink` inclui um arquivo por lugar. Uma só porque o estado dela é o save — as variáveis (`VAR`) são as flags do jogo, e o Ink ainda lembra quantas vezes cada trecho foi lido e que escolhas de uma vez só já foram gastas. O que existe hoje é provisório, feito pra exercitar o sistema: `andarilha` na clareira (que também leva às ruínas com `travel`), `clareira_chegada` (um `trigger` de uma vez só no ponto onde o jogo começa), `inscricao` nas ruínas, e a Sentinela, no canto noroeste das ruínas — um inimigo `passive` que fala, cercado por um gatilho de aviso que se repete, que se resolve com teste de Len, com `take_item`, ou na luta (`start_fight` + `onDefeat`), e some do mapa por `unless`.
 
 - `StoryRunner` (`shared/story/runner.ts`) roda a história e, como o motor de combate, não desenha nada: `start(knot)` e `choose(index)` devolvem um `DialogueStep` — as falas e os acontecimentos em ordem (`beats`) e as escolhas no fim; sem escolhas, a conversa acabou. `save()` devolve o estado inteiro; `flag`/`setFlag` leem e escrevem uma variável de fora.
 - Fala no formato `Nome: texto` sai com quem fala; o resto é narração.
-- O texto fala com o jogo por funções declaradas com `EXTERNAL` no `main.ink` e ligadas no `StoryRunner`: `attr`, `order`, `people`, `level`, `has_item`, `defeated("area:grupo")` (leitura) e `check`, `give_item`, `grant_xp` (mexem no jogo e viram `StoryEvent`). Função nova entra nos dois lugares.
+- O texto fala com o jogo por funções declaradas com `EXTERNAL` no `main.ink` e ligadas no `StoryRunner`: `attr`, `order`, `people`, `level`, `has_item`, `defeated("area:grupo")` (leitura) e `check`, `give_item`, `take_item`, `grant_xp`, `start_fight`, `travel` (mexem no jogo e viram `StoryEvent`). Função nova entra nos dois lugares.
+- `take_item("id")` tira uma unidade da mochila e devolve se havia: `{take_item("x"): ... | ...}` é o pedágio, a entrega, a troca.
+- `start_fight("grupo")` e `travel("area", "ponto")` **não cortam o texto**: viram os acontecimentos `fight` e `travel`, e a cena os cumpre depois da última fala (`aftermath`). A luta é com um grupo da área em que se está; pedidas as duas coisas, a luta vem primeiro e a viagem só acontece se ela for vencida. O estado da história é gravado ANTES da luta: o trecho que a começa precisa saber começá-la de novo numa segunda visita (derrota, jogo fechado no meio).
+- Um trecho abre de quatro jeitos: `E` perto de um `npc`, `E` perto de um inimigo `passive` com `dialog`, pisar num `trigger`, e a queda de um grupo com `onDefeat`. Trecho que não põe nada na tela (só mexe em variáveis, ou decide que não tem o que dizer) passa sem abrir a caixa.
+- As variáveis da história também decidem o que existe no mapa (`if`/`unless`, ver "Quem está no mapa agora").
 - Teste de atributo (`shared/story/checks.ts`): d20 + atributo contra a dificuldade, 20 natural passa e 1 falha. Uma escolha com a etiqueta `# check: len 13` é um teste anunciado — a caixa mostra a chance, o dado rola ao escolher e o texto lê o resultado com `passed()`. `{check("ul", 12): ... | ...}` rola na hora, no meio do texto. A régua de dificuldade está no topo de `checks.ts` e do `main.ink`.
-- No mapa, quem fala é um objeto `npc` (ver o contrato abaixo). `E` perto de um abre a conversa (`npcInReach`); a `WorldScene` passa cada trecho pra `DialogueBox` (`client/src/game/dialogue/`) e devolve a escolha à história.
+- No mapa, quem fala é um objeto `npc` ou um inimigo `passive` com `dialog` (`talkers`; ver o contrato acima). `E` perto de um abre a conversa (`npcInReach`); a `WorldScene.converse` passa cada trecho pra `DialogueBox` (`client/src/game/dialogue/`) e devolve a escolha à história. A caixa cresce pra cima quando a fala mais as escolhas não cabem.
 - A história é compilada em Node, nunca no navegador: `client/scripts/compileStory.ts`, chamado pelo plugin do `vite.config.ts` ao subir, ao buildar e a cada `.ink` salvo no dev (a página recarrega). O resultado é `client/public/story.json`, que não vai pro git.
 
 ### Cenas (`client/src/scenes/`)
@@ -77,7 +102,7 @@ Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/
 
 A `WorldScene` é exploração e combate na mesma cena, com duas câmeras: a do mundo (zoom 3x, segue o personagem) e a da interface (sem zoom). Todo objeto criado passa por `addWorld` ou `addHud`. O combate em si mora em `client/src/game/combat/`: `CombatController` (entrada → comando, eventos → animação) e `CombatHud` (ordem de turnos, registro, barra de ações, resultado).
 
-O peso dos golpes é todo do client, tirado dos eventos: no `damage` o alvo pisca, a câmera treme e as animações congelam um instante (`hitStop`), tudo proporcional a quanto da vida o golpe levou e maior em crítico ou golpe fatal; o alvo recua de quem bateu, e quem escapa dá um passo de lado. Antes de um inimigo usar uma habilidade, os quadrados que ela vai pegar acendem (`telegraph`). Com uma habilidade escolhida, passar o cursor num alvo mostra a chance de acerto e o que a posição soma ou tira; no modo de movimento, avisa quando o caminho passa por chão que fere. As superfícies são quadrados coloridos pulsando no chão, desenhados a partir dos eventos. Quem está na vez tem um anel no chão. Tudo isso é provisório como o resto do visual — os números ficam no topo do `CombatController`.
+O peso dos golpes é todo do client, tirado dos eventos: no `damage` o alvo pisca, a câmera treme e as animações congelam um instante (`hitStop`), tudo proporcional a quanto da vida o golpe levou e maior em crítico ou golpe fatal; o alvo recua de quem bateu, e quem escapa dá um passo de lado. Antes de um inimigo usar uma habilidade, os quadrados que ela vai pegar acendem (`telegraph`). Numa emboscada o registro abre com "Emboscada!" e quem perde a vez mostra "Perde a vez" sobre a cabeça. Com uma habilidade escolhida, passar o cursor num alvo mostra a chance de acerto e o que a posição soma ou tira; no modo de movimento, avisa quando o caminho passa por chão que fere. As superfícies são quadrados coloridos pulsando no chão, desenhados a partir dos eventos. Quem está na vez tem um anel no chão. Tudo isso é provisório como o resto do visual — os números ficam no topo do `CombatController`.
 
 ### Sprites
 
@@ -91,7 +116,8 @@ Uma partida é UM objeto, `GameSave` (`shared/save/gameSave.ts`): o personagem, 
 - O save tem versão (`SAVE_VERSION`). **Campo novo: acrescentar em `GameSave`, subir a versão e escrever em `MIGRATIONS` como o save da versão anterior ganha esse campo** — `parseSave` aplica as migrações em fila. Quem já tem save não o perde.
 - Onde o texto fica guardado é do client (`client/src/game/save.ts`): `SLOT_COUNT` espaços em `localStorage`, um jogo inteiro por chave, gravado de uma vez só. Um espaço com algo que o jogo não lê aparece como ilegível e não é sobrescrito sozinho. O save do formato antigo (chaves soltas) é trazido pro primeiro espaço livre na primeira leitura.
 - A partida aberta é uma `GameSession` (`client/src/game/session.ts`) no registry: o save em memória mais o espaço dele. As cenas mudam `session.save` e chamam `commit()`.
-- O jogo grava sozinho (`WorldScene.persist`): ao chegar numa área, ao fim de uma conversa, na vitória (ficha, espólio, grupo vencido, destrutíveis e lugar, tudo junto), ao descansar, ao sair pro título e quando a aba some ou fecha. Numa derrota só a ficha é gravada: a área volta inteira. Não se grava no meio de uma conversa.
+- Gatilho gasto, gente que apareceu ou sumiu e saída destrancada NÃO são campos do save: são o estado da história (`save.story`), que já vai inteiro.
+- O jogo grava sozinho (`WorldScene.persist`): ao chegar numa área, ao fim de uma conversa (ou de um trecho aberto por gatilho), na vitória (ficha, espólio, grupo vencido, destrutíveis e lugar, tudo junto), ao descansar, ao sair pro título e quando a aba some ou fecha. Numa derrota só a ficha é gravada: a área volta inteira. Não se grava no meio de uma conversa.
 - A tela `Saves` continua, começa, apaga, exporta um espaço como arquivo `.json` e importa um arquivo pra um espaço vazio — é o jeito de levar um jogo pra outro dispositivo. `Esc` no mundo abre a pausa, que salva e volta ao título.
 - Ao carregar, a posição salva que hoje cairia dentro de uma parede (o mapa mudou) vira o ponto de chegada da área.
 
@@ -109,7 +135,7 @@ npm test                                        # testes sem tela: motor tático
 npm run balance:matrix --workspace=server       # taxa de vitória de cada Ordem x criatura, pelo motor real
 ```
 
-`npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede, trecho sem acesso (já com os destrutíveis de pé), criatura ou destrutível que não existe, destrutível em cima de parede, saída ou de alguém, e inimigo colado num ponto de chegada. Também compila a história de verdade e percorre cada conversa por todos os caminhos, passando e falhando nos testes: `npc` apontando pra trecho que não existe, item inexistente ou conversa que não termina aparecem aqui.
+`npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede, trecho sem acesso (já com os destrutíveis de pé), criatura ou destrutível que não existe, destrutível em cima de parede, saída ou de alguém, inimigo hostil colado num ponto de chegada, inimigo que fala sem ser `passive`, passivo dividindo quadrado e gatilho sem tamanho ou onde ninguém pisa. Também compila a história de verdade e percorre cada trecho que um mapa abre (`npc`, inimigo que fala, `onDefeat`, `trigger`) por todos os caminhos, passando e falhando nos testes: trecho que não existe, item inexistente, conversa que não termina, `if`/`unless` com variável não declarada, `start_fight` com grupo que a área não tem e `travel` pra ponto de chegada que não existe aparecem aqui.
 
 ### Versões anteriores
 

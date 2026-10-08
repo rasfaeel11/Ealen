@@ -163,10 +163,13 @@ export type AttackOutcome = "hit" | "miss" | "crit" | "fumble";
  * e a cena reproduz. Regra nova de combate vira evento novo aqui.
  */
 export type TacticalEvent =
-  | { type: "battleStarted"; order: { unit: string; initiative: number }[] }
+  /** `surprised` é o lado pego de surpresa, se houve emboscada. */
+  | { type: "battleStarted"; order: { unit: string; initiative: number }[]; surprised?: TeamId }
   | { type: "roundStarted"; round: number }
   | { type: "turnStarted"; unit: string }
   | { type: "turnEnded"; unit: string }
+  /** A vez de `unit` começou e passou sem ele agir, por causa da condição `name` (ver `skipsTurn`). */
+  | { type: "turnSkipped"; unit: string; name: string }
   /** `path` não inclui `from`. Um movimento interrompido por um ataque de oportunidade vira dois destes. */
   | { type: "moved"; unit: string; from: Pos; path: Pos[] }
   | { type: "abilityUsed"; unit: string; abilityId: string; name: string; target: Pos; reaction: boolean }
