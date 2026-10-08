@@ -2,6 +2,7 @@ import type { Attributes } from "../types/attributes";
 import type { CharacterClass } from "../types/characterClass";
 import type { ConsumableItem, Inventory } from "../types/inventory";
 import type { Grid, Pos } from "./grid";
+import type { Prop } from "./props";
 import type { Dice } from "./rng";
 import type { ActiveStatus, StatusId } from "./statuses";
 import type { Surface, SurfaceId } from "./surfaces";
@@ -139,6 +140,8 @@ export interface Encounter {
   /** Posição em `order` de quem está agindo. */
   turnIndex: number;
   round: number;
+  /** Os destrutíveis da luta, os já quebrados inclusive (ver ./props.ts). Os de pé estão escritos em `grid`. */
+  props: Prop[];
   /** O que há no chão por cima do terreno (ver ./surfaces.ts). No máximo uma por quadrado. */
   surfaces: Surface[];
   rngState: number;
@@ -191,6 +194,8 @@ export type TacticalEvent =
   | { type: "surfaceExpired"; surfaceId: SurfaceId; name: string; tiles: Pos[] }
   /** A superfície pegou alguém (entrou nela ou começou o turno nela). O `damage` vem logo depois. */
   | { type: "surfaceTriggered"; unit: string; surfaceId: SurfaceId; name: string }
+  | { type: "propDamaged"; prop: string; name: string; pos: Pos; amount: number; remainingHp: number }
+  | { type: "propDestroyed"; prop: string; name: string; pos: Pos }
   | { type: "itemUsed"; unit: string; itemId: string; itemName: string; description: string }
   | { type: "death"; unit: string }
   | { type: "battleEnded"; winner: TeamId };

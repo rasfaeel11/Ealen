@@ -1,9 +1,10 @@
 import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileIndex, type Pos } from "./grid";
 import { attackOdds } from "./attack";
 import { reachableTiles } from "./movement";
+import { PROPS, type PropTemplate } from "./props";
 import { STATUSES, type StatusId, type StatusTemplate } from "./statuses";
-import { SURFACES, enterCost, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
-import { abilityTargets, affectedUnits, canAimAt } from "./targeting";
+import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
+import { abilityTargets, affectedProps, affectedUnits, canAimAt } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
@@ -244,21 +245,52 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
       value += profile.aggression * (harm - favor) + profile.finisher * KILL_VALUE * outlook.kill;
     }
   }
-  return value + surfaceValue(encounter, actor, profile, ability, target);
+  if (ability.surface) {
+    value += spreadValue(encounter, actor, profile, SURFACES[ability.surface.id], surfaceTiles(encounter, ability, target));
+  }
+  return value + propValue(encounter, actor, profile, ability, target);
 }
 
 /**
- * O que rende a superfície que `ability` deixa no chão: o dano que quem
- * está em cima vai levar ao começar o turno, e o passo que ela atrapalha.
- * Sobre quem já está numa superfície igual, nada — seria só renovar.
+ * O que rende quebrar os destrutíveis que o golpe pega. Só conta o que eles
+ * derramam, e só quando o golpe deve bastar pra quebrá-los: é o barril ao
+ * lado do inimigo. Caixote não vale o golpe.
  */
-function surfaceValue(encounter: Encounter, actor: Unit, profile: AiProfile, ability: Ability, target: Pos): number {
-  if (!ability.surface) return 0;
-  const template: SurfaceTemplate = SURFACES[ability.surface.id];
+function propValue(encounter: Encounter, actor: Unit, profile: AiProfile, ability: Ability, target: Pos): number {
+  let value = 0;
+  for (const prop of affectedProps(encounter, ability, target)) {
+    const { spill }: PropTemplate = PROPS[prop.kind];
+    if (!spill) continue;
+
+    let damage = 0;
+    for (const effect of ability.effects) {
+      if (effect.kind !== "damage") continue;
+      damage += (attributeOf(actor, effect.attribute) + meanRoll(effect.dice)) * (effect.multiplier ?? 1);
+      if (effect.bonus) damage += Math.floor(effectiveAttribute(actor, effect.bonus.attribute) / effect.bonus.divisor);
+    }
+    if (damage < prop.hp) continue;
+
+    value += spreadValue(encounter, actor, profile, SURFACES[spill.surface], spreadTiles(encounter.grid, prop.pos, spill.radius));
+  }
+  return value;
+}
+
+/**
+ * O que rende pôr a superfície `template` em `tiles`: o dano que quem está
+ * em cima vai levar ao começar o turno, e o passo que ela atrapalha. Sobre
+ * quem já está numa superfície igual, nada — seria só renovar.
+ */
+function spreadValue(
+  encounter: Encounter,
+  actor: Unit,
+  profile: AiProfile,
+  template: SurfaceTemplate,
+  tiles: Pos[],
+): number {
   const mean = template.damage ? meanRoll(template.damage) : 0;
 
   let value = 0;
-  for (const pos of surfaceTiles(encounter, ability, target)) {
+  for (const pos of tiles) {
     const occupant = unitAt(encounter, pos);
     if (!occupant) continue;
     if (encounter.surfaces.some((surface) => surface.id === template.id && samePos(surface.pos, pos))) continue;

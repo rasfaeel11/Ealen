@@ -4,6 +4,7 @@ import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { findItemTemplate } from "../mock/items";
 import { startEncounter } from "../tactics/engine";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
+import { isPropId, standProp, type Prop } from "../tactics/props";
 import { nextRandom, type RngHolder } from "../tactics/rng";
 import type { Encounter, TacticalEvent, TeamId } from "../tactics/types";
 import { unitFromCharacter } from "../tactics/units";
@@ -21,6 +22,22 @@ import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
  * na grade da própria área.
  */
 
+/**
+ * Põe de pé, na grade da área, os destrutíveis que ainda não foram quebrados
+ * (`broken` são os ids dos que já foram). Muta `map.grid`: a partir daqui
+ * eles barram o passo de quem explora e de quem luta, do mesmo jeito. Os
+ * objetos devolvidos são os que a luta recebe — quebrado um deles, a grade
+ * se abre de novo sozinha.
+ */
+export function standAreaProps(map: AreaMap, broken: ReadonlySet<string> = new Set()): Prop[] {
+  const standing: Prop[] = [];
+  for (const prop of map.props) {
+    if (broken.has(prop.id) || !isPropId(prop.kind)) continue;
+    standing.push(standProp(map.grid, prop.id, prop.kind, prop.tile));
+  }
+  return standing;
+}
+
 /** A quantos quadrados um inimigo percebe o jogador (precisa também enxergá-lo). */
 export const AGGRO_RANGE = 5;
 
@@ -34,8 +51,9 @@ export function aggroedGroup(map: AreaMap, enemies: AreaEnemy[], playerTile: Pos
 
 /**
  * Abre a luta entre o personagem (em `playerTile`) e um grupo de inimigos
- * da área. Inimigo cuja criatura não exista no bestiário é ignorado — o
- * teste dos mapas acusa esse erro antes de ele chegar aqui.
+ * da área, com os destrutíveis de pé nela (`props`, de standAreaProps).
+ * Inimigo cuja criatura não exista no bestiário é ignorado — o teste dos
+ * mapas acusa esse erro antes de ele chegar aqui.
  */
 export function startAreaEncounter(
   map: AreaMap,
@@ -43,6 +61,7 @@ export function startAreaEncounter(
   playerTile: Pos,
   enemies: AreaEnemy[],
   seed: number,
+  props: Prop[] = [],
 ): { encounter: Encounter; events: TacticalEvent[] } {
   const units = [unitFromCharacter(character, { team: "party", pos: playerTile })];
   for (const enemy of enemies) {
@@ -52,7 +71,7 @@ export function startAreaEncounter(
       unitFromCharacter(spawnCreature(entry), { team: "enemy", pos: tileOfPixel(map, enemy), id: enemy.id, ai: entry.ai }),
     );
   }
-  return startEncounter({ grid: map.grid, units, seed });
+  return startEncounter({ grid: map.grid, units, props, seed });
 }
 
 /**

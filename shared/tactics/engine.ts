@@ -2,10 +2,19 @@ import { attackEdge, attackTotals } from "./attack";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { findPath } from "./movement";
+import { PROPS, fellProp, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
 import { STATUSES, type ActiveStatus, type StatusTemplate } from "./statuses";
-import { SURFACES, enterCost, surfaceAt, surfaceTiles, type SurfaceId, type SurfaceTemplate } from "./surfaces";
-import { abilityTargets, affectedUnits } from "./targeting";
+import {
+  SURFACES,
+  enterCost,
+  spreadTiles,
+  surfaceAt,
+  surfaceTiles,
+  type SurfaceId,
+  type SurfaceTemplate,
+} from "./surfaces";
+import { abilityTargets, affectedProps, affectedUnits } from "./targeting";
 import type {
   Ability,
   AbilityCost,
@@ -38,6 +47,8 @@ export interface EncounterSetup {
   grid: Grid;
   /** Já posicionados (ver unitFromCharacter em ./units.ts). A luta passa a ser dona destes objetos. */
   units: Unit[];
+  /** Os destrutíveis da luta, JÁ de pé em `grid` (ver standProp em ./props.ts). */
+  props?: Prop[];
   seed: number;
 }
 
@@ -49,6 +60,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     order: [],
     turnIndex: -1,
     round: 1,
+    props: setup.props ?? [],
     surfaces: [],
     rngState: setup.seed >>> 0,
   };
@@ -335,6 +347,13 @@ function resolveAbility(
     }
   }
 
+  for (const prop of affectedProps(encounter, ability, targetPos)) {
+    for (const effect of ability.effects) {
+      if (effect.kind !== "damage" || prop.hp <= 0) continue;
+      damageProp(encounter, prop, rollDamage(encounter, actor, effect), events);
+    }
+  }
+
   if (ability.surface) {
     laySurface(encounter, ability.surface.id, surfaceTiles(encounter, ability, targetPos), ability.surface.rounds, events);
   }
@@ -383,6 +402,18 @@ function rollAttack(
   return outcome;
 }
 
+function attributeOf(actor: Unit, ref: AttributeRef | undefined): number {
+  return ref === undefined ? 0 : effectiveAttribute(actor, ref === "primary" ? primaryAttribute(actor) : ref);
+}
+
+/** O dano de um efeito ANTES de quem o recebe: (atributo + dados) x multiplicador + bônus. */
+function rollDamage(encounter: Encounter, actor: Unit, effect: Extract<Effect, { kind: "damage" }>): number {
+  const amount = Math.round(
+    (attributeOf(actor, effect.attribute) + rollDice(encounter, effect.dice)) * (effect.multiplier ?? 1),
+  );
+  return effect.bonus ? amount + Math.floor(effectiveAttribute(actor, effect.bonus.attribute) / effect.bonus.divisor) : amount;
+}
+
 function applyEffect(
   encounter: Encounter,
   actor: Unit,
@@ -391,13 +422,9 @@ function applyEffect(
   critical: boolean,
   events: TacticalEvent[],
 ): void {
-  const attributeOf = (ref: AttributeRef | undefined) =>
-    ref === undefined ? 0 : effectiveAttribute(actor, ref === "primary" ? primaryAttribute(actor) : ref);
-
   switch (effect.kind) {
     case "damage": {
-      let amount = Math.round((attributeOf(effect.attribute) + rollDice(encounter, effect.dice)) * (effect.multiplier ?? 1));
-      if (effect.bonus) amount += Math.floor(effectiveAttribute(actor, effect.bonus.attribute) / effect.bonus.divisor);
+      let amount = rollDamage(encounter, actor, effect);
       if (critical) amount *= 2;
 
       const targetOr = effectiveAttribute(target, "or");
@@ -414,7 +441,7 @@ function applyEffect(
     case "heal": {
       const amount = Math.min(
         target.maxHp - target.currentHp,
-        attributeOf(effect.attribute) + rollDice(encounter, effect.dice),
+        attributeOf(actor, effect.attribute) + rollDice(encounter, effect.dice),
       );
       target.currentHp += amount;
       events.push({ type: "heal", target: target.id, amount, remainingHp: target.currentHp });
@@ -460,6 +487,34 @@ function push(encounter: Encounter, actor: Unit, target: Unit, pushDistance: num
   if (samePos(from, target.pos)) return;
   events.push({ type: "pushed", unit: target.id, from, to: { ...target.pos } });
   touchSurface(encounter, target, events);
+}
+
+// --- Destrutíveis -----------------------------------------------------------
+
+/**
+ * Fere um destrutível. Zerando, ele sai da grade (o quadrado volta a ser o
+ * chão que era) e derrama o que tiver pra derramar.
+ */
+function damageProp(encounter: Encounter, prop: Prop, amount: number, events: TacticalEvent[]): void {
+  const template: PropTemplate = PROPS[prop.kind];
+  prop.hp = Math.max(0, prop.hp - amount);
+  events.push({
+    type: "propDamaged",
+    prop: prop.id,
+    name: template.name,
+    pos: { ...prop.pos },
+    amount,
+    remainingHp: prop.hp,
+  });
+  if (prop.hp > 0) return;
+
+  fellProp(encounter.grid, prop);
+  events.push({ type: "propDestroyed", prop: prop.id, name: template.name, pos: { ...prop.pos } });
+
+  const { spill } = template;
+  if (spill) {
+    laySurface(encounter, spill.surface, spreadTiles(encounter.grid, prop.pos, spill.radius), spill.rounds, events);
+  }
 }
 
 // --- Itens ------------------------------------------------------------------

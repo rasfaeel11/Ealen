@@ -1,4 +1,5 @@
 import { distance, hasLineOfSight, posOfIndex, tileAt, type Pos } from "./grid";
+import { propAt, type Prop } from "./props";
 import type { Ability, Encounter, Unit } from "./types";
 import { isAlive, unitAt } from "./units";
 
@@ -18,7 +19,11 @@ export function canAimAt(encounter: Encounter, unit: Unit, ability: Ability, pos
   return tile !== undefined && !tile.blocksSight && canTarget(encounter, unit, ability, pos);
 }
 
-/** Todo quadrado que `unit` pode mirar com `ability` de onde está. */
+function dealsDamage(ability: Ability): boolean {
+  return ability.effects.some((effect) => effect.kind === "damage");
+}
+
+/** Todo quadrado que `unit` pode mirar com `ability` de onde está. Golpe que fere também mira um destrutível. */
 export function abilityTargets(encounter: Encounter, unit: Unit, ability: Ability): Pos[] {
   if (ability.targets === "self") return [{ ...unit.pos }];
 
@@ -29,10 +34,16 @@ export function abilityTargets(encounter: Encounter, unit: Unit, ability: Abilit
   }
 
   const wantsAlly = ability.targets === "ally";
-  return encounter.units
+  const targets = encounter.units
     .filter((other) => isAlive(other) && (other.team === unit.team) === wantsAlly)
     .filter((other) => canTarget(encounter, unit, ability, other.pos))
     .map((other) => ({ ...other.pos }));
+  if (wantsAlly || !dealsDamage(ability)) return targets;
+
+  const props = encounter.props
+    .filter((prop) => prop.hp > 0 && canTarget(encounter, unit, ability, prop.pos))
+    .map((prop) => ({ ...prop.pos }));
+  return [...targets, ...props];
 }
 
 /**
@@ -50,5 +61,23 @@ export function affectedUnits(encounter: Encounter, ability: Ability, target: Po
   return encounter.units.filter(
     (unit) =>
       isAlive(unit) && distance(unit.pos, target) <= radius && hasLineOfSight(encounter.grid, target, unit.pos),
+  );
+}
+
+/**
+ * Os destrutíveis que `ability` danifica se for mirada em `target`: o do
+ * quadrado mirado ou, numa área, todos os do raio. Só golpe que fere quebra
+ * alguma coisa.
+ */
+export function affectedProps(encounter: Encounter, ability: Ability, target: Pos): Prop[] {
+  if (!dealsDamage(ability)) return [];
+  if (ability.radius === undefined) {
+    const prop = propAt(encounter, target);
+    return prop ? [prop] : [];
+  }
+
+  const radius = ability.radius;
+  return encounter.props.filter(
+    (prop) => prop.hp > 0 && distance(prop.pos, target) <= radius && hasLineOfSight(encounter.grid, target, prop.pos),
   );
 }

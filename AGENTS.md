@@ -19,7 +19,7 @@ Monorepo com npm workspaces:
 - **IA de inimigo por utilidade**: dá nota a todas as jogadas possíveis e fica com a maior, com pesos por criatura (`shared/tactics/ai.ts`).
 - **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto. Ainda não existe.
 
-Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno — cobertura, flanco, altura e superfícies **feitos**, destrutíveis **faltam**; (6) diálogo e flags; (7) save ampliado.
+Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags; (7) save ampliado.
 
 ### A regra central do combate
 
@@ -36,13 +36,14 @@ O motor **nunca anima nada**. `applyCommand(encounter, command)` (`shared/tactic
 - `chooseCommand` (`ai.ts`) é a IA: recebe a luta, devolve o próximo comando de quem está no turno; chama-se de novo depois de cada comando, até ela devolver `endTurn`. Uma jogada é um quadrado onde parar mais o que fazer de lá, e a nota soma o que as habilidades rendem EM MÉDIA (acerto x dano, chance de derrubar, cura, guarda, fogo amigo em área) com o que a posição custa (dano a que fica exposto, ataque de oportunidade, distância andando até o inimigo). Ela não rola dado, não muta a luta e é determinística. `planTurn` devolve o plano com as notas — é o que os testes conferem.
 - Os pesos (`AiProfile`: `aggression`, `finisher`, `support`, `caution`) vêm de `ai` na entrada do bestiário e viajam na `Unit`. Criatura com jeito novo de lutar é mexer nesses números; os atuais são provisórios.
 - A chance de acerto da IA vem de `attackOdds`, então ela cerca, sobe e se esconde atrás de pedra sem regra própria pra isso. A conta de dano médio (`forecast`) ESPELHA o efeito `damage` do motor: mudou a regra no motor, muda na IA também. Efeito novo de habilidade precisa de um `case` em `abilityValue`, senão a IA não vê valor nele.
-- Superfícies (`surfaces.ts`) são o que uma habilidade deixa no chão por algumas rodadas: `surface: { id, rounds }` na habilidade põe uma no quadrado mirado (ou na área toda), acerte ou erre. Moram em `Encounter.surfaces`, por cima do terreno — a grade do mapa não muda na luta. São dados, como as condições: `damage` fere quem ENTRA no quadrado e quem COMEÇA o turno nele (sem ataque, armadura nem guarda), `moveCost` encarece o passo. Hoje existem `fire` (Chamas, do Entropista) e `frost` (Geada, na área do Cantor), provisórias como os kits. Duram rodadas, contadas no começo de cada uma. Superfície nova que só combine essas marcas é uma linha em `SURFACES` mais uma cor em `SURFACE_COLOR` no `CombatController`.
+- Superfícies (`surfaces.ts`) são o que uma habilidade deixa no chão por algumas rodadas: `surface: { id, rounds }` na habilidade põe uma no quadrado mirado (ou na área toda), acerte ou erre. Moram em `Encounter.surfaces`, por cima do terreno, e acabam com a luta. São dados, como as condições: `damage` fere quem ENTRA no quadrado e quem COMEÇA o turno nele (sem ataque, armadura nem guarda), `moveCost` encarece o passo. Hoje existem `fire` (Chamas, do Entropista) e `frost` (Geada, na área do Cantor), provisórias como os kits. Duram rodadas, contadas no começo de cada uma. Superfície nova que só combine essas marcas é uma linha em `SURFACES` mais uma cor em `SURFACE_COLOR` no `CombatController`.
 - O caminho de `findPath`/`reachableTiles` é o mais barato e, entre os de mesmo custo, o que fere menos; `hazard` diz quanto dano médio ele atravessa. A IA desconta esse dano e o de terminar o turno em cima de uma superfície, e dá valor a pôr uma sob os pés de um inimigo (`surfaceValue`).
+- Destrutíveis (`props.ts`) são coisas postas em cima do chão — hoje `crate` (Caixote, dá cobertura) e `barrel` (Barril de óleo, derrama Chamas em volta ao quebrar), provisórios. Um destrutível de pé é TERRENO: `standProp` escreve na grade o que ele barra e `fellProp` devolve o chão de baixo, então movimento, visão e cobertura não sabem que ele existe. Qualquer habilidade com efeito `damage` pode mirá-lo (`abilityTargets` oferece, `affectedProps` diz quais uma área pega); objeto não se esquiva, então não há rolagem e o dano entra inteiro. Moram em `Encounter.props`, os quebrados inclusive (com 0 de vida). Destrutível novo é uma linha em `PROPS`. A IA só gasta golpe em destrutível que derrama alguma coisa sobre um inimigo (`propValue`).
 - `basicCommand` é a IA antiga (bate em quem alcança, senão anda em linha reta). Fica como linha de base dos testes.
 
 ### O mundo (`shared/world/` + `WorldScene`)
 
-Cada área é um mapa do Tiled (`.tmj`) em `client/public/maps/`, registrado em `shared/world/areas.ts`. O grafo do mundo é o que as saídas dos mapas formam — não existe lista de conexões fora deles. As três áreas atuais (`clareira`, `estrada`, `ruinas`) e os tilesets `placeholder` (chão, 16x16), `placeholder-tall` (coisas de pé, 16x32) e `placeholder-high` (chão elevado, face do degrau e escada, 16x16) são provisórios.
+Cada área é um mapa do Tiled (`.tmj`) em `client/public/maps/`, registrado em `shared/world/areas.ts`. O grafo do mundo é o que as saídas dos mapas formam — não existe lista de conexões fora deles. As três áreas atuais (`clareira`, `estrada`, `ruinas`) e os tilesets `placeholder` (chão, 16x16), `placeholder-tall` (coisas de pé, 16x32, caixote e barril inclusive) e `placeholder-high` (chão elevado, face do degrau e escada, 16x16) são provisórios.
 
 O contrato de quem desenha um mapa (detalhado em `shared/world/tiledMap.ts`):
 
@@ -51,7 +52,9 @@ O contrato de quem desenha um mapa (detalhado em `shared/world/tiledMap.ts`):
 - Terreno de combate também: `cover` (pedra, mureta — barra o passo, não a visão) e `elevation` (altura do chão, em degraus). A altura é só vantagem de combate: um patamar se fecha com tiles de face (`blocksMove`) e se abre com a escada, que é um quadrado comum. O salão das `ruinas` tem um.
 - Camada cujo nome começa com `sorted` fica "de pé": cada tile é ordenado pelo Y da própria base junto com os personagens, então se passa por trás de uma copa e pela frente do tronco. Coisas altas vêm de um tileset de tiles mais altos que o quadrado (ex: 16x32), com a base no quadrado que ocupam; parede se desenha com o topo em cima e a face frontal embaixo.
 - Camada cujo nome começa com `above` é desenhada por cima de tudo; as demais são chão.
-- Objetos: `spawn` (ponto; o nome é o id), `exit` (retângulo; propriedades `area` e `spawn`) e `enemy` (ponto; propriedades `creature`, a chave no bestiário, e `group`).
+- Objetos: `spawn` (ponto; o nome é o id), `exit` (retângulo; propriedades `area` e `spawn`), `enemy` (ponto; propriedades `creature`, a chave no bestiário, e `group`) e `prop` (um destrutível: um TILE posto como objeto — Insert Tile, não pintado numa camada — com a propriedade `kind`, a chave em `PROPS`; o que ele barra vem de `kind`, o tile é só o desenho).
+
+`parseTiledMap` devolve a grade SEM os destrutíveis; `standAreaProps` (`encounters.ts`) põe de pé nela os que ainda não foram quebrados, e a partir daí eles barram quem explora e quem luta do mesmo jeito. A luta recebe esses mesmos objetos e a mesma grade, então o que quebra em combate abre o caminho no mundo sem mais nada.
 
 Inimigos ficam de pé no mapa. Chegar a `AGGRO_RANGE` quadrados de um deles, com linha de visão, puxa o grupo inteiro pra luta (`shared/world/encounters.ts`), na grade da própria área. Grupo vencido não volta.
 
@@ -71,7 +74,7 @@ Quem está no mapa (personagem ou criatura) é uma folha 4x4: uma linha por dire
 
 ### Save
 
-Em `localStorage` (`client/src/game/save.ts`): o personagem, onde ele está (área + posição) e os grupos de inimigos já vencidos. Sem login, sem servidor.
+Em `localStorage` (`client/src/game/save.ts`): o personagem, onde ele está (área + posição), os grupos de inimigos já vencidos e os destrutíveis já quebrados (gravados só na vitória: numa derrota a área volta inteira). Sem login, sem servidor.
 
 ### Restrições que valem ouro
 
@@ -87,7 +90,7 @@ npm test                                        # testes sem tela: motor tático
 npm run balance:matrix --workspace=server       # taxa de vitória de cada Ordem x criatura, pelo motor real
 ```
 
-`npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede, trecho sem acesso, criatura que não existe e inimigo colado num ponto de chegada.
+`npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede, trecho sem acesso (já com os destrutíveis de pé), criatura ou destrutível que não existe, destrutível em cima de parede, saída ou de alguém, e inimigo colado num ponto de chegada.
 
 ### Versões anteriores
 

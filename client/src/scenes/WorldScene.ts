@@ -9,6 +9,7 @@ import {
   grantEncounterRewards,
   parseTiledMap,
   pixelOfTile,
+  standAreaProps,
   startAreaEncounter,
   unusedItems,
   syncCharacterFromUnit,
@@ -21,6 +22,7 @@ import {
   type Character,
   type Encounter,
   type PixelPos,
+  type Prop,
   type TeamId,
   type WalkBody,
 } from "@ealen/shared";
@@ -28,7 +30,7 @@ import { CombatController } from "../game/combat/CombatController";
 import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_CHARACTER, SCENES, TEXT_COLORS } from "../game/config";
 import { MapActor } from "../game/MapActor";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
-import { loadDefeated, loadLocation, markDefeated, writeLocation, writeSave } from "../game/save";
+import { loadBroken, loadDefeated, loadLocation, markBroken, markDefeated, writeLocation, writeSave } from "../game/save";
 import { addBodyText, addTitleText } from "../game/ui";
 import { mapKey, tilesetKey } from "../game/worldAssets";
 
@@ -83,6 +85,10 @@ export default class WorldScene extends Phaser.Scene {
   /** Inimigos ainda de pé nesta área, e o ator de cada um. */
   private enemies: AreaEnemy[] = [];
   private enemyActors = new Map<string, MapActor>();
+  /** Destrutíveis ainda de pé nesta área (já escritos na grade), e a imagem de cada um. */
+  private props: Prop[] = [];
+  private propImages = new Map<string, Phaser.GameObjects.Image>();
+  private tilesets: Phaser.Tilemaps.Tileset[] = [];
   private combat?: CombatController;
   private leaving = false;
   private statusText!: Phaser.GameObjects.Text;
@@ -98,6 +104,8 @@ export default class WorldScene extends Phaser.Scene {
     this.combat = undefined;
     this.enemies = [];
     this.enemyActors = new Map();
+    this.props = [];
+    this.propImages = new Map();
   }
 
   create(): void {
@@ -114,6 +122,7 @@ export default class WorldScene extends Phaser.Scene {
 
     this.enterArea();
     this.drawMap();
+    this.standProps();
     this.player = this.addActor(classSpriteKey(character.characterClass), this.pos);
     this.spawnEnemies();
 
@@ -227,10 +236,11 @@ export default class WorldScene extends Phaser.Scene {
     const tilesets = tilemap.tilesets
       .map((tileset) => tilemap.addTilesetImage(tileset.name, tilesetKey(tileset.name)))
       .filter((tileset): tileset is Phaser.Tilemaps.Tileset => tileset !== null);
+    this.tilesets = tilesets;
 
     tilemap.layers.forEach((data, index) => {
       if (data.name.startsWith(SORTED_LAYER_PREFIX)) {
-        this.drawSortedLayer(tilemap, data, tilesets);
+        this.drawSortedLayer(tilemap, data);
         return;
       }
       const layer = tilemap.createLayer(data.name, tilesets);
@@ -245,29 +255,46 @@ export default class WorldScene extends Phaser.Scene {
    * próprio quadrado e com a profundidade dessa base. Tiles mais altos que
    * um quadrado (árvore, parede) sobem por cima do quadrado ao norte.
    */
-  private drawSortedLayer(
-    tilemap: Phaser.Tilemaps.Tilemap,
-    data: Phaser.Tilemaps.LayerData,
-    tilesets: Phaser.Tilemaps.Tileset[],
-  ): void {
-    for (const tile of data.data.flat()) {
-      const tileset = tilesets.find((candidate) => candidate.containsTileIndex(tile.index));
-      const coordinates = tileset?.getTileTextureCoordinates(tile.index) as { x: number; y: number } | null | undefined;
-      if (!tileset?.image || !coordinates) continue;
+  private drawSortedLayer(tilemap: Phaser.Tilemaps.Tilemap, data: Phaser.Tilemaps.LayerData): void {
+    for (const tile of data.data.flat()) this.standTile(tile.index, tile.x, tile.y, tilemap.tileWidth);
+  }
 
-      // O tileset é uma imagem só; cada tile usado ganha um quadro com nome nela.
-      const frame = `tile:${tile.index - tileset.firstgid}`;
-      if (!tileset.image.has(frame)) {
-        tileset.image.add(frame, 0, coordinates.x, coordinates.y, tileset.tileWidth, tileset.tileHeight);
-      }
+  /**
+   * Um tile de pé no quadrado (x, y): uma imagem solta, ancorada na base do
+   * quadrado e com a profundidade dela. Undefined se o gid não é de nenhum
+   * tileset (o quadrado vazio de uma camada).
+   */
+  private standTile(gid: number, x: number, y: number, tileSize: number): Phaser.GameObjects.Image | undefined {
+    const tileset = this.tilesets.find((candidate) => candidate.containsTileIndex(gid));
+    const coordinates = tileset?.getTileTextureCoordinates(gid) as { x: number; y: number } | null | undefined;
+    if (!tileset?.image || !coordinates) return undefined;
 
-      const base = (tile.y + 1) * tilemap.tileHeight;
-      this.addWorld(
-        this.add
-          .image(tile.x * tilemap.tileWidth, base, tileset.image.key, frame)
-          .setOrigin(0, 1)
-          .setDepth(base),
-      );
+    // O tileset é uma imagem só; cada tile usado ganha um quadro com nome nela.
+    const frame = `tile:${gid - tileset.firstgid}`;
+    if (!tileset.image.has(frame)) {
+      tileset.image.add(frame, 0, coordinates.x, coordinates.y, tileset.tileWidth, tileset.tileHeight);
+    }
+
+    const base = (y + 1) * tileSize;
+    return this.addWorld(this.add.image(x * tileSize, base, tileset.image.key, frame).setOrigin(0, 1).setDepth(base));
+  }
+
+  /**
+   * Põe de pé os destrutíveis que ainda não foram quebrados: na grade (pra
+   * barrarem o passo, na exploração e na luta) e na tela, ordenados por Y
+   * como tudo que fica de pé.
+   */
+  private standProps(): void {
+    const prefix = `${this.area.id}:`;
+    const broken = new Set(
+      [...loadBroken()].filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length)),
+    );
+    this.props = standAreaProps(this.map, broken);
+
+    for (const prop of this.props) {
+      const { gid } = this.map.props.find((candidate) => candidate.id === prop.id)!;
+      const image = this.standTile(gid, prop.pos.x, prop.pos.y, this.map.tileSize);
+      if (image) this.propImages.set(prop.id, image);
     }
   }
 
@@ -322,7 +349,7 @@ export default class WorldScene extends Phaser.Scene {
     this.player.place(this.pos);
 
     const seed = Math.floor(Math.random() * 0xffffffff);
-    const { encounter, events } = startAreaEncounter(this.map, this.character, playerTile, fighters, seed);
+    const { encounter, events } = startAreaEncounter(this.map, this.character, playerTile, fighters, seed, this.props);
 
     const actors = new Map<string, MapActor>([[this.character.id, this.player]]);
     for (const enemy of fighters) actors.set(enemy.id, this.enemyActors.get(enemy.id)!);
@@ -334,6 +361,7 @@ export default class WorldScene extends Phaser.Scene {
         scene: this,
         map: this.map,
         actors,
+        props: this.propImages,
         addWorld: (object) => this.addWorld(object),
         addHud: (object) => this.addHud(object),
       },
@@ -370,6 +398,9 @@ export default class WorldScene extends Phaser.Scene {
       unusedItems(encounter, "enemy"),
     );
     markDefeated(this.groupKey(group));
+    // O que quebrou na luta fica quebrado; numa derrota a área inteira volta ao que era.
+    markBroken(this.props.filter((prop) => prop.hp <= 0).map((prop) => `${this.area.id}:${prop.id}`));
+    this.props = this.props.filter((prop) => prop.hp > 0);
     writeSave(character);
 
     const lines = [`+${rewards.xpGained} de XP`];

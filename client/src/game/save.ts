@@ -8,6 +8,7 @@ import type { Character } from "@ealen/shared";
 const SAVE_KEY = "ealen:save";
 const LOCATION_KEY = "ealen:location";
 const DEFEATED_KEY = "ealen:defeated";
+const BROKEN_KEY = "ealen:broken";
 const SAVE_VERSION = 1;
 
 interface SaveFile {
@@ -64,8 +65,23 @@ export function markDefeated(key: string): void {
   localStorage.setItem(DEFEATED_KEY, JSON.stringify([...loadDefeated().add(key)]));
 }
 
+/** Destrutíveis já quebrados, como "área:id". Quebrado não volta. */
+export function loadBroken(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(BROKEN_KEY) ?? "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function markBroken(keys: string[]): void {
+  if (keys.length === 0) return;
+  localStorage.setItem(BROKEN_KEY, JSON.stringify([...new Set([...loadBroken(), ...keys])]));
+}
+
 export function clearSave(): void {
   localStorage.removeItem(SAVE_KEY);
   localStorage.removeItem(LOCATION_KEY);
   localStorage.removeItem(DEFEATED_KEY);
+  localStorage.removeItem(BROKEN_KEY);
 }

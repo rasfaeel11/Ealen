@@ -2,6 +2,7 @@ export * from "./rng";
 export * from "./grid";
 export * from "./statuses";
 export * from "./surfaces";
+export * from "./props";
 export * from "./types";
 export * from "./abilities";
 export * from "./units";

@@ -1,11 +1,11 @@
-import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "./grid";
+import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Grid, type Pos } from "./grid";
 import type { Dice } from "./rng";
 import type { Ability, Encounter } from "./types";
 
 /**
- * Superfícies: o que uma habilidade deixa NO CHÃO por algumas rodadas. O
- * terreno do mapa (ver ./grid.ts) não muda durante a luta; a superfície é
- * uma camada por cima dele, que mora na própria luta (`Encounter.surfaces`).
+ * Superfícies: o que uma habilidade (ou um barril arrebentado) deixa NO CHÃO
+ * por algumas rodadas. Não é terreno: é uma camada por cima dele, que mora
+ * na própria luta (`Encounter.surfaces`) e acaba com ela.
  *
  * Como as condições, uma superfície é só dados: o motor não conhece "Chamas"
  * pelo nome, ele olha as marcas (`damage`, `moveCost`). Um quadrado tem no
@@ -51,23 +51,26 @@ export function surfaceHarm(encounter: Encounter, pos: Pos): number {
 }
 
 /**
- * Os quadrados em que `ability`, mirada em `target`, deixa a superfície
- * dela: o quadrado mirado ou, numa área, todos os do raio que o ponto de
- * impacto enxerga. Onde ninguém pisa (parede, água) não fica nada.
+ * Até onde uma superfície se espalha a partir de `center`: todo quadrado do
+ * raio que o centro enxerga. Onde ninguém pisa (parede, água) não fica nada.
  */
-export function surfaceTiles(encounter: Encounter, ability: Ability, target: Pos): Pos[] {
-  if (!ability.surface) return [];
-  const { grid } = encounter;
-  const radius = ability.radius ?? 0;
-
+export function spreadTiles(grid: Grid, center: Pos, radius: number): Pos[] {
   const tiles: Pos[] = [];
-  for (let y = target.y - radius; y <= target.y + radius; y++) {
-    for (let x = target.x - radius; x <= target.x + radius; x++) {
+  for (let y = center.y - radius; y <= center.y + radius; y++) {
+    for (let x = center.x - radius; x <= center.x + radius; x++) {
       const pos = { x, y };
       if (!inBounds(grid, pos) || tileAt(grid, pos)!.blocksMove) continue;
-      if (distance(pos, target) > 0 && !hasLineOfSight(grid, target, pos)) continue;
+      if (distance(pos, center) > 0 && !hasLineOfSight(grid, center, pos)) continue;
       tiles.push(pos);
     }
   }
   return tiles;
+}
+
+/**
+ * Os quadrados em que `ability`, mirada em `target`, deixa a superfície
+ * dela: o quadrado mirado ou, numa área, o raio todo.
+ */
+export function surfaceTiles(encounter: Encounter, ability: Ability, target: Pos): Pos[] {
+  return ability.surface ? spreadTiles(encounter.grid, target, ability.radius ?? 0) : [];
 }

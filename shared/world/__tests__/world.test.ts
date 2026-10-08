@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { findBestiaryEntry } from "../../mock/bestiary";
 import { applyCommand, chooseCommand } from "../../tactics";
-import { distance, stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
+import { distance, samePos, stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
+import { isPropId } from "../../tactics/props";
 import type { Character } from "../../types/character";
 import {
   AGGRO_RANGE,
@@ -15,6 +16,7 @@ import {
   grantEncounterRewards,
   isBlocked,
   parseTiledMap,
+  standAreaProps,
   startAreaEncounter,
   tileOfPixel,
   unusedItems,
@@ -35,6 +37,10 @@ function loadArea(areaId: string): AreaMap {
 }
 
 const maps = Object.fromEntries(Object.keys(AREAS).map((areaId) => [areaId, loadArea(areaId)]));
+/** O terreno de cada área antes dos destrutíveis: é nele que eles têm que caber. */
+const bare = Object.fromEntries(Object.keys(AREAS).map((areaId) => [areaId, loadArea(areaId)]));
+/** Os destrutíveis de cada área, de pé na grade de `maps` — como o jogo a vê ao entrar. */
+const props = Object.fromEntries(Object.entries(maps).map(([areaId, map]) => [areaId, standAreaProps(map)]));
 
 /** Todo quadrado que se alcança andando a partir de `start`. */
 function flood(map: AreaMap, start: Pos): Set<number> {
@@ -88,6 +94,20 @@ for (const [areaId, map] of Object.entries(maps)) {
       assert.ok(findBestiaryEntry(enemy.creature), `criatura "${enemy.creature}" não existe`);
       assert.ok(reachable.has(tileIndex(map.grid, tileOfPixel(map, enemy))), `${enemy.id} está fora de alcance`);
     }
+  });
+
+  test(`${areaId}: todo destrutível existe e fica em chão livre, sem tapar chegada, saída nem inimigo`, () => {
+    for (const prop of map.props) {
+      assert.ok(isPropId(prop.kind), `destrutível "${prop.kind}" não existe`);
+      assert.equal(tileAt(bare[areaId].grid, prop.tile)?.blocksMove, false, `${prop.id} está num quadrado bloqueado`);
+      assert.equal(map.props.filter((other) => samePos(other.tile, prop.tile)).length, 1, `${prop.id} divide o quadrado`);
+
+      const occupied = [...Object.values(map.spawns), ...map.enemies].map((point) => tileOfPixel(map, point));
+      assert.ok(!occupied.some((tile) => samePos(tile, prop.tile)), `${prop.id} está em cima de alguém`);
+      const middle = { x: (prop.tile.x + 0.5) * map.tileSize, y: (prop.tile.y + 0.5) * map.tileSize };
+      assert.equal(exitAt(map, middle), undefined, `${prop.id} está dentro de uma saída`);
+    }
+    assert.equal(props[areaId].length, map.props.length);
   });
 
   test(`${areaId}: ninguém chega na área já dentro de uma luta`, () => {
@@ -214,6 +234,7 @@ test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
     spawns: {},
     exits: [],
     enemies: [],
+    props: [],
   };
   const body = { halfWidth: 4, height: 4 };
 

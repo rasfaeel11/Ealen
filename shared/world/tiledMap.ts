@@ -29,6 +29,10 @@ import { FLOOR, type Grid, type Pos, type Tile } from "../tactics/grid";
  *     `enemy`  ponto; propriedades `creature` (id no bestiário) e `group`
  *              (inimigos do mesmo grupo entram juntos na luta; sem grupo,
  *              o inimigo luta sozinho)
+ *     `prop`   um destrutível: um TILE posto como objeto (Insert Tile, não
+ *              pintado numa camada), com a propriedade `kind` (id em PROPS,
+ *              ver ../tactics/props.ts). Ocupa o quadrado em que a base do
+ *              tile cai. O que ele barra vem de `kind`, não do tile.
  *
  * Limites do formato: mapa ortogonal, finito, camadas sem compressão
  * (Tile Layer Format = CSV) e tileset embutido no mapa — o Phaser não lê
@@ -61,14 +65,28 @@ export interface AreaEnemy {
   y: number;
 }
 
+export interface AreaProp {
+  /** Único dentro da área. */
+  id: string;
+  /** Id em PROPS. Um que não exista é ignorado — o teste dos mapas acusa. */
+  kind: string;
+  tile: Pos;
+  /** O tile que o desenha (gid do Tiled). */
+  gid: number;
+}
+
 export interface AreaMap {
   /** Lado de um quadrado, em pixels do mapa. */
   tileSize: number;
-  /** O terreno — a mesma grade que o combate usa. */
+  /**
+   * O terreno — a mesma grade que o combate usa. Sai daqui SEM os
+   * destrutíveis: quem os põe de pé nela é standAreaProps (./encounters.ts).
+   */
   grid: Grid;
   spawns: Record<string, PixelPos>;
   exits: AreaExit[];
   enemies: AreaEnemy[];
+  props: AreaProp[];
 }
 
 interface TiledProperty {
@@ -82,6 +100,8 @@ interface TiledObject {
   type?: string;
   /** Tiled 1.9 chamava o campo "type" de "class". */
   class?: string;
+  /** Só em objeto-tile: qual tile ele mostra. */
+  gid?: number;
   x: number;
   y: number;
   width?: number;
@@ -178,6 +198,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
   const spawns: Record<string, PixelPos> = {};
   const exits: AreaExit[] = [];
   const enemies: AreaEnemy[] = [];
+  const props: AreaProp[] = [];
   for (const layer of layers) {
     for (const object of layer.objects ?? []) {
       const kind = object.type || object.class;
@@ -196,6 +217,17 @@ export function parseTiledMap(raw: unknown): AreaMap {
         }
         const id = `enemy-${object.id}`;
         enemies.push({ id, creature, group: typeof group === "string" ? group : id, x: object.x, y: object.y });
+      } else if (kind === "prop") {
+        const { kind: propKind } = propertiesOf(object);
+        if (typeof propKind !== "string" || object.gid === undefined) {
+          throw new Error(`Destrutível "${object.name ?? ""}" precisa ser um objeto-tile com a propriedade "kind".`);
+        }
+        // Um objeto-tile é ancorado no canto de baixo à esquerda: a base dele é a linha logo acima de `y`.
+        const tile = {
+          x: Math.floor((object.x + map.tilewidth / 2) / map.tilewidth),
+          y: Math.floor((object.y - 1) / map.tileheight),
+        };
+        props.push({ id: `prop-${object.id}`, kind: propKind, tile, gid: object.gid & GID_MASK });
       }
     }
   }
@@ -206,6 +238,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
     spawns,
     exits,
     enemies,
+    props,
   };
 }
 

@@ -3,6 +3,7 @@ import {
   COVER_DEFENSE,
   FLANK_TO_HIT,
   HEIGHT_TO_HIT,
+  PROPS,
   SURFACES,
   abilityTargets,
   activeUnit,
@@ -12,6 +13,7 @@ import {
   findPath,
   findUnit,
   pixelOfTile,
+  propAt,
   tileAt,
   reachableTiles,
   samePos,
@@ -40,6 +42,8 @@ export interface CombatHost {
   map: AreaMap;
   /** Quem está na luta, pelo id da unidade. */
   actors: Map<string, MapActor>;
+  /** A imagem de cada destrutível de pé na área, pelo id. O combate apaga a de quem quebrar. */
+  props: Map<string, Phaser.GameObjects.Image>;
   /** Põe um objeto na cena de modo que só a câmera do mundo o desenhe. */
   addWorld: <T extends Phaser.GameObjects.GameObject>(object: T) => T;
   addHud: AddHud;
@@ -421,6 +425,9 @@ export class CombatController {
       return "Clique num quadrado azul pra andar. Esc ou botão direito volta pra cá.";
     }
 
+    const prop = hover && selected.radius === undefined ? propAt(encounter, hover) : undefined;
+    if (prop) return `${PROPS[prop.kind].name}: ${prop.hp} de vida. Objeto não se esquiva — o golpe sempre pega.`;
+
     const target = hover && selected.radius === undefined ? unitAt(encounter, hover) : undefined;
     if (!target || !selected.attack) return `${describeAbility(selected)} — ${selected.flavor}`;
 
@@ -627,6 +634,38 @@ export class CombatController {
         return;
       }
 
+      case "propDamaged": {
+        const image = this.host.props.get(event.prop);
+        const at = this.tileCenter(event.pos);
+        this.floatAt(at, `-${event.amount}`, TEXT_COLORS.inkDim, 0, 22);
+        this.spark(at, 0xd9c7a0, 7);
+        this.hud.log(`${event.name} leva ${event.amount} de dano.`);
+        if (image) {
+          const home = image.x;
+          this.host.scene.tweens.add({
+            targets: image,
+            x: home + 1.5,
+            duration: 40,
+            yoyo: true,
+            repeat: 2,
+            onComplete: () => image.setX(home),
+          });
+        }
+        await this.wait(200);
+        return;
+      }
+
+      case "propDestroyed": {
+        const at = this.tileCenter(event.pos);
+        this.host.props.get(event.prop)?.destroy();
+        this.host.props.delete(event.prop);
+        this.spark(at, 0xd9c7a0, 14);
+        this.host.scene.cameras.main.shake(140, 0.004);
+        this.hud.log(`${event.name} se despedaça.`);
+        await this.wait(220);
+        return;
+      }
+
       case "itemUsed": {
         const actor = this.actor(event.unit);
         this.hud.log(`${this.unit(event.unit).name} usa ${event.itemName}: ${event.description}`);
@@ -673,6 +712,12 @@ export class CombatController {
   }
 
   // ---------------------------------------------------------------- impacto
+
+  /** O meio de um quadrado, no mapa. */
+  private tileCenter(tile: Pos): PixelPos {
+    const size = this.host.map.tileSize;
+    return { x: (tile.x + 0.5) * size, y: (tile.y + 0.5) * size };
+  }
 
   /** O meio do corpo de alguém: onde o golpe pega. */
   private center(actor: MapActor): PixelPos {
@@ -753,15 +798,18 @@ export class CombatController {
     });
   }
 
-  /** Texto que sobe da cabeça de alguém. O mundo tem zoom e a interface não: converte mapa -> tela. */
+  /** Texto que sobe da cabeça de alguém. */
   private floatOver(unitId: string, text: string, color: string, offsetY = 0, size?: number): void {
     const actor = this.actor(unitId);
-    if (!actor) return;
+    if (actor) this.floatAt(actor.top, text, color, offsetY, size);
+  }
+
+  /** Texto que sobe de um ponto do MAPA. O mundo tem zoom e a interface não: converte mapa -> tela. */
+  private floatAt(at: PixelPos, text: string, color: string, offsetY = 0, size?: number): void {
     const camera = this.host.scene.cameras.main;
-    const top = actor.top;
     this.hud.float(
-      (top.x - camera.worldView.x) * camera.zoom,
-      (top.y - camera.worldView.y) * camera.zoom + offsetY,
+      (at.x - camera.worldView.x) * camera.zoom,
+      (at.y - camera.worldView.y) * camera.zoom + offsetY,
       text,
       color,
       size,
