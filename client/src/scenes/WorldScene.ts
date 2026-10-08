@@ -5,9 +5,14 @@ import {
   STARTING_SPAWN,
   StoryRunner,
   aggroedGroup,
+  brokenInArea,
   exitAt,
   findUnit,
   grantEncounterRewards,
+  isBlocked,
+  isDefeated,
+  markBroken,
+  markDefeated,
   npcInReach,
   parseTiledMap,
   pixelOfTile,
@@ -25,6 +30,7 @@ import {
   type Character,
   type CharacterClass,
   type Encounter,
+  type GameSave,
   type PixelPos,
   type Prop,
   type TeamId,
@@ -32,21 +38,11 @@ import {
 } from "@ealen/shared";
 import { CombatController } from "../game/combat/CombatController";
 import { DialogueBox } from "../game/dialogue/DialogueBox";
-import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_CHARACTER, SCENES, TEXT_COLORS } from "../game/config";
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { MapActor } from "../game/MapActor";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
-import {
-  loadBroken,
-  loadDefeated,
-  loadLocation,
-  loadStory,
-  markBroken,
-  markDefeated,
-  writeLocation,
-  writeSave,
-  writeStory,
-} from "../game/save";
-import { addBodyText, addTitleText } from "../game/ui";
+import type { GameSession } from "../game/session";
+import { Menu, addBodyText, addPanel, addTitleText } from "../game/ui";
 import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
 
 /** Quantos pixels de tela vale um pixel do mapa. Com tiles de 16px, cabem ~27 x 15 quadrados na tela. */
@@ -72,7 +68,7 @@ const SORTED_LAYER_PREFIX = "sorted";
 /** Camadas cujo nome começa com isto são desenhadas POR CIMA de tudo (pontes altas, telhados). */
 const ABOVE_LAYER_PREFIX = "above";
 
-const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar";
+const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar  ·  Esc: pausa";
 /** O que a história rola nos testes dela. Um dado por sessão de jogo basta. */
 const STORY_RNG = { rngState: Math.floor(Math.random() * 0xffffffff) };
 
@@ -92,6 +88,9 @@ type MoveKeys = Record<"up" | "down" | "left" | "right" | "w" | "a" | "s" | "d",
  */
 export default class WorldScene extends Phaser.Scene {
   private arrival: WorldSceneData = {};
+  private session!: GameSession;
+  /** O save da partida aberta: a cena o muda e pede à sessão que grave (`persist`). */
+  private save!: GameSave;
   private character!: Character;
   private area!: AreaDef;
   private map!: AreaMap;
@@ -111,6 +110,10 @@ export default class WorldScene extends Phaser.Scene {
   /** Verdadeiro enquanto uma conversa está na tela: o mundo espera. */
   private talking = false;
   private leaving = false;
+  /** O menu de pausa, enquanto está aberto: o mundo espera. */
+  private pause?: { menu: Menu; objects: Phaser.GameObjects.GameObject[] };
+  /** Pra avisar uma vez só, e não a cada gravação, que o dispositivo não está gravando. */
+  private saveFailed = false;
   private statusText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
 
@@ -122,6 +125,8 @@ export default class WorldScene extends Phaser.Scene {
     this.arrival = data ?? {};
     this.leaving = false;
     this.talking = false;
+    this.pause = undefined;
+    this.saveFailed = false;
     this.combat = undefined;
     this.enemies = [];
     this.enemyActors = new Map();
@@ -130,12 +135,15 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   create(): void {
-    const character = this.registry.get(REGISTRY_CHARACTER) as Character | undefined;
-    if (!character) {
+    const session = this.registry.get(REGISTRY_SESSION) as GameSession | undefined;
+    if (!session) {
       this.scene.start(SCENES.title);
       return;
     }
-    this.character = character;
+    this.session = session;
+    this.save = session.save;
+    this.character = session.character;
+    const { character, save } = this;
 
     // Duas câmeras: a do mundo amplia e segue o personagem; a da interface fica parada, sem zoom.
     // Todo objeto da cena passa por addWorld ou addHud pra ser desenhado por uma só.
@@ -147,8 +155,8 @@ export default class WorldScene extends Phaser.Scene {
     this.standNpcs();
     this.story = new StoryRunner(
       this.cache.text.get(STORY_KEY) as string,
-      { character, rng: STORY_RNG, isDefeated: (key) => loadDefeated().has(key) },
-      loadStory(),
+      { character, rng: STORY_RNG, isDefeated: (key) => isDefeated(save, key) },
+      save.story,
     );
     this.player = this.addActor(classSpriteKey(character.characterClass), this.pos);
     this.spawnEnemies();
@@ -187,15 +195,29 @@ export default class WorldScene extends Phaser.Scene {
     }) as MoveKeys;
     keyboard.on("keydown-R", this.rest, this);
     keyboard.on("keydown-E", this.interact, this);
+    keyboard.on("keydown", this.onKey, this);
     // O botão direito cancela a mira no combate; o menu do navegador só atrapalharia.
     this.input.mouse?.disableContextMenu();
 
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.saveLocation, this);
-    this.saveLocation();
+    // O jogo grava sozinho: ao chegar numa área, ao sair da cena e quando a aba some ou fecha.
+    const onHide = () => {
+      // No meio de uma conversa não: a ficha já pode ter ganho o que a história ainda não registrou ter dado.
+      if (!this.talking) this.persist();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onHide);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onHide);
+      this.persist();
+    });
+    this.persist();
   }
 
   update(_time: number, delta: number): void {
-    if (this.leaving || this.combat || this.talking) return;
+    // Quadro longo demais é aba em segundo plano: não conta como tempo de jogo.
+    if (!this.pause) this.save.playTimeMs += Math.min(delta, MAX_FRAME_MS);
+    if (this.leaving || this.combat || this.talking || this.pause) return;
 
     const dx = Number(this.keys.right.isDown || this.keys.d.isDown) - Number(this.keys.left.isDown || this.keys.a.isDown);
     const dy = Number(this.keys.down.isDown || this.keys.s.isDown) - Number(this.keys.up.isDown || this.keys.w.isDown);
@@ -253,7 +275,7 @@ export default class WorldScene extends Phaser.Scene {
    * parou; jogo novo, no começo do mundo.
    */
   private enterArea(): void {
-    const saved = this.arrival.areaId ? null : loadLocation();
+    const saved = this.arrival.areaId ? null : this.save.location;
     this.area = AREAS[this.arrival.areaId ?? saved?.areaId ?? ""] ?? AREAS[STARTING_AREA];
     this.map = parseTiledMap(this.cache.tilemap.get(mapKey(this.area.id)).data);
 
@@ -261,7 +283,9 @@ export default class WorldScene extends Phaser.Scene {
       this.map.spawns[this.arrival.spawn ?? ""] ??
       this.map.spawns[STARTING_SPAWN] ??
       Object.values(this.map.spawns)[0];
-    this.pos = saved && saved.areaId === this.area.id ? { x: saved.x, y: saved.y } : { ...spawn };
+    const resumed = saved && saved.areaId === this.area.id ? { x: saved.x, y: saved.y } : null;
+    // O mapa pode ter mudado desde o save: quem ficaria dentro de uma parede volta pro ponto de chegada.
+    this.pos = resumed && !isBlocked(this.map, resumed, BODY) ? resumed : { ...spawn };
   }
 
   private drawMap(): void {
@@ -318,11 +342,7 @@ export default class WorldScene extends Phaser.Scene {
    * como tudo que fica de pé.
    */
   private standProps(): void {
-    const prefix = `${this.area.id}:`;
-    const broken = new Set(
-      [...loadBroken()].filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length)),
-    );
-    this.props = standAreaProps(this.map, broken);
+    this.props = standAreaProps(this.map, brokenInArea(this.save, this.area.id));
 
     for (const prop of this.props) {
       const { gid } = this.map.props.find((candidate) => candidate.id === prop.id)!;
@@ -341,8 +361,7 @@ export default class WorldScene extends Phaser.Scene {
 
   /** Põe no mapa os inimigos da área cujo grupo ainda não foi vencido. */
   private spawnEnemies(): void {
-    const defeated = loadDefeated();
-    this.enemies = this.map.enemies.filter((enemy) => !defeated.has(this.groupKey(enemy.group)));
+    this.enemies = this.map.enemies.filter((enemy) => !isDefeated(this.save, this.groupKey(enemy.group)));
     for (const enemy of this.enemies) {
       const feet = pixelOfTile(this.map, tileOfPixel(this.map, enemy));
       this.enemyActors.set(enemy.id, this.addActor(creatureSpriteKey(enemy.creature), feet));
@@ -377,9 +396,9 @@ export default class WorldScene extends Phaser.Scene {
 
   /** Provisório, no lugar de acampamento/estalagem: recupera todo o HP, em qualquer lugar fora de luta. */
   private rest(): void {
-    if (this.combat || this.leaving || this.talking) return;
+    if (this.combat || this.leaving || this.talking || this.pause) return;
     this.character.currentHp = this.character.maxHp;
-    writeSave(this.character);
+    this.persist();
     this.refreshStatus();
     this.showBanner("Você descansa.");
   }
@@ -387,7 +406,7 @@ export default class WorldScene extends Phaser.Scene {
   // ----------------------------------------------------------------- conversa
 
   private interact(): void {
-    if (this.combat || this.leaving || this.talking) return;
+    if (this.combat || this.leaving || this.talking || this.pause) return;
     const npc = npcInReach(this.map, this.pos);
     if (npc) void this.talk(npc);
   }
@@ -415,8 +434,8 @@ export default class WorldScene extends Phaser.Scene {
     } finally {
       // Um erro no texto não pode deixar o jogador preso numa conversa que não fecha.
       box.destroy();
-      writeStory(this.story.save());
-      writeSave(this.character);
+      this.save.story = this.story.save();
+      this.persist();
       this.statusText.setVisible(true);
       this.hintText.setVisible(true);
       this.refreshStatus();
@@ -473,7 +492,8 @@ export default class WorldScene extends Phaser.Scene {
         TEXT_COLORS.danger,
       );
       character.currentHp = character.maxHp;
-      writeSave(character);
+      // O lugar gravado continua o de antes da luta; a área de destino grava o novo ao abrir.
+      this.session.commit();
       this.leaving = true;
       this.scene.restart({ areaId: this.area.id } satisfies WorldSceneData);
       return;
@@ -485,11 +505,16 @@ export default class WorldScene extends Phaser.Scene {
       encounter,
       unusedItems(encounter, "enemy"),
     );
-    markDefeated(this.groupKey(group));
+    markDefeated(this.save, this.groupKey(group));
     // O que quebrou na luta fica quebrado; numa derrota a área inteira volta ao que era.
-    markBroken(this.props.filter((prop) => prop.hp <= 0).map((prop) => `${this.area.id}:${prop.id}`));
+    markBroken(
+      this.save,
+      this.props.filter((prop) => prop.hp <= 0).map((prop) => `${this.area.id}:${prop.id}`),
+    );
     this.props = this.props.filter((prop) => prop.hp > 0);
-    writeSave(character);
+    // A vitória vai pro save inteira, de uma vez: ficha, espólio, grupo vencido e o lugar onde a luta acabou.
+    this.pos = pixelOfTile(this.map, unit.pos);
+    this.persist();
 
     const lines = [`+${rewards.xpGained} de XP`];
     if (rewards.levelUp.leveledUp) lines.push(`Subiu para o nível ${rewards.levelUp.newLevel}!`);
@@ -508,13 +533,55 @@ export default class WorldScene extends Phaser.Scene {
       this.enemyActors.delete(enemy.id);
     }
 
-    this.pos = pixelOfTile(this.map, unit.pos);
     this.player.place(this.pos);
     this.cameras.main.startFollow(this.player.followTarget, true, 0.2, 0.2);
     this.statusText.setVisible(true);
     this.hintText.setVisible(true);
     this.refreshStatus();
-    this.saveLocation();
+  }
+
+  // ------------------------------------------------------------------ pausa
+
+  private onKey(event: KeyboardEvent): void {
+    if (event.code !== "Escape" || this.pause || this.combat || this.leaving || this.talking) return;
+    this.openPause();
+  }
+
+  private openPause(): void {
+    this.player.setWalking(false);
+    const width = 420;
+    const height = 220;
+    const x = (GAME_WIDTH - width) / 2;
+    const y = (GAME_HEIGHT - height) / 2;
+    const objects = [
+      this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.bg, 0.6).setOrigin(0),
+      addPanel(this, x, y, width, height),
+      addTitleText(this, GAME_WIDTH / 2, y + 48, "PAUSA", { fontSize: "32px" }).setOrigin(0.5),
+    ].map((object) => this.addHud(object));
+
+    const menu = new Menu(
+      this,
+      x + 60,
+      y + 100,
+      [
+        { label: "Voltar ao jogo", onSelect: () => this.closePause() },
+        // Ao fechar, a cena grava o jogo (SHUTDOWN chama persist).
+        { label: "Salvar e sair pro título", onSelect: () => this.scene.start(SCENES.title) },
+      ],
+      { lineHeight: 44, fontSize: 24, onCancel: () => this.closePause(), adopt: (item) => this.addHud(item) },
+    );
+    this.pause = { menu, objects };
+  }
+
+  private closePause(): void {
+    if (!this.pause) return;
+    const { menu, objects } = this.pause;
+    this.pause = undefined;
+    // No quadro seguinte: a opção clicada ainda está no meio do próprio evento.
+    this.time.delayedCall(0, () => {
+      menu.destroy();
+      for (const object of objects) object.destroy();
+    });
   }
 
   // ------------------------------------------------------------------ saída
@@ -528,8 +595,14 @@ export default class WorldScene extends Phaser.Scene {
     });
   }
 
-  private saveLocation(): void {
-    // Saindo por uma saída (ou derrotado), quem grava o lugar novo é a área de destino, ao abrir.
-    if (!this.leaving) writeLocation({ areaId: this.area.id, x: this.pos.x, y: this.pos.y });
+  /**
+   * Grava o jogo. Saindo por uma saída (ou derrotado), o lugar gravado fica
+   * o anterior: quem grava o novo é a área de destino, ao abrir.
+   */
+  private persist(): void {
+    if (!this.leaving) this.save.location = { areaId: this.area.id, x: this.pos.x, y: this.pos.y };
+    if (this.session.commit() || this.saveFailed) return;
+    this.saveFailed = true;
+    this.showBanner("Não foi possível gravar o jogo neste dispositivo.");
   }
 }

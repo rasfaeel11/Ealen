@@ -51,6 +51,8 @@ export interface MenuConfig {
   fontSize?: number;
   /** Esc / Backspace. */
   onCancel?: () => void;
+  /** Recebe cada linha criada — pra cena que separa câmeras dizer qual delas desenha o menu. */
+  adopt?: (item: Phaser.GameObjects.Text) => void;
 }
 
 /**
@@ -91,6 +93,7 @@ export class Menu {
         fontSize: `${this.fontSize}px`,
       });
       item.setVisible(this.visible);
+      this.config.adopt?.(item);
       if (!option.disabled) {
         item.setInteractive({ useHandCursor: true });
         item.on(Phaser.Input.Events.POINTER_OVER, () => {

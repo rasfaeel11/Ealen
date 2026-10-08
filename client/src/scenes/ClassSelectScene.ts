@@ -6,14 +6,16 @@ import {
   RACE_INFO,
   createStartingAttributes,
   createStartingInventory,
+  newGame,
   startingMaxHp,
   type Character,
   type CharacterClass,
   type Race,
 } from "@ealen/shared";
-import { GAME_HEIGHT, REGISTRY_CHARACTER, SCENES, TEXT_COLORS } from "../game/config";
+import { GAME_HEIGHT, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { randomCharacterName } from "../game/nameGenerator";
-import { clearSave, writeSave } from "../game/save";
+import { firstEmptySlot, readSlots } from "../game/save";
+import { GameSession } from "../game/session";
 import { addBodyText, addPanel, addTitleText } from "../game/ui";
 
 const RACES = Object.keys(RACE_INFO) as Race[];
@@ -220,10 +222,12 @@ export default class ClassSelectScene extends Phaser.Scene {
       inventory: createStartingInventory(),
     };
 
-    // Jogo novo: o lugar onde o personagem anterior parou não vale pra este.
-    clearSave();
-    writeSave(character);
-    this.registry.set(REGISTRY_CHARACTER, character);
+    // O espaço vem de quem abriu o jogo novo (título ou lista de saves); sem isso, o primeiro livre.
+    const chosen = this.registry.get(REGISTRY_NEW_GAME_SLOT) as number | undefined;
+    const session = new GameSession(chosen ?? firstEmptySlot(readSlots()) ?? 0, newGame(character));
+    session.commit();
+    this.registry.remove(REGISTRY_NEW_GAME_SLOT);
+    this.registry.set(REGISTRY_SESSION, session);
     this.scene.start(SCENES.world);
   }
 }

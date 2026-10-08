@@ -1,7 +1,9 @@
 import * as Phaser from "phaser";
-import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_CHARACTER, SCENES, TEXT_COLORS } from "../game/config";
-import { loadSave } from "../game/save";
+import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
+import { firstEmptySlot, lastPlayedSlot, readSlots } from "../game/save";
+import { GameSession } from "../game/session";
 import { Menu, addBodyText, addTitleText } from "../game/ui";
+import type { SaveSlotsData } from "./SaveSlotsScene";
 
 export default class TitleScene extends Phaser.Scene {
   constructor() {
@@ -18,7 +20,10 @@ export default class TitleScene extends Phaser.Scene {
       color: TEXT_COLORS.inkDim,
     }).setOrigin(0.5);
 
-    const save = loadSave();
+    const slots = readSlots();
+    const lastSlot = lastPlayedSlot(slots);
+    const last = lastSlot === null ? null : slots[lastSlot];
+    const save = last?.status === "ok" ? last.save : null;
 
     new Menu(
       this,
@@ -26,14 +31,32 @@ export default class TitleScene extends Phaser.Scene {
       420,
       [
         {
-          label: save ? `Continuar — ${save.name}, nível ${save.level}` : "Continuar",
+          label: save ? `Continuar — ${save.character.name}, nível ${save.character.level}` : "Continuar",
           disabled: !save,
           onSelect: () => {
-            this.registry.set(REGISTRY_CHARACTER, save);
+            this.registry.set(REGISTRY_SESSION, new GameSession(lastSlot!, save!));
             this.scene.start(SCENES.world);
           },
         },
-        { label: "Novo jogo", onSelect: () => this.scene.start(SCENES.prologue) },
+        {
+          label: "Novo jogo",
+          onSelect: () => {
+            const slot = firstEmptySlot(slots);
+            if (slot === null) {
+              // Sem espaço livre, quem escolhe o que sobrescrever é o jogador.
+              this.scene.start(SCENES.saves, {
+                notice: "Todos os espaços estão ocupados. Escolha um pra recomeçar, ou apague um.",
+              } satisfies SaveSlotsData);
+              return;
+            }
+            this.registry.set(REGISTRY_NEW_GAME_SLOT, slot);
+            this.scene.start(SCENES.prologue);
+          },
+        },
+        {
+          label: "Jogos salvos",
+          onSelect: () => this.scene.start(SCENES.saves),
+        },
       ],
       { lineHeight: 44, fontSize: 28 },
     );

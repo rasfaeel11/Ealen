@@ -1,99 +1,169 @@
-import type { Character } from "@ealen/shared";
+import { parseSave, serializeSave, type GameSave, type SaveProblem } from "@ealen/shared";
 
 /**
- * Save do jogo: um personagem, onde ele está no mundo e o que já aconteceu
- * (inimigos vencidos, coisas quebradas, o estado da história), guardados neste
- * dispositivo via localStorage. Não depende de servidor nem de login —
- * funciona igual no navegador e dentro de um empacotador desktop.
+ * Onde os saves ficam guardados: neste dispositivo, via localStorage, um
+ * jogo inteiro por espaço. Não depende de servidor nem de login — funciona
+ * igual no navegador e dentro de um empacotador desktop. O formato do save
+ * e a conferência dele são de shared/save; aqui só se guarda e se busca.
  */
-const SAVE_KEY = "ealen:save";
-const LOCATION_KEY = "ealen:location";
-const DEFEATED_KEY = "ealen:defeated";
-const BROKEN_KEY = "ealen:broken";
-const STORY_KEY = "ealen:story";
-const SAVE_VERSION = 1;
+export const SLOT_COUNT = 3;
 
-interface SaveFile {
-  version: number;
-  character: Character;
+const SLOT_KEY = (slot: number) => `ealen:slot:${slot}`;
+const LAST_SLOT_KEY = "ealen:lastSlot";
+
+/** As chaves do save antigo (versão 1): o personagem numa, o resto espalhado. */
+const LEGACY_KEYS = {
+  save: "ealen:save",
+  location: "ealen:location",
+  defeated: "ealen:defeated",
+  broken: "ealen:broken",
+  story: "ealen:story",
+} as const;
+
+export type SlotState =
+  | { status: "empty" }
+  | { status: "ok"; save: GameSave }
+  /** Tem algo gravado que este jogo não consegue ler. Não se sobrescreve sem o jogador mandar. */
+  | { status: "unreadable"; problem: SaveProblem };
+
+export function readSlot(slot: number): SlotState {
+  const raw = readRaw(slot);
+  if (raw === null) return { status: "empty" };
+  const parsed = parseSave(raw);
+  return parsed.ok ? { status: "ok", save: parsed.save } : { status: "unreadable", problem: parsed.problem };
 }
 
-/** Onde o personagem está: a área e o ponto do mapa dela, em pixels. */
-export interface SaveLocation {
-  areaId: string;
-  x: number;
-  y: number;
+/** Todos os espaços, em ordem. Na primeira vez, traz pra dentro deles o save do formato antigo. */
+export function readSlots(): SlotState[] {
+  adoptLegacySave();
+  return Array.from({ length: SLOT_COUNT }, (_, slot) => readSlot(slot));
 }
 
-export function loadSave(): Character | null {
+/** Grava o jogo inteiro de uma vez. False se o dispositivo recusou (sem espaço, armazenamento bloqueado). */
+export function writeSlot(slot: number, save: GameSave): boolean {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const save = JSON.parse(raw) as SaveFile;
-    return save.version === SAVE_VERSION ? save.character : null;
+    localStorage.setItem(SLOT_KEY(slot), serializeSave(save));
+    localStorage.setItem(LAST_SLOT_KEY, String(slot));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function deleteSlot(slot: number): void {
+  try {
+    localStorage.removeItem(SLOT_KEY(slot));
+  } catch {
+    // Sem armazenamento não há o que apagar.
+  }
+}
+
+/** O texto gravado num espaço, como está — é o que se exporta, legível ou não. */
+export function readRaw(slot: number): string | null {
+  try {
+    return localStorage.getItem(SLOT_KEY(slot));
   } catch {
     return null;
   }
 }
 
-export function writeSave(character: Character): void {
-  const save: SaveFile = { version: SAVE_VERSION, character };
-  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-}
-
-export function loadLocation(): SaveLocation | null {
+/** O espaço que "Continuar" abre: o último em que se jogou, se ainda houver um jogo nele. */
+export function lastPlayedSlot(slots: SlotState[]): number | null {
+  let last = -1;
   try {
-    const raw = localStorage.getItem(LOCATION_KEY);
-    return raw ? (JSON.parse(raw) as SaveLocation) : null;
+    last = Number(localStorage.getItem(LAST_SLOT_KEY) ?? -1);
   } catch {
-    return null;
+    // Cai no mais recente, abaixo.
   }
+  if (slots[last]?.status === "ok") return last;
+
+  let best: number | null = null;
+  let bestSavedAt = -1;
+  for (const [slot, state] of slots.entries()) {
+    if (state.status !== "ok" || state.save.savedAt <= bestSavedAt) continue;
+    best = slot;
+    bestSavedAt = state.save.savedAt;
+  }
+  return best;
 }
 
-export function writeLocation(location: SaveLocation): void {
-  localStorage.setItem(LOCATION_KEY, JSON.stringify(location));
+export function firstEmptySlot(slots: SlotState[]): number | null {
+  const slot = slots.findIndex((state) => state.status === "empty");
+  return slot === -1 ? null : slot;
 }
 
-/** Grupos de inimigos já vencidos, como "área:grupo". Vencido não volta. */
-export function loadDefeated(): Set<string> {
+// ------------------------------------------------------------------ arquivo
+
+/** Baixa o save de um espaço como arquivo, pra guardar ou levar pra outro dispositivo. */
+export function exportSlot(slot: number, fileName: string): void {
+  const raw = readRaw(slot);
+  if (raw === null) return;
+  const url = URL.createObjectURL(new Blob([raw], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export type ImportResult = { ok: true; save: GameSave } | { ok: false; problem: SaveProblem | "cancelled" };
+
+/** Abre o seletor de arquivo do sistema e lê o save escolhido. Não grava nada: quem chama decide onde. */
+export function pickSaveFile(): Promise<ImportResult> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.addEventListener("cancel", () => resolve({ ok: false, problem: "cancelled" }));
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) {
+        resolve({ ok: false, problem: "cancelled" });
+        return;
+      }
+      file.text().then(
+        (text) => resolve(parseSave(text)),
+        () => resolve({ ok: false, problem: "invalid" }),
+      );
+    });
+    input.click();
+  });
+}
+
+// ------------------------------------------------------------------- legado
+
+/**
+ * O save da versão 1 passa pro primeiro espaço livre e as chaves antigas
+ * somem. Só as apaga depois de gravar: se não der, tenta de novo na próxima.
+ */
+function adoptLegacySave(): void {
   try {
-    return new Set(JSON.parse(localStorage.getItem(DEFEATED_KEY) ?? "[]") as string[]);
+    const raw = localStorage.getItem(LEGACY_KEYS.save);
+    if (raw === null) return;
+
+    const read = (key: string): unknown => {
+      try {
+        return JSON.parse(localStorage.getItem(key) ?? "null");
+      } catch {
+        return null;
+      }
+    };
+    const old = read(LEGACY_KEYS.save);
+    const parsed = parseSave({
+      ...(typeof old === "object" && old !== null ? old : {}),
+      location: read(LEGACY_KEYS.location),
+      defeated: read(LEGACY_KEYS.defeated),
+      broken: read(LEGACY_KEYS.broken),
+      // A história já era guardada como texto, sem passar por JSON.parse.
+      story: localStorage.getItem(LEGACY_KEYS.story),
+    });
+
+    if (parsed.ok) {
+      const slot = Array.from({ length: SLOT_COUNT }, (_, index) => index).find((index) => readRaw(index) === null);
+      if (slot === undefined || !writeSlot(slot, parsed.save)) return;
+    }
+    for (const key of Object.values(LEGACY_KEYS)) localStorage.removeItem(key);
   } catch {
-    return new Set();
+    // Sem acesso ao armazenamento: não há save antigo pra trazer.
   }
-}
-
-export function markDefeated(key: string): void {
-  localStorage.setItem(DEFEATED_KEY, JSON.stringify([...loadDefeated().add(key)]));
-}
-
-/** Destrutíveis já quebrados, como "área:id". Quebrado não volta. */
-export function loadBroken(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(BROKEN_KEY) ?? "[]") as string[]);
-  } catch {
-    return new Set();
-  }
-}
-
-export function markBroken(keys: string[]): void {
-  if (keys.length === 0) return;
-  localStorage.setItem(BROKEN_KEY, JSON.stringify([...new Set([...loadBroken(), ...keys])]));
-}
-
-/** O estado da história (flags, trechos já lidos, escolhas gastas), como o StoryRunner o entrega. */
-export function loadStory(): string | null {
-  return localStorage.getItem(STORY_KEY);
-}
-
-export function writeStory(state: string): void {
-  localStorage.setItem(STORY_KEY, state);
-}
-
-export function clearSave(): void {
-  localStorage.removeItem(SAVE_KEY);
-  localStorage.removeItem(LOCATION_KEY);
-  localStorage.removeItem(DEFEATED_KEY);
-  localStorage.removeItem(BROKEN_KEY);
-  localStorage.removeItem(STORY_KEY);
 }

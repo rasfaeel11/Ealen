@@ -39,8 +39,11 @@ export const SCENES = {
   title: "Title",
   prologue: "Prologue",
   classSelect: "ClassSelect",
+  saves: "Saves",
   world: "World",
 } as const;
 
-/** Chave do registry do Phaser onde vive o personagem da sessão atual. */
-export const REGISTRY_CHARACTER = "character";
+/** Chave do registry do Phaser onde vive a partida aberta (uma GameSession). */
+export const REGISTRY_SESSION = "session";
+/** Chave do registry com o espaço de save que o jogo novo em criação vai ocupar. */
+export const REGISTRY_NEW_GAME_SLOT = "newGameSlot";

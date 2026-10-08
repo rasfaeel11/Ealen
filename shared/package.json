@@ -6,7 +6,7 @@
   "main": "./index.ts",
   "types": "./index.ts",
   "scripts": {
-    "test": "tsx --test \"tactics/__tests__/*.test.ts\" \"world/__tests__/*.test.ts\" \"story/__tests__/*.test.ts\""
+    "test": "tsx --test \"tactics/__tests__/*.test.ts\" \"world/__tests__/*.test.ts\" \"story/__tests__/*.test.ts\" \"save/__tests__/*.test.ts\""
   },
   "dependencies": {
     "inkjs": "^2.4.0"

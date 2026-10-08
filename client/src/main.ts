@@ -4,6 +4,7 @@ import BootScene from "./scenes/BootScene";
 import TitleScene from "./scenes/TitleScene";
 import PrologueScene from "./scenes/PrologueScene";
 import ClassSelectScene from "./scenes/ClassSelectScene";
+import SaveSlotsScene from "./scenes/SaveSlotsScene";
 import WorldScene from "./scenes/WorldScene";
 
 const FONT_LOAD_TIMEOUT_MS = 3000;
@@ -35,6 +36,6 @@ void waitForFonts().then(() => {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [BootScene, TitleScene, PrologueScene, ClassSelectScene, WorldScene],
+    scene: [BootScene, TitleScene, SaveSlotsScene, PrologueScene, ClassSelectScene, WorldScene],
   });
 });

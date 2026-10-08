@@ -6,7 +6,7 @@
 
 Monorepo com npm workspaces:
 
-- **`shared/`** — as regras do jogo, em TypeScript puro (sem DOM, sem Node, sem rede). Tipos, Ordens, Povos, bestiário, itens, o motor de combate (`shared/tactics/`), o mundo (`shared/world/`) e a história (`shared/story/`). Tudo que é regra mora aqui.
+- **`shared/`** — as regras do jogo, em TypeScript puro (sem DOM, sem Node, sem rede). Tipos, Ordens, Povos, bestiário, itens, o motor de combate (`shared/tactics/`), o mundo (`shared/world/`), a história (`shared/story/`) e o formato do save (`shared/save/`). Tudo que é regra mora aqui.
 - **`client/`** — o jogo: Phaser 3 + Vite. Só apresentação e entrada; não calcula regra nenhuma. Também guarda o TEXTO do jogo, em Ink (`client/story/`).
 - **`server/`** — Express + Supabase, herdado da versão anterior. **O jogo não depende dele**: hoje só sobram as rotas de personagem/mapa e a ferramenta `balance:matrix`. Fica como base caso um dia exista save na nuvem.
 
@@ -19,7 +19,7 @@ Monorepo com npm workspaces:
 - **IA de inimigo por utilidade**: dá nota a todas as jogadas possíveis e fica com a maior, com pesos por criatura (`shared/tactics/ai.ts`).
 - **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto. As flags do jogo são as variáveis da própria história.
 
-Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags — **feito**; (7) save ampliado.
+Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags — **feito**; (7) save ampliado — **feito**.
 
 ### A regra central do combate
 
@@ -73,7 +73,7 @@ Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/
 
 ### Cenas (`client/src/scenes/`)
 
-`Boot` (carrega sprites, mapas e tilesets) → `Title` → `Prologue` → `ClassSelect` (Povo, Ordem, nome) → `World`.
+`Boot` (carrega sprites, mapas e tilesets) → `Title` → `Prologue` → `ClassSelect` (Povo, Ordem, nome) → `World`. `Saves` (a lista de espaços de save) abre a partir do título.
 
 A `WorldScene` é exploração e combate na mesma cena, com duas câmeras: a do mundo (zoom 3x, segue o personagem) e a da interface (sem zoom). Todo objeto criado passa por `addWorld` ou `addHud`. O combate em si mora em `client/src/game/combat/`: `CombatController` (entrada → comando, eventos → animação) e `CombatHud` (ordem de turnos, registro, barra de ações, resultado).
 
@@ -85,7 +85,15 @@ Quem está no mapa (personagem ou criatura) é uma folha 4x4: uma linha por dire
 
 ### Save
 
-Em `localStorage` (`client/src/game/save.ts`): o personagem, onde ele está (área + posição), os grupos de inimigos já vencidos, os destrutíveis já quebrados (gravados só na vitória: numa derrota a área volta inteira) e o estado da história (gravado ao fim de cada conversa). Sem login, sem servidor.
+Uma partida é UM objeto, `GameSave` (`shared/save/gameSave.ts`): o personagem, onde ele está (área + posição), os grupos de inimigos já vencidos, os destrutíveis já quebrados, o estado da história, o tempo de jogo e quando foi gravado. Sem login, sem servidor.
+
+- `parseSave` é a única porta de entrada: confere o formato, nunca lança e devolve o save ou o motivo da recusa (`invalid`, ou `newer` pra save de uma versão mais nova do jogo). Pedaço do mundo mal formado (lugar, listas) volta ao padrão em vez de estragar o save.
+- O save tem versão (`SAVE_VERSION`). **Campo novo: acrescentar em `GameSave`, subir a versão e escrever em `MIGRATIONS` como o save da versão anterior ganha esse campo** — `parseSave` aplica as migrações em fila. Quem já tem save não o perde.
+- Onde o texto fica guardado é do client (`client/src/game/save.ts`): `SLOT_COUNT` espaços em `localStorage`, um jogo inteiro por chave, gravado de uma vez só. Um espaço com algo que o jogo não lê aparece como ilegível e não é sobrescrito sozinho. O save do formato antigo (chaves soltas) é trazido pro primeiro espaço livre na primeira leitura.
+- A partida aberta é uma `GameSession` (`client/src/game/session.ts`) no registry: o save em memória mais o espaço dele. As cenas mudam `session.save` e chamam `commit()`.
+- O jogo grava sozinho (`WorldScene.persist`): ao chegar numa área, ao fim de uma conversa, na vitória (ficha, espólio, grupo vencido, destrutíveis e lugar, tudo junto), ao descansar, ao sair pro título e quando a aba some ou fecha. Numa derrota só a ficha é gravada: a área volta inteira. Não se grava no meio de uma conversa.
+- A tela `Saves` continua, começa, apaga, exporta um espaço como arquivo `.json` e importa um arquivo pra um espaço vazio — é o jeito de levar um jogo pra outro dispositivo. `Esc` no mundo abre a pausa, que salva e volta ao título.
+- Ao carregar, a posição salva que hoje cairia dentro de uma parede (o mapa mudou) vira o ponto de chegada da área.
 
 ### Restrições que valem ouro
 
@@ -97,7 +105,7 @@ Em `localStorage` (`client/src/game/save.ts`): o personagem, onde ele está (ár
 ```
 npm run dev:client                              # o jogo, em http://localhost:5173
 npm run build --workspace=client                # typecheck + build
-npm test                                        # testes sem tela: motor tático, mundo, história e validação dos mapas e do texto
+npm test                                        # testes sem tela: motor tático, mundo, história, save e validação dos mapas e do texto
 npm run balance:matrix --workspace=server       # taxa de vitória de cada Ordem x criatura, pelo motor real
 ```
 
