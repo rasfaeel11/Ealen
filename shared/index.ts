@@ -8,3 +8,4 @@ export * from "./inventoryEffects";
 export * from "./leveling";
 export * from "./tactics";
 export * from "./world";
+export * from "./story";

@@ -1,7 +1,8 @@
 import type { Character } from "@ealen/shared";
 
 /**
- * Save do jogo: um personagem e onde ele está no mundo, guardados neste
+ * Save do jogo: um personagem, onde ele está no mundo e o que já aconteceu
+ * (inimigos vencidos, coisas quebradas, o estado da história), guardados neste
  * dispositivo via localStorage. Não depende de servidor nem de login —
  * funciona igual no navegador e dentro de um empacotador desktop.
  */
@@ -9,6 +10,7 @@ const SAVE_KEY = "ealen:save";
 const LOCATION_KEY = "ealen:location";
 const DEFEATED_KEY = "ealen:defeated";
 const BROKEN_KEY = "ealen:broken";
+const STORY_KEY = "ealen:story";
 const SAVE_VERSION = 1;
 
 interface SaveFile {
@@ -79,9 +81,19 @@ export function markBroken(keys: string[]): void {
   localStorage.setItem(BROKEN_KEY, JSON.stringify([...new Set([...loadBroken(), ...keys])]));
 }
 
+/** O estado da história (flags, trechos já lidos, escolhas gastas), como o StoryRunner o entrega. */
+export function loadStory(): string | null {
+  return localStorage.getItem(STORY_KEY);
+}
+
+export function writeStory(state: string): void {
+  localStorage.setItem(STORY_KEY, state);
+}
+
 export function clearSave(): void {
   localStorage.removeItem(SAVE_KEY);
   localStorage.removeItem(LOCATION_KEY);
   localStorage.removeItem(DEFEATED_KEY);
   localStorage.removeItem(BROKEN_KEY);
+  localStorage.removeItem(STORY_KEY);
 }

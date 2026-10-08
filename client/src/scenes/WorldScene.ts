@@ -3,10 +3,12 @@ import {
   AREAS,
   STARTING_AREA,
   STARTING_SPAWN,
+  StoryRunner,
   aggroedGroup,
   exitAt,
   findUnit,
   grantEncounterRewards,
+  npcInReach,
   parseTiledMap,
   pixelOfTile,
   standAreaProps,
@@ -19,7 +21,9 @@ import {
   type AreaEnemy,
   type AreaExit,
   type AreaMap,
+  type AreaNpc,
   type Character,
+  type CharacterClass,
   type Encounter,
   type PixelPos,
   type Prop,
@@ -27,12 +31,23 @@ import {
   type WalkBody,
 } from "@ealen/shared";
 import { CombatController } from "../game/combat/CombatController";
+import { DialogueBox } from "../game/dialogue/DialogueBox";
 import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_CHARACTER, SCENES, TEXT_COLORS } from "../game/config";
 import { MapActor } from "../game/MapActor";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
-import { loadBroken, loadDefeated, loadLocation, markBroken, markDefeated, writeLocation, writeSave } from "../game/save";
+import {
+  loadBroken,
+  loadDefeated,
+  loadLocation,
+  loadStory,
+  markBroken,
+  markDefeated,
+  writeLocation,
+  writeSave,
+  writeStory,
+} from "../game/save";
 import { addBodyText, addTitleText } from "../game/ui";
-import { mapKey, tilesetKey } from "../game/worldAssets";
+import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
 
 /** Quantos pixels de tela vale um pixel do mapa. Com tiles de 16px, cabem ~27 x 15 quadrados na tela. */
 const ZOOM = 3;
@@ -58,6 +73,8 @@ const SORTED_LAYER_PREFIX = "sorted";
 const ABOVE_LAYER_PREFIX = "above";
 
 const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar";
+/** O que a história rola nos testes dela. Um dado por sessão de jogo basta. */
+const STORY_RNG = { rngState: Math.floor(Math.random() * 0xffffffff) };
 
 interface WorldSceneData {
   /** Chegando por uma saída (ou voltando de uma derrota): a área e o ponto de chegada nela. */
@@ -90,6 +107,9 @@ export default class WorldScene extends Phaser.Scene {
   private propImages = new Map<string, Phaser.GameObjects.Image>();
   private tilesets: Phaser.Tilemaps.Tileset[] = [];
   private combat?: CombatController;
+  private story!: StoryRunner;
+  /** Verdadeiro enquanto uma conversa está na tela: o mundo espera. */
+  private talking = false;
   private leaving = false;
   private statusText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
@@ -101,6 +121,7 @@ export default class WorldScene extends Phaser.Scene {
   init(data: WorldSceneData): void {
     this.arrival = data ?? {};
     this.leaving = false;
+    this.talking = false;
     this.combat = undefined;
     this.enemies = [];
     this.enemyActors = new Map();
@@ -123,6 +144,12 @@ export default class WorldScene extends Phaser.Scene {
     this.enterArea();
     this.drawMap();
     this.standProps();
+    this.standNpcs();
+    this.story = new StoryRunner(
+      this.cache.text.get(STORY_KEY) as string,
+      { character, rng: STORY_RNG, isDefeated: (key) => loadDefeated().has(key) },
+      loadStory(),
+    );
     this.player = this.addActor(classSpriteKey(character.characterClass), this.pos);
     this.spawnEnemies();
 
@@ -138,6 +165,7 @@ export default class WorldScene extends Phaser.Scene {
       ),
     );
     this.refreshStatus();
+    this.refreshHint();
     this.showBanner(this.area.name);
 
     const camera = this.cameras.main;
@@ -158,6 +186,7 @@ export default class WorldScene extends Phaser.Scene {
       d: Phaser.Input.Keyboard.KeyCodes.D,
     }) as MoveKeys;
     keyboard.on("keydown-R", this.rest, this);
+    keyboard.on("keydown-E", this.interact, this);
     // O botão direito cancela a mira no combate; o menu do navegador só atrapalharia.
     this.input.mouse?.disableContextMenu();
 
@@ -166,7 +195,7 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.leaving || this.combat) return;
+    if (this.leaving || this.combat || this.talking) return;
 
     const dx = Number(this.keys.right.isDown || this.keys.d.isDown) - Number(this.keys.left.isDown || this.keys.a.isDown);
     const dy = Number(this.keys.down.isDown || this.keys.s.isDown) - Number(this.keys.up.isDown || this.keys.w.isDown);
@@ -191,7 +220,11 @@ export default class WorldScene extends Phaser.Scene {
     }
 
     const group = aggroedGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos));
-    if (group) this.startCombat(group);
+    if (group) {
+      this.startCombat(group);
+      return;
+    }
+    this.refreshHint();
   }
 
   // ------------------------------------------------------------- montagem
@@ -298,6 +331,14 @@ export default class WorldScene extends Phaser.Scene {
     }
   }
 
+  /** Põe no mapa quem tem cara (`look`). Os outros são só pontos pra examinar no que o mapa já desenha. */
+  private standNpcs(): void {
+    for (const npc of this.map.npcs) {
+      if (!npc.look) continue;
+      this.addActor(classSpriteKey(npc.look as CharacterClass), pixelOfTile(this.map, tileOfPixel(this.map, npc)));
+    }
+  }
+
   /** Põe no mapa os inimigos da área cujo grupo ainda não foi vencido. */
   private spawnEnemies(): void {
     const defeated = loadDefeated();
@@ -319,6 +360,13 @@ export default class WorldScene extends Phaser.Scene {
     this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}`);
   }
 
+  /** A dica do pé da tela: como andar e, perto de alguém, como falar com ele. */
+  private refreshHint(): void {
+    const npc = npcInReach(this.map, this.pos);
+    const talk = npc ? `  ·  E: ${npc.look ? "falar com" : "examinar"} ${npc.name}` : "";
+    this.hintText.setText(EXPLORE_HINT + talk);
+  }
+
   /** Um título no alto da tela, sumindo sozinho (nome da área, avisos). */
   private showBanner(text: string): void {
     const banner = this.addHud(
@@ -329,11 +377,51 @@ export default class WorldScene extends Phaser.Scene {
 
   /** Provisório, no lugar de acampamento/estalagem: recupera todo o HP, em qualquer lugar fora de luta. */
   private rest(): void {
-    if (this.combat || this.leaving) return;
+    if (this.combat || this.leaving || this.talking) return;
     this.character.currentHp = this.character.maxHp;
     writeSave(this.character);
     this.refreshStatus();
     this.showBanner("Você descansa.");
+  }
+
+  // ----------------------------------------------------------------- conversa
+
+  private interact(): void {
+    if (this.combat || this.leaving || this.talking) return;
+    const npc = npcInReach(this.map, this.pos);
+    if (npc) void this.talk(npc);
+  }
+
+  /**
+   * Uma conversa, do começo ao fim: a história diz o que mostrar, a caixa
+   * mostra e devolve a escolha. No fim, o que ela mudou (flags, mochila, XP)
+   * vai pro save.
+   */
+  private async talk(npc: AreaNpc): Promise<void> {
+    this.talking = true;
+    this.player.setWalking(false);
+    this.player.faceToward(pixelOfTile(this.map, tileOfPixel(this.map, npc)));
+    this.statusText.setVisible(false);
+    this.hintText.setVisible(false);
+
+    const box = new DialogueBox(this, (object) => this.addHud(object));
+    try {
+      let step = this.story.start(npc.dialog);
+      for (;;) {
+        const choice = await box.play(step);
+        if (choice === null) break;
+        step = this.story.choose(choice);
+      }
+    } finally {
+      // Um erro no texto não pode deixar o jogador preso numa conversa que não fecha.
+      box.destroy();
+      writeStory(this.story.save());
+      writeSave(this.character);
+      this.statusText.setVisible(true);
+      this.hintText.setVisible(true);
+      this.refreshStatus();
+      this.talking = false;
+    }
   }
 
   // ----------------------------------------------------------------- combate

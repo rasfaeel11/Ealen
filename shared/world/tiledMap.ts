@@ -29,6 +29,12 @@ import { FLOOR, type Grid, type Pos, type Tile } from "../tactics/grid";
  *     `enemy`  ponto; propriedades `creature` (id no bestiário) e `group`
  *              (inimigos do mesmo grupo entram juntos na luta; sem grupo,
  *              o inimigo luta sozinho)
+ *     `npc`    ponto; alguém (ou algo) com quem se fala. O Nome é o que
+ *              aparece na caixa; a propriedade `dialog` é o trecho (knot)
+ *              da história em client/story que a conversa abre. Com `look`
+ *              (o id de uma Ordem, por enquanto) é um personagem de pé, que
+ *              ocupa o quadrado; sem `look` é só um ponto pra examinar
+ *              (uma inscrição, um altar) no que o mapa já desenha
  *     `prop`   um destrutível: um TILE posto como objeto (Insert Tile, não
  *              pintado numa camada), com a propriedade `kind` (id em PROPS,
  *              ver ../tactics/props.ts). Ocupa o quadrado em que a base do
@@ -65,6 +71,19 @@ export interface AreaEnemy {
   y: number;
 }
 
+export interface AreaNpc {
+  /** Único dentro da área. */
+  id: string;
+  /** O nome mostrado ao jogador. */
+  name: string;
+  /** O trecho (knot) da história que a conversa abre. */
+  dialog: string;
+  /** Com que cara aparece no mapa: o id de uma Ordem. Ausente = não aparece, é só um ponto pra examinar. */
+  look?: string;
+  x: number;
+  y: number;
+}
+
 export interface AreaProp {
   /** Único dentro da área. */
   id: string;
@@ -86,6 +105,7 @@ export interface AreaMap {
   spawns: Record<string, PixelPos>;
   exits: AreaExit[];
   enemies: AreaEnemy[];
+  npcs: AreaNpc[];
   props: AreaProp[];
 }
 
@@ -198,6 +218,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
   const spawns: Record<string, PixelPos> = {};
   const exits: AreaExit[] = [];
   const enemies: AreaEnemy[] = [];
+  const npcs: AreaNpc[] = [];
   const props: AreaProp[] = [];
   for (const layer of layers) {
     for (const object of layer.objects ?? []) {
@@ -217,6 +238,22 @@ export function parseTiledMap(raw: unknown): AreaMap {
         }
         const id = `enemy-${object.id}`;
         enemies.push({ id, creature, group: typeof group === "string" ? group : id, x: object.x, y: object.y });
+      } else if (kind === "npc") {
+        const { dialog, look } = propertiesOf(object);
+        if (typeof dialog !== "string") throw new Error(`"${object.name ?? ""}" precisa da propriedade "dialog".`);
+        npcs.push({
+          id: `npc-${object.id}`,
+          name: object.name ?? "",
+          dialog,
+          look: typeof look === "string" ? look : undefined,
+          x: object.x,
+          y: object.y,
+        });
+        // Quem está de pé ocupa o quadrado, andando ou lutando em volta dele.
+        if (typeof look === "string") {
+          const index = Math.floor(object.y / map.tileheight) * map.width + Math.floor(object.x / map.tilewidth);
+          if (tiles[index]) tiles[index].blocksMove = true;
+        }
       } else if (kind === "prop") {
         const { kind: propKind } = propertiesOf(object);
         if (typeof propKind !== "string" || object.gid === undefined) {
@@ -238,6 +275,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
     spawns,
     exits,
     enemies,
+    npcs,
     props,
   };
 }
@@ -250,6 +288,24 @@ export function pixelOfTile(map: AreaMap, tile: Pos): PixelPos {
 /** O quadrado da grade em que um ponto do mapa cai. */
 export function tileOfPixel(map: AreaMap, pos: PixelPos): Pos {
   return { x: Math.floor(pos.x / map.tileSize), y: Math.floor(pos.y / map.tileSize) };
+}
+
+/** A que distância (em quadrados, do pé de quem anda ao meio do quadrado) dá pra falar com alguém. */
+export const TALK_RANGE = 1.5;
+
+/** Com quem dá pra falar de `pos`: o mais próximo ao alcance, se houver. */
+export function npcInReach(map: AreaMap, pos: PixelPos): AreaNpc | undefined {
+  let nearest: AreaNpc | undefined;
+  let best = TALK_RANGE * map.tileSize;
+  for (const npc of map.npcs) {
+    const tile = tileOfPixel(map, npc);
+    const gap = Math.hypot((tile.x + 0.5) * map.tileSize - pos.x, (tile.y + 0.5) * map.tileSize - pos.y);
+    if (gap <= best) {
+      nearest = npc;
+      best = gap;
+    }
+  }
+  return nearest;
 }
 
 /** A saída que contém este ponto, se houver. */

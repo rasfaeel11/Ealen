@@ -11,6 +11,9 @@ export const TILESETS: Record<string, string> = {
   "placeholder-high": "tilesets/placeholder-high.png",
 };
 
+/** A história compilada (client/story -> public/story.json, ver vite.config.ts), guardada como texto. */
+export const STORY_KEY = "story";
+
 export function mapKey(areaId: string): string {
   return `map:${areaId}`;
 }
@@ -19,8 +22,9 @@ export function tilesetKey(tilesetName: string): string {
   return `tileset:${tilesetName}`;
 }
 
-/** Enfileira no loader todos os mapas e tilesets. Chamado no preload da cena de boot. */
+/** Enfileira no loader todos os mapas, os tilesets e a história. Chamado no preload da cena de boot. */
 export function preloadWorld(scene: Phaser.Scene): void {
+  scene.load.text(STORY_KEY, "story.json");
   for (const area of Object.values(AREAS)) scene.load.tilemapTiledJSON(mapKey(area.id), area.map);
   for (const [name, url] of Object.entries(TILESETS)) scene.load.image(tilesetKey(name), url);
 }

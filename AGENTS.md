@@ -6,8 +6,8 @@
 
 Monorepo com npm workspaces:
 
-- **`shared/`** — as regras do jogo, em TypeScript puro (sem DOM, sem Node, sem rede). Tipos, Ordens, Povos, bestiário, itens, o motor de combate (`shared/tactics/`) e o mundo (`shared/world/`). Tudo que é regra mora aqui.
-- **`client/`** — o jogo: Phaser 3 + Vite. Só apresentação e entrada; não calcula regra nenhuma.
+- **`shared/`** — as regras do jogo, em TypeScript puro (sem DOM, sem Node, sem rede). Tipos, Ordens, Povos, bestiário, itens, o motor de combate (`shared/tactics/`), o mundo (`shared/world/`) e a história (`shared/story/`). Tudo que é regra mora aqui.
+- **`client/`** — o jogo: Phaser 3 + Vite. Só apresentação e entrada; não calcula regra nenhuma. Também guarda o TEXTO do jogo, em Ink (`client/story/`).
 - **`server/`** — Express + Supabase, herdado da versão anterior. **O jogo não depende dele**: hoje só sobram as rotas de personagem/mapa e a ferramenta `balance:matrix`. Fica como base caso um dia exista save na nuvem.
 
 ### As decisões de design
@@ -17,9 +17,9 @@ Monorepo com npm workspaces:
 - **Mundo aberto como grafo de áreas**: cada nó é um mapa feito à mão (Tiled), as arestas são as saídas, nenhuma travada por história. Nível de inimigo fixo por área.
 - **Visual top-down 3/4** (Sea of Stars), pixel art. A altura vem da arte e da ordem de desenho, não de uma câmera inclinada — não é isométrico.
 - **IA de inimigo por utilidade**: dá nota a todas as jogadas possíveis e fica com a maior, com pesos por criatura (`shared/tactics/ai.ts`).
-- **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto. Ainda não existe.
+- **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto. As flags do jogo são as variáveis da própria história.
 
-Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags; (7) save ampliado.
+Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags — **feito**; (7) save ampliado.
 
 ### A regra central do combate
 
@@ -52,13 +52,24 @@ O contrato de quem desenha um mapa (detalhado em `shared/world/tiledMap.ts`):
 - Terreno de combate também: `cover` (pedra, mureta — barra o passo, não a visão) e `elevation` (altura do chão, em degraus). A altura é só vantagem de combate: um patamar se fecha com tiles de face (`blocksMove`) e se abre com a escada, que é um quadrado comum. O salão das `ruinas` tem um.
 - Camada cujo nome começa com `sorted` fica "de pé": cada tile é ordenado pelo Y da própria base junto com os personagens, então se passa por trás de uma copa e pela frente do tronco. Coisas altas vêm de um tileset de tiles mais altos que o quadrado (ex: 16x32), com a base no quadrado que ocupam; parede se desenha com o topo em cima e a face frontal embaixo.
 - Camada cujo nome começa com `above` é desenhada por cima de tudo; as demais são chão.
-- Objetos: `spawn` (ponto; o nome é o id), `exit` (retângulo; propriedades `area` e `spawn`), `enemy` (ponto; propriedades `creature`, a chave no bestiário, e `group`) e `prop` (um destrutível: um TILE posto como objeto — Insert Tile, não pintado numa camada — com a propriedade `kind`, a chave em `PROPS`; o que ele barra vem de `kind`, o tile é só o desenho).
+- Objetos: `spawn` (ponto; o nome é o id), `exit` (retângulo; propriedades `area` e `spawn`), `enemy` (ponto; propriedades `creature`, a chave no bestiário, e `group`) `npc` (ponto; o nome é o que aparece na caixa, `dialog` é o trecho da história que a conversa abre e `look`, opcional, é o id da Ordem cujo sprite ele usa por enquanto — com `look` ocupa o quadrado, sem `look` é só um ponto pra examinar, como uma inscrição na parede) e `prop` (um destrutível: um TILE posto como objeto — Insert Tile, não pintado numa camada — com a propriedade `kind`, a chave em `PROPS`; o que ele barra vem de `kind`, o tile é só o desenho).
 
 `parseTiledMap` devolve a grade SEM os destrutíveis; `standAreaProps` (`encounters.ts`) põe de pé nela os que ainda não foram quebrados, e a partir daí eles barram quem explora e quem luta do mesmo jeito. A luta recebe esses mesmos objetos e a mesma grade, então o que quebra em combate abre o caminho no mundo sem mais nada.
 
 Inimigos ficam de pé no mapa. Chegar a `AGGRO_RANGE` quadrados de um deles, com linha de visão, puxa o grupo inteiro pra luta (`shared/world/encounters.ts`), na grade da própria área. Grupo vencido não volta.
 
 Criatura pode levar consumíveis pra luta (`carries` na entrada do bestiário; `spawnCreature` monta a ficha com a mochila). A IA usa item como o jogador usa, pela ação bônus, e só quando não é desperdício. O que ela NÃO usar fica pra quem vence (`unusedItems` → `grantEncounterRewards`), além do sorteio de `drops`.
+
+### A história (`client/story/` + `shared/story/`)
+
+Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/main.ink` inclui um arquivo por lugar. Uma só porque o estado dela é o save — as variáveis (`VAR`) são as flags do jogo, e o Ink ainda lembra quantas vezes cada trecho foi lido e que escolhas de uma vez só já foram gastas. O que existe hoje (`andarilha` na clareira, `inscricao` nas ruínas) é provisório, feito pra exercitar o sistema.
+
+- `StoryRunner` (`shared/story/runner.ts`) roda a história e, como o motor de combate, não desenha nada: `start(knot)` e `choose(index)` devolvem um `DialogueStep` — as falas e os acontecimentos em ordem (`beats`) e as escolhas no fim; sem escolhas, a conversa acabou. `save()` devolve o estado inteiro; `flag`/`setFlag` leem e escrevem uma variável de fora.
+- Fala no formato `Nome: texto` sai com quem fala; o resto é narração.
+- O texto fala com o jogo por funções declaradas com `EXTERNAL` no `main.ink` e ligadas no `StoryRunner`: `attr`, `order`, `people`, `level`, `has_item`, `defeated("area:grupo")` (leitura) e `check`, `give_item`, `grant_xp` (mexem no jogo e viram `StoryEvent`). Função nova entra nos dois lugares.
+- Teste de atributo (`shared/story/checks.ts`): d20 + atributo contra a dificuldade, 20 natural passa e 1 falha. Uma escolha com a etiqueta `# check: len 13` é um teste anunciado — a caixa mostra a chance, o dado rola ao escolher e o texto lê o resultado com `passed()`. `{check("ul", 12): ... | ...}` rola na hora, no meio do texto. A régua de dificuldade está no topo de `checks.ts` e do `main.ink`.
+- No mapa, quem fala é um objeto `npc` (ver o contrato abaixo). `E` perto de um abre a conversa (`npcInReach`); a `WorldScene` passa cada trecho pra `DialogueBox` (`client/src/game/dialogue/`) e devolve a escolha à história.
+- A história é compilada em Node, nunca no navegador: `client/scripts/compileStory.ts`, chamado pelo plugin do `vite.config.ts` ao subir, ao buildar e a cada `.ink` salvo no dev (a página recarrega). O resultado é `client/public/story.json`, que não vai pro git.
 
 ### Cenas (`client/src/scenes/`)
 
@@ -74,7 +85,7 @@ Quem está no mapa (personagem ou criatura) é uma folha 4x4: uma linha por dire
 
 ### Save
 
-Em `localStorage` (`client/src/game/save.ts`): o personagem, onde ele está (área + posição), os grupos de inimigos já vencidos e os destrutíveis já quebrados (gravados só na vitória: numa derrota a área volta inteira). Sem login, sem servidor.
+Em `localStorage` (`client/src/game/save.ts`): o personagem, onde ele está (área + posição), os grupos de inimigos já vencidos, os destrutíveis já quebrados (gravados só na vitória: numa derrota a área volta inteira) e o estado da história (gravado ao fim de cada conversa). Sem login, sem servidor.
 
 ### Restrições que valem ouro
 
@@ -86,11 +97,11 @@ Em `localStorage` (`client/src/game/save.ts`): o personagem, onde ele está (ár
 ```
 npm run dev:client                              # o jogo, em http://localhost:5173
 npm run build --workspace=client                # typecheck + build
-npm test                                        # testes sem tela: motor tático, mundo e validação dos mapas
+npm test                                        # testes sem tela: motor tático, mundo, história e validação dos mapas e do texto
 npm run balance:matrix --workspace=server       # taxa de vitória de cada Ordem x criatura, pelo motor real
 ```
 
-`npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede, trecho sem acesso (já com os destrutíveis de pé), criatura ou destrutível que não existe, destrutível em cima de parede, saída ou de alguém, e inimigo colado num ponto de chegada.
+`npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede, trecho sem acesso (já com os destrutíveis de pé), criatura ou destrutível que não existe, destrutível em cima de parede, saída ou de alguém, e inimigo colado num ponto de chegada. Também compila a história de verdade e percorre cada conversa por todos os caminhos, passando e falhando nos testes: `npc` apontando pra trecho que não existe, item inexistente ou conversa que não termina aparecem aqui.
 
 ### Versões anteriores
 

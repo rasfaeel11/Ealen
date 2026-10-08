@@ -11,3 +11,6 @@ build/
 
 # Worktrees de sessões do Claude Code
 .claude/worktrees/
+
+# A história compilada (gerada de client/story pelo Vite)
+client/public/story.json

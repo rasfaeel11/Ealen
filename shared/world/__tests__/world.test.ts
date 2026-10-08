@@ -6,6 +6,7 @@ import { applyCommand, chooseCommand } from "../../tactics";
 import { distance, samePos, stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
 import { isPropId } from "../../tactics/props";
 import type { Character } from "../../types/character";
+import { CLASS_INFO } from "../../types/characterClass";
 import {
   AGGRO_RANGE,
   AREAS,
@@ -108,6 +109,26 @@ for (const [areaId, map] of Object.entries(maps)) {
       assert.equal(exitAt(map, middle), undefined, `${prop.id} está dentro de uma saída`);
     }
     assert.equal(props[areaId].length, map.props.length);
+  });
+
+  test(`${areaId}: todo mundo com quem se fala tem nome, e quem está de pé tem cara, chão e por onde chegar`, () => {
+    const reachable = flood(map, tileOfPixel(map, Object.values(map.spawns)[0]));
+    for (const npc of map.npcs) {
+      assert.ok(npc.name, `${npc.id} não tem nome`);
+      const tile = tileOfPixel(map, npc);
+      const neighbors = stepNeighbors(map.grid, tile).concat(
+        // Um ponto pra examinar pode estar numa parede: basta dar pra chegar ao lado.
+        [-1, 0, 1].flatMap((dx) => [-1, 0, 1].map((dy) => ({ x: tile.x + dx, y: tile.y + dy }))),
+      );
+      assert.ok(neighbors.some((pos) => reachable.has(tileIndex(map.grid, pos))), `não dá pra chegar perto de ${npc.name}`);
+      if (npc.look === undefined) continue;
+
+      assert.ok(npc.look in CLASS_INFO, `${npc.name} tem uma cara que não existe: "${npc.look}"`);
+      assert.equal(tileAt(bare[areaId].grid, tile)?.blocksMove, true, `${npc.name} deveria ocupar o quadrado`);
+      const others = [...Object.values(map.spawns), ...map.enemies].map((point) => tileOfPixel(map, point));
+      assert.ok(!others.some((other) => samePos(other, tile)), `${npc.name} está em cima de alguém`);
+      assert.ok(!map.props.some((prop) => samePos(prop.tile, tile)), `${npc.name} está em cima de um destrutível`);
+    }
   });
 
   test(`${areaId}: ninguém chega na área já dentro de uma luta`, () => {
@@ -234,6 +255,7 @@ test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
     spawns: {},
     exits: [],
     enemies: [],
+    npcs: [],
     props: [],
   };
   const body = { halfWidth: 4, height: 4 };
