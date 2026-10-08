@@ -135,6 +135,26 @@ for (const [areaId, map] of Object.entries(maps)) {
     assert.ok(encounter.winner);
   });
 
+  test("cobertura e altura vêm das propriedades dos tiles, e a luta no patamar das ruínas anda até o fim", () => {
+    const map = maps.ruinas;
+    const high = map.grid.tiles.filter((tile) => tile.elevation > 0);
+    assert.ok(high.length > 0, "as ruínas deveriam ter chão elevado");
+    assert.ok(high.every((tile) => !tile.blocksMove));
+    // Pedra e mureta dão cobertura; árvore e parede barram a visão de uma vez.
+    const cover = map.grid.tiles.filter((tile) => tile.cover);
+    assert.ok(cover.length > 0);
+    assert.ok(cover.every((tile) => tile.blocksMove && !tile.blocksSight));
+
+    const group = map.enemies.filter((enemy) => enemy.group === "salao");
+    assert.ok(group.some((enemy) => tileAt(map.grid, tileOfPixel(map, enemy))!.elevation > 0), "alguém começa no alto");
+
+    const { encounter } = startAreaEncounter(map, structuredClone(hero), { x: 18, y: 16 }, group, 9);
+    for (let i = 0; i < 3000 && !encounter.winner; i++) {
+      assert.equal(applyCommand(encounter, chooseCommand(encounter)).ok, true);
+    }
+    assert.ok(encounter.winner);
+  });
+
   test("a criatura entra na luta com o que carrega, e o que ela não usou fica pra quem vence", () => {
     const map = maps.estrada;
     const servo = { ...map.enemies[0], id: "servo", creature: "encounter-servo-enferrujado" };
@@ -187,6 +207,8 @@ test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
         blocksMove: index % 3 === 2,
         blocksSight: false,
         moveCost: 1,
+        cover: false,
+        elevation: 0,
       })),
     },
     spawns: {},

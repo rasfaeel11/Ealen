@@ -57,7 +57,10 @@ export interface Ability {
    * aliados inclusive. Sem isto, só quem está no quadrado mirado.
    */
   radius?: number;
-  /** Rola d20 + atributo primário + `toHit` contra 10 + Or do alvo. Sem isto, sempre funciona. */
+  /**
+   * Rola d20 + atributo primário + `toHit` contra 10 + Or do alvo, com cobertura,
+   * flanco e altura por cima (ver ./attack.ts). Sem isto, sempre funciona.
+   */
   attack?: { toHit: number };
   effects: Effect[];
   /** Pode ser usada como ataque de oportunidade, gastando a reação. */
@@ -165,6 +168,10 @@ export type TacticalEvent =
       total: number;
       defense: number;
       outcome: AttackOutcome;
+      /** A posição, já contada em `total` e `defense` (ver ./attack.ts). */
+      cover: boolean;
+      flanked: boolean;
+      height: -1 | 0 | 1;
     }
   | { type: "blocked"; unit: string; amount: number }
   | { type: "damage"; target: string; amount: number; remainingHp: number }

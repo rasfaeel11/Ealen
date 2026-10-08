@@ -1,15 +1,21 @@
 import * as Phaser from "phaser";
 import {
+  COVER_DEFENSE,
+  FLANK_TO_HIT,
+  HEIGHT_TO_HIT,
   abilityTargets,
   activeUnit,
   applyCommand,
+  attackOdds,
   chooseCommand,
   findPath,
   findUnit,
   pixelOfTile,
+  tileAt,
   reachableTiles,
   samePos,
   tileOfPixel,
+  unitAt,
   type Ability,
   type AreaMap,
   type AttackOutcome,
@@ -82,6 +88,16 @@ function describeAbility(ability: Ability): string {
     else parts.push(effect.distance > 0 ? `empurra ${effect.distance}` : `puxa ${-effect.distance}`);
   }
   return parts.join(" · ");
+}
+
+/** O que a posição fez a um ataque, em palavras: "flanqueado +2", "cobertura +2 na defesa"... */
+function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 | 1 }): string[] {
+  const notes: string[] = [];
+  if (edge.flanked) notes.push(`flanqueado +${FLANK_TO_HIT}`);
+  if (edge.height > 0) notes.push(`de cima +${HEIGHT_TO_HIT}`);
+  if (edge.height < 0) notes.push(`de baixo -${HEIGHT_TO_HIT}`);
+  if (edge.cover) notes.push(`cobertura +${COVER_DEFENSE} na defesa`);
+  return notes;
 }
 
 /**
@@ -311,12 +327,6 @@ export class CombatController {
       buttons,
       `${unit.name}   ·   Movimento ${unit.turn.movement}/${unit.speed}   ·   Ação ${dot(unit.turn.action)}   ·   Bônus ${dot(unit.turn.bonus)}`,
     );
-    this.hud.setDetail(
-      this.selected
-        ? `${describeAbility(this.selected)} — ${this.selected.flavor}`
-        : "Clique num quadrado azul pra andar. Esc ou botão direito volta pra cá.",
-    );
-
     this.options = this.selected
       ? abilityTargets(encounter, unit, this.selected)
       : reachableTiles(encounter, unit).map((tile) => tile.pos);
@@ -374,15 +384,40 @@ export class CombatController {
     for (const tile of this.options) this.fillTile(this.overlay, tile);
   }
 
+  /**
+   * A linha de explicação da vez do jogador: o que o clique em `hover` faria
+   * (a chance de acertar quem está lá, o chão em que se vai pisar) ou, sem
+   * nada sob o cursor, o que o modo atual faz.
+   */
+  private detailFor(unit: Unit, hover: Pos | null): string {
+    const { encounter, selected } = this;
+    if (!selected) {
+      const level = (pos: Pos) => tileAt(encounter.grid, pos)?.elevation ?? 0;
+      if (hover && level(hover) > level(unit.pos)) {
+        return `Chão alto: +${HEIGHT_TO_HIT} pra acertar quem está embaixo, e quem está embaixo acerta menos.`;
+      }
+      return "Clique num quadrado azul pra andar. Esc ou botão direito volta pra cá.";
+    }
+
+    const target = hover && selected.radius === undefined ? unitAt(encounter, hover) : undefined;
+    if (!target || !selected.attack) return `${describeAbility(selected)} — ${selected.flavor}`;
+
+    const odds = attackOdds(encounter, unit, selected, target);
+    const chance = Math.round((odds.hit + odds.crit) * 100);
+    return [`${selected.name} em ${target.name}: ${chance}% de acerto`, ...describeEdge(odds.edge)].join(" · ");
+  }
+
   /** O que o clique faria aqui: o caminho até o quadrado, ou a área que a habilidade pega. */
   private drawCursor(): void {
     this.cursor.clear();
-    const { hover } = this;
-    if (this.busy || !hover || !this.options.some((option) => samePos(option, hover))) return;
+    if (this.busy) return;
 
     const unit = activeUnit(this.encounter)!;
-    this.cursor.fillStyle(this.optionColor(), 0.45);
+    const hover = this.hover && this.options.some((option) => samePos(option, this.hover!)) ? this.hover : null;
+    this.hud.setDetail(this.detailFor(unit, hover));
+    if (!hover) return;
 
+    this.cursor.fillStyle(this.optionColor(), 0.45);
     if (!this.selected) {
       for (const step of findPath(this.encounter, unit, hover)?.path ?? []) this.fillTile(this.cursor, step);
       return;
@@ -461,11 +496,17 @@ export class CombatController {
 
       case "attackRoll": {
         const target = this.unit(event.target);
-        const sum = `${event.total} contra ${event.defense}`;
+        const edge = describeEdge(event);
+        const sum = [`${event.total} contra ${event.defense}`, ...edge].join(", ");
         this.blow = { actor: event.actor, target: event.target, outcome: event.outcome };
         if (event.outcome === "crit") {
           this.floatOver(event.target, "Crítico!", TEXT_COLORS.goldBright, -30, 32);
           this.hud.log(`Acerto crítico em ${target.name}!`);
+        } else if (event.outcome === "miss" && event.cover && event.total >= event.defense - COVER_DEFENSE) {
+          // Teria acertado em campo aberto: quem segurou o golpe foi a cobertura.
+          this.floatOver(event.target, "Cobertura", TEXT_COLORS.guard);
+          this.hud.log(`A cobertura salva ${target.name} (${sum}).`);
+          await this.dodge(event.target, event.actor);
         } else if (event.outcome === "fumble") {
           this.floatOver(event.actor, "Falha crítica", TEXT_COLORS.danger);
           this.hud.log(`Falha crítica (1 natural).`);

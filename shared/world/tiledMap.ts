@@ -1,4 +1,4 @@
-import type { Grid, Pos, Tile } from "../tactics/grid";
+import { FLOOR, type Grid, type Pos, type Tile } from "../tactics/grid";
 
 /**
  * Lê um mapa do Tiled (.tmj) e tira dele o que é REGRA: onde dá pra pisar,
@@ -15,6 +15,10 @@ import type { Grid, Pos, Tile } from "../tactics/grid";
  *     `blocksMove` (bool)  ninguém pisa
  *     `blocksSight` (bool) não se enxerga através
  *     `moveCost` (int)     custo de entrar em combate; padrão 1
+ *     `cover` (bool)       dá cobertura a quem se encosta nele (pedra, mureta)
+ *     `elevation` (int)    altura do chão, em degraus; padrão 0. É só vantagem
+ *                          de combate: quem barra a subida é o `blocksMove` da
+ *                          face do degrau, e a escada é o quadrado sem ele
  *   Assim, pintar uma árvore já faz dela um obstáculo — não existe camada
  *   de colisão separada pra esquecer de atualizar.
  * - Camada de objetos, com o campo "Class"/"Type" de cada objeto dizendo o
@@ -134,6 +138,8 @@ function terrainByGid(tilesets: TiledTileset[]): Map<number, Partial<Tile>> {
         blocksMove: properties.blocksMove === true ? true : undefined,
         blocksSight: properties.blocksSight === true ? true : undefined,
         moveCost: typeof properties.moveCost === "number" ? properties.moveCost : undefined,
+        cover: properties.cover === true ? true : undefined,
+        elevation: typeof properties.elevation === "number" ? properties.elevation : undefined,
       });
     }
   }
@@ -150,11 +156,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
 
   const layers = flattenLayers(map.layers);
   const terrain = terrainByGid(map.tilesets);
-  const tiles: Tile[] = Array.from({ length: map.width * map.height }, () => ({
-    blocksMove: false,
-    blocksSight: false,
-    moveCost: 1,
-  }));
+  const tiles: Tile[] = Array.from({ length: map.width * map.height }, () => ({ ...FLOOR }));
 
   for (const layer of layers) {
     if (layer.type !== "tilelayer") continue;
@@ -168,6 +170,8 @@ export function parseTiledMap(raw: unknown): AreaMap {
       tile.blocksMove ||= properties.blocksMove ?? false;
       tile.blocksSight ||= properties.blocksSight ?? false;
       tile.moveCost = Math.max(tile.moveCost, properties.moveCost ?? 1);
+      tile.cover ||= properties.cover ?? false;
+      tile.elevation = Math.max(tile.elevation, properties.elevation ?? 0);
     });
   }
 

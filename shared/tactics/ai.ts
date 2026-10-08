@@ -1,4 +1,5 @@
 import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileIndex, type Grid, type Pos } from "./grid";
+import { attackOdds } from "./attack";
 import { reachableTiles } from "./movement";
 import { STATUSES, type StatusId, type StatusTemplate } from "./statuses";
 import { abilityTargets, affectedUnits, canAimAt } from "./targeting";
@@ -17,7 +18,8 @@ import { activeUnit, effectiveAttribute, isAlive, primaryAttribute } from "./uni
  *
  *   - o que as habilidades rendem EM MÉDIA dali: chance de acerto x dano,
  *     chance de derrubar o alvo, cura, guarda — e desconta quem do próprio
- *     lado for pego numa área;
+ *     lado for pego numa área. A chance de acerto já vem com cobertura,
+ *     flanco e altura: é por isso que ela cerca, sobe e se esconde;
  *   - o que um item da mochila rende, disputando a ação bônus com as
  *     habilidades: consumível não volta, então só sai quando não é
  *     desperdício;
@@ -146,7 +148,7 @@ export function planTurn(encounter: Encounter): AiPlan {
       }
     }
 
-    const exposure = threatAt(sim, me, me.pos, false);
+    const exposure = threatAt(sim, me, false);
     let item: AiItemChoice | undefined;
     if (me.turn.bonus) {
       const fight = { engaged: canStrike || exposure > 0, striking: canStrike && action !== undefined };
@@ -205,7 +207,7 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
 
   for (const victim of affectedUnits(encounter, ability, target)) {
     const ally = victim.team === actor.team;
-    const outlook = forecast(actor, ability, victim, isGuarding(victim));
+    const outlook = forecast(encounter, actor, ability, victim, isGuarding(victim), target);
     // O que é bom pro alvo: bom se ele é do nosso lado, ruim se não é.
     let favor = 0;
 
@@ -251,8 +253,8 @@ function overkill(encounter: Encounter, actor: Unit, profile: AiProfile, first: 
     if (victim.team === actor.team || !alsoHit.includes(victim)) continue;
 
     const guarded = isGuarding(victim);
-    const a = forecast(actor, first.ability, victim, guarded);
-    const b = forecast(actor, second.ability, victim, guarded);
+    const a = forecast(encounter, actor, first.ability, victim, guarded, first.target);
+    const b = forecast(encounter, actor, second.ability, victim, guarded, second.target);
     const harm = Math.min(a.damage, victim.currentHp) + Math.min(b.damage, victim.currentHp);
     excess += profile.aggression * Math.max(0, harm - victim.currentHp);
     excess += profile.finisher * KILL_VALUE * a.kill * b.kill;
@@ -276,7 +278,7 @@ function statusFavor(
   let favor = 0;
   if (status.guard) {
     // A guarda vale o dano que ela deve segurar — nada, se ninguém alcança.
-    const spared = threatAt(encounter, victim, victim.pos, false) - threatAt(encounter, victim, victim.pos, true);
+    const spared = threatAt(encounter, victim, false) - threatAt(encounter, victim, true);
     favor += profile.caution * THREAT_DISCOUNT * spared;
   }
   if (status.guaranteedCrit) favor += GUARANTEED_CRIT_VALUE;
@@ -371,25 +373,20 @@ function attributeOf(actor: Unit, ref: AttributeRef | undefined): number {
 }
 
 /**
- * O que `ability` de `actor` deve fazer a `target`, em média. Espelha
- * rollAttack e o efeito "damage" de ./engine.ts — se a regra de lá mudar,
- * esta conta muda junto.
+ * O que `ability` de `actor` deve fazer a `target`, em média, de onde cada
+ * um está em `encounter`. A chance de acerto vem de attackOdds (./attack.ts);
+ * a conta de dano espelha o efeito "damage" de ./engine.ts — se a regra de
+ * lá mudar, esta muda junto.
  */
-function forecast(actor: Unit, ability: Ability, target: Unit, guarded: boolean): Forecast {
-  let hit = 1;
-  let crit = 0;
-  if (ability.attack) {
-    if (actor.statuses.some((status) => status.guaranteedCrit)) {
-      hit = 0;
-      crit = 1;
-    } else {
-      const attack = effectiveAttribute(actor, primaryAttribute(actor)) + ability.attack.toHit;
-      const needed = 10 + effectiveAttribute(target, "or") - attack;
-      // Dos 20 lados: o 20 é crítico, o 1 erra sempre, e de 2 a 19 acerta quem alcança a defesa.
-      hit = Math.min(18, Math.max(0, 20 - Math.max(2, needed))) / 20;
-      crit = 1 / 20;
-    }
-  }
+function forecast(
+  encounter: Encounter,
+  actor: Unit,
+  ability: Ability,
+  target: Unit,
+  guarded: boolean,
+  aim?: Pos,
+): Forecast {
+  const { hit, crit } = attackOdds(encounter, actor, ability, target, aim);
 
   const targetOr = effectiveAttribute(target, "or");
   const damageOn = (critical: boolean) => {
@@ -418,11 +415,13 @@ function forecast(actor: Unit, ability: Ability, target: Unit, guarded: boolean)
 // --- Quanto custa uma posição -----------------------------------------------
 
 /**
- * O dano médio a que `victim` fica exposto em `pos`: o melhor golpe de cada
+ * O dano médio a que `victim` fica exposto onde está: o melhor golpe de cada
  * inimigo que já o alcança DE ONDE ESTÁ. Quem ainda precisa andar não conta
- * — é o que deixa sair da linha de tiro valer alguma coisa.
+ * — é o que deixa sair da linha de tiro (ou pra trás de uma pedra) valer
+ * alguma coisa.
  */
-function threatAt(encounter: Encounter, victim: Unit, pos: Pos, guarded: boolean): number {
+function threatAt(encounter: Encounter, victim: Unit, guarded: boolean): number {
+  const { pos } = victim;
   let total = 0;
   for (const foe of encounter.units) {
     if (foe.team === victim.team || !isAlive(foe)) continue;
@@ -432,7 +431,7 @@ function threatAt(encounter: Encounter, victim: Unit, pos: Pos, guarded: boolean
       if (!isOffensive(ability)) continue;
       if (distance(foe.pos, pos) > ability.range + (ability.radius ?? 0)) continue;
       if (!hasLineOfSight(encounter.grid, foe.pos, pos)) continue;
-      worst = Math.max(worst, forecast(foe, ability, victim, guarded).damage);
+      worst = Math.max(worst, forecast(encounter, foe, ability, victim, guarded).damage);
     }
     total += Math.min(worst, victim.currentHp);
   }
@@ -441,6 +440,9 @@ function threatAt(encounter: Encounter, victim: Unit, pos: Pos, guarded: boolean
 
 /** O dano médio dos ataques de oportunidade que `mover` leva indo de `from` a `to` (ver move em ./engine.ts). */
 function opportunityDamage(encounter: Encounter, mover: Unit, from: Pos, to: Pos): number {
+  // O golpe pega quem sai ainda no lugar de onde saiu: é de lá que flanco e altura contam.
+  const stop = mover.pos;
+  mover.pos = from;
   let total = 0;
   for (const foe of encounter.units) {
     if (foe.team === mover.team || !isAlive(foe) || !foe.turn.reaction) continue;
@@ -448,9 +450,10 @@ function opportunityDamage(encounter: Encounter, mover: Unit, from: Pos, to: Pos
     const ability = foe.abilities.find((candidate) => candidate.opportunity);
     if (!ability) continue;
     if (distance(foe.pos, from) <= ability.range && distance(foe.pos, to) > ability.range) {
-      total += forecast(foe, ability, mover, isGuarding(mover)).damage;
+      total += forecast(encounter, foe, ability, mover, isGuarding(mover)).damage;
     }
   }
+  mover.pos = stop;
   return total;
 }
 

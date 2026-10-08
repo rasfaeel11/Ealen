@@ -6,5 +6,6 @@ export * from "./abilities";
 export * from "./units";
 export * from "./movement";
 export * from "./targeting";
+export * from "./attack";
 export * from "./engine";
 export * from "./ai";

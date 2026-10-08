@@ -1,3 +1,4 @@
+import { attackEdge, attackTotals } from "./attack";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { findPath } from "./movement";
@@ -259,7 +260,7 @@ function resolveAbility(
   for (const target of targets) {
     let critical = false;
     if (ability.attack) {
-      const outcome = rollAttack(encounter, actor, target, ability.attack.toHit, events);
+      const outcome = rollAttack(encounter, actor, target, ability, targetPos, events);
       if (outcome === "miss" || outcome === "fumble") continue;
       critical = outcome === "crit";
     }
@@ -272,20 +273,23 @@ function resolveAbility(
 }
 
 /**
- * d20 + atributo primário + modificador contra 10 + Or do alvo. 20 natural
- * (ou Foco) é crítico e sempre acerta; 1 natural sempre erra e deixa quem
- * atacou Desequilibrado até o próprio próximo turno.
+ * d20 + atributo primário + modificador contra 10 + Or do alvo, com o que a
+ * posição soma de cada lado (cobertura, flanco, altura — ver ./attack.ts).
+ * 20 natural (ou Foco) é crítico e sempre acerta; 1 natural sempre erra e
+ * deixa quem atacou Desequilibrado até o próprio próximo turno.
  */
 function rollAttack(
   encounter: Encounter,
   actor: Unit,
   target: Unit,
-  toHit: number,
+  ability: Ability,
+  aim: Pos,
   events: TacticalEvent[],
 ): AttackOutcome {
+  const edge = attackEdge(encounter, actor, ability, target, aim);
+  const { bonus, defense } = attackTotals(actor, ability, target, edge);
   const natural = rollDie(encounter, 20);
-  const total = natural + effectiveAttribute(actor, primaryAttribute(actor)) + toHit;
-  const defense = 10 + effectiveAttribute(target, "or");
+  const total = natural + bonus;
   const guaranteed = actor.statuses.some((status) => status.guaranteedCrit);
 
   let outcome: AttackOutcome;
@@ -293,7 +297,18 @@ function rollAttack(
   else if (natural === 1) outcome = "fumble";
   else outcome = total >= defense ? "hit" : "miss";
 
-  events.push({ type: "attackRoll", actor: actor.id, target: target.id, natural, total, defense, outcome });
+  events.push({
+    type: "attackRoll",
+    actor: actor.id,
+    target: target.id,
+    natural,
+    total,
+    defense,
+    outcome,
+    cover: edge.cover,
+    flanked: edge.flanked,
+    height: edge.height,
+  });
 
   if (guaranteed) removeStatuses(actor, (status) => status.guaranteedCrit === true, events);
   if (outcome === "fumble") addStatus(actor, STATUSES.off_balance, 1, events);

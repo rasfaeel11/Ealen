@@ -19,6 +19,10 @@ export interface Tile {
   blocksSight: boolean;
   /** Quanto de movimento custa ENTRAR aqui. 1 = chão normal, 2 = terreno difícil. */
   moveCost: number;
+  /** Dá cobertura a quem está colado nele, do outro lado de quem ataca: pedra, mureta. Ver ./attack.ts. */
+  cover: boolean;
+  /** Altura do chão, em degraus. 0 = o nível do mapa. Quem ataca de cima acerta mais; de baixo, menos. */
+  elevation: number;
 }
 
 export interface Grid {
@@ -82,12 +86,11 @@ export function stepNeighbors(grid: Grid, pos: Pos): Pos[] {
 }
 
 /**
- * Linha de visão entre dois quadrados: traça uma reta (Bresenham) e falha
- * se algum quadrado NO MEIO do caminho bloqueia a visão — as pontas não
- * contam. A reta sempre sai da ponta de menor índice, pra que "A vê B" e
- * "B vê A" nunca discordem.
+ * A reta (Bresenham) entre dois quadrados, passo a passo. Sempre sai da
+ * ponta de menor índice, pra que "de A a B" e "de B a A" passem pelos mesmos
+ * quadrados — é o que faz visão e cobertura valerem igual nos dois sentidos.
  */
-export function hasLineOfSight(grid: Grid, from: Pos, to: Pos): boolean {
+function lineSteps(grid: Grid, from: Pos, to: Pos): { from: Pos; to: Pos }[] {
   const [a, b] = tileIndex(grid, from) <= tileIndex(grid, to) ? [from, to] : [to, from];
   const dx = Math.abs(b.x - a.x);
   const dy = Math.abs(b.y - a.y);
@@ -97,6 +100,7 @@ export function hasLineOfSight(grid: Grid, from: Pos, to: Pos): boolean {
   let x = a.x;
   let y = a.y;
 
+  const steps: { from: Pos; to: Pos }[] = [];
   while (x !== b.x || y !== b.y) {
     const e2 = 2 * err;
     let nx = x;
@@ -109,23 +113,43 @@ export function hasLineOfSight(grid: Grid, from: Pos, to: Pos): boolean {
       err += dx;
       ny += sy;
     }
-    // Passo diagonal espremido entre duas paredes: não passa olhar nenhum.
-    if (nx !== x && ny !== y && blocksSightAt(grid, nx, y) && blocksSightAt(grid, x, ny)) return false;
-
+    steps.push({ from: { x, y }, to: { x: nx, y: ny } });
     x = nx;
     y = ny;
-    if ((x !== b.x || y !== b.y) && blocksSightAt(grid, x, y)) return false;
   }
-  return true;
+  return steps;
 }
 
-const FLOOR: Tile = { blocksMove: false, blocksSight: false, moveCost: 1 };
+/** Os quadrados NO MEIO da reta entre dois quadrados — as pontas não entram. */
+export function tilesBetween(grid: Grid, from: Pos, to: Pos): Pos[] {
+  return lineSteps(grid, from, to)
+    .slice(0, -1)
+    .map((step) => step.to);
+}
+
+/**
+ * Linha de visão entre dois quadrados: traça uma reta e falha se algum
+ * quadrado NO MEIO do caminho bloqueia a visão — as pontas não contam.
+ */
+export function hasLineOfSight(grid: Grid, from: Pos, to: Pos): boolean {
+  const steps = lineSteps(grid, from, to);
+  return steps.every((step, index) => {
+    const { x, y } = step.from;
+    const { x: nx, y: ny } = step.to;
+    // Passo diagonal espremido entre duas paredes: não passa olhar nenhum.
+    if (nx !== x && ny !== y && blocksSightAt(grid, nx, y) && blocksSightAt(grid, x, ny)) return false;
+    return index === steps.length - 1 || !blocksSightAt(grid, nx, ny);
+  });
+}
+
+export const FLOOR: Tile = { blocksMove: false, blocksSight: false, moveCost: 1, cover: false, elevation: 0 };
 
 const ASCII_TILES: Record<string, Tile> = {
   ".": FLOOR,
-  "#": { blocksMove: true, blocksSight: true, moveCost: 1 },
-  o: { blocksMove: true, blocksSight: false, moveCost: 1 },
-  "~": { blocksMove: false, blocksSight: false, moveCost: 2 },
+  "#": { ...FLOOR, blocksMove: true, blocksSight: true },
+  o: { ...FLOOR, blocksMove: true, cover: true },
+  "~": { ...FLOOR, moveCost: 2 },
+  "^": { ...FLOOR, elevation: 1 },
 };
 
 export interface AsciiGrid {
@@ -138,8 +162,8 @@ export interface AsciiGrid {
  * Monta uma grade a partir de um desenho em texto — pra testes e mapas
  * provisórios, enquanto os mapas de verdade não vêm do Tiled.
  *
- *   `.` chão   `#` parede   `o` obstáculo baixo (barra o passo, não a visão)
- *   `~` terreno difícil (custa 2)
+ *   `.` chão   `#` parede   `o` obstáculo baixo (barra o passo, não a visão,
+ *   e dá cobertura)   `~` terreno difícil (custa 2)   `^` chão elevado
  *
  * Qualquer outro caractere é chão e vira um marcador (posição de spawn).
  */
