@@ -3,6 +3,7 @@ import {
   COVER_DEFENSE,
   FLANK_TO_HIT,
   HEIGHT_TO_HIT,
+  SURFACES,
   abilityTargets,
   activeUnit,
   applyCommand,
@@ -24,6 +25,7 @@ import {
   type Encounter,
   type PixelPos,
   type Pos,
+  type SurfaceId,
   type TacticalEvent,
   type TeamId,
   type Unit,
@@ -58,6 +60,8 @@ const HEAVY_HIT_STOP_MS = 120;
 const COLOR_MOVE = 0x6fa8dc;
 const COLOR_TARGET = 0xe0566c;
 const COLOR_ALLY = 0x7fb069;
+/** A cor de cada superfície no chão. */
+const SURFACE_COLOR: Record<SurfaceId, number> = { fire: 0xe8792b, frost: 0x9fd8e8 };
 
 const ERROR_TEXT: Record<CommandError, string> = {
   battle_over: "A luta já acabou.",
@@ -87,6 +91,7 @@ function describeAbility(ability: Ability): string {
     else if (effect.kind === "status") parts.push(effect.statusId === "guarding" ? "em guarda até o próximo turno" : effect.statusId);
     else parts.push(effect.distance > 0 ? `empurra ${effect.distance}` : `puxa ${-effect.distance}`);
   }
+  if (ability.surface) parts.push(`deixa ${SURFACES[ability.surface.id].name} por ${ability.surface.rounds} rodadas`);
   return parts.join(" · ");
 }
 
@@ -113,6 +118,9 @@ function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 |
  */
 export class CombatController {
   private readonly hud: CombatHud;
+  /** As superfícies no chão, como os eventos as foram deixando — não como o motor já as tem no fim da jogada. */
+  private readonly ground: Phaser.GameObjects.Graphics;
+  private readonly surfaces = new Map<string, { pos: Pos; id: SurfaceId }>();
   private readonly overlay: Phaser.GameObjects.Graphics;
   private readonly cursor: Phaser.GameObjects.Graphics;
   /** Os quadrados que o inimigo da vez está prestes a atingir. */
@@ -134,6 +142,8 @@ export class CombatController {
   ) {
     const { scene } = host;
     this.hud = new CombatHud(scene, host.addHud);
+    this.ground = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH - 1));
+    scene.tweens.add({ targets: this.ground, alpha: { from: 1, to: 0.6 }, duration: 650, yoyo: true, repeat: -1 });
     this.overlay = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH));
     this.cursor = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 1));
     this.intent = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 2));
@@ -167,6 +177,8 @@ export class CombatController {
       actor.hideHp();
       actor.setTurn(false);
     }
+    scene.tweens.killTweensOf(this.ground);
+    this.ground.destroy();
     this.overlay.destroy();
     this.cursor.destroy();
     this.intent.destroy();
@@ -371,6 +383,14 @@ export class CombatController {
     graphics.fillRect(tile.x * size + 0.5, tile.y * size + 0.5, size - 1, size - 1);
   }
 
+  private drawSurfaces(): void {
+    this.ground.clear();
+    for (const surface of this.surfaces.values()) {
+      this.ground.fillStyle(SURFACE_COLOR[surface.id], 0.5);
+      this.fillTile(this.ground, surface.pos);
+    }
+  }
+
   private optionColor(): number {
     if (!this.selected) return COLOR_MOVE;
     return this.selected.targets === "ally" ? COLOR_ALLY : COLOR_TARGET;
@@ -393,6 +413,8 @@ export class CombatController {
     const { encounter, selected } = this;
     if (!selected) {
       const level = (pos: Pos) => tileAt(encounter.grid, pos)?.elevation ?? 0;
+      const hazard = hover ? (findPath(encounter, unit, hover)?.hazard ?? 0) : 0;
+      if (hazard > 0) return `O caminho passa por chão que fere: cerca de ${Math.round(hazard)} de dano.`;
       if (hover && level(hover) > level(unit.pos)) {
         return `Chão alto: +${HEIGHT_TO_HIT} pra acertar quem está embaixo, e quem está embaixo acerta menos.`;
       }
@@ -581,6 +603,29 @@ export class CombatController {
 
       case "statusExpired":
         return;
+
+      case "surfaceCreated":
+        for (const pos of event.tiles) this.surfaces.set(`${pos.x},${pos.y}`, { pos, id: event.surfaceId });
+        this.drawSurfaces();
+        this.hud.log(`${event.name} no chão por ${event.rounds} rodadas.`);
+        await this.wait(220);
+        return;
+
+      case "surfaceExpired":
+        for (const pos of event.tiles) this.surfaces.delete(`${pos.x},${pos.y}`);
+        this.drawSurfaces();
+        this.hud.log(`${event.name} se desfaz.`);
+        return;
+
+      case "surfaceTriggered": {
+        const actor = this.actor(event.unit);
+        // O dano que vem agora é do chão: ninguém bateu, ninguém recua de ninguém.
+        this.blow = {};
+        this.hud.log(`${this.unit(event.unit).name} é pego por ${event.name}.`);
+        this.floatOver(event.unit, event.name, TEXT_COLORS.danger, -22, 20);
+        if (actor) this.ring(actor.pos, SURFACE_COLOR[event.surfaceId]);
+        return;
+      }
 
       case "itemUsed": {
         const actor = this.actor(event.unit);

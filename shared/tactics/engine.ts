@@ -4,6 +4,7 @@ import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { findPath } from "./movement";
 import { rollDice, rollDie } from "./rng";
 import { STATUSES, type ActiveStatus, type StatusTemplate } from "./statuses";
+import { SURFACES, enterCost, surfaceAt, surfaceTiles, type SurfaceId, type SurfaceTemplate } from "./surfaces";
 import { abilityTargets, affectedUnits } from "./targeting";
 import type {
   Ability,
@@ -48,6 +49,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     order: [],
     turnIndex: -1,
     round: 1,
+    surfaces: [],
     rngState: setup.seed >>> 0,
   };
 
@@ -103,22 +105,33 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
 
 // --- Turnos -----------------------------------------------------------------
 
-/** Passa a vez pro próximo que ainda está de pé, abrindo uma rodada nova quando a ordem dá a volta. */
+/**
+ * Passa a vez pro próximo que ainda está de pé, abrindo uma rodada nova
+ * quando a ordem dá a volta. Quem começa o turno em cima de uma superfície
+ * que fere leva o dano dela — e, se cair ali, a vez passa adiante (ou a luta
+ * acaba, se era o último do lado dele).
+ */
 function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
-  let next: Unit | undefined;
-  do {
-    encounter.turnIndex += 1;
-    if (encounter.turnIndex >= encounter.order.length) {
-      encounter.turnIndex = 0;
-      encounter.round += 1;
-      events.push({ type: "roundStarted", round: encounter.round });
-    }
-    next = activeUnit(encounter);
-  } while (!next || !isAlive(next));
+  for (;;) {
+    let next: Unit | undefined;
+    do {
+      encounter.turnIndex += 1;
+      if (encounter.turnIndex >= encounter.order.length) {
+        encounter.turnIndex = 0;
+        encounter.round += 1;
+        events.push({ type: "roundStarted", round: encounter.round });
+        tickSurfaces(encounter, events);
+      }
+      next = activeUnit(encounter);
+    } while (!next || !isAlive(next));
 
-  tickStatuses(next, events);
-  next.turn = { movement: next.speed, action: true, bonus: true, reaction: true };
-  events.push({ type: "turnStarted", unit: next.id });
+    tickStatuses(next, events);
+    next.turn = { movement: next.speed, action: true, bonus: true, reaction: true };
+    events.push({ type: "turnStarted", unit: next.id });
+
+    touchSurface(encounter, next, events);
+    if (isAlive(next) || concludeIfDecided(encounter, events)) return;
+  }
 }
 
 /** Se um dos lados acabou, encerra a luta. Sem ninguém de pé dos dois lados, o grupo perdeu. */
@@ -155,13 +168,58 @@ function tickStatuses(unit: Unit, events: TacticalEvent[]): void {
   removeStatuses(unit, (status) => status.turnsLeft <= 0, events);
 }
 
+// --- Superfícies ------------------------------------------------------------
+
+/** Põe `surfaceId` em cada um de `tiles`, no lugar do que houvesse lá. */
+function laySurface(
+  encounter: Encounter,
+  surfaceId: SurfaceId,
+  tiles: Pos[],
+  rounds: number,
+  events: TacticalEvent[],
+): void {
+  if (tiles.length === 0) return;
+  encounter.surfaces = encounter.surfaces.filter((surface) => !tiles.some((pos) => samePos(pos, surface.pos)));
+  for (const pos of tiles) encounter.surfaces.push({ pos: { ...pos }, id: surfaceId, roundsLeft: rounds });
+  events.push({
+    type: "surfaceCreated",
+    surfaceId,
+    name: SURFACES[surfaceId].name,
+    tiles: tiles.map((pos) => ({ ...pos })),
+    rounds,
+  });
+}
+
+/** Começo de rodada: cada superfície perde uma rodada, e as que zeram somem. */
+function tickSurfaces(encounter: Encounter, events: TacticalEvent[]): void {
+  for (const surface of encounter.surfaces) surface.roundsLeft -= 1;
+
+  const gone = encounter.surfaces.filter((surface) => surface.roundsLeft <= 0);
+  encounter.surfaces = encounter.surfaces.filter((surface) => surface.roundsLeft > 0);
+  for (const surfaceId of new Set(gone.map((surface) => surface.id))) {
+    const tiles = gone.filter((surface) => surface.id === surfaceId).map((surface) => surface.pos);
+    events.push({ type: "surfaceExpired", surfaceId, name: SURFACES[surfaceId].name, tiles });
+  }
+}
+
+/** `unit` acabou de entrar no quadrado em que está, ou começou o turno nele: a superfície de lá age. */
+function touchSurface(encounter: Encounter, unit: Unit, events: TacticalEvent[]): void {
+  const surface = encounter.surfaces.find((candidate) => samePos(candidate.pos, unit.pos));
+  const damage = surface && (SURFACES[surface.id] as SurfaceTemplate).damage;
+  if (!surface || !damage || !isAlive(unit)) return;
+
+  events.push({ type: "surfaceTriggered", unit: unit.id, surfaceId: surface.id, name: SURFACES[surface.id].name });
+  dealDamage(unit, rollDice(encounter, damage), events);
+}
+
 // --- Movimento --------------------------------------------------------------
 
 /**
  * Anda até `to` pelo caminho mais barato. A cada passo, todo inimigo com
  * reação sobrando de quem `unit` esteja SAINDO do alcance ganha um ataque
- * de oportunidade — antes do passo, com `unit` ainda no lugar. Morrer no
- * meio do caminho interrompe o movimento ali.
+ * de oportunidade — antes do passo, com `unit` ainda no lugar — e a
+ * superfície do quadrado em que ele pisa age. Morrer no meio do caminho
+ * interrompe o movimento ali.
  */
 function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]): CommandError | undefined {
   const route = findPath(encounter, unit, to);
@@ -184,9 +242,15 @@ function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]
       if (!isAlive(unit)) return undefined;
     }
 
-    unit.turn.movement -= tileAt(encounter.grid, step)!.moveCost;
+    unit.turn.movement -= enterCost(encounter, step);
     unit.pos = { ...step };
     walked.push({ ...step });
+
+    if (surfaceAt(encounter, step)?.damage) {
+      flush();
+      touchSurface(encounter, unit, events);
+      if (!isAlive(unit)) return undefined;
+    }
   }
   flush();
   return undefined;
@@ -269,6 +333,10 @@ function resolveAbility(
       if (!isAlive(target)) break;
       applyEffect(encounter, actor, target, effect, critical, events);
     }
+  }
+
+  if (ability.surface) {
+    laySurface(encounter, ability.surface.id, surfaceTiles(encounter, ability, targetPos), ability.surface.rounds, events);
   }
 }
 
@@ -374,7 +442,7 @@ function dealDamage(target: Unit, amount: number, events: TacticalEvent[]): void
  * Desloca `target` em linha reta pra longe de `actor` (ou pra perto, com
  * distância negativa), um quadrado por vez, até acabar a distância ou
  * bater em parede, borda ou corpo. Movimento forçado não provoca ataque de
- * oportunidade.
+ * oportunidade, mas a superfície de onde o alvo vai parar age sobre ele.
  */
 function push(encounter: Encounter, actor: Unit, target: Unit, pushDistance: number, events: TacticalEvent[]): void {
   const direction = Math.sign(pushDistance);
@@ -389,7 +457,9 @@ function push(encounter: Encounter, actor: Unit, target: Unit, pushDistance: num
     if (unitAt(encounter, next)) break;
     target.pos = next;
   }
-  if (!samePos(from, target.pos)) events.push({ type: "pushed", unit: target.id, from, to: { ...target.pos } });
+  if (samePos(from, target.pos)) return;
+  events.push({ type: "pushed", unit: target.id, from, to: { ...target.pos } });
+  touchSurface(encounter, target, events);
 }
 
 // --- Itens ------------------------------------------------------------------

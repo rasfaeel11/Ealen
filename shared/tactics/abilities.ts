@@ -83,15 +83,19 @@ function buildAbility(characterClass: CharacterClass, stance: CombatStance, art:
 }
 
 /**
- * Onde uma Ordem foge do molde. Dois exemplos, um de cada peça que o molde
- * não usa: o Guardião arremessa o alvo, o Cantor acerta uma área.
+ * Onde uma Ordem foge do molde. Um exemplo de cada peça que o molde não usa:
+ * o Guardião arremessa o alvo, o Cantor acerta uma área e deixa nela um chão
+ * que prende o passo, o Entropista deixa o chão do alvo em chamas.
  */
 const CLASS_TWISTS: Partial<Record<CharacterClass, Partial<Record<CombatStance, Partial<Ability>>>>> = {
   guardiao: {
     heavy_attack: { effects: [HEAVY_DAMAGE, { kind: "push", distance: 2 }] },
   },
   cantor_de_ealen: {
-    heavy_attack: { targets: "tile", radius: 1 },
+    heavy_attack: { targets: "tile", radius: 1, surface: { id: "frost", rounds: 2 } },
+  },
+  entropista: {
+    heavy_attack: { surface: { id: "fire", rounds: 2 } },
   },
 };
 

@@ -4,6 +4,7 @@ import type { ConsumableItem, Inventory } from "../types/inventory";
 import type { Grid, Pos } from "./grid";
 import type { Dice } from "./rng";
 import type { ActiveStatus, StatusId } from "./statuses";
+import type { Surface, SurfaceId } from "./surfaces";
 
 export type TeamId = "party" | "enemy";
 
@@ -63,6 +64,11 @@ export interface Ability {
    */
   attack?: { toHit: number };
   effects: Effect[];
+  /**
+   * Deixa uma superfície no quadrado mirado (ou na área toda) por `rounds`
+   * rodadas, acerte ou erre o golpe. Ver ./surfaces.ts.
+   */
+  surface?: { id: SurfaceId; rounds: number };
   /** Pode ser usada como ataque de oportunidade, gastando a reação. */
   opportunity?: boolean;
 }
@@ -133,6 +139,8 @@ export interface Encounter {
   /** Posição em `order` de quem está agindo. */
   turnIndex: number;
   round: number;
+  /** O que há no chão por cima do terreno (ver ./surfaces.ts). No máximo uma por quadrado. */
+  surfaces: Surface[];
   rngState: number;
   /** Preenchido quando um dos lados acaba. Depois disso nenhum comando é aceito. */
   winner?: TeamId;
@@ -179,6 +187,10 @@ export type TacticalEvent =
   | { type: "pushed"; unit: string; from: Pos; to: Pos }
   | { type: "statusApplied"; target: string; statusId: string; name: string; turns: number }
   | { type: "statusExpired"; target: string; statusId: string; name: string }
+  | { type: "surfaceCreated"; surfaceId: SurfaceId; name: string; tiles: Pos[]; rounds: number }
+  | { type: "surfaceExpired"; surfaceId: SurfaceId; name: string; tiles: Pos[] }
+  /** A superfície pegou alguém (entrou nela ou começou o turno nela). O `damage` vem logo depois. */
+  | { type: "surfaceTriggered"; unit: string; surfaceId: SurfaceId; name: string }
   | { type: "itemUsed"; unit: string; itemId: string; itemName: string; description: string }
   | { type: "death"; unit: string }
   | { type: "battleEnded"; winner: TeamId };

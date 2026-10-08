@@ -1,12 +1,13 @@
-import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileIndex, type Grid, type Pos } from "./grid";
+import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileIndex, type Pos } from "./grid";
 import { attackOdds } from "./attack";
 import { reachableTiles } from "./movement";
 import { STATUSES, type StatusId, type StatusTemplate } from "./statuses";
+import { SURFACES, enterCost, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
 import { abilityTargets, affectedUnits, canAimAt } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
-import { activeUnit, effectiveAttribute, isAlive, primaryAttribute } from "./units";
+import { activeUnit, effectiveAttribute, isAlive, primaryAttribute, unitAt } from "./units";
 
 /**
  * A IA de inimigo, por utilidade.
@@ -24,9 +25,10 @@ import { activeUnit, effectiveAttribute, isAlive, primaryAttribute } from "./uni
  *     habilidades: consumível não volta, então só sai quando não é
  *     desperdício;
  *   - o que a posição custa: o dano a que fica exposto, o ataque de
- *     oportunidade de quem ele largar pra chegar lá e, enquanto não tiver
- *     ninguém ao alcance, a distância ANDANDO até o inimigo mais próximo
- *     (por isso contorna parede e procura a ponte).
+ *     oportunidade de quem ele largar pra chegar lá, as superfícies que
+ *     atravessa e a em que para e, enquanto não tiver ninguém ao alcance, a
+ *     distância ANDANDO até o inimigo mais próximo (por isso contorna parede
+ *     e procura a ponte).
  *
  * Cada parcela é multiplicada por um peso do combatente (`Unit.ai`, ver
  * AiProfile): é aí que uma criatura vira covarde, bruta ou carniceira sem
@@ -53,6 +55,8 @@ const ATTRIBUTE_POINT_VALUE = 0.5;
 const GUARANTEED_CRIT_VALUE = 4;
 /** Quanto vale cada quadrado de empurrão. Quase nada: só desempata. */
 const PUSH_VALUE = 0.25;
+/** Quanto vale pôr sob os pés de alguém uma superfície que atrapalha o passo. */
+const SLOW_VALUE = 1;
 /** Desempate: entre jogadas iguais, a que anda menos. */
 const STEP_COST = 0.01;
 /** Abaixo disto uma habilidade não vale o gesto. */
@@ -121,10 +125,10 @@ export function planTurn(encounter: Encounter): AiPlan {
   profile.caution *= 2 - me.currentHp / me.maxHp;
 
   const foes = sim.units.filter((unit) => unit.team !== me.team && isAlive(unit));
-  const toFoe = walkingDistances(sim.grid, foes.map((foe) => foe.pos));
+  const toFoe = walkingDistances(sim, foes.map((foe) => foe.pos));
   const origin = { ...actor.pos };
 
-  const stops = [{ pos: origin, cost: 0 }, ...reachableTiles(encounter, actor)];
+  const stops = [{ pos: origin, cost: 0, hazard: 0 }, ...reachableTiles(encounter, actor)];
   let best: AiPlan | undefined;
 
   for (const stop of stops) {
@@ -161,6 +165,8 @@ export function planTurn(encounter: Encounter): AiPlan {
     if (action && bonus) score -= overkill(sim, me, profile, action, bonus);
     score -= profile.caution * THREAT_DISCOUNT * exposure;
     score -= profile.caution * opportunityDamage(sim, me, origin, me.pos);
+    // Dano certo, na mesma moeda do que se causa: o do caminho, e o de amanhecer o próximo turno ali.
+    score -= stop.hazard + Math.min(surfaceHarm(sim, me.pos), me.currentHp);
 
     const gap = toFoe[tileIndex(sim.grid, me.pos)];
     if (!canStrike && Number.isFinite(gap)) score -= profile.aggression * APPROACH_VALUE * gap;
@@ -237,6 +243,28 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
     } else {
       value += profile.aggression * (harm - favor) + profile.finisher * KILL_VALUE * outlook.kill;
     }
+  }
+  return value + surfaceValue(encounter, actor, profile, ability, target);
+}
+
+/**
+ * O que rende a superfície que `ability` deixa no chão: o dano que quem
+ * está em cima vai levar ao começar o turno, e o passo que ela atrapalha.
+ * Sobre quem já está numa superfície igual, nada — seria só renovar.
+ */
+function surfaceValue(encounter: Encounter, actor: Unit, profile: AiProfile, ability: Ability, target: Pos): number {
+  if (!ability.surface) return 0;
+  const template: SurfaceTemplate = SURFACES[ability.surface.id];
+  const mean = template.damage ? meanRoll(template.damage) : 0;
+
+  let value = 0;
+  for (const pos of surfaceTiles(encounter, ability, target)) {
+    const occupant = unitAt(encounter, pos);
+    if (!occupant) continue;
+    if (encounter.surfaces.some((surface) => surface.id === template.id && samePos(surface.pos, pos))) continue;
+
+    const worth = Math.min(mean, occupant.currentHp) + (template.moveCost ? SLOW_VALUE : 0);
+    value += occupant.team === actor.team ? -FRIENDLY_FIRE * worth : profile.aggression * worth;
   }
   return value;
 }
@@ -462,7 +490,8 @@ function opportunityDamage(encounter: Encounter, mover: Unit, from: Pos, to: Pos
  * `sources`, andando pelo terreno (Infinity onde não se chega). Ignora quem
  * está no caminho: serve pra saber pra que lado ir, não pra contar passos.
  */
-function walkingDistances(grid: Grid, sources: Pos[]): number[] {
+function walkingDistances(encounter: Encounter, sources: Pos[]): number[] {
+  const { grid } = encounter;
   const distances = new Array<number>(grid.tiles.length).fill(Infinity);
   const queue: number[] = [];
   for (const source of sources) {
@@ -474,7 +503,7 @@ function walkingDistances(grid: Grid, sources: Pos[]): number[] {
     const current = queue[head];
     for (const next of stepNeighbors(grid, posOfIndex(grid, current))) {
       const index = tileIndex(grid, next);
-      const cost = distances[current] + grid.tiles[index].moveCost;
+      const cost = distances[current] + enterCost(encounter, next);
       if (cost >= distances[index]) continue;
       distances[index] = cost;
       queue.push(index);
