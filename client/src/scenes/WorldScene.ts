@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import {
   AREAS,
+  FOLLOW_GAP,
   STARTING_AREA,
   STARTING_SPAWN,
   StoryRunner,
@@ -10,6 +11,7 @@ import {
   brokenInArea,
   distance,
   exitAt,
+  extendTrail,
   findUnit,
   firedTrigger,
   grantEncounterRewards,
@@ -20,15 +22,21 @@ import {
   markDefeated,
   npcInReach,
   parseTiledMap,
+  partyCondition,
   peopleTiles,
   pixelOfTile,
+  placeParty,
+  presentCompanions,
+  restoreParty,
   standAreaProps,
   standPeople,
   startAreaEncounter,
+  stepToward,
+  syncPartyFromEncounter,
   talkers,
-  unusedItems,
-  syncCharacterFromUnit,
   tileOfPixel,
+  trailPoint,
+  unusedItems,
   walk,
   type AreaDef,
   type AreaEnemy,
@@ -43,6 +51,7 @@ import {
   type PixelPos,
   type Prop,
   type TeamId,
+  type Trail,
   type WalkBody,
 } from "@ealen/shared";
 import { CombatController } from "../game/combat/CombatController";
@@ -50,6 +59,7 @@ import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { MapActor } from "../game/MapActor";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
+import { unlockOrders } from "../game/profile";
 import type { GameSession } from "../game/session";
 import { Menu, addBodyText, addPanel, addTitleText } from "../game/ui";
 import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
@@ -58,6 +68,8 @@ import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
 const ZOOM = 3;
 /** Pixels do mapa por segundo (6 quadrados de 16px). */
 const WALK_SPEED = 96;
+/** Quem segue anda mais rápido que quem vai na frente: é o que o deixa alcançar depois de ficar pra trás. */
+const FOLLOW_SPEED = WALK_SPEED * 1.6;
 /** A caixa dos pés: mais estreita que um quadrado, pra passar em corredor de um de largura. */
 const BODY: WalkBody = { halfWidth: 5, height: 6 };
 const FADE_MS = 220;
@@ -80,6 +92,13 @@ const ABOVE_LAYER_PREFIX = "above";
 const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar  ·  Esc: pausa";
 /** O que a história rola nos testes dela. Um dado por sessão de jogo basta. */
 const STORY_RNG = { rngState: Math.floor(Math.random() * 0xffffffff) };
+
+/** Um companheiro no mapa: a ficha dele, o ator e onde ele está. */
+interface Follower {
+  character: Character;
+  actor: MapActor;
+  pos: PixelPos;
+}
 
 interface WorldSceneData {
   /** Chegando por uma saída (ou voltando de uma derrota): a área e o ponto de chegada nela. */
@@ -107,6 +126,9 @@ export default class WorldScene extends Phaser.Scene {
   private player!: MapActor;
   private pos!: PixelPos;
   private keys!: MoveKeys;
+  /** Quem anda com o personagem agora, em fila atrás dele, e o rastro que a fila segue (ver shared/world/follow.ts). */
+  private followers: Follower[] = [];
+  private trail: Trail = [];
   /**
    * Quem está no mapa AGORA, pelo que a história diz (ver `syncPresence`):
    * os inimigos ainda de pé, quem dá pra encontrar e as saídas abertas.
@@ -149,6 +171,8 @@ export default class WorldScene extends Phaser.Scene {
     this.pause = undefined;
     this.saveFailed = false;
     this.combat = undefined;
+    this.followers = [];
+    this.trail = [];
     this.enemies = [];
     this.enemyActors = new Map();
     this.npcs = [];
@@ -181,10 +205,11 @@ export default class WorldScene extends Phaser.Scene {
     this.standProps();
     this.story = new StoryRunner(
       this.cache.text.get(STORY_KEY) as string,
-      { character, rng: STORY_RNG, isDefeated: (key) => isDefeated(save, key) },
+      { character, companions: save.companions, rng: STORY_RNG, isDefeated: (key) => isDefeated(save, key) },
       save.story,
     );
     this.player = this.addActor(classSpriteKey(character.characterClass), this.pos);
+    this.trail = [{ ...this.pos }];
     this.syncPresence();
 
     this.statusText = this.addHud(
@@ -258,6 +283,8 @@ export default class WorldScene extends Phaser.Scene {
     const dy = Number(this.keys.down.isDown || this.keys.s.isDown) - Number(this.keys.up.isDown || this.keys.w.isDown);
     if (dx === 0 && dy === 0) {
       this.player.setWalking(false);
+      // Parado, quem ficou pra trás ainda chega.
+      this.moveFollowers(delta);
       return;
     }
 
@@ -269,6 +296,7 @@ export default class WorldScene extends Phaser.Scene {
     const facing: Facing = dx !== 0 ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
     this.player.face(facing);
     this.player.setWalking(true);
+    this.moveFollowers(delta);
 
     const exit = exitAt(this.map, this.pos, this.exits);
     if (exit) {
@@ -386,8 +414,8 @@ export default class WorldScene extends Phaser.Scene {
     }
   }
 
-  /** Uma variável da história, pras condições (`if`/`unless`) dos objetos do mapa. */
-  private readonly flag = (name: string): unknown => this.story.flag(name);
+  /** O que uma condição (`if`/`unless`) de um objeto do mapa pergunta: uma variável da história, ou quem está no grupo. */
+  private readonly flag = (name: string): unknown => partyCondition(name, this.save.companions) ?? this.story.flag(name);
 
   /**
    * Acerta o mapa com a história: quem as variáveis dela dizem que está aqui
@@ -406,7 +434,49 @@ export default class WorldScene extends Phaser.Scene {
     const standing = this.npcs.filter((npc) => npc.look !== undefined);
     this.syncActors(this.npcActors, standing, (npc) => classSpriteKey(npc.look as CharacterClass));
     this.syncActors(this.enemyActors, this.enemies, (enemy) => creatureSpriteKey(enemy.creature));
+    this.syncParty();
     this.occupy();
+  }
+
+  /** Acerta a fila com o grupo: quem a história pôs nele aparece junto do personagem, quem saiu some. */
+  private syncParty(): void {
+    const present = presentCompanions(this.save.companions);
+    this.followers = this.followers.filter((follower) => {
+      if (present.includes(follower.character)) return true;
+      follower.actor.destroy();
+      return false;
+    });
+    for (const character of present) {
+      if (this.followers.some((follower) => follower.character === character)) continue;
+      const pos = { ...this.pos };
+      this.followers.push({ character, pos, actor: this.addActor(classSpriteKey(character.characterClass), pos) });
+    }
+  }
+
+  /**
+   * Cada companheiro dá um passo pro lugar dele na fila: um ponto do rastro do
+   * personagem, cada um mais atrás que o anterior. Não colidem com nada — o
+   * rastro já passou por onde dá pra passar.
+   */
+  private moveFollowers(delta: number): void {
+    extendTrail(this.trail, this.pos, (this.followers.length + 1) * FOLLOW_GAP);
+    const reach = (FOLLOW_SPEED * Math.min(delta, MAX_FRAME_MS)) / 1000;
+    this.followers.forEach((follower, index) => {
+      const next = stepToward(follower.pos, trailPoint(this.trail, (index + 1) * FOLLOW_GAP), reach);
+      const moved = next.x !== follower.pos.x || next.y !== follower.pos.y;
+      if (moved) {
+        follower.actor.faceToward(next);
+        follower.pos = next;
+        follower.actor.place(next);
+      }
+      follower.actor.setWalking(moved);
+    });
+  }
+
+  /** O mundo parou (conversa, pausa, luta, saída): ninguém fica marchando no lugar. */
+  private halt(): void {
+    this.player.setWalking(false);
+    for (const follower of this.followers) follower.actor.setWalking(false);
   }
 
   /** Cria o ator de quem chegou e desfaz o de quem saiu. */
@@ -456,7 +526,8 @@ export default class WorldScene extends Phaser.Scene {
 
   private refreshStatus(): void {
     const { name, level, currentHp, maxHp } = this.character;
-    this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}`);
+    const company = this.followers.map(({ character }) => `   |   ${character.name}  ${character.currentHp}/${character.maxHp}`);
+    this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}${company.join("")}`);
   }
 
   /** Com quem dá pra falar daqui, se houver alguém. */
@@ -480,10 +551,10 @@ export default class WorldScene extends Phaser.Scene {
     this.tweens.add({ targets: banner, alpha: 0, delay: 2000, duration: 800, onComplete: () => banner.destroy() });
   }
 
-  /** Provisório, no lugar de acampamento/estalagem: recupera todo o HP, em qualquer lugar fora de luta. */
+  /** Provisório, no lugar de acampamento/estalagem: recupera todo o HP do grupo, em qualquer lugar fora de luta. */
   private rest(): void {
     if (this.combat || this.leaving || this.talking || this.pause) return;
-    this.character.currentHp = this.character.maxHp;
+    restoreParty(this.character, this.save.companions);
     this.persist();
     this.refreshStatus();
     this.showBanner("Você descansa.");
@@ -507,7 +578,7 @@ export default class WorldScene extends Phaser.Scene {
    */
   private async converse(knot: string, toward?: PixelPos): Promise<void> {
     this.talking = true;
-    this.player.setWalking(false);
+    this.halt();
     if (toward) this.player.faceToward(pixelOfTile(this.map, tileOfPixel(this.map, toward)));
 
     const steps: DialogueStep[] = [];
@@ -539,7 +610,9 @@ export default class WorldScene extends Phaser.Scene {
       this.talking = false;
     }
 
-    const { fight, travel } = aftermath(steps);
+    const { fight, travel, unlocks } = aftermath(steps);
+    // O que o texto destravou é do jogador, não desta partida: vai pro perfil.
+    unlockOrders(unlocks);
     if (fight !== undefined && this.enemies.some((enemy) => enemy.group === fight)) {
       // A viagem pedida junto com a luta fica pra depois dela, e só pra quem vence.
       this.travelAfterFight = travel;
@@ -570,24 +643,31 @@ export default class WorldScene extends Phaser.Scene {
     // Quem estava parado ocupando um quadrado agora é uma unidade, que anda.
     this.occupy(fighters);
 
-    // No combate todo mundo fica no meio de um quadrado.
+    // No combate todo mundo fica no meio de um quadrado: o personagem no dele, cada companheiro no que couber.
+    this.halt();
     this.pos = pixelOfTile(this.map, playerTile);
-    this.player.setWalking(false);
     this.player.place(this.pos);
-
-    const seed = Math.floor(Math.random() * 0xffffffff);
-    const { encounter, events } = startAreaEncounter(
+    const party = placeParty(
       this.map,
       this.character,
       playerTile,
-      fighters,
-      seed,
-      this.props,
-      surprised,
+      this.followers.map((follower) => ({ character: follower.character, at: follower.pos })),
+      fighters.map((enemy) => tileOfPixel(this.map, enemy)),
     );
 
     const actors = new Map<string, MapActor>([[this.character.id, this.player]]);
     for (const enemy of fighters) actors.set(enemy.id, this.enemyActors.get(enemy.id)!);
+    for (const follower of this.followers) {
+      const tile = party.find((fighter) => fighter.character === follower.character)?.tile;
+      if (!tile) continue;
+      follower.pos = pixelOfTile(this.map, tile);
+      follower.actor.place(follower.pos);
+      follower.actor.faceToward(this.pos);
+      actors.set(follower.character.id, follower.actor);
+    }
+
+    const seed = Math.floor(Math.random() * 0xffffffff);
+    const { encounter, events } = startAreaEncounter(this.map, party, fighters, seed, this.props, surprised);
 
     this.statusText.setVisible(false);
     this.hintText.setVisible(false);
@@ -611,17 +691,18 @@ export default class WorldScene extends Phaser.Scene {
     const combat = this.combat!;
     const { character } = this;
     const unit = findUnit(encounter, character.id)!;
-    syncCharacterFromUnit(character, unit);
+    const company = this.followers.map((follower) => follower.character);
+    syncPartyFromEncounter(encounter, [character, ...company], winner === "party");
     const travel = this.travelAfterFight;
     this.travelAfterFight = undefined;
 
     if (winner === "enemy") {
       await combat.showResult(
         "DERROTA",
-        [`${character.name} cai.`, "Você desperta inteiro, na entrada da área."],
+        [company.length > 0 ? "O grupo cai." : `${character.name} cai.`, "Você desperta inteiro, na entrada da área."],
         TEXT_COLORS.danger,
       );
-      character.currentHp = character.maxHp;
+      restoreParty(character, this.save.companions);
       // O lugar gravado continua o de antes da luta; a área de destino grava o novo ao abrir.
       this.session.commit();
       this.leaving = true;
@@ -634,6 +715,7 @@ export default class WorldScene extends Phaser.Scene {
       fighters.map((enemy) => enemy.creature),
       encounter,
       unusedItems(encounter, "enemy"),
+      company,
     );
     markDefeated(this.save, this.groupKey(group));
     // O que quebrou na luta fica quebrado; numa derrota a área inteira volta ao que era.
@@ -644,10 +726,17 @@ export default class WorldScene extends Phaser.Scene {
     this.props = this.props.filter((prop) => prop.hp > 0);
     // A vitória vai pro save inteira, de uma vez: ficha, espólio, grupo vencido e o lugar onde a luta acabou.
     this.pos = pixelOfTile(this.map, unit.pos);
+    // A fila recomeça de onde cada um terminou a luta.
+    for (const follower of this.followers) {
+      const fought = findUnit(encounter, follower.character.id);
+      if (fought) follower.pos = pixelOfTile(this.map, fought.pos);
+    }
+    this.trail = [{ ...this.pos }, ...this.followers.map((follower) => ({ ...follower.pos }))];
     this.persist();
 
     const lines = [`+${rewards.xpGained} de XP`];
     if (rewards.levelUp.leveledUp) lines.push(`Subiu para o nível ${rewards.levelUp.newLevel}!`);
+    for (const { name, level } of rewards.companionLevels) lines.push(`${name} subiu para o nível ${level}!`);
     lines.push(
       rewards.loot.length > 0
         ? `Encontrou: ${rewards.loot.map((item) => item.name).join(", ")}`
@@ -657,7 +746,12 @@ export default class WorldScene extends Phaser.Scene {
 
     combat.destroy();
     this.combat = undefined;
+    // Quem caiu numa luta vencida se levanta (com 1 de vida, ver syncPartyFromEncounter).
+    for (const member of [{ character, actor: this.player }, ...this.followers]) {
+      if ((findUnit(encounter, member.character.id)?.currentHp ?? 1) <= 0) member.actor.rise();
+    }
     this.player.place(this.pos);
+    for (const follower of this.followers) follower.actor.place(follower.pos);
     this.syncPresence();
 
     this.cameras.main.startFollow(this.player.followTarget, true, 0.2, 0.2);
@@ -680,7 +774,7 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   private openPause(): void {
-    this.player.setWalking(false);
+    this.halt();
     const width = 420;
     const height = 220;
     const x = (GAME_WIDTH - width) / 2;
@@ -721,7 +815,7 @@ export default class WorldScene extends Phaser.Scene {
   /** Sai pra outra área (ou pra outro ponto desta): por uma saída do mapa, ou levado pela história. */
   private leave(exit: { area: string; spawn: string }): void {
     this.leaving = true;
-    this.player.setWalking(false);
+    this.halt();
     this.cameras.main.fadeOut(FADE_MS);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.restart({ areaId: exit.area, spawn: exit.spawn } satisfies WorldSceneData);

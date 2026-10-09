@@ -159,6 +159,13 @@ export class MapActor {
     });
   }
 
+  /** Desfaz `collapse`: quem caiu numa luta vencida está de pé de novo. */
+  rise(): void {
+    this.scene.tweens.killTweensOf([this.sprite, this.shadow]);
+    this.sprite.clearTint().setAlpha(1).setScale(1);
+    this.shadow.setAlpha(1);
+  }
+
   destroy(): void {
     this.hpTween?.stop();
     this.scene.tweens.killTweensOf([this.turnRing, this.sprite, this.shadow]);

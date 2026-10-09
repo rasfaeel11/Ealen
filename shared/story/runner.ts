@@ -2,9 +2,11 @@ import { Story } from "inkjs";
 import { addItemToInventory, findInventorySlot } from "../inventoryEffects";
 import { applyXpGain } from "../leveling";
 import { findItemTemplate } from "../mock/items";
+import { isInParty, isOrder, joinParty, leaveParty, presentCompanions, type PartyMember } from "../party";
 import { AREAS } from "../world/areas";
 import type { RngHolder } from "../tactics/rng";
 import type { Character } from "../types/character";
+import type { CharacterClass } from "../types/characterClass";
 import type { ConsumableItem } from "../types/inventory";
 import type { LevelUpResult } from "../types/levelUp";
 import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck } from "./checks";
@@ -39,6 +41,11 @@ import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck 
  *                            de inimigos da área em que se está
  *   travel("area", "ponto")  quando a conversa acabar, leva o personagem a
  *                            esse ponto de chegada dessa área
+ *   join_party("lish")       põe um companheiro no grupo (as chaves estão
+ *                            em COMPANIONS, ../party.ts)
+ *   leave_party("lish")      tira do grupo; a ficha dele fica guardada
+ *   in_party("lish")         se ele está no grupo agora
+ *   unlock_order("rachador") destrava uma Ordem pros próximos jogos novos
  *
  * As duas últimas não interrompem o texto: viram acontecimentos (`fight`,
  * `travel`) que a cena cumpre depois da última fala — ver `aftermath`.
@@ -53,8 +60,10 @@ import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck 
 
 /** O que a história pode ler e mexer no jogo. */
 export interface StoryHost {
-  /** Lido pelos testes e pelo texto; MUTADO por give_item e grant_xp. */
+  /** Lido pelos testes e pelo texto; MUTADO por give_item, take_item e grant_xp. */
   character: Character;
+  /** Quem já andou com o personagem. MUTADO por join_party, leave_party e grant_xp. */
+  companions: PartyMember[];
   rng: RngHolder;
   /** Se o grupo de inimigos "área:grupo" já foi vencido. */
   isDefeated: (key: string) => boolean;
@@ -70,12 +79,18 @@ export type StoryEvent =
   /** A conversa termina em luta com este grupo de inimigos da área atual. */
   | { type: "fight"; group: string }
   /** A conversa termina com o personagem levado a outro lugar. */
-  | { type: "travel"; area: string; spawn: string };
+  | { type: "travel"; area: string; spawn: string }
+  | { type: "joined"; name: string }
+  | { type: "left"; name: string }
+  /** Uma Ordem destravada pros próximos jogos novos. Quem guarda isso é o perfil do jogador, não o save. */
+  | { type: "unlock"; order: CharacterClass };
 
 /** O que uma conversa deixa pra cena fazer quando a última fala passar. */
 export interface Aftermath {
   fight?: string;
   travel?: { area: string; spawn: string };
+  /** Ordens que o texto destravou, pra cena gravar no perfil do jogador. */
+  unlocks: CharacterClass[];
 }
 
 /**
@@ -84,12 +99,13 @@ export interface Aftermath {
  * acontece se ela for vencida.
  */
 export function aftermath(steps: readonly DialogueStep[]): Aftermath {
-  const result: Aftermath = {};
+  const result: Aftermath = { unlocks: [] };
   for (const step of steps) {
     for (const beat of step.beats) {
       if (beat.kind !== "event") continue;
       if (beat.event.type === "fight") result.fight = beat.event.group;
       else if (beat.event.type === "travel") result.travel = { area: beat.event.area, spawn: beat.event.spawn };
+      else if (beat.event.type === "unlock") result.unlocks.push(beat.event.order);
     }
   }
   return result;
@@ -172,6 +188,7 @@ export class StoryRunner {
     story.BindExternalFunction("has_item", (id: string) => (findInventorySlot(host.character, id)?.quantity ?? 0) > 0, true);
     story.BindExternalFunction("defeated", (key: string) => host.isDefeated(key), true);
     story.BindExternalFunction("passed", () => this.lastCheckPassed, true);
+    story.BindExternalFunction("in_party", (key: string) => isInParty(host.companions, String(key)), true);
 
     // Mexem no jogo ou gastam o dado: só na hora em que o texto chega nelas.
     story.BindExternalFunction("check", check);
@@ -198,7 +215,21 @@ export class StoryRunner {
       return true;
     });
     story.BindExternalFunction("grant_xp", (amount: number) => {
+      // O grupo inteiro aprende junto; o que a caixa anuncia é o que houve com o personagem.
+      for (const companion of presentCompanions(host.companions)) applyXpGain(companion, amount);
       this.pending.push({ type: "xp", amount, levelUp: applyXpGain(host.character, amount) });
+    });
+    story.BindExternalFunction("join_party", (key: string) => {
+      const joined = joinParty(host.companions, String(key), host.character.level);
+      if (joined) this.pending.push({ type: "joined", name: joined.name });
+    });
+    story.BindExternalFunction("leave_party", (key: string) => {
+      const left = leaveParty(host.companions, String(key));
+      if (left) this.pending.push({ type: "left", name: left.name });
+    });
+    story.BindExternalFunction("unlock_order", (order: string) => {
+      if (!isOrder(order)) throw new Error(`A história destrava uma Ordem que não existe: "${String(order)}"`);
+      this.pending.push({ type: "unlock", order });
     });
     story.BindExternalFunction("start_fight", (group: string) => {
       this.pending.push({ type: "fight", group: String(group) });

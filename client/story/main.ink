@@ -9,7 +9,7 @@
 // O que o texto pode perguntar e pedir ao jogo (ver shared/story/runner.ts):
 
 EXTERNAL attr(name)         // attr("len"): o atributo do personagem
-EXTERNAL order()            // "luminar", "entropista", "cantor_de_ealen", "guardiao", "sombrilico", "rachador"
+EXTERNAL order()            // a Ordem de Halmira: "luminar", "entropista", "cantor_de_ealen", "guardiao", "sombrilico", "rachador"
 EXTERNAL people()           // "althirim", "miraven", "taharim", "kelbar"
 EXTERNAL level()
 EXTERNAL has_item(id)
@@ -21,6 +21,10 @@ EXTERNAL take_item(id)      // tira um da mochila; devolve se havia: {take_item(
 EXTERNAL grant_xp(amount)
 EXTERNAL start_fight(group) // start_fight("fiapo"): acabada a conversa, luta com esse grupo DESTA área
 EXTERNAL travel(area, spawn) // travel("ruinas", "from_clareira"): acabada a conversa, o personagem vai pra lá
+EXTERNAL join_party(who)    // join_party("lish"): entra no grupo. As chaves estão em shared/party.ts
+EXTERNAL leave_party(who)   // sai do grupo; a ficha dele fica guardada pra quando voltar
+EXTERNAL in_party(who)      // está no grupo agora?
+EXTERNAL unlock_order(id)   // destrava uma Ordem pra Halmira nos próximos jogos novos (fica no perfil, não no save)
 
 // Convenções:
 //   Nome: fala        vira uma fala com o nome em cima. O resto é narração.
@@ -32,7 +36,8 @@ EXTERNAL travel(area, spawn) // travel("ruinas", "from_clareira"): acabada a con
 // O mapa também lê as variáveis daqui: um npc, inimigo, gatilho ou saída com a
 // propriedade `if` (ou `unless`) só existe enquanto a variável de mesmo nome
 // for verdadeira (ou falsa). Pôr alguém no mapa, tirar, armar um gatilho ou
-// abrir uma saída é mudar um VAR.
+// abrir uma saída é mudar um VAR. A condição `party:lish` pergunta pelo grupo
+// em vez de por um VAR: vale enquanto Lish anda com Halmira.
 //
 // Um trecho não precisa de npc: um `trigger` no mapa abre o dele quando se
 // pisa ali, e um inimigo com `onDefeat` abre o dele quando o grupo cai.

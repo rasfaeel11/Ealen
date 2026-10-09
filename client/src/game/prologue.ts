@@ -38,7 +38,7 @@ export const PROLOGUE_PAGES: ProloguePage[] = [
   },
   {
     glyph: "✦",
-    title: "Você",
-    paragraphs: ["Duas lajes gravadas, plantadas onde o mapa conhecido acaba. Escolha um povo. Escolha uma Ordem. O resto, descubra andando."],
+    title: "Halmira",
+    paragraphs: ["Você é Halmira de Selmir, Miraven, mergulhadora. O que há pra saber está embaixo d'água. O resto, descubra andando."],
   },
 ];

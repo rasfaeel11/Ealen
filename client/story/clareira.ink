@@ -56,6 +56,28 @@ Andarilha: Faz três noites que eu não durmo direito. Toma. Não é muito, mas 
         Andarilha: Todo mundo que passa quer alguma coisa. Eu também queria.
     }
     -> perguntas
++ {in_party("lish")} [Pedir que Lish fique com ela.]
+    Andarilha: Ele não fala muito. Serve.
+    ~ leave_party("lish")
+    -> perguntas
 + [Seguir caminho.]
     Andarilha: Vai com o ouvido aberto.
+    -> END
+
+// PROVISÓRIO: Lish está na clareira só pra exercitar companheiros. Ele entra
+// no grupo aqui e sai pela Andarilha; o lugar e as falas de verdade vêm com a
+// história. O `npc` dele no mapa tem `unless` = `party:lish`: some enquanto
+// ele anda com o grupo e volta ao lugar quando sai, sem variável nenhuma.
+=== lish ===
+{lish == 1:
+    Um homem magro espera encostado numa árvore. O olho passa por ele e não segura o rosto.
+    Lish: Você vai pro lado das ruínas. Eu remo, e sei abrir quem se fecha demais.
+- else:
+    Lish: Mudou de ideia?
+}
++ [Chamar Lish pra ir junto.]
+    Lish: Então eu vou atrás. Não me espere falar.
+    ~ join_party("lish")
+    -> END
++ [Deixar pra depois.]
     -> END

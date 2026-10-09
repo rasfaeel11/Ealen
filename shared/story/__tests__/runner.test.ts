@@ -18,6 +18,10 @@ EXTERNAL take_item(id)
 EXTERNAL grant_xp(amount)
 EXTERNAL start_fight(group)
 EXTERNAL travel(area, spawn)
+EXTERNAL join_party(who)
+EXTERNAL leave_party(who)
+EXTERNAL in_party(who)
+EXTERNAL unlock_order(id)
 `;
 
 /** Como o jogo compila (client/scripts/compileStory.ts): contando as visitas de todo trecho. */
@@ -39,6 +43,7 @@ function makeHost(overrides: Partial<Character["attributes"]> = {}, defeated: st
       maxHp: 30,
       currentNodeId: "",
     },
+    companions: [],
     rng: { rngState: 2 },
     isDefeated: (key) => defeated.includes(key),
   };
@@ -238,14 +243,14 @@ Chefe: Ninguém passa.
 `);
   const runner = new StoryRunner(json, makeHost());
   const first = runner.start("chefe");
-  assert.deepEqual(aftermath([first]), { fight: "guardas" });
+  assert.deepEqual(aftermath([first]), { fight: "guardas", unlocks: [] });
   // O pedido não tira a fala nem as escolhas de onde estavam.
   assert.deepEqual(lines(first.beats), ["Chefe> Ninguém passa."]);
   assert.equal(first.choices.length, 2);
 
   const retreat = runner.choose(first.choices[0].index);
-  assert.deepEqual(aftermath([first, retreat]), { fight: "guardas", travel: { area: "clareira", spawn: "default" } });
-  assert.deepEqual(aftermath([]), {});
+  assert.deepEqual(aftermath([first, retreat]), { fight: "guardas", travel: { area: "clareira", spawn: "default" }, unlocks: [] });
+  assert.deepEqual(aftermath([]), { unlocks: [] });
 
   assert.throws(() => new StoryRunner(compile(`
 === x ===
@@ -273,4 +278,78 @@ Outra cena.
   const later = new StoryRunner(json, makeHost(), runner.save());
   assert.equal(later.visited("chegada"), true);
   assert.equal(later.visited("outra"), false);
+});
+
+const COMPANY = compile(`
+=== encontro ===
+{in_party("lish"): Lish: Ainda estou aqui. | Lish: Eu vou com você.}
+~ join_party("lish")
+~ join_party("lish")
+~ grant_xp(120)
+-> END
+
+=== despedida ===
+~ leave_party("lish")
+~ leave_party("lish")
+{in_party("lish"): Ele fica. | Ele vai embora.}
+-> END
+
+=== epilogo ===
+~ unlock_order("rachador")
+-> END
+
+=== erro ===
+~ join_party("ninguem")
+-> END
+`);
+
+test("join_party põe o companheiro no grupo, no nível do personagem; o XP da história é do grupo inteiro", () => {
+  const host = makeHost();
+  host.character.level = 3;
+  const runner = new StoryRunner(COMPANY, host);
+
+  const step = runner.start("encontro");
+  assert.deepEqual(lines(step.beats), ["Lish> Eu vou com você."]);
+  // Chamado duas vezes, entra uma só.
+  assert.deepEqual(
+    step.beats.flatMap((beat) => (beat.kind === "event" ? [beat.event.type] : [])),
+    ["joined", "xp"],
+  );
+  const [lish] = host.companions;
+  assert.equal(host.companions.length, 1);
+  assert.equal(lish.present, true);
+  assert.equal(lish.character.name, "Lish");
+  assert.equal(lish.character.inventory, undefined);
+  // Entrou no nível 3 e os 120 de XP são dele também.
+  assert.equal(lish.character.level, 3);
+  assert.equal(lish.character.xp, 120);
+  assert.equal(host.character.xp, 120);
+  assert.deepEqual(lines(runner.start("encontro").beats), ["Lish> Ainda estou aqui."]);
+});
+
+test("leave_party tira do grupo e guarda a ficha: quem volta, volta como era", () => {
+  const host = makeHost();
+  const runner = new StoryRunner(COMPANY, host);
+  runner.start("encontro");
+  const sheet = host.companions[0].character;
+  sheet.currentHp = 7;
+
+  const step = runner.start("despedida");
+  assert.deepEqual(lines(step.beats), ["Ele vai embora."]);
+  assert.deepEqual(
+    step.beats.flatMap((beat) => (beat.kind === "event" ? [beat.event] : [])),
+    [{ type: "left", name: "Lish" }],
+  );
+  assert.equal(host.companions[0].present, false);
+
+  runner.start("encontro");
+  assert.equal(host.companions.length, 1);
+  assert.equal(host.companions[0].character, sheet);
+  assert.equal(host.companions[0].present, true);
+});
+
+test("unlock_order vira um pedido pra cena, e companheiro que não existe é erro de quem escreveu", () => {
+  const runner = new StoryRunner(COMPANY, makeHost());
+  assert.deepEqual(aftermath([runner.start("epilogo")]).unlocks, ["rachador"]);
+  assert.throws(() => runner.start("erro"), /ninguem/);
 });

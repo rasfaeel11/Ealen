@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { PROTAGONIST, joinParty, leaveParty } from "../../party";
 import type { Character } from "../../types/character";
 import {
   SAVE_VERSION,
@@ -12,6 +13,10 @@ import {
   parseSave,
   serializeSave,
   summarizeSave,
+  availableOrders,
+  emptyProfile,
+  parseProfile,
+  unlockOrder,
   type GameSave,
 } from "../index";
 
@@ -45,6 +50,9 @@ test("um save vai pra texto e volta igual", () => {
   save.story = '{"flags":true}';
   save.playTimeMs = 90_000;
   save.savedAt = 1_700_000_000_000;
+  joinParty(save.companions, "lish", 3);
+  joinParty(save.companions, "varel", 3);
+  leaveParty(save.companions, "varel");
 
   assert.deepEqual(read(serializeSave(save)), save);
 });
@@ -149,4 +157,30 @@ test("o resumo diz quem é, onde está e há quanto tempo joga", () => {
 
   assert.equal(formatPlayTime(0), "0min");
   assert.equal(formatPlayTime(47 * 60_000), "47min");
+});
+
+test("save da versão 2 ganha um grupo vazio, e companheiro com a ficha estragada fica de fora", () => {
+  const { companions: _none, ...old } = newGame(makeCharacter());
+  assert.deepEqual(read({ ...old, version: 2 }).companions, []);
+
+  const save = newGame(makeCharacter());
+  const lish = joinParty(save.companions, "lish", 1)!;
+  const read2 = read({
+    ...save,
+    companions: [...save.companions, { character: { name: "Sem ficha" }, present: true }, { character: lish, present: true }, "nada"],
+  });
+  assert.deepEqual(read2.companions, [{ character: lish, present: true }]);
+});
+
+test("o perfil guarda as Ordens destravadas, e o que não é um perfil vira um vazio", () => {
+  const profile = emptyProfile();
+  assert.deepEqual(availableOrders(profile), [PROTAGONIST.characterClass]);
+  assert.equal(unlockOrder(profile, "rachador"), true);
+  assert.equal(unlockOrder(profile, "rachador"), false);
+  // A Ordem que ela já tem não se destrava.
+  assert.equal(unlockOrder(profile, PROTAGONIST.characterClass), false);
+  assert.deepEqual(availableOrders(parseProfile(JSON.stringify(profile))), [PROTAGONIST.characterClass, "rachador"]);
+
+  for (const raw of [null, "{quebrado", "[]", { orders: "todas" }, 7]) assert.deepEqual(parseProfile(raw), emptyProfile());
+  assert.deepEqual(parseProfile({ orders: ["bardo", "luminar", "luminar", PROTAGONIST.characterClass] }), { orders: ["luminar"] });
 });

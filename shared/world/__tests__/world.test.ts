@@ -202,7 +202,7 @@ for (const [areaId, map] of Object.entries(maps)) {
     assert.equal(aggroedGroup(map, map.enemies, playerTile), "lobos");
 
     const group = map.enemies.filter((enemy) => enemy.group === "lobos");
-    const { encounter } = startAreaEncounter(map, structuredClone(hero), playerTile, group, 5);
+    const { encounter } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: playerTile }], group, 5);
     assert.equal(encounter.grid, map.grid);
     assert.deepEqual(encounter.units.map((unit) => unit.team).sort(), ["enemy", "enemy", "party"]);
 
@@ -226,7 +226,7 @@ for (const [areaId, map] of Object.entries(maps)) {
     const group = map.enemies.filter((enemy) => enemy.group === "salao");
     assert.ok(group.some((enemy) => tileAt(map.grid, tileOfPixel(map, enemy))!.elevation > 0), "alguém começa no alto");
 
-    const { encounter } = startAreaEncounter(map, structuredClone(hero), { x: 18, y: 16 }, group, 9);
+    const { encounter } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: { x: 18, y: 16 } }], group, 9);
     for (let i = 0; i < 3000 && !encounter.winner; i++) {
       assert.equal(applyCommand(encounter, chooseCommand(encounter)).ok, true);
     }
@@ -237,7 +237,7 @@ for (const [areaId, map] of Object.entries(maps)) {
     const map = maps.estrada;
     const servo = { ...map.enemies[0], id: "servo", creature: "encounter-servo-enferrujado" };
     const tile = tileOfPixel(map, servo);
-    const { encounter } = startAreaEncounter(map, structuredClone(hero), { x: tile.x - 3, y: tile.y }, [servo], 5);
+    const { encounter } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: { x: tile.x - 3, y: tile.y } }], [servo], 5);
 
     const unit = encounter.units.find((candidate) => candidate.id === "servo")!;
     assert.deepEqual(
@@ -542,7 +542,7 @@ test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda
   assert.equal(aggroedGroup(map, group, playerTile), undefined);
   assert.equal(ambushableGroup(map, group, playerTile), "lobos");
 
-  const { encounter, events } = startAreaEncounter(map, hero, playerTile, group, 3, props.estrada, "enemy");
+  const { encounter, events } = startAreaEncounter(map, [{ character: hero, tile: playerTile }], group, 3, props.estrada, "enemy");
   // Quem abre a luta de verdade é o herói: todo lobo que estava na frente dele perdeu a vez.
   assert.equal(encounter.order[encounter.turnIndex], "hero");
   assert.equal(encounter.round, 1);

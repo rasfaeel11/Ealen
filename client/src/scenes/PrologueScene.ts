@@ -1,5 +1,8 @@
 import * as Phaser from "phaser";
+import { availableOrders } from "@ealen/shared";
 import { GAME_HEIGHT, GAME_WIDTH, SCENES, TEXT_COLORS } from "../game/config";
+import { beginNewGame } from "../game/newGame";
+import { readProfile } from "../game/profile";
 import { PROLOGUE_PAGES } from "../game/prologue";
 import { addBodyText, addTitleText } from "../game/ui";
 
@@ -35,7 +38,7 @@ export default class PrologueScene extends Phaser.Scene {
     this.showPage();
 
     this.input.keyboard?.on("keydown", (event: KeyboardEvent) => {
-      if (event.code === "Escape") this.scene.start(SCENES.classSelect);
+      if (event.code === "Escape") this.begin();
       else this.advance();
     });
     this.input.on(Phaser.Input.Events.POINTER_DOWN, () => this.advance());
@@ -52,10 +55,16 @@ export default class PrologueScene extends Phaser.Scene {
 
   private advance(): void {
     if (this.pageIndex >= PROLOGUE_PAGES.length - 1) {
-      this.scene.start(SCENES.classSelect);
+      this.begin();
       return;
     }
     this.pageIndex += 1;
     this.showPage();
+  }
+
+  /** Quem já destravou outra Ordem escolhe com qual começa; os demais vão direto pro mundo. */
+  private begin(): void {
+    if (availableOrders(readProfile()).length > 1) this.scene.start(SCENES.classSelect);
+    else beginNewGame(this);
   }
 }

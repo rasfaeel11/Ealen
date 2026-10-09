@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import type { DialogueBeat, DialogueChoice, DialogueStep, StoryEvent } from "@ealen/shared";
+import { CLASS_INFO, type DialogueBeat, type DialogueChoice, type DialogueStep, type StoryEvent } from "@ealen/shared";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { addBodyText, addPanel, addTitleText } from "../ui";
 
@@ -46,6 +46,12 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
       };
     case "itemTaken":
       return { text: `Entregou: ${event.item.name}.`, color: TEXT_COLORS.item };
+    case "joined":
+      return { text: `${event.name} agora anda com você.`, color: TEXT_COLORS.goldBright };
+    case "left":
+      return { text: `${event.name} deixa o grupo.`, color: TEXT_COLORS.inkDim };
+    case "unlock":
+      return { text: `Ordem destravada pro próximo jogo novo: ${CLASS_INFO[event.order].name}.`, color: TEXT_COLORS.goldBright };
     case "fight":
     case "travel":
       return null;

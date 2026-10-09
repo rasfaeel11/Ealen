@@ -2,6 +2,7 @@ import { ATTRIBUTE_KEYS } from "../types/attributes";
 import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
 import { RACE_INFO } from "../types/principle";
+import type { PartyMember } from "../party";
 import { AREAS } from "../world/areas";
 
 /**
@@ -14,7 +15,7 @@ import { AREAS } from "../world/areas";
  * Campo novo no save: acrescentar em `GameSave`, subir `SAVE_VERSION` e
  * escrever em `MIGRATIONS` como um save da versão anterior ganha esse campo.
  */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 /** Onde o personagem está: a área e o ponto do mapa dela, em pixels. */
 export interface SaveLocation {
@@ -26,6 +27,8 @@ export interface SaveLocation {
 export interface GameSave {
   version: number;
   character: Character;
+  /** Quem já andou com o personagem, com a ficha de cada um; `present` diz quem está no grupo agora. */
+  companions: PartyMember[];
   /** Null num jogo que ainda não pisou no mundo: começa-se no início dele. */
   location: SaveLocation | null;
   /** Grupos de inimigos já vencidos, como "área:grupo". Vencido não volta. */
@@ -67,12 +70,15 @@ const MIGRATIONS: Record<number, (old: Json) => Json> = {
     playTimeMs: 0,
     savedAt: 0,
   }),
+  // A versão 2 não tinha companheiros.
+  2: (old) => ({ ...old, version: 3, companions: [] }),
 };
 
 export function newGame(character: Character): GameSave {
   return {
     version: SAVE_VERSION,
     character,
+    companions: [],
     location: null,
     defeated: [],
     broken: [],
@@ -118,6 +124,7 @@ export function parseSave(raw: unknown): ParsedSave {
     save: {
       version: SAVE_VERSION,
       character,
+      companions: readCompanions(current.companions),
       location: readLocation(current.location),
       defeated: readKeys(current.defeated),
       broken: readKeys(current.broken),
@@ -216,6 +223,19 @@ function readLocation(value: unknown): SaveLocation | null {
   if (!isObject(value)) return null;
   const { areaId, x, y } = value;
   return typeof areaId === "string" && isNumber(x) && isNumber(y) ? { areaId, x, y } : null;
+}
+
+/** Companheiro com a ficha estragada é deixado de fora: a história o põe de volta quando o chamar. */
+function readCompanions(value: unknown): PartyMember[] {
+  if (!Array.isArray(value)) return [];
+  const members: PartyMember[] = [];
+  for (const entry of value) {
+    if (!isObject(entry) || !isCharacter(entry.character)) continue;
+    const { character } = entry;
+    if (members.some((member) => member.character.id === character.id)) continue;
+    members.push({ character, present: entry.present === true });
+  }
+  return members;
 }
 
 function readKeys(value: unknown): string[] {

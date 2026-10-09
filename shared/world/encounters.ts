@@ -3,15 +3,15 @@ import { applyXpGain, xpForEnemy } from "../leveling";
 import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { findItemTemplate } from "../mock/items";
 import { startEncounter } from "../tactics/engine";
-import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
+import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "../tactics/grid";
 import { isPropId, standProp, type Prop } from "../tactics/props";
 import { nextRandom, type RngHolder } from "../tactics/rng";
 import type { Encounter, TacticalEvent, TeamId } from "../tactics/types";
-import { unitFromCharacter } from "../tactics/units";
+import { findUnit, syncCharacterFromUnit, unitFromCharacter } from "../tactics/units";
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
 import type { LevelUpResult } from "../types/levelUp";
-import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
+import { tileOfPixel, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
 
 /**
  * A ponte entre o mundo e o combate: quando uma luta começa, quem entra
@@ -84,23 +84,71 @@ export function ambushableGroup(map: AreaMap, enemies: AreaEnemy[], playerTile: 
   return nearest?.group;
 }
 
+/** Uma ficha do lado do jogador e o quadrado em que ela entra na luta. */
+export interface PartyFighter {
+  character: Character;
+  tile: Pos;
+}
+
 /**
- * Abre a luta entre o personagem (em `playerTile`) e um grupo de inimigos
- * da área, com os destrutíveis de pé nela (`props`, de standAreaProps).
- * Inimigo cuja criatura não exista no bestiário é ignorado — o teste dos
- * mapas acusa esse erro antes de ele chegar aqui. `surprised` é o lado pego
- * de surpresa, numa emboscada (ver EncounterSetup).
+ * Onde o grupo entra na luta. O personagem fica onde está (`heroTile`); cada
+ * companheiro, no quadrado em que vinha andando (`at`), se der pra ficar de
+ * pé nele — senão, no quadrado livre mais perto do personagem. `taken` são os
+ * quadrados que já têm dono e a grade não mostra: os dos inimigos que lutam.
+ */
+export function placeParty(
+  map: AreaMap,
+  hero: Character,
+  heroTile: Pos,
+  companions: { character: Character; at: PixelPos }[],
+  taken: readonly Pos[] = [],
+): PartyFighter[] {
+  const used = [heroTile, ...taken];
+  const isFree = (tile: Pos) =>
+    inBounds(map.grid, tile) && !tileAt(map.grid, tile)!.blocksMove && !used.some((other) => samePos(other, tile));
+
+  const party: PartyFighter[] = [{ character: hero, tile: heroTile }];
+  for (const { character, at } of companions) {
+    const wanted = tileOfPixel(map, at);
+    const tile = isFree(wanted) ? wanted : nearestFree(heroTile, isFree, map.grid.width + map.grid.height);
+    // Sem um quadrado livre no mapa inteiro, fica de fora desta luta.
+    if (!tile) continue;
+    used.push(tile);
+    party.push({ character, tile });
+  }
+  return party;
+}
+
+/** O quadrado livre mais perto de `center`, em anéis cada vez maiores. */
+function nearestFree(center: Pos, isFree: (tile: Pos) => boolean, maxRadius: number): Pos | undefined {
+  for (let radius = 1; radius <= maxRadius; radius++) {
+    for (let y = center.y - radius; y <= center.y + radius; y++) {
+      for (let x = center.x - radius; x <= center.x + radius; x++) {
+        const tile = { x, y };
+        if (distance(center, tile) === radius && isFree(tile)) return tile;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Abre a luta entre o grupo do jogador (`party`, de placeParty — o primeiro é
+ * o personagem) e um grupo de inimigos da área, com os destrutíveis de pé
+ * nela (`props`, de standAreaProps). Inimigo cuja criatura não exista no
+ * bestiário é ignorado — o teste dos mapas acusa esse erro antes de ele
+ * chegar aqui. `surprised` é o lado pego de surpresa, numa emboscada (ver
+ * EncounterSetup).
  */
 export function startAreaEncounter(
   map: AreaMap,
-  character: Character,
-  playerTile: Pos,
+  party: PartyFighter[],
   enemies: AreaEnemy[],
   seed: number,
   props: Prop[] = [],
   surprised?: TeamId,
 ): { encounter: Encounter; events: TacticalEvent[] } {
-  const units = [unitFromCharacter(character, { team: "party", pos: playerTile })];
+  const units = party.map(({ character, tile }) => unitFromCharacter(character, { team: "party", pos: tile }));
   for (const enemy of enemies) {
     const entry = findBestiaryEntry(enemy.creature);
     if (!entry) continue;
@@ -109,6 +157,19 @@ export function startAreaEncounter(
     );
   }
   return startEncounter({ grid: map.grid, units, props, surprised, seed });
+}
+
+/**
+ * Devolve às fichas do grupo o que a luta gastou. Numa vitória (`won`), quem
+ * caiu se levanta com 1 de vida: só o grupo inteiro no chão é derrota.
+ */
+export function syncPartyFromEncounter(encounter: Encounter, party: Character[], won: boolean): void {
+  for (const character of party) {
+    const unit = findUnit(encounter, character.id);
+    if (!unit) continue;
+    syncCharacterFromUnit(character, unit);
+    if (won) character.currentHp = Math.max(1, character.currentHp);
+  }
 }
 
 /**
@@ -132,19 +193,24 @@ export interface EncounterRewards {
   levelUp: LevelUpResult;
   /** Itens deixados pelas criaturas, já somados à mochila de `character`. */
   loot: ConsumableItem[];
+  /** Os companheiros que subiram de nível, e pra qual. */
+  companionLevels: { name: string; level: number }[];
 }
 
 /**
  * O que uma vitória rende: XP de cada criatura vencida, o level up que
  * couber, o que elas carregavam sem usar (`carried`, ver unusedItems) e o
  * que deixaram cair por sorteio. Muta `character`. Item que não cabe na
- * mochila é perdido — não trava a vitória.
+ * mochila é perdido — não trava a vitória. Cada um dos `companions` ganha o
+ * mesmo XP, inteiro (não se divide); o espólio vai pra mochila do personagem,
+ * que é a do grupo.
  */
 export function grantEncounterRewards(
   character: Character,
   creatures: string[],
   rng: RngHolder,
   carried: ConsumableItem[] = [],
+  companions: Character[] = [],
 ): EncounterRewards {
   let xpGained = 0;
   const loot: ConsumableItem[] = [];
@@ -167,5 +233,9 @@ export function grantEncounterRewards(
     }
   }
 
-  return { xpGained, levelUp: applyXpGain(character, xpGained), loot };
+  const companionLevels: EncounterRewards["companionLevels"] = [];
+  for (const companion of companions) {
+    if (applyXpGain(companion, xpGained).leveledUp) companionLevels.push({ name: companion.name, level: companion.level });
+  }
+  return { xpGained, levelUp: applyXpGain(character, xpGained), loot, companionLevels };
 }

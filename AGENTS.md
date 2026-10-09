@@ -13,7 +13,8 @@ Monorepo com npm workspaces:
 ### As decisões de design
 
 - **Combate em grade quadrada, no mapa de exploração**, aos moldes de D&D/BG3, sem tela de batalha. Fora de luta o personagem anda livre; na luta o chão conta em quadrados. Diagonal custa 1.
-- **Grupo opcional**: o motor aceita qualquer número de combatentes de cada lado; herói solo é só um grupo de um. (Ainda não existem companheiros — hoje o grupo é sempre o herói.)
+- **A protagonista é fixa**: quem joga é Halmira de Selmir, Miraven. Não há criação de personagem. O que um jogo novo pode mudar é a ORDEM dela, e só entre as que o jogador já destravou em jogos anteriores.
+- **Grupo**: o motor aceita qualquer número de combatentes de cada lado; Halmira sozinha é só um grupo de um. Companheiros entram e saem pela história, lutam comandados pelo jogador e andam em fila atrás dela.
 - **Mundo aberto como grafo de áreas**: cada nó é um mapa feito à mão (Tiled), as arestas são as saídas. Uma saída só se tranca se o mapa pedir (`if`/`unless` numa variável da história). Nível de inimigo fixo por área.
 - **A história manda no mapa pelas variáveis dela**: quem está de pé, que gatilho está armado e que saída está aberta se decide perguntando às flags, sem lista paralela. Luta e viagem que o texto pede acontecem depois da última fala.
 - **Quem ataca primeiro sem ser percebido embosca**: a luta pode ser aberta pelo jogador (`F`), e o grupo pego assim perde o primeiro turno.
@@ -21,9 +22,9 @@ Monorepo com npm workspaces:
 - **IA de inimigo por utilidade**: dá nota a todas as jogadas possíveis e fica com a maior, com pesos por criatura (`shared/tactics/ai.ts`).
 - **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto. As flags do jogo são as variáveis da própria história.
 
-Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags — **feito**; (7) save ampliado — **feito**; (8) ganchos da história no mundo (luta, viagem, item tirado, gente e saídas por flag), gatilhos no chão e emboscada — **feito**.
+Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags — **feito**; (7) save ampliado — **feito**; (8) ganchos da história no mundo (luta, viagem, item tirado, gente e saídas por flag), gatilhos no chão e emboscada — **feito**; (9) protagonista fixa, companheiros e Ordens destraváveis — **feito**.
 
-O que a história ainda vai pedir e não existe: companheiros (o motor aceita grupo; save, mapa, HUD e recompensas não), tela de ficha e mochila fora da luta, diário de pistas, relógio/barra de maré, lutas com fim roteirizado (por turno, por objetivo), equipamento e som.
+O que a história ainda vai pedir e não existe: os estilos (Maré, Viés, Baluarte — hoje cada um do elenco usa o kit provisório de uma Ordem), quem acompanha sem lutar (Gil), tela de ficha e mochila fora da luta, diário de pistas, relógio/barra de maré, lutas com fim roteirizado (por turno, por objetivo), equipamento e som.
 
 ### A regra central do combate
 
@@ -69,9 +70,23 @@ Inimigos ficam de pé no mapa. Uma luta com um grupo começa de três jeitos (`s
 
 Um inimigo `passive` não percebe ninguém e não pode ser emboscado: fica de pé ocupando o quadrado, como um `npc`, até a história começar a luta. Com `dialog`, dá pra falar com ele (`E`), e o nome do objeto é o que a caixa mostra — é o personagem que conversa antes de brigar. `onDefeat`, em qualquer inimigo, é o trecho da história que abre quando o grupo dele cai.
 
+### O elenco e o grupo (`shared/party.ts`)
+
+- `PROTAGONIST` é Halmira; `createProtagonist(ordem?)` monta a ficha dela no nível 1, com a mochila inicial. `COMPANIONS` lista quem pode andar com ela, pela chave que o texto usa (`lish`, `varel`). As Ordens de todos são **provisórias**: cada um ganhou o kit da Ordem mais parecida com o papel dele na história.
+- Um companheiro é uma ficha inteira (`Character`), com nível, XP e vida próprios, guardada em `save.companions` como `{ character, present }`. Quem sai do grupo fica com `present` falso e a ficha guardada: quem volta, volta como era. Ao entrar (ou voltar), sobe pelo menos até o nível de Halmira.
+- **Quem entra e quem sai é a história**: `join_party("lish")`, `leave_party("lish")` e `in_party("lish")` no texto. No mapa, uma condição `party:lish` (em `if` ou `unless`) pergunta pelo grupo em vez de por um `VAR` — é o que tira do mapa o `npc` de quem está andando junto e o devolve quando ele sai, sem variável pra manter em dia.
+- **No mapa** os companheiros andam em fila pelo RASTRO de Halmira (`shared/world/follow.ts`): cada um segue um ponto a `FOLLOW_GAP` pixels do anterior, pelo caminho que ela fez. Não procuram caminho, não ocupam quadrado e não barram ninguém. Não percebem nem são percebidos: quem os inimigos veem é ela.
+- **Na luta** cada um é uma unidade do lado `party`, comandada pelo jogador na vez dela. `placeParty` decide onde entram: no quadrado em que vinham, se der pra ficar de pé nele; senão, no livre mais perto dela. A derrota é o grupo INTEIRO no chão; numa vitória, quem caiu se levanta com 1 de vida (`syncPartyFromEncounter`).
+- **Recompensa**: cada companheiro presente ganha o mesmo XP que ela, inteiro, na luta e no `grant_xp` da história. A mochila é uma só, a de Halmira: companheiro não carrega nem usa item, e o espólio vai pra ela. Descansar e ser derrotado devolvem a vida a todos.
+- Companheiro novo é uma linha em `COMPANIONS`. Ainda não existe quem acompanhe sem lutar.
+
+### Ordens destraváveis (`shared/save/profile.ts`)
+
+O `Profile` é do JOGADOR, não de uma partida: as Ordens que ele destravou pra Halmira. Mora numa chave própria (`client/src/game/profile.ts`), fora dos espaços de save — apagar uma partida não o leva junto, e exportar um save não o carrega. Quem destrava é a história: `unlock_order("rachador")` no texto (num epílogo, por exemplo); a caixa anuncia e a cena grava. Num jogo novo, quem tem alguma Ordem destravada passa pela tela `ClassSelect` e escolhe com qual começa; quem não tem vai direto pro mundo. **O que destrava o quê ainda não está decidido** — nenhum trecho de hoje chama `unlock_order`.
+
 ### Quem está no mapa agora (`shared/world/presence.ts`)
 
-`npc`, `enemy`, `trigger` e `exit` aceitam as propriedades `if` e `unless`: o nome de uma variável (`VAR`) da história. O objeto só existe enquanto a de `if` for verdadeira e a de `unless` for falsa (`isActive`). Pôr alguém no mapa, tirá-lo sem luta, armar um gatilho ou destrancar uma saída é mudar um `VAR` no texto — nada disso tem estado próprio, nem campo no save.
+`npc`, `enemy`, `trigger` e `exit` aceitam as propriedades `if` e `unless`: o nome de uma variável (`VAR`) da história, ou `party:chave` pra perguntar se alguém está no grupo. O objeto só existe enquanto a de `if` for verdadeira e a de `unless` for falsa (`isActive`). Pôr alguém no mapa, tirá-lo sem luta, armar um gatilho ou destrancar uma saída é mudar um `VAR` no texto — nada disso tem estado próprio, nem campo no save.
 
 - A `WorldScene` pergunta de novo em um lugar só, `syncPresence`: ao chegar, depois de cada conversa e depois de cada luta. Quem passou a existir aparece, quem deixou de existir some.
 - `parseTiledMap` devolve a grade SEM gente. `standPeople` escreve nela os quadrados de quem está de pé e não se atravessa (`peopleTiles`: `npc` com `look` e inimigo `passive`) e devolve o chão de baixo quando a lista muda. Quem entra numa luta sai da lista: lá quem ocupa o quadrado é a unidade. Quem aparece em cima do personagem só ocupa o quadrado quando ele sai de perto.
@@ -83,11 +98,11 @@ Criatura pode levar consumíveis pra luta (`carries` na entrada do bestiário; `
 
 ### A história (`client/story/` + `shared/story/`)
 
-Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/main.ink` inclui um arquivo por lugar. Uma só porque o estado dela é o save — as variáveis (`VAR`) são as flags do jogo, e o Ink ainda lembra quantas vezes cada trecho foi lido e que escolhas de uma vez só já foram gastas. O que existe hoje é provisório, feito pra exercitar o sistema: `andarilha` na clareira (que também leva às ruínas com `travel`), `clareira_chegada` (um `trigger` de uma vez só no ponto onde o jogo começa), `inscricao` nas ruínas, e a Sentinela, no canto noroeste das ruínas — um inimigo `passive` que fala, cercado por um gatilho de aviso que se repete, que se resolve com teste de Len, com `take_item`, ou na luta (`start_fight` + `onDefeat`), e some do mapa por `unless`.
+Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/main.ink` inclui um arquivo por lugar. Uma só porque o estado dela é o save — as variáveis (`VAR`) são as flags do jogo, e o Ink ainda lembra quantas vezes cada trecho foi lido e que escolhas de uma vez só já foram gastas. O que existe hoje é provisório, feito pra exercitar o sistema: `andarilha` na clareira (que também leva às ruínas com `travel`, e fica com Lish se pedirem), `lish` na clareira (entra no grupo com `join_party`), `clareira_chegada` (um `trigger` de uma vez só no ponto onde o jogo começa), `inscricao` nas ruínas, e a Sentinela, no canto noroeste das ruínas — um inimigo `passive` que fala, cercado por um gatilho de aviso que se repete, que se resolve com teste de Len, com `take_item`, ou na luta (`start_fight` + `onDefeat`), e some do mapa por `unless`.
 
 - `StoryRunner` (`shared/story/runner.ts`) roda a história e, como o motor de combate, não desenha nada: `start(knot)` e `choose(index)` devolvem um `DialogueStep` — as falas e os acontecimentos em ordem (`beats`) e as escolhas no fim; sem escolhas, a conversa acabou. `save()` devolve o estado inteiro; `flag`/`setFlag` leem e escrevem uma variável de fora.
 - Fala no formato `Nome: texto` sai com quem fala; o resto é narração.
-- O texto fala com o jogo por funções declaradas com `EXTERNAL` no `main.ink` e ligadas no `StoryRunner`: `attr`, `order`, `people`, `level`, `has_item`, `defeated("area:grupo")` (leitura) e `check`, `give_item`, `take_item`, `grant_xp`, `start_fight`, `travel` (mexem no jogo e viram `StoryEvent`). Função nova entra nos dois lugares.
+- O texto fala com o jogo por funções declaradas com `EXTERNAL` no `main.ink` e ligadas no `StoryRunner`: `attr`, `order`, `people`, `level`, `has_item`, `defeated("area:grupo")` `in_party` (leitura) e `check`, `give_item`, `take_item`, `grant_xp`, `start_fight`, `travel`, `join_party`, `leave_party`, `unlock_order` (mexem no jogo e viram `StoryEvent`). Quem o texto lê e testa (`attr`, `order`, `check`) é sempre Halmira. Função nova entra nos dois lugares.
 - `take_item("id")` tira uma unidade da mochila e devolve se havia: `{take_item("x"): ... | ...}` é o pedágio, a entrega, a troca.
 - `start_fight("grupo")` e `travel("area", "ponto")` **não cortam o texto**: viram os acontecimentos `fight` e `travel`, e a cena os cumpre depois da última fala (`aftermath`). A luta é com um grupo da área em que se está; pedidas as duas coisas, a luta vem primeiro e a viagem só acontece se ela for vencida. O estado da história é gravado ANTES da luta: o trecho que a começa precisa saber começá-la de novo numa segunda visita (derrota, jogo fechado no meio).
 - Um trecho abre de quatro jeitos: `E` perto de um `npc`, `E` perto de um inimigo `passive` com `dialog`, pisar num `trigger`, e a queda de um grupo com `onDefeat`. Trecho que não põe nada na tela (só mexe em variáveis, ou decide que não tem o que dizer) passa sem abrir a caixa.
@@ -98,7 +113,7 @@ Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/
 
 ### Cenas (`client/src/scenes/`)
 
-`Boot` (carrega sprites, mapas e tilesets) → `Title` → `Prologue` → `ClassSelect` (Povo, Ordem, nome) → `World`. `Saves` (a lista de espaços de save) abre a partir do título.
+`Boot` (carrega sprites, mapas e tilesets) → `Title` → `Prologue` → `World`, com `ClassSelect` (a Ordem de Halmira) entre os dois últimos só pra quem já destravou alguma. Quem cria a partida é `client/src/game/newGame.ts`. `Saves` (a lista de espaços de save) abre a partir do título.
 
 A `WorldScene` é exploração e combate na mesma cena, com duas câmeras: a do mundo (zoom 3x, segue o personagem) e a da interface (sem zoom). Todo objeto criado passa por `addWorld` ou `addHud`. O combate em si mora em `client/src/game/combat/`: `CombatController` (entrada → comando, eventos → animação) e `CombatHud` (ordem de turnos, registro, barra de ações, resultado).
 
@@ -110,12 +125,13 @@ Quem está no mapa (personagem ou criatura) é uma folha 4x4: uma linha por dire
 
 ### Save
 
-Uma partida é UM objeto, `GameSave` (`shared/save/gameSave.ts`): o personagem, onde ele está (área + posição), os grupos de inimigos já vencidos, os destrutíveis já quebrados, o estado da história, o tempo de jogo e quando foi gravado. Sem login, sem servidor.
+Uma partida é UM objeto, `GameSave` (`shared/save/gameSave.ts`): o personagem, quem já andou com ele (`companions`), onde ele está (área + posição), os grupos de inimigos já vencidos, os destrutíveis já quebrados, o estado da história, o tempo de jogo e quando foi gravado. Sem login, sem servidor.
 
 - `parseSave` é a única porta de entrada: confere o formato, nunca lança e devolve o save ou o motivo da recusa (`invalid`, ou `newer` pra save de uma versão mais nova do jogo). Pedaço do mundo mal formado (lugar, listas) volta ao padrão em vez de estragar o save.
 - O save tem versão (`SAVE_VERSION`). **Campo novo: acrescentar em `GameSave`, subir a versão e escrever em `MIGRATIONS` como o save da versão anterior ganha esse campo** — `parseSave` aplica as migrações em fila. Quem já tem save não o perde.
 - Onde o texto fica guardado é do client (`client/src/game/save.ts`): `SLOT_COUNT` espaços em `localStorage`, um jogo inteiro por chave, gravado de uma vez só. Um espaço com algo que o jogo não lê aparece como ilegível e não é sobrescrito sozinho. O save do formato antigo (chaves soltas) é trazido pro primeiro espaço livre na primeira leitura.
 - A partida aberta é uma `GameSession` (`client/src/game/session.ts`) no registry: o save em memória mais o espaço dele. As cenas mudam `session.save` e chamam `commit()`.
+- O que o jogador destravou (Ordens) NÃO é do save: é do perfil, ver "Ordens destraváveis".
 - Gatilho gasto, gente que apareceu ou sumiu e saída destrancada NÃO são campos do save: são o estado da história (`save.story`), que já vai inteiro.
 - O jogo grava sozinho (`WorldScene.persist`): ao chegar numa área, ao fim de uma conversa (ou de um trecho aberto por gatilho), na vitória (ficha, espólio, grupo vencido, destrutíveis e lugar, tudo junto), ao descansar, ao sair pro título e quando a aba some ou fecha. Numa derrota só a ficha é gravada: a área volta inteira. Não se grava no meio de uma conversa.
 - A tela `Saves` continua, começa, apaga, exporta um espaço como arquivo `.json` e importa um arquivo pra um espaço vazio — é o jeito de levar um jogo pra outro dispositivo. `Esc` no mundo abre a pausa, que salva e volta ao título.
@@ -135,7 +151,7 @@ npm test                                        # testes sem tela: motor tático
 npm run balance:matrix --workspace=server       # taxa de vitória de cada Ordem x criatura, pelo motor real
 ```
 
-`npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede, trecho sem acesso (já com os destrutíveis de pé), criatura ou destrutível que não existe, destrutível em cima de parede, saída ou de alguém, inimigo hostil colado num ponto de chegada, inimigo que fala sem ser `passive`, passivo dividindo quadrado e gatilho sem tamanho ou onde ninguém pisa. Também compila a história de verdade e percorre cada trecho que um mapa abre (`npc`, inimigo que fala, `onDefeat`, `trigger`) por todos os caminhos, passando e falhando nos testes: trecho que não existe, item inexistente, conversa que não termina, `if`/`unless` com variável não declarada, `start_fight` com grupo que a área não tem e `travel` pra ponto de chegada que não existe aparecem aqui.
+`npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede, trecho sem acesso (já com os destrutíveis de pé), criatura ou destrutível que não existe, destrutível em cima de parede, saída ou de alguém, inimigo hostil colado num ponto de chegada, inimigo que fala sem ser `passive`, passivo dividindo quadrado e gatilho sem tamanho ou onde ninguém pisa. Também compila a história de verdade e percorre cada trecho que um mapa abre (`npc`, inimigo que fala, `onDefeat`, `trigger`) por todos os caminhos, passando e falhando nos testes: trecho que não existe, item inexistente, conversa que não termina, `if`/`unless` com variável não declarada (ou `party:` com companheiro que não existe), `join_party` com chave que não existe, `start_fight` com grupo que a área não tem e `travel` pra ponto de chegada que não existe aparecem aqui.
 
 ### Versões anteriores
 
@@ -154,7 +170,7 @@ npm run balance:matrix --workspace=server       # taxa de vitória de cada Ordem
 | Len | Som/Voz | Interação | Carisma — checks de diálogo/persuasão |
 | Ul | Mistério | Interação | Sabedoria/Intelecto — checks de lore/enigma |
 
-**Povos:** Althirim, Miraven, Taharim, Kelbar
+**Povos:** Althirim, Miraven (o de Halmira), Taharim, Kelbar
 **Ordens (classes):** Luminar (Tank/Suporte), Entropista (Debuffer), Cantor de Eälen (Controle), Guardião (Tank Ofensivo), Sombrílico (Anti-Mago), Rachador (Sniper Físico)
 
 ---

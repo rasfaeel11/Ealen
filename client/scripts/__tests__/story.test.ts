@@ -6,6 +6,7 @@ import {
   StoryRunner,
   aftermath,
   parseTiledMap,
+  partyCondition,
   type Character,
   type DialogueStep,
   type StoryHost,
@@ -62,7 +63,7 @@ function makeHost(attribute: number, seed: number): StoryHost {
     maxHp: 30,
     currentNodeId: "",
   };
-  return { character, rng: { rngState: seed }, isDefeated: () => seed % 2 === 0 };
+  return { character, companions: [], rng: { rngState: seed }, isDefeated: () => seed % 2 === 0 };
 }
 
 /** Quantas escolhas seguidas uma conversa aguenta antes de ser considerada um laço sem saída. */
@@ -104,7 +105,11 @@ test("toda condição (`if`/`unless`) de um objeto do mapa é uma variável que 
     for (const object of [...map.npcs, ...map.enemies, ...map.triggers, ...map.exits]) {
       for (const name of [object.if, object.unless]) {
         if (name === undefined) continue;
-        assert.notEqual(runner.flag(name), undefined, `${area}: um objeto depende de "${name}", que a história não declara (VAR)`);
+        assert.notEqual(
+          partyCondition(name, []) ?? runner.flag(name),
+          undefined,
+          `${area}: um objeto depende de "${name}", que não é variável da história (VAR) nem companheiro (party:chave)`,
+        );
       }
     }
   }
