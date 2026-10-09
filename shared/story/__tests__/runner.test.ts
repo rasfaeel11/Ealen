@@ -480,6 +480,7 @@ VAR porta_coberta = false
 ~ clock_start("Vazante", 0, 10)
 ~ clock_cost("rest", 3)
 ~ clock_cost("fight", 2)
+~ clock_cost("round", 1)
 A água recua.
 -> END
 
@@ -507,9 +508,9 @@ test("o relógio corre pelo texto, para no limite, e o texto lê quanto passou e
 
   // Pôr o relógio na tela é a notícia; dizer o que gasta tempo, não.
   assert.deepEqual(eventsIn(runner.start("desce").beats), [
-    { type: "clock", clock: { label: "Vazante", value: 0, limit: 10, costs: { rest: 0, fight: 0 } } },
+    { type: "clock", clock: { label: "Vazante", value: 0, limit: 10, costs: { rest: 0, fight: 0, round: 0 } } },
   ]);
-  assert.deepEqual(runner.clock(), { label: "Vazante", value: 0, limit: 10, costs: { rest: 3, fight: 2 } });
+  assert.deepEqual(runner.clock(), { label: "Vazante", value: 0, limit: 10, costs: { rest: 3, fight: 2, round: 1 } });
 
   assert.deepEqual(lines(runner.start("sala").beats), ["Faltam 6 pra água voltar."]);
   assert.deepEqual(lines(runner.start("sala").beats), ["A água já cobriu esta porta."]);
@@ -524,18 +525,23 @@ test("o relógio corre pelo texto, para no limite, e o texto lê quanto passou e
   assert.throws(() => runner.start("sem_tamanho"));
 });
 
-test("descansar e lutar gastam o que a história disse que gastam — e nada, sem relógio", () => {
+test("descansar, lutar e cada rodada de luta gastam o que a história disse que gastam — e nada, sem relógio", () => {
   const runner = new StoryRunner(TIDE, makeHost());
   assert.equal(runner.spend("rest"), false);
+  assert.equal(runner.spend("round"), false);
 
   runner.start("desce");
   assert.equal(runner.spend("rest"), true);
   assert.equal(runner.spend("fight"), true);
   assert.equal(runner.clock()!.value, 5);
-  runner.spend("rest");
+  // Uma rodada que vira no meio da luta: o tempo anda sozinho, sem o texto mandar.
+  assert.equal(runner.spend("round"), true);
+  assert.equal(runner.spend("round"), true);
+  assert.equal(runner.clock()!.value, 7);
   runner.spend("rest");
   assert.equal(runner.clock()!.value, 10);
   assert.equal(runner.spend("fight"), false, "no limite o tempo não anda mais");
+  assert.equal(runner.spend("round"), false);
   assert.throws(() => runner.start("cobra_errado"));
 });
 
@@ -571,6 +577,22 @@ test("diário e relógio vão no save junto com a história, e um save de antes 
   assert.equal(after.clock()!.value, 6);
   assert.equal(after.visited("sala"), true);
   assert.equal(chargeSavedClock(null, "fight"), null);
+  // E as rodadas que ela durou, uma por uma: perdida na rodada 4, viraram 3.
+  assert.equal(new StoryRunner(TIDE, makeHost(), chargeSavedClock(saved, "round", 3)!).clock()!.value, 7);
+  assert.equal(new StoryRunner(TIDE, makeHost(), chargeSavedClock(charged, "round", 3)!).clock()!.value, 9);
+  assert.equal(new StoryRunner(TIDE, makeHost(), chargeSavedClock(saved, "round", 40)!).clock()!.value, 10, "não passa do limite");
+  assert.equal(chargeSavedClock(saved, "round", 0), saved, "luta que caiu na primeira rodada não gastou rodada nenhuma");
+
+  // Um relógio gravado antes de a rodada custar abre sem cobrá-la.
+  const { ink: sameInk, memory } = unpackStory(saved);
+  const older = JSON.stringify({
+    ealen: 1,
+    ink: JSON.parse(sameInk),
+    journal: [],
+    clock: { ...memory.clock, costs: { rest: 3, fight: 2 } },
+  });
+  assert.deepEqual(new StoryRunner(TIDE, makeHost(), older).clock()!.costs, { rest: 3, fight: 2, round: 0 });
+  assert.equal(chargeSavedClock(older, "round", 3), older);
 
   // O formato antigo: só o estado do Ink. Abre igual, sem diário nem relógio.
   const old = unpackStory(saved).ink;

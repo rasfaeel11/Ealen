@@ -60,6 +60,8 @@ export interface CombatHost {
   addHud: AddHud;
   /** Uma deixa do roteiro da luta disparou: a cena faz o que ela pede (uma fala) e a luta espera. */
   onCue: (id: string) => Promise<void>;
+  /** Uma rodada virou (da segunda em diante): é quando o tempo da história anda sozinho no meio da luta. */
+  onRound?: (round: number) => void;
   /** Os objetivos da luta: o texto de cada deixa que tem um (`goal` no mapa), pelo id dela. */
   goals?: { cue: string; text: string }[];
   /** A altura da tela em que a caixa dos objetivos começa, quando o alto dela já tem dono (o relógio). */
@@ -639,7 +641,10 @@ export class CombatController {
         return;
 
       case "roundStarted":
-        if (event.round > 1) this.hud.log(`— Rodada ${event.round} —`);
+        if (event.round > 1) {
+          this.hud.log(`— Rodada ${event.round} —`);
+          this.host.onRound?.(event.round);
+        }
         this.shownRound = event.round;
         this.refreshGoals();
         return;

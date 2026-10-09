@@ -758,6 +758,10 @@ export default class WorldScene extends Phaser.Scene {
         addWorld: (object) => this.addWorld(object),
         addHud: (object) => this.addHud(object),
         onCue: (id) => this.playCue(encounter, cues.find((cue) => cue.id === id)?.dialog),
+        // Cada rodada que vira gasta o tempo do relógio, se a história disse que gasta. Como o resto do que acontece na luta, só fica se ela não for perdida (a perdida cobra em `endCombat`).
+        onRound: () => {
+          if (this.story.spend("round")) this.clockBar.set(this.story.clock());
+        },
         goals: cues.flatMap((cue) => (cue.goal !== undefined ? [{ cue: cue.id, text: cue.goal }] : [])),
         goalsTop: this.clockBar.visible ? CLOCK_BAR_BOTTOM + 8 : undefined,
       },
@@ -820,8 +824,8 @@ export default class WorldScene extends Phaser.Scene {
         TEXT_COLORS.danger,
       );
       restoreParty(character, this.save.companions);
-      // O que a história disse na luta não vale, mas o tempo que ela gastou, sim: tentar de novo custa.
-      this.save.story = chargeSavedClock(this.save.story, "fight");
+      // O que a história disse na luta não vale, mas o tempo que ela gastou, sim: tentar de novo custa — as rodadas que viraram e a luta em si.
+      this.save.story = chargeSavedClock(chargeSavedClock(this.save.story, "round", encounter.round - 1), "fight");
       // O lugar gravado continua o de antes da luta; a área de destino grava o novo ao abrir.
       this.session.commit();
       this.leaving = true;
