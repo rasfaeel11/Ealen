@@ -9,7 +9,7 @@ import { BESTIARY, CLASS_INFO, type CharacterClass, type Principle } from "@eale
  * (baixo, esquerda, direita, cima), quatro quadros de caminhada em cada,
  * com o PRIMEIRO quadro da linha servindo de "parado". Enquanto não há
  * arte, o jogo desenha um provisório com esse mesmo layout: um boneco por
- * Ordem, um vulto por criatura.
+ * Ordem, um vulto por criatura (e um boneco pra criatura que é gente).
  *
  * Pra trocar pela arte final: salve a folha em client/public/sprites/ e
  * registre em MAP_SHEETS, com a chave de quem ela representa. O pé fica no
@@ -174,7 +174,8 @@ export function registerMapSprites(scene: Phaser.Scene): void {
     placeholders[classSpriteKey(characterClass)] = humanoid(CLASS_COLOR[characterClass]);
   }
   for (const [creatureId, entry] of Object.entries(BESTIARY)) {
-    placeholders[creatureSpriteKey(creatureId)] = creature(PRINCIPLE_COLOR[entry.principle]);
+    const color = PRINCIPLE_COLOR[entry.principle];
+    placeholders[creatureSpriteKey(creatureId)] = entry.person ? humanoid(color) : creature(color);
   }
 
   for (const [spriteKey, draw] of Object.entries(placeholders)) {

@@ -72,3 +72,4 @@ EXTERNAL afflicted(who, status) // ele a tem?
 
 INCLUDE clareira.ink
 INCLUDE ruinas.ink
+INCLUDE estrada.ink

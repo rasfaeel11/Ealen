@@ -1,6 +1,6 @@
 import { addItemToInventory } from "../inventoryEffects";
 import { applyXpGain, xpForEnemy } from "../leveling";
-import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
+import { creatureQuirks, findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { findItemTemplate } from "../mock/items";
 import { startEncounter } from "../tactics/engine";
 import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "../tactics/grid";
@@ -249,8 +249,7 @@ export function startAreaEncounter(
         ai: entry.ai,
         invulnerable: entry.invulnerable,
         style: entry.style,
-        // No bestiário "hero" é a protagonista; na luta, o id dela.
-        quirks: entry.quirks && { ...entry.quirks, ...(entry.quirks.mirrors === CUE_HERO ? { mirrors: HERO_ID } : {}) },
+        quirks: creatureQuirks(entry, HERO_ID),
       }),
     );
   }

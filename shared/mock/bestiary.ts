@@ -1,4 +1,5 @@
 import { addItemToInventory } from "../inventoryEffects";
+import type { AiQuirks } from "../tactics/types";
 import type { BestiaryEntry } from "../types/bestiary";
 import type { Character } from "../types/character";
 import { findItemTemplate } from "./items";
@@ -232,6 +233,101 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
       },
     },
   },
+
+  // PROVISÓRIO: a gente do capítulo. Não são Princípios soltos, são pessoas
+  // (`person`): o `principle` de cada uma é só o do ofício, e os números, os
+  // kits e as falas esperam a história. O que já é delas é o jeito de lutar —
+  // o estilo e a mania da IA (ver AiQuirks).
+  "encounter-fiscal": {
+    person: true,
+    style: { id: "baluarte", grade: 2 },
+    glyph: "⚖",
+    principle: "harmonia",
+    summary: "Fiscal da Companhia: confere o que sobe da água e fecha o caminho de quem não mostra.",
+    lore: "Não está ali pra brigar, está ali pra não sair do lugar. Releva o primeiro empurrão e o segundo. Quem insiste descobre que o bastão de aferir também serve pra outra coisa.",
+    // Fica no caminho e se guarda; só bate em quem já o atacou três turnos seguidos.
+    ai: { aggression: 0.8, caution: 1.2 },
+    quirks: { retaliates: 3 },
+    drops: [{ itemId: "item-pao-de-cinza", chance: 0.5 }],
+    template: {
+      id: "enemy-fiscal",
+      name: "Fiscal",
+      race: "taharim",
+      characterClass: "guardiao",
+      level: 2,
+      xp: 0,
+      attributes: { dain: 5, eir: 1, nath: 5, il: 3, or: 6, len: 3, ul: 2 },
+      currentHp: 30,
+      maxHp: 30,
+      currentNodeId: "node-vau-de-bruma",
+      arts: {
+        quick_attack: "Ponta do Bastão",
+        attack: "Bastão de Aferir",
+        heavy_attack: "Pôr pra Fora",
+        defend: "Fechar o Ombro",
+      },
+    },
+  },
+
+  "encounter-mergulhador": {
+    person: true,
+    style: { id: "mare", grade: 2 },
+    glyph: "⚓",
+    principle: "ausencia",
+    summary: "Mergulhador de arpão, do mesmo ofício de Halmira e de outra rede.",
+    lore: "Aprendeu a acertar o que se mexe no escuro, de longe e sem pressa. Em terra faz igual: escolhe um, e não troca de alvo enquanto ele estiver de pé.",
+    // De longe, e sempre no mesmo: é a Onda que rende.
+    ai: { finisher: 1.3, caution: 1 },
+    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.4 }],
+    template: {
+      id: "enemy-mergulhador",
+      name: "Mergulhador",
+      race: "miraven",
+      characterClass: "rachador",
+      level: 3,
+      xp: 0,
+      attributes: { dain: 4, eir: 2, nath: 4, il: 7, or: 3, len: 2, ul: 3 },
+      currentHp: 24,
+      maxHp: 24,
+      currentNodeId: "node-vau-de-bruma",
+      arts: {
+        quick_attack: "Arpão Curto",
+        attack: "Arpoar",
+        heavy_attack: "Arpão de Fundo",
+        defend: "Prender o Fôlego",
+      },
+    },
+  },
+
+  "encounter-taevel": {
+    person: true,
+    style: { id: "vies", grade: 3 },
+    glyph: "≋",
+    principle: "fratura",
+    summary: "Taevel. Luta devolvendo o gesto de quem está na frente dele.",
+    lore: "Não escolhe o golpe: espera o seu e responde com o mesmo. Quem varia, enfrenta um espelho. Quem se repete, enfrenta alguém que já sabia.",
+    // Repete o tipo da última ação de Halmira; o Viés pune quem se repetiu.
+    quirks: { mirrors: "hero" },
+    drops: [],
+    template: {
+      id: "enemy-taevel",
+      name: "Taevel",
+      race: "miraven",
+      characterClass: "guardiao",
+      level: 5,
+      xp: 0,
+      attributes: { dain: 8, eir: 2, nath: 8, il: 8, or: 8, len: 4, ul: 4 },
+      currentHp: 60,
+      maxHp: 60,
+      currentNodeId: "node-vau-de-bruma",
+      arts: {
+        quick_attack: "Resposta Curta",
+        attack: "O Mesmo Golpe",
+        heavy_attack: "Devolver com Peso",
+        defend: "A Mesma Guarda",
+      },
+    },
+  },
 };
 
 /**
@@ -245,6 +341,16 @@ export function spawnCreature(entry: BestiaryEntry): Character {
     if (item) addItemToInventory(character, item);
   }
   return character;
+}
+
+/**
+ * As manias da criatura na língua da luta: no bestiário quem ela espelha é
+ * "hero", a protagonista; na luta é o id de quem faz esse papel (`heroId`).
+ */
+export function creatureQuirks(entry: BestiaryEntry, heroId: string): AiQuirks | undefined {
+  const { quirks } = entry;
+  if (!quirks) return undefined;
+  return quirks.mirrors === "hero" ? { ...quirks, mirrors: heroId } : quirks;
 }
 
 /** Entrada do bestiário de um encontro, se existir. */

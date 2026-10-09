@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { addItemToInventory } from "../../inventoryEffects";
-import { BESTIARY, spawnCreature } from "../../mock/bestiary";
+import { BESTIARY, creatureQuirks, spawnCreature } from "../../mock/bestiary";
 import { findItemTemplate } from "../../mock/items";
 import type { CharacterClass } from "../../types/characterClass";
 import {
@@ -297,7 +297,13 @@ test("cada criatura do bestiário, com os pesos dela, luta até o fim contra cad
             team: "party",
             pos: at("H"),
           }),
-          unitFromCharacter(spawnCreature(creature), { team: "enemy", pos: at("E"), ai: creature.ai }),
+          unitFromCharacter(spawnCreature(creature), {
+            team: "enemy",
+            pos: at("E"),
+            ai: creature.ai,
+            style: creature.style,
+            quirks: creatureQuirks(creature, "H"),
+          }),
         ],
         index + 1,
       );

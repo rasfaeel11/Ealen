@@ -835,3 +835,133 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
   assert.equal(stalled.encounter.round, 6);
   assert.equal(collector(stalled.encounter).currentHp, collector(stalled.encounter).maxHp);
 });
+
+// A gente do capítulo, na estrada: cada luta exercita o jeito de lutar de quem está nela.
+{
+  const stout = (currentHp = 500): Character => ({
+    id: HERO_ID,
+    name: "Herói",
+    race: "althirim",
+    characterClass: "guardiao",
+    level: 1,
+    xp: 0,
+    attributes: { dain: 5, eir: 5, nath: 5, il: 5, or: 5, len: 5, ul: 5 },
+    currentHp,
+    maxHp: 500,
+    currentNodeId: "",
+  });
+  /** A luta com `groupId`, num mapa só dela, com o herói em `tile`. */
+  const fight = (groupId: string, tile: Pos, hero: Character, seed = 7) => {
+    const map = loadArea("estrada");
+    const group = map.enemies.filter((candidate) => candidate.group === groupId);
+    const cues = map.cues.filter((cue) => cue.group === groupId);
+    const started = startAreaEncounter(map, [{ character: hero, tile }], group, seed, standAreaProps(map), undefined, fightCues(map, cues, group));
+    return { ...started, map, group, cues };
+  };
+  /** Joga a luta até o fim (ou `turns` comandos): `heroTurn` diz o que o herói pede na vez dele; o que o motor recusar vira passar a vez. */
+  const play = (encounter: Encounter, heroTurn: (encounter: Encounter) => Parameters<typeof applyCommand>[1], turns = 400) => {
+    const log = [];
+    for (let i = 0; i < turns && !isOver(encounter); i++) {
+      const unit = activeUnit(encounter)!;
+      let result = applyCommand(encounter, unit.team === "party" ? heroTurn(encounter) : chooseCommand(encounter));
+      if (!result.ok) result = applyCommand(encounter, { type: "endTurn", unitId: unit.id });
+      assert.equal(result.ok, true);
+      if (result.ok) log.push(...result.events.map((event) => ({ event, habit: findUnit(encounter, HERO_ID)!.habit })));
+    }
+    return log;
+  };
+
+  test("na estrada, os fiscais fecham a ponte de lado a lado enquanto estão de pé nela", () => {
+    const map = loadArea("estrada");
+    standAreaProps(map);
+    const fiscais = map.enemies.filter((enemy) => enemy.group === "fiscais");
+    assert.equal(fiscais.length, 2);
+    assert.ok(fiscais.every((enemy) => enemy.passive && enemy.dialog === "fiscais" && enemy.unless === "fiscais_fora"));
+
+    const from = tileOfPixel(map, map.spawns.from_clareira);
+    const beyond = tileIndex(map.grid, tileOfPixel(map, map.spawns.from_ruinas));
+    assert.ok(flood(map, from).has(beyond));
+    standPeople(map, peopleTiles(map, map.npcs, map.enemies));
+    assert.ok(!flood(map, from).has(beyond), "com os fiscais na ponte, ainda dá pra atravessar");
+    standPeople(map, []);
+    assert.ok(flood(map, from).has(beyond));
+  });
+
+  test("na estrada, um fiscal só bate em quem já o atacou três turnos seguidos", () => {
+    const { encounter, group } = fight("fiscais", { x: 19, y: 11 }, stout());
+    const fiscais = new Set(group.map((enemy) => enemy.id));
+    for (const id of fiscais) {
+      assert.deepEqual(findUnit(encounter, id)!.quirks, { retaliates: 3 });
+      assert.equal(findUnit(encounter, id)!.style, "baluarte");
+    }
+
+    // Quem só fica ali não apanha: quatro rodadas passando a vez, e nenhum golpe.
+    const quiet = structuredClone(encounter);
+    const idle = play(quiet, (now) => ({ type: "endTurn", unitId: activeUnit(now)!.id }), 12);
+    assert.equal(idle.filter(({ event }) => event.type === "attackRoll" && fiscais.has(event.actor)).length, 0);
+    // E não arredam pé: ficam colados nele, no caminho.
+    for (const id of fiscais) assert.equal(distance(findUnit(quiet, id)!.pos, findUnit(quiet, HERO_ID)!.pos), 1);
+
+    // Quem insiste, apanha — mas só depois do terceiro turno seguido batendo.
+    const target = findUnit(encounter, group[0].id)!;
+    const log = play(encounter, (now) => ({ type: "ability", unitId: HERO_ID, abilityId: "guardiao.attack", target: target.pos }), 40);
+    const struck = log.find(({ event }) => event.type === "attackRoll" && fiscais.has(event.actor));
+    assert.ok(struck, "os fiscais não revidaram nunca");
+    assert.ok((struck.habit?.attackTurns ?? 0) >= 3, `revidaram com ${struck.habit?.attackTurns} turnos de ataque`);
+  });
+
+  test("na estrada, os mergulhadores lutam de longe, na Maré, e a luta com eles anda até o fim", () => {
+    const { encounter, group } = fight("mergulhadores", { x: 41, y: 14 }, stout());
+    assert.equal(group.length, 2);
+    assert.ok(group.every((enemy) => !enemy.passive));
+    for (const enemy of group) {
+      const unit = findUnit(encounter, enemy.id)!;
+      assert.equal(unit.style, "mare");
+      assert.ok(unit.abilities.some((ability) => ability.range > 1 && ability.effects.some((effect) => effect.kind === "damage")));
+    }
+    play(encounter, chooseCommand, 3000);
+    assert.equal(encounter.winner, "party");
+  });
+
+  test("na estrada, Taevel devolve o tipo da última ação da protagonista", () => {
+    const { encounter, group } = fight("taevel", { x: 10, y: 17 }, stout());
+    const taevel = findUnit(encounter, group[0].id)!;
+    assert.deepEqual(taevel.quirks, { mirrors: HERO_ID });
+    assert.equal(taevel.style, "vies");
+
+    const script = ["defend", "defend", "attack", "attack", "defend"];
+    let turn = 0;
+    const log = play(
+      encounter,
+      (now) => {
+        const hero = findUnit(now, HERO_ID)!;
+        if (!hero.turn.action) return { type: "endTurn", unitId: HERO_ID };
+        const stance = script[turn++ % script.length];
+        return { type: "ability", unitId: HERO_ID, abilityId: `guardiao.${stance}`, target: stance === "defend" ? hero.pos : taevel.pos };
+      },
+      60,
+    );
+
+    const stanceOf = (id: string | undefined) => id?.slice(id.lastIndexOf(".") + 1);
+    const answers = log.flatMap(({ event, habit }) => {
+      if (event.type !== "abilityUsed" || event.unit !== taevel.id || event.reaction) return [];
+      const ability = taevel.abilities.find((candidate) => candidate.id === event.abilityId)!;
+      return ability.cost === "action" && habit?.last !== undefined ? [[stanceOf(habit.last), stanceOf(ability.id)]] : [];
+    });
+    assert.ok(answers.length >= 4, `só ${answers.length} respostas`);
+    for (const [hers, his] of answers) assert.equal(his, hers);
+    assert.deepEqual([...new Set(answers.map(([hers]) => hers))].sort(), ["attack", "defend"]);
+  });
+
+  test("na estrada, a luta com Taevel não se perde: ela para no lugar da derrota", () => {
+    const { encounter, events, cues } = fight("taevel", { x: 10, y: 17 }, stout(3));
+    const mercy = cues.find((cue) => cue.when.kind === "defeat");
+    assert.ok(mercy, "a luta com Taevel deveria ter uma deixa no lugar da derrota");
+
+    const log = [...events, ...play(encounter, (now) => ({ type: "endTurn", unitId: activeUnit(now)!.id })).map(({ event }) => event)];
+    assert.equal(findUnit(encounter, HERO_ID)!.currentHp, 0);
+    assert.equal(encounter.stopped, true);
+    assert.equal(encounter.winner, undefined);
+    assert.deepEqual(log.slice(-2), [{ type: "cue", id: mercy.id }, { type: "battleEnded" }]);
+  });
+}

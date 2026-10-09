@@ -30,6 +30,8 @@ export interface BestiaryEntry {
   ai?: Partial<AiProfile>;
   /** Manias de comportamento (ver AiQuirks). Em `mirrors`, "hero" é a protagonista. */
   quirks?: AiQuirks;
+  /** É gente, não um Princípio solto: no mapa usa o boneco, não o vulto. */
+  person?: boolean;
   /** O estilo de luta e o grau nele (ver ../tactics/styles.ts). */
   style?: { id: StyleId; grade: number };
   /**

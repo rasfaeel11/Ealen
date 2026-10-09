@@ -180,7 +180,8 @@ export function planTurn(encounter: Encounter): AiPlan {
       }
     }
 
-    const exposure = threatAt(sim, me, false);
+    // Quem já se pôs em guarda neste turno está exposto a menos: sem isto, guardava e saía de perto.
+    const exposure = threatAt(sim, me, isGuarding(me));
     let item: AiItemChoice | undefined;
     if (me.turn.bonus) {
       const fight = { engaged: canStrike || exposure > 0, striking: canStrike && action !== undefined };

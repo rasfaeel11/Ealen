@@ -5,7 +5,7 @@
  *     npm run balance:matrix --workspace=server
  *
  * Os dois lados são jogados pela IA do jogo (chooseCommand) — a criatura
- * com os pesos e a mochila dela no bestiário, o herói com os pesos padrão
+ * com os pesos, o estilo, as manias e a mochila dela no bestiário, o herói com os pesos padrão
  * e sem item. Um jogador de verdade joga melhor que a IA: os números não medem
  * dificuldade, servem pra comparar ANTES e DEPOIS de mexer em atributos,
  * habilidades, no bestiário ou na própria IA.
@@ -24,6 +24,7 @@ import {
   applyCommand,
   chooseCommand,
   createStartingAttributes,
+  creatureQuirks,
   gridFromAscii,
   spawnCreature,
   startEncounter,
@@ -68,7 +69,13 @@ function fight(characterClass: CharacterClass, creatureId: string, seed: number)
     grid: ARENA.grid,
     units: [
       unitFromCharacter(makePlayer(characterClass), { team: "party", pos: ARENA.markers.P[0] }),
-      unitFromCharacter(spawnCreature(creature), { team: "enemy", pos: ARENA.markers.E[0], ai: creature.ai }),
+      unitFromCharacter(spawnCreature(creature), {
+        team: "enemy",
+        pos: ARENA.markers.E[0],
+        ai: creature.ai,
+        style: creature.style,
+        quirks: creatureQuirks(creature, "hero"),
+      }),
     ],
     seed,
   });
