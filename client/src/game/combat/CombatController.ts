@@ -101,7 +101,7 @@ const ERROR_TEXT: Record<CommandError, string> = {
 };
 
 /** O que uma habilidade faz, em uma linha — pra quem vai decidir se usa. */
-function describeAbility(ability: Ability): string {
+export function describeAbility(ability: Ability): string {
   const parts: string[] = [ability.cost === "action" ? "Ação" : "Ação bônus"];
 
   if (ability.targets === "self") parts.push("em si");

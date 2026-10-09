@@ -12,6 +12,7 @@ import {
   distance,
   exitAt,
   extendTrail,
+  fieldUse,
   fightCues,
   findUnit,
   firedTrigger,
@@ -21,7 +22,9 @@ import {
   isDefeated,
   markBroken,
   markDefeated,
+  mend,
   npcInReach,
+  openingStrikes,
   parseTiledMap,
   chargeSavedClock,
   fights,
@@ -32,6 +35,8 @@ import {
   placeParty,
   presentCompanions,
   restoreParty,
+  samePos,
+  sheetAbilities,
   standAreaProps,
   standPeople,
   startAreaEncounter,
@@ -43,7 +48,9 @@ import {
   tileOfPixel,
   trailPoint,
   unusedItems,
+  useItemOutside,
   walk,
+  type Ability,
   type Aftermath,
   type AreaDef,
   type AreaEnemy,
@@ -55,18 +62,22 @@ import {
   type DialogueStep,
   type Encounter,
   type GameSave,
+  type Opening,
+  type OpeningStrike,
   type PixelPos,
   type Prop,
   type TeamId,
   type Trail,
   type WalkBody,
 } from "@ealen/shared";
+import { BagPanel } from "../game/BagPanel";
 import { CLOCK_BAR_BOTTOM, ClockBar } from "../game/ClockBar";
 import { CombatController } from "../game/combat/CombatController";
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { JournalPanel } from "../game/JournalPanel";
 import { MapActor } from "../game/MapActor";
+import { SheetPanel } from "../game/SheetPanel";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
 import { unlockOrders } from "../game/profile";
 import type { GameSession } from "../game/session";
@@ -98,7 +109,12 @@ const SORTED_LAYER_PREFIX = "sorted";
 /** Camadas cujo nome começa com isto são desenhadas POR CIMA de tudo (pontes altas, telhados). */
 const ABOVE_LAYER_PREFIX = "above";
 
-const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar  ·  Esc: pausa";
+const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar  ·  C: ficha  ·  I: mochila  ·  Esc: pausa";
+const AIM_HINT = "←/→: trocar de alvo  ·  Enter ou clique: atacar  ·  Esc: desistir";
+/** Os quadrados acesos de quem mira um golpe de abertura: por cima do chão, por baixo de quem está de pé. */
+const AIM_DEPTH = -1;
+const AIM_TARGET_COLOR = 0xe0566c;
+const AIM_STEP_COLOR = 0x6fa8dc;
 /** O que a história rola nos testes dela. Um dado por sessão de jogo basta. */
 const STORY_RNG = { rngState: Math.floor(Math.random() * 0xffffffff) };
 
@@ -171,6 +187,18 @@ export default class WorldScene extends Phaser.Scene {
   /** O menu de pausa, enquanto está aberto: o mundo espera. */
   /** O que está aberto por cima do mundo parado: o menu de pausa, ou o diário. */
   private pause?: { destroy: () => void };
+  /**
+   * Mirando um golpe de abertura (ver shared/world/field.ts): a habilidade, em
+   * quem ela pode abrir a luta daqui, e qual deles está escolhido. O mundo espera.
+   */
+  private aiming?: {
+    ability: Ability;
+    strikes: OpeningStrike[];
+    index: number;
+    marks: Phaser.GameObjects.Graphics;
+    /** Quando a mira começou: o clique que a abriu (numa opção da ficha) não é um clique num alvo. */
+    since: number;
+  };
   private clockBar!: ClockBar;
   /** Pra avisar uma vez só, e não a cada gravação, que o dispositivo não está gravando. */
   private saveFailed = false;
@@ -186,6 +214,7 @@ export default class WorldScene extends Phaser.Scene {
     this.leaving = false;
     this.talking = false;
     this.pause = undefined;
+    this.aiming = undefined;
     this.saveFailed = false;
     this.combat = undefined;
     this.followers = [];
@@ -234,12 +263,9 @@ export default class WorldScene extends Phaser.Scene {
       addBodyText(this, 24, 20, "", { fontSize: "18px", color: TEXT_COLORS.gold }).setShadow(0, 2, "#000000", 4),
     );
     this.hintText = this.addHud(
-      addBodyText(this, 24, GAME_HEIGHT - 40, EXPLORE_HINT, { fontSize: "16px", color: TEXT_COLORS.inkDim }).setShadow(
-        0,
-        2,
-        "#000000",
-        4,
-      ),
+      addBodyText(this, 24, GAME_HEIGHT - 18, EXPLORE_HINT, { fontSize: "16px", lineSpacing: 4, color: TEXT_COLORS.inkDim })
+        .setOrigin(0, 1)
+        .setShadow(0, 2, "#000000", 4),
     );
     this.clockBar = new ClockBar(this, (object) => this.addHud(object));
     this.clockBar.set(this.story.clock());
@@ -268,6 +294,7 @@ export default class WorldScene extends Phaser.Scene {
     keyboard.on("keydown-E", this.interact, this);
     keyboard.on("keydown-F", this.ambush, this);
     keyboard.on("keydown", this.onKey, this);
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onAimPointer, this);
     // O botão direito cancela a mira no combate; o menu do navegador só atrapalharia.
     this.input.mouse?.disableContextMenu();
 
@@ -289,7 +316,7 @@ export default class WorldScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     // Quadro longo demais é aba em segundo plano: não conta como tempo de jogo.
     if (!this.pause) this.save.playTimeMs += Math.min(delta, MAX_FRAME_MS);
-    if (this.leaving || this.combat || this.talking || this.pause) return;
+    if (this.leaving || this.combat || this.talking || this.pause || this.aiming) return;
     if (this.peoplePending) this.occupy();
 
     // Um gatilho dispara com o personagem parado também: é assim que a cena de chegada de uma área abre.
@@ -565,7 +592,16 @@ export default class WorldScene extends Phaser.Scene {
     const talk = talker ? `  ·  E: ${talker.stands ? "falar com" : "examinar"} ${talker.name}` : "";
     const prey = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos));
     const journal = this.story.journal().length > 0 ? "  ·  J: diário" : "";
-    this.hintText.setText(EXPLORE_HINT + journal + talk + (prey ? "  ·  F: emboscar" : ""));
+    // A segunda linha: o que Halmira sabe fazer daqui, sem estar em luta.
+    const skills = this.fieldAbilities().map((ability, index) => `${index + 1}: ${ability.name}`);
+    this.hintText.setText(
+      EXPLORE_HINT + journal + talk + (prey ? "  ·  F: emboscar" : "") + (skills.length > 0 ? `\n${skills.join("  ·  ")}` : ""),
+    );
+  }
+
+  /** As habilidades da protagonista que servem fora de luta, na ordem das teclas 1, 2, 3... */
+  private fieldAbilities(): Ability[] {
+    return sheetAbilities(this.character).filter((ability) => fieldUse(ability) !== undefined);
   }
 
   /** Um título no alto da tela, sumindo sozinho (nome da área, avisos). */
@@ -578,7 +614,7 @@ export default class WorldScene extends Phaser.Scene {
 
   /** Provisório, no lugar de acampamento/estalagem: recupera todo o HP do grupo, em qualquer lugar fora de luta. */
   private rest(): void {
-    if (this.combat || this.leaving || this.talking || this.pause) return;
+    if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
     restoreParty(this.character, this.save.companions);
     // Descansar gasta o tempo do relógio, se a história disse que gasta — e o que o tempo fecha, fecha.
     if (this.story.spend("rest")) {
@@ -594,7 +630,7 @@ export default class WorldScene extends Phaser.Scene {
   // ----------------------------------------------------------------- conversa
 
   private interact(): void {
-    if (this.combat || this.leaving || this.talking || this.pause) return;
+    if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
     const talker = this.talkerInReach();
     if (talker) void this.converse(talker.dialog, talker);
   }
@@ -682,7 +718,7 @@ export default class WorldScene extends Phaser.Scene {
 
   /** `F`: ataca primeiro o grupo mais próximo que ainda não percebeu o personagem. Ele entra na luta surpreso. */
   private ambush(): void {
-    if (this.combat || this.leaving || this.talking || this.pause) return;
+    if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
     const group = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos));
     if (group !== undefined) this.startCombat(group, "enemy");
   }
@@ -691,9 +727,10 @@ export default class WorldScene extends Phaser.Scene {
    * A luta com um grupo de inimigos começa, onde cada um está: porque ele
    * percebeu o personagem, porque a história mandou ou — com `surprised` —
    * porque o personagem o emboscou. Se o mapa tem deixas (`cue`) pra esse
-   * grupo, a luta tem roteiro: elas entram junto.
+   * grupo, a luta tem roteiro: elas entram junto. Com `opening`, ela abre com
+   * o golpe que o personagem deu de fora (ver `aimOpening`).
    */
-  private startCombat(group: string, surprised?: TeamId): void {
+  private startCombat(group: string, surprised?: TeamId, opening?: Opening): void {
     const fighters = this.enemies.filter((enemy) => enemy.group === group);
     const cues = this.map.cues.filter((cue) => cue.group === group && isActive(cue, this.flag));
     this.fightSteps = [];
@@ -711,7 +748,8 @@ export default class WorldScene extends Phaser.Scene {
       this.character,
       playerTile,
       this.followers.map((follower) => ({ character: follower.character, at: follower.pos })),
-      fighters.map((enemy) => tileOfPixel(this.map, enemy)),
+      // O quadrado até onde o personagem corre pra dar o primeiro golpe também tem dono.
+      [...fighters.map((enemy) => tileOfPixel(this.map, enemy)), ...(opening?.from ? [opening.from] : [])],
     );
     const party = placed.filter((fighter) => fights(fighter.character));
     const onlookers = this.followers.filter((follower) => !fights(follower.character));
@@ -745,6 +783,7 @@ export default class WorldScene extends Phaser.Scene {
       onlookers.map((follower) => follower.character),
       // O que a história pôs em alguém e que dura entre lutas entra com ele.
       this.story.afflictions(),
+      opening,
     );
 
     this.statusText.setVisible(false);
@@ -902,9 +941,204 @@ export default class WorldScene extends Phaser.Scene {
   // ------------------------------------------------------------------ pausa
 
   private onKey(event: KeyboardEvent): void {
+    if (this.aiming) {
+      this.onAimKey(event);
+      return;
+    }
     if (this.pause || this.combat || this.leaving || this.talking) return;
     if (event.code === "Escape") this.openPause();
     else if (event.code === "KeyJ") this.openJournal();
+    else if (event.code === "KeyC") this.openSheet();
+    else if (event.code === "KeyI") this.openBag();
+    else if (/^(Digit|Numpad)[1-9]$/.test(event.code)) {
+      // 1, 2, 3...: a habilidade de mesmo número na dica do pé da tela.
+      const ability = this.fieldAbilities()[Number(event.code.slice(-1)) - 1];
+      if (!ability) return;
+      if (fieldUse(ability) === "mend") this.openSheet();
+      else if (!this.aimOpening(ability)) this.showBanner("Ninguém ao alcance que ainda não tenha te percebido.");
+    }
+  }
+
+  /** Quem a ficha e a mochila mostram: a protagonista e quem anda com ela agora. */
+  private company(): Character[] {
+    return [this.character, ...this.followers.map((follower) => follower.character)];
+  }
+
+  /** `C`: a ficha do grupo, por cima do mundo parado. É dela que se usa uma habilidade fora de luta. */
+  private openSheet(): void {
+    this.halt();
+    this.pause = new SheetPanel(this, (object) => this.addHud(object), {
+      members: this.company(),
+      afflictions: this.story.afflictions(),
+      onMend: (caster, ability, target) => this.mendOutside(caster, ability, target),
+      onOpening: (ability) => {
+        if (!this.aimOpening(ability)) return false;
+        this.closePause();
+        return true;
+      },
+      onBag: () => {
+        this.closePause();
+        this.openBag();
+      },
+      onClose: () => this.closePause(),
+    });
+  }
+
+  /** `I`: a mochila do grupo. O que cura se usa ali mesmo; o resto fica pra luta. */
+  private openBag(): void {
+    this.halt();
+    this.pause = new BagPanel(this, (object) => this.addHud(object), {
+      owner: this.character,
+      members: this.company(),
+      onUse: (itemId, target) => {
+        const result = useItemOutside(this.character, itemId, target);
+        if (result.ok) {
+          this.persist();
+          this.refreshStatus();
+        }
+        return result;
+      },
+      onSheet: () => {
+        this.closePause();
+        this.openSheet();
+      },
+      onClose: () => this.closePause(),
+    });
+  }
+
+  /**
+   * Uma cura feita fora de luta. Não há recurso que ela gaste (provisório): o
+   * que ela gasta é tempo — o de uma rodada, se a história está contando.
+   */
+  private mendOutside(caster: Character, ability: Ability, target: Character): number | undefined {
+    const healed = mend(caster, ability, target, STORY_RNG);
+    if (healed === undefined) return undefined;
+    if (this.story.spend("round")) {
+      this.save.story = this.story.save();
+      this.clockBar.set(this.story.clock());
+      this.syncPresence();
+    }
+    this.persist();
+    this.refreshStatus();
+    return healed;
+  }
+
+  // ------------------------------------------------------ golpe de abertura
+
+  /**
+   * Começa a mirar `ability` em quem ainda não percebeu o personagem: o golpe
+   * sai antes da luta e o grupo do alvo entra nela surpreso. Falso se não há
+   * ninguém ao alcance — aí nada muda.
+   */
+  private aimOpening(ability: Ability): boolean {
+    const strikes = openingStrikes(this.map, this.character, tileOfPixel(this.map, this.pos), ability, this.enemies, this.props);
+    if (strikes.length === 0) return false;
+    this.halt();
+    const marks = this.addWorld(this.add.graphics().setDepth(AIM_DEPTH));
+    this.aiming = { ability, strikes, index: 0, marks, since: this.time.now };
+    this.cameras.main.stopFollow();
+    this.drawAim();
+    return true;
+  }
+
+  /** Acende os alvos possíveis, o escolhido e o quadrado até onde o personagem corre pra bater. */
+  private drawAim(): void {
+    if (!this.aiming) return;
+    const { ability, strikes, index, marks } = this.aiming;
+    const size = this.map.tileSize;
+    const strike = strikes[index];
+    const square = (tile: { x: number; y: number }, color: number, alpha: number) => {
+      marks.fillStyle(color, alpha).fillRect(tile.x * size, tile.y * size, size, size);
+      marks.lineStyle(1, color, 0.9).strokeRect(tile.x * size + 0.5, tile.y * size + 0.5, size - 1, size - 1);
+    };
+
+    marks.clear();
+    // O que não mira pega o grupo inteiro; o resto, um alvo por vez.
+    const whole = ability.targets === "foes";
+    for (const enemy of this.enemies) {
+      const tile = tileOfPixel(this.map, enemy);
+      const chosen = whole ? enemy.group === strike.enemy.group : enemy === strike.enemy;
+      if (chosen) square(tile, AIM_TARGET_COLOR, 0.45);
+      else if (strikes.some((other) => other.enemy === enemy)) square(tile, AIM_TARGET_COLOR, 0.12);
+    }
+    const here = tileOfPixel(this.map, this.pos);
+    if (!samePos(strike.from, here)) square(strike.from, AIM_STEP_COLOR, 0.35);
+
+    this.player.faceToward(strike.enemy);
+    // A câmera fica entre quem bate e quem apanha: o alvo pode estar fora da tela.
+    this.cameras.main.pan((this.pos.x + strike.enemy.x) / 2, (this.pos.y + strike.enemy.y) / 2, 160, "Sine.easeOut", true);
+    const run = samePos(strike.from, here) ? "" : " (correndo até ele)";
+    this.hintText.setText(`${ability.name} em ${strike.enemy.name}${run}: o grupo dele perde a primeira vez.\n${AIM_HINT}`);
+  }
+
+  private onAimKey(event: KeyboardEvent): void {
+    const aiming = this.aiming!;
+    const count = aiming.strikes.length;
+    switch (event.code) {
+      case "Escape":
+      case "Backspace":
+        this.stopAiming();
+        this.cameras.main.startFollow(this.player.followTarget, true, 0.2, 0.2);
+        this.refreshHint();
+        return;
+      case "Enter":
+      case "NumpadEnter":
+      case "Space":
+        this.strikeFirst();
+        return;
+      case "Tab":
+        event.preventDefault();
+      // falls through
+      case "ArrowRight":
+      case "ArrowDown":
+      case "KeyD":
+      case "KeyS":
+        aiming.index = (aiming.index + 1) % count;
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+      case "KeyA":
+      case "KeyW":
+        aiming.index = (aiming.index - 1 + count) % count;
+        break;
+      default:
+        return;
+    }
+    this.drawAim();
+  }
+
+  /** Clicar num alvo aceso dá o golpe nele; o botão direito desiste. */
+  private onAimPointer(pointer: Phaser.Input.Pointer): void {
+    const aiming = this.aiming;
+    if (!aiming || aiming.since === this.time.now) return;
+    if (pointer.rightButtonDown()) {
+      this.onAimKey({ code: "Escape" } as KeyboardEvent);
+      return;
+    }
+    const point = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const tile = tileOfPixel(this.map, point);
+    const index = aiming.strikes.findIndex((strike) => samePos(tileOfPixel(this.map, strike.enemy), tile));
+    if (index === -1) return;
+    aiming.index = index;
+    this.strikeFirst();
+  }
+
+  private stopAiming(): void {
+    this.aiming?.marks.destroy();
+    this.aiming = undefined;
+  }
+
+  /** O golpe escolhido abre a luta com o grupo do alvo, que entra nela surpreso. */
+  private strikeFirst(): void {
+    const { ability, strikes, index } = this.aiming!;
+    const strike = strikes[index];
+    this.stopAiming();
+    this.startCombat(strike.enemy.group, "enemy", {
+      unitId: this.character.id,
+      abilityId: ability.id,
+      target: strike.target,
+      from: strike.from,
+    });
   }
 
   /** `J`: o diário de pistas, por cima do mundo parado. */
@@ -917,7 +1151,7 @@ export default class WorldScene extends Phaser.Scene {
   private openPause(): void {
     this.halt();
     const width = 420;
-    const height = 220;
+    const height = 350;
     const x = (GAME_WIDTH - width) / 2;
     const y = (GAME_HEIGHT - height) / 2;
     const objects = [
@@ -932,6 +1166,9 @@ export default class WorldScene extends Phaser.Scene {
       y + 100,
       [
         { label: "Voltar ao jogo", onSelect: () => this.closePause() },
+        { label: "Ficha", onSelect: () => this.swapPause(() => this.openSheet()) },
+        { label: "Mochila", onSelect: () => this.swapPause(() => this.openBag()) },
+        { label: "Diário", onSelect: () => this.swapPause(() => this.openJournal()) },
         // Ao fechar, a cena grava o jogo (SHUTDOWN chama persist).
         { label: "Salvar e sair pro título", onSelect: () => this.scene.start(SCENES.title) },
       ],
@@ -943,6 +1180,12 @@ export default class WorldScene extends Phaser.Scene {
         for (const object of objects) object.destroy();
       },
     };
+  }
+
+  /** Fecha o que está aberto por cima do mundo e abre outra coisa no lugar. */
+  private swapPause(open: () => void): void {
+    this.closePause();
+    open();
   }
 
   private closePause(): void {

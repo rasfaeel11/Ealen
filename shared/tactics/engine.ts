@@ -74,7 +74,27 @@ export interface EncounterSetup {
    * inteira; quem as tira é quem as pôs.
    */
   lasting?: Record<string, readonly StatusId[]>;
+  /** O golpe que ABRE a luta, dado de fora dela por quem a começou (ver Opening). */
+  opening?: Opening;
   seed: number;
+}
+
+/**
+ * O golpe que abre a luta: alguém usou uma habilidade ANTES de a luta
+ * existir, e é ela que a começa. Acontece na abertura, antes da primeira
+ * rodada e fora da ordem dos turnos — não gasta a ação nem o movimento do
+ * primeiro turno de quem o deu. Com `from`, ele antes corre até esse quadrado
+ * (a investida de quem luta de perto), com o movimento de um turno.
+ *
+ * Um golpe de abertura que não vale (habilidade que ele não tem, alvo fora de
+ * alcance, quadrado aonde não chega) simplesmente não acontece: a luta começa
+ * sem ele.
+ */
+export interface Opening {
+  unitId: string;
+  abilityId: string;
+  target: Pos;
+  from?: Pos;
 }
 
 /**
@@ -121,11 +141,32 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     unit.turn.reaction = false;
     addStatus(unit, STATUSES.surprised, 1, events);
   }
+  if (setup.opening) strikeFirst(encounter, setup.opening, events);
   if (!concludeIfDecided(encounter, events)) {
     events.push({ type: "roundStarted", round: 1 });
     advanceTurn(encounter, events);
   }
   return { encounter, events };
+}
+
+/** Resolve o golpe de abertura (ver Opening). Inválido, não faz nada. */
+function strikeFirst(encounter: Encounter, opening: Opening, events: TacticalEvent[]): void {
+  const unit = findUnit(encounter, opening.unitId);
+  const ability = unit?.abilities.find((candidate) => candidate.id === opening.abilityId);
+  if (!unit || !ability || !isAlive(unit) || usesLeft(unit, ability) <= 0) return;
+
+  if (opening.from && !samePos(opening.from, unit.pos)) {
+    // A investida anda com o movimento de um turno, e não o tira do primeiro turno de verdade.
+    unit.turn.movement = unit.speed;
+    const stuck = move(encounter, unit, opening.from, events);
+    unit.turn.movement = 0;
+    if (stuck || !isAlive(unit)) return;
+  }
+  if (!abilityTargets(encounter, unit, ability).some((pos) => samePos(pos, opening.target))) return;
+
+  if (ability.limit !== undefined) unit.used = { ...unit.used, [ability.id]: (unit.used?.[ability.id] ?? 0) + 1 };
+  resolveAbility(encounter, unit, ability, opening.target, affectedUnits(encounter, ability, opening.target), false, events);
+  if (ability.backlash && isAlive(unit)) addStatus(unit, STATUSES[ability.backlash.statusId], ability.backlash.turns, events);
 }
 
 export function applyCommand(encounter: Encounter, command: Command): CommandResult {

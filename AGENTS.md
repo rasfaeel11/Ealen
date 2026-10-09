@@ -18,16 +18,17 @@ Monorepo com npm workspaces:
 - **Mundo aberto como grafo de áreas**: cada nó é um mapa feito à mão (Tiled), as arestas são as saídas. Uma saída só se tranca se o mapa pedir (`if`/`unless` numa variável da história). Nível de inimigo fixo por área.
 - **A história manda no mapa pelas variáveis dela**: quem está de pé, que gatilho está armado e que saída está aberta se decide perguntando às flags, sem lista paralela. Luta e viagem que o texto pede acontecem depois da última fala.
 - **Luta com roteiro é a luta comum mais DEIXAS**: um objeto `cue` no mapa diz quando alguma coisa acontece fora das regras (numa rodada, quando alguém cai, quando algo quebra, quando alguém mexe em alguma coisa, no lugar da derrota), a história fala ali mesmo, no meio da luta, e a deixa pode pôr uma condição em quem luta e encerrá-la — vencida por objetivo, ou parada sem vencedor. O resultado narrativo fica fixo; a luta decide o quanto custa.
-- **Quem ataca primeiro sem ser percebido embosca**: a luta pode ser aberta pelo jogador (`F`), e o grupo pego assim perde o primeiro turno.
+- **Quem ataca primeiro sem ser percebido embosca**: a luta pode ser aberta pelo jogador (`F`), e o grupo pego assim perde o primeiro turno. Aberta com uma HABILIDADE (teclas `1`, `2`, `3`... ou pela ficha), o golpe ainda sai antes da luta.
+- **Fora de luta se faz pouco, mas se faz**: ver a ficha, mexer na mochila, curar alguém e dar o primeiro golpe. A regra mora em `shared/world/field.ts`; as telas só mostram e perguntam.
 - **Visual top-down 3/4** (Sea of Stars), pixel art. A altura vem da arte e da ordem de desenho, não de uma câmera inclinada — não é isométrico.
 - **Estilo é o jeito de lutar, por cima da Ordem**: a Ordem diz o que alguém sabe fazer (as habilidades); o estilo (Maré, Viés, Baluarte) diz contra quem isso rende — o triângulo, na rolagem de ataque — e dá um traço que vale em todo golpe. Halmira é Maré com qualquer Ordem.
 - **IA de inimigo por utilidade**: dá nota a todas as jogadas possíveis e fica com a maior, com pesos por criatura (`shared/tactics/ai.ts`).
 - **Diálogos em Ink** (`inkjs`), numa caixa com fala em cima e opções embaixo; testes de Len/Ul chamados pelo texto. As flags do jogo são as variáveis da própria história.
 - **O diário guarda fatos, não conclusões**, e o **relógio fecha opções, não mata**: os dois são estado da história, escritos e movidos pelo texto, e voltam atrás com ela.
 
-Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags — **feito**; (7) save ampliado — **feito**; (8) ganchos da história no mundo (luta, viagem, item tirado, gente e saídas por flag), gatilhos no chão e emboscada — **feito**; (9) protagonista fixa, companheiros e Ordens destraváveis — **feito**; (10) lutas com roteiro: deixas por rodada, por queda, por objeto quebrado e no lugar da derrota — **feito**; (11) o que faltava às lutas com roteiro: objeto em que se mexe, inimigo sem vida, condição aplicada por deixa e objetivo à vista — **feito**; (12) diário de pistas e relógio da história — **feito**; (13) quem acompanha sem lutar: apoio no lugar de unidade — **feito**; (14) estilos (Maré, Viés, Baluarte): triângulo na rolagem, um traço por estilo, habilidade própria com limite e preço, condição que dura entre lutas e manias da IA — **feito**; (15) a gente do capítulo (fiscal, mergulhador, Taevel) no bestiário e na estrada, com as manias em uso — **feito**; (16) o relógio corre sozinho por rodada de luta — **feito**.
+Fases: (1) motor tático — **feito**; (2) mundo: andar, câmera, colisão, troca de área — **feito**; (3) combate no mapa — **feito**; (4) IA de utilidade — **feito**; (5) posição e terreno: cobertura, flanco, altura, superfícies e destrutíveis — **feito**; (6) diálogo e flags — **feito**; (7) save ampliado — **feito**; (8) ganchos da história no mundo (luta, viagem, item tirado, gente e saídas por flag), gatilhos no chão e emboscada — **feito**; (9) protagonista fixa, companheiros e Ordens destraváveis — **feito**; (10) lutas com roteiro: deixas por rodada, por queda, por objeto quebrado e no lugar da derrota — **feito**; (11) o que faltava às lutas com roteiro: objeto em que se mexe, inimigo sem vida, condição aplicada por deixa e objetivo à vista — **feito**; (12) diário de pistas e relógio da história — **feito**; (13) quem acompanha sem lutar: apoio no lugar de unidade — **feito**; (14) estilos (Maré, Viés, Baluarte): triângulo na rolagem, um traço por estilo, habilidade própria com limite e preço, condição que dura entre lutas e manias da IA — **feito**; (15) a gente do capítulo (fiscal, mergulhador, Taevel) no bestiário e na estrada, com as manias em uso — **feito**; (16) o relógio corre sozinho por rodada de luta — **feito**; (17) fora de luta: tela de ficha, mochila e habilidade usada andando (cura, e o golpe que abre a luta) — **feito**.
 
-O que a história ainda vai pedir e não existe: kits de habilidade de verdade (os estilos entraram como uma camada POR CIMA das Ordens, cujos kits continuam provisórios; o grau do estilo só aparece na tela), as fichas de verdade da gente do capítulo (fiscal, mergulhador e Taevel já existem e já lutam do jeito deles, mas números, kits, falas e o lugar onde estão são provisórios), tela de ficha e mochila fora da luta, equipamento e som. Do diário falta ele se apagar À VISTA do jogador (hoje a caixa anuncia e a tela do diário mostra o branco) e o pedaço de mapa que some junto.
+O que ainda falta está em **Tasks**, no fim deste arquivo, por prioridade.
 
 ### A regra central do combate
 
@@ -38,6 +39,7 @@ O motor **nunca anima nada**. `applyCommand(encounter, command)` (`shared/tactic
 - `startEncounter({ grid, units, seed })` rola a iniciativa e abre a luta; `applyCommand` aceita `move`, `ability`, `useItem`, `interact`, `support` e `endTurn`. Comando recusado não muda nada.
 - **Apoios** (`supports.ts`): `startEncounter({ ..., supporters })` recebe quem acompanha o grupo do jogador sem lutar. Um apoiador não é unidade — não tem vez, não ocupa quadrado, não apanha, não conta pra vitória nem pra derrota. O que ele tem é um apoio (`SUPPORTS`), que qualquer um do grupo chama na PRÓPRIA vez com o comando `support`, sem gastar ação nem bônus, uma vez por rodada (`Supporter.ready`, que volta quando a rodada vira). Hoje existe `annotate` (Anotar, de Gil): mira qualquer inimigo de pé (`supportTargets`), e o motor responde com `supportUsed` e `intentRevealed` — o plano que a IA tem pra ele AGORA (`foresee` em `ai.ts`: onde parar, que habilidades e em quê, que item; ou que vai perder a vez). É intenção, não promessa: muda se a luta mudar. Não rola dado nem muta mais nada.
 - **Surpresa**: `startEncounter({ ..., surprised: "enemy" })` (ou `"party"`) põe o lado inteiro Surpreso. A iniciativa não muda; cada surpreendido perde o primeiro turno quando ele chega (evento `turnSkipped`) e, até lá, não tem reação — passar por ele não provoca ataque de oportunidade. É uma condição como as outras (`surprised`, com a marca `skipsTurn`): qualquer condição com essa marca faz o portador perder o turno em que está ativa.
+- **Golpe de abertura**: `startEncounter({ ..., opening })` recebe o golpe dado de FORA da luta, que a começa (`Opening`: quem, que habilidade, em que quadrado e, opcional, `from` — o quadrado até onde ele corre antes, com o movimento de um turno: a investida de quem luta de perto). Resolve-se na abertura, depois da surpresa e antes do `roundStarted`, pelos mesmos `move` e `resolveAbility` de sempre (os eventos são os comuns: `moved`, `abilityUsed`, `attackRoll`...). Está fora da ordem dos turnos: não gasta ação nem movimento do primeiro turno, não entra no `habit`, mas conta no `limit` e cobra o `backlash`. Se derruba o último inimigo, a luta acaba ali, sem turno nenhum. Golpe que não vale (habilidade que ele não tem, alvo fora de alcance, quadrado aonde não chega) não acontece e a luta começa sem ele.
 - **Roteiro**: `startEncounter({ ..., cues })` recebe as deixas da luta (`Cue`: um id, `when` e, opcional, `ends`). `when` é `round` (ao começar a rodada N; a 1 é a abertura), `down` (uma unidade caiu), `broken` (um destrutível quebrou), `used` (já mexeram em TODOS os objetos da lista) ou `defeat` (o grupo do jogador inteiro no chão — a deixa acontece NO LUGAR da derrota). Cada uma dispara uma vez, vira o evento `cue`, aplica a condição que trouxer (`apply`: que condição, por quantos turnos, em que unidades — os `statusApplied` vêm logo depois do `cue`) e, com `ends`, encerra a luta ali: `win` dá a vitória ao grupo com inimigo de pé, `stop` para a luta sem vencedor (`encounter.stopped`, `battleEnded` sem `winner`); a de `defeat` sempre encerra (`stop`, se não disser). As deixas falam antes das regras e na ordem em que foram declaradas; a primeira que encerra, encerra. `isOver(encounter)` é a pergunta certa pra "acabou?" — `winner` sozinho não vê a luta que parou. O motor só sabe quando e se acaba: o que se DIZ numa deixa é de quem reproduz o evento.
 - **Sem vida**: uma `Unit` com `invulnerable` não perde vida nenhuma — o efeito `damage` vira o evento `immune` e o chão que fere não a toca — e por isso nunca cai. Condição e empurrão pegam. Vem de `invulnerable` na entrada do bestiário (hoje, o Coletor de Lembranças); a luta com um destes só acaba por deixa, e a IA não vê valor em bater nele.
 - `Encounter` é dado puro: `structuredClone` dá uma luta independente, com o dado (seed) junto. Nada de `Math.random` aqui dentro — mesma seed e mesmos comandos dão a mesma luta.
@@ -80,7 +82,21 @@ Inimigos ficam de pé no mapa. Uma luta com um grupo começa de três jeitos (`s
 - **O personagem ataca primeiro** (`ambushableGroup`, tecla `F`): com um inimigo a até `AMBUSH_RANGE` (9) quadrados que ainda não o percebeu — de longe, na faixa entre os dois alcances, ou de perto e fora da vista dele (atrás de parede, de árvore). É uma **emboscada**: o grupo entra surpreso. A dica do pé da tela mostra `F: emboscar` quando dá. `F` já começa a luta; não há como desfazer.
 - **A história manda** (`start_fight` no texto): luta comum, e o único jeito de lutar com um grupo `passive`.
 
+A emboscada também se abre com um GOLPE (ver "Fora de luta", abaixo): é a mesma emboscada, com a habilidade escolhida saindo antes da primeira rodada.
+
 Um inimigo `passive` não percebe ninguém e não pode ser emboscado: fica de pé ocupando o quadrado, como um `npc`, até a história começar a luta. Com `dialog`, dá pra falar com ele (`E`), e o nome do objeto é o que a caixa mostra — é o personagem que conversa antes de brigar. `onDefeat`, em qualquer inimigo, é o trecho da história que abre quando o grupo dele cai.
+
+### Fora de luta (`shared/world/field.ts`)
+
+O que dá pra fazer andando pelo mapa, sem estar numa luta. Tudo provisório, como os kits.
+
+- **Ficha** (`C`, `SheetPanel`): uma página por pessoa do grupo (←/→ trocam), com o retrato (o boneco do mapa ampliado, andando no lugar), Povo, Ordem, nível, XP, vida, estilo e traço, as condições que a história pôs (`afflict`), os sete atributos (em dourado os que a Ordem escala) e as habilidades — o kit e o que só aquela pessoa sabe (`sheetAbilities`), cada uma com o que é e o que faz (`describeAbility`, a mesma linha da barra do combate).
+- **Mochila** (`I`, `BagPanel`): a do grupo, que é a de Halmira. Mostra o que há, o que cada coisa é e faz. `useItemOutside` usa em quem se escolher o que CURA (`heal_hp`, `cure_status` — `usableOutside`); o que só mexe numa luta (atributo por turnos, Foco) aparece e fica pra ela. Recusa não gasta nada: alvo inteiro (`no_effect`), item de luta (`only_in_fight`).
+- **Habilidade fora de luta** (`fieldUse`): cada habilidade serve pra uma de duas coisas, ou pra nenhuma.
+  - `mend` — a que cura (`ally`/`self` com efeito `heal`): `mend(caster, ability, target, rng)` usa a conta do motor (atributo + dados), em qualquer um do grupo que lute. Não há recurso que ela gaste; o que ela gasta é TEMPO: a cena cobra do relógio o custo de uma rodada (`spend("round")`). Usa-se pela ficha de quem a tem.
+  - `opening` — a que se mira num inimigo: abre a luta. `openingStrikes(map, hero, heroTile, ability, enemies, props)` diz em quem: inimigos hostis a até `AMBUSH_RANGE` (a faixa da emboscada; `passive` não entra) que a habilidade alcança de onde ela está ou, se não, do quadrado mais barato aonde chega com o movimento de um turno (a pergunta é feita ao motor, numa luta de mentira: mesma regra de movimento e de linha de visão). A cena mira (`aimOpening`: alvos acesos, ←/→ ou Tab trocam, Enter ou clique ataca, Esc desiste) e começa a luta com `surprised: "enemy"` e o `opening` — o golpe sai antes da primeira rodada e o grupo ainda perde a primeira vez. Quem dá o primeiro golpe é só Halmira: teclas `1`, `2`, `3`... (a segunda linha da dica do pé da tela) ou Enter na ficha dela. Uma `foes` (não mira) abre com o grupo mais próximo.
+  - nenhuma — pôr-se em guarda: só serve dentro de uma luta.
+- O menu de pausa (`Esc`) leva às três telas: ficha, mochila e diário.
 
 ### Lutas com roteiro (objeto `cue` + `fightCues`)
 
@@ -153,7 +169,7 @@ Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/
 
 ### Cenas (`client/src/scenes/`)
 
-`Boot` (carrega sprites, mapas e tilesets) → `Title` → `Prologue` → `World`, com `ClassSelect` (a Ordem de Halmira) entre os dois últimos só pra quem já destravou alguma. Quem cria a partida é `client/src/game/newGame.ts`. `Saves` (a lista de espaços de save) abre a partir do título.
+`Boot` (carrega sprites, mapas e tilesets) → `Title` → `Prologue` → `World`, com `ClassSelect` (a Ordem de Halmira) entre os dois últimos só pra quem já destravou alguma. Quem cria a partida é `client/src/game/newGame.ts`. `Saves` (a lista de espaços de save) abre a partir do título. No mundo: `E` fala, `F` embosca, `R` descansa, `C` abre a ficha, `I` a mochila, `J` o diário, `1`-`9` miram uma habilidade pra abrir uma luta, `Esc` pausa.
 
 A `WorldScene` é exploração e combate na mesma cena, com duas câmeras: a do mundo (zoom 3x, segue o personagem) e a da interface (sem zoom). Todo objeto criado passa por `addWorld` ou `addHud`. O combate em si mora em `client/src/game/combat/`: `CombatController` (entrada → comando, eventos → animação) e `CombatHud` (ordem de turnos, registro, barra de ações, resultado).
 
@@ -197,6 +213,72 @@ npm run balance:matrix --workspace=server       # taxa de vitória de cada Ordem
 
 - A versão em React (mapa em React Flow, combate em Framer Motion, login por Supabase) está na tag `v0-codice`.
 - O combate 1 contra 1 por posturas, com tela de batalha própria, e a integração com o balanceador em Python `ealen-IA` (política de Q-learning, `iaTuning.json`) foram removidos na fase 3 e estão no histórico do git, até o commit `7d16c97`. O `ealen-IA` está aposentado: balanceamento agora é rodar o motor real (`balance:matrix`). Dele sobraram só os atributos iniciais das Ordens, fixados em `shared/characterCreation.ts`.
+
+## Tasks
+
+O que falta, por prioridade. **Tudo que existe hoje é placeholder** (cenários, nomes, falas, números, kits): a lista é de SISTEMAS, não de conteúdo. Ao terminar uma task, tire-a daqui, descreva o que entrou na seção de arquitetura e acrescente a fase na lista de fases.
+
+Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz falta em qualquer RPG, entra logo depois · **P2** = dá corpo ao jogo, pode esperar · **P3** = produto e acabamento.
+
+### P0 — sem isto não há capítulo
+
+| # | Task | O que é | Depende de |
+|---|---|---|---|
+| 1 | **Kits de habilidade de verdade** | Trocar os kits provisórios (as cinco posturas iguais pra toda Ordem) pelo que cada Ordem e cada pessoa do elenco realmente faz. | História |
+| 2 | **Recurso e recarga de habilidade** | Hoje nada custa além da ação do turno, e a cura fora de luta só custa relógio. Falta um recurso (fôlego, ressonância, cargas por descanso) e tempo de recarga. | — |
+| 3 | **Equipamento** | Arma, armadura e acessório por pessoa; a arma dá o dado e o alcance do golpe, a armadura entra na defesa. Tela de equipar na ficha. As categorias `relic` e `rune` já existem no tipo de item, sem uso. | 2 ajuda |
+| 4 | **Inventário e habilidades dos companheiros** | Hoje a mochila é uma só e companheiro não carrega nem usa item. Falta: cada um com o que leva pra luta (cinto de itens), usar item em luta com a vez dele, passar item de um pro outro, equipar cada um, e escolher que habilidades cada um leva. | 3 |
+| 5 | **Combate à distância de verdade** | Hoje distância é só um `range` maior. Falta: munição, alcance curto/longo com penalidade, desvantagem atirando colado num inimigo, cobertura parcial e total, altura alongando o alcance, arremesso de item (em aliado e em inimigo), tiro de reação em quem entra no alcance (vigia). | 3 |
+| 6 | **Progressão** | Subir de nível só soma atributos. Falta: escolher habilidade nova, o GRAU do estilo valer alguma coisa (hoje só aparece na tela) e subir, e pontos de atributo pra distribuir. | 1 |
+| 7 | **Fichas de verdade da gente do capítulo** | Fiscal, mergulhador e Taevel existem e lutam, mas números, kits, falas e lugar são provisórios. O mesmo pro elenco (Lish, Varel, Gil). | História |
+| 8 | **O que destrava cada Ordem** | `unlock_order` existe e ninguém o chama. | História |
+
+### P1 — o que todo RPG tem
+
+| # | Task | O que é |
+|---|---|---|
+| 9 | **Mochila completa** | Descartar, ordenar, itens-chave (que não se gastam nem se jogam fora), materiais, limite por peso ou espaço que importe, item usado em luta escolhendo o alvo. |
+| 10 | **Dinheiro e comércio** | Cobre e prata; loja (comprar, vender, estoque), preço por lugar. |
+| 11 | **Descanso de verdade** | `R` cura tudo de graça em qualquer lugar. Trocar por acampamento/estalagem, com custo, lugar certo e o que o descanso recarrega (ver 2). |
+| 12 | **Furtividade** | A emboscada hoje é só distância e parede. Falta cone de visão e de que lado o inimigo olha, andar agachado, ruído, e o inimigo que desconfia antes de perceber. |
+| 13 | **Golpe de abertura, o resto** | Balancear (hoje é golpe grátis MAIS a surpresa, e deixa o `F` sem graça); companheiro dar o primeiro golpe; mirar um quadrado com área; acertar destrutível fora de luta (o barril de óleo); mouse na ficha e na mochila. |
+| 14 | **Mais condições e tipos de dano** | Veneno, sangramento, atordoado, preso, silenciado, medo, cego; dano com tipo (corte, perfuração, o de cada Princípio) e resistência/fraqueza por criatura. |
+| 15 | **Mais verbos de combate** | Empurrar, derrubar, agarrar, disparada, esconder-se no meio da luta, ajudar um aliado, preparar uma ação pra depois; reações além do ataque de oportunidade (aparar, interceptar). |
+| 16 | **Cair e levantar** | Quem chega a 0 some da luta. Falta o caído que ainda pode ser levantado (por item, por cura, por um aliado colado) e o que acontece se ninguém levanta. |
+| 17 | **Registro de missões** | O diário guarda fatos soltos. Falta a lista do que há pra fazer (aberta, feita, falhada), com o que cada uma pede, sem dizer a conclusão ao jogador. |
+| 18 | **O diário se apagando à vista** | Hoje a caixa anuncia e a tela mostra o branco. Falta a anotação sumir diante do jogador, e o pedaço de mapa que some junto. |
+| 19 | **Mapa** | Mapa da área, mapa do mundo (o grafo de áreas), marcadores, viagem rápida entre lugares já visitados. |
+| 20 | **Som** | Música por área e por luta, efeitos de golpe e de passo, som de interface, volume. Nada existe. |
+| 21 | **Relógio dentro da luta** | O tempo já corre por rodada, mas o que ele fecha só se confere no fim. Falta a deixa que espera o relógio (`when: clock N`) e o relógio que anda sozinho fora de luta (por passo, por área). |
+| 22 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
+| 23 | **IA de companheiro** | Companheiro é sempre comandado pelo jogador. Falta a opção de deixá-lo por conta própria, com ordens simples (guardar, avançar, proteger alguém). |
+
+### P2 — corpo
+
+| # | Task | O que é |
+|---|---|---|
+| 24 | **Arte final** | Sprites, tilesets, retratos pra ficha e pra caixa de diálogo, animações próprias de ataque, dano e morte, efeitos. Trocar sprite já é uma linha em `MAP_SHEETS`. |
+| 25 | **Relíquias e runas** | Itens que não se gastam: efeito passivo, encaixe em equipamento. As armas lendárias da história entram aqui. |
+| 26 | **Coleta e preparo** | Materiais no mapa e no espólio; receitas de consumível. |
+| 27 | **Companheiros como gente** | Afinidade, conversa de acampamento, comentário no meio do diálogo dos outros, missão pessoal, discordar de uma escolha. |
+| 28 | **Reputação** | Como cada facção e cada lugar vê Halmira, e o que isso abre ou fecha (preço, diálogo, saída). |
+| 29 | **Códice** | O que o jogador já viu: bestiário (com o que descobriu de cada criatura — estilo, mania, fraqueza), gente, lugares. |
+| 30 | **Mais apoios** | Hoje só existe Anotar (Gil). Apoio novo é uma linha em `SUPPORTS`, mas faltam os tipos (curar de fora, distrair, avisar). |
+| 31 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
+| 32 | **Terreno que muda** | Água, lama, ponte que cai, porta que se fecha no meio da luta; luz e escuro pesando na visão; hora do dia e clima. |
+| 33 | **Tutorial** | Ensinar movimento, ação, bônus, reação, cobertura, flanco, estilo e emboscada dentro do jogo, na ordem em que aparecem. |
+| 34 | **Opções** | Dificuldade, velocidade das animações, teclas remapeáveis, controle, tamanho da letra. |
+| 35 | **Balanceamento** | `balance:matrix` roda Ordem x criatura sozinha no nível 1. Falta grupo x grupo, por nível, com equipamento e item. |
+
+### P3 — produto
+
+| # | Task | O que é |
+|---|---|---|
+| 36 | **Empacotar** | Electron, página na Steam, conquistas. O build já usa caminhos relativos. |
+| 37 | **Save na nuvem** | O `server/` ficou como base; o jogo não depende dele. |
+| 38 | **Jogo novo com o que se levou** | New Game+: Ordens destravadas já existem no perfil; falta o resto. |
+| 39 | **Tradução e acessibilidade** | Texto fora do código (o do jogo já está em Ink; o da interface não), daltonismo, leitor de tela onde der. |
+| 40 | **Casa em ordem** | O pacote do client passa de 500 kB num arquivo só (dividir); `tsc` acusa erros de tipo em `shared/tactics/__tests__/styles.test.ts` (os testes rodam, por `tsx`); o `server/` ainda carrega rotas da versão antiga. |
 
 ## Referência: Sistema de Atributos (Tirán)
 

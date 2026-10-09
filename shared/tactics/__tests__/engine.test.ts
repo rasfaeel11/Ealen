@@ -432,3 +432,91 @@ test("uma emboscada joga até o fim com a IA, e a mesma seed dá a mesma luta", 
     assert.deepEqual(log, fight(seed));
   }
 });
+
+// --- O golpe que abre a luta --------------------------------------------------
+
+test("o golpe de abertura acontece antes da primeira rodada e não gasta nada do primeiro turno", () => {
+  const { grid, markers } = gridFromAscii(["A....E"]);
+  const { encounter, events } = startEncounter({
+    grid,
+    units: [
+      makeUnit("E", "enemy", markers.E[0], { attributes: { il: FIRST }, currentHp: 500, maxHp: 500 }),
+      makeUnit("A", "party", markers.A[0], { characterClass: "rachador" }),
+    ],
+    surprised: "enemy",
+    opening: { unitId: "A", abilityId: "rachador.attack", target: markers.E[0] },
+    seed: 1,
+  });
+
+  const types = events.map((event) => event.type);
+  assert.equal(eventsOf(events, "abilityUsed").length, 1);
+  assert.ok(types.indexOf("abilityUsed") < types.indexOf("roundStarted"));
+  assert.ok(types.indexOf("attackRoll") < types.indexOf("roundStarted"));
+  // E perde a vez (surpreso) e a primeira de verdade é de A, com tudo.
+  assert.equal(activeUnit(encounter)!.id, "A");
+  assert.deepEqual(unit(encounter, "A").turn, { movement: 6, action: true, bonus: true, reaction: true });
+  assert.equal(unit(encounter, "A").habit, undefined, "não foi a ação de um turno");
+});
+
+test("quem luta de perto corre até o quadrado da investida e bate de lá", () => {
+  const { grid, markers } = gridFromAscii(["A.....E"]);
+  const { encounter, events } = startEncounter({
+    grid,
+    units: [
+      makeUnit("A", "party", markers.A[0]),
+      makeUnit("E", "enemy", markers.E[0], { currentHp: 500, maxHp: 500 }),
+    ],
+    surprised: "enemy",
+    opening: { unitId: "A", abilityId: "guardiao.attack", target: markers.E[0], from: { x: 5, y: 0 } },
+    seed: 1,
+  });
+
+  assert.equal(eventsOf(events, "moved")[0].path.length, 5);
+  assert.deepEqual(unit(encounter, "A").pos, { x: 5, y: 0 });
+  assert.equal(eventsOf(events, "abilityUsed")[0].unit, "A");
+  assert.equal(unit(encounter, "A").turn.movement, 6);
+});
+
+test("golpe de abertura que não vale não acontece: a luta começa sem ele", () => {
+  const { grid, markers } = gridFromAscii(["A.........E"]);
+  const start = (opening: { abilityId: string; from?: Pos }) =>
+    startEncounter({
+      grid,
+      units: [makeUnit("A", "party", markers.A[0]), makeUnit("E", "enemy", markers.E[0])],
+      opening: { unitId: "A", target: markers.E[0], ...opening },
+      seed: 1,
+    });
+
+  // Longe demais pra espada, quadrado aonde não se chega num turno, habilidade que ele não tem.
+  for (const opening of [
+    { abilityId: "guardiao.attack" },
+    { abilityId: "guardiao.attack", from: { x: 9, y: 0 } },
+    { abilityId: "rachador.attack" },
+  ]) {
+    const { encounter, events } = start(opening);
+    assert.deepEqual(eventsOf(events, "abilityUsed"), []);
+    assert.deepEqual(eventsOf(events, "moved"), []);
+    assert.deepEqual(unit(encounter, "A").pos, markers.A[0]);
+    assert.equal(encounter.round, 1);
+  }
+});
+
+test("um golpe de abertura que derruba o último inimigo acaba a luta antes de ela começar", () => {
+  const { grid, markers } = gridFromAscii(["AE"]);
+  const outcomes = SEEDS.map((seed) => {
+    const { encounter, events } = startEncounter({
+      grid,
+      units: [makeUnit("A", "party", markers.A[0]), makeUnit("E", "enemy", markers.E[0], { currentHp: 1 })],
+      surprised: "enemy",
+      opening: { unitId: "A", abilityId: "guardiao.attack", target: markers.E[0] },
+      seed,
+    });
+    if (encounter.winner === "party") {
+      assert.deepEqual(eventsOf(events, "turnStarted"), []);
+      assert.deepEqual(eventsOf(events, "battleEnded"), [{ type: "battleEnded", winner: "party" }]);
+    }
+    return encounter.winner;
+  });
+  assert.ok(outcomes.includes("party"), "algum golpe acerta");
+  assert.ok(outcomes.includes(undefined), "e algum erra: aí a luta segue");
+});

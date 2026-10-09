@@ -2,7 +2,7 @@ import { addItemToInventory } from "../inventoryEffects";
 import { applyXpGain, xpForEnemy } from "../leveling";
 import { creatureQuirks, findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { findItemTemplate } from "../mock/items";
-import { startEncounter } from "../tactics/engine";
+import { startEncounter, type Opening } from "../tactics/engine";
 import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "../tactics/grid";
 import { isPropId, standProp, type Prop } from "../tactics/props";
 import { isStatusId, type StatusId } from "../tactics/statuses";
@@ -214,7 +214,8 @@ export function fightCues(
  * fichas de quem acompanha o grupo sem lutar — não viram unidade, viram o
  * apoio que oferecem (quem não oferece nenhum é ignorado); `lasting`, as
  * condições com que alguém já chega e que duram a luta toda, pelo id (o que
- * a história pôs com `afflict`).
+ * a história pôs com `afflict`); `opening`, o golpe dado de fora da luta que
+ * a começa (ver Opening no motor e openingStrikes em ./field.ts).
  *
  * O estilo e o que cada um do grupo sabe além do kit vêm do elenco
  * (../party.ts); os das criaturas, do bestiário.
@@ -229,6 +230,7 @@ export function startAreaEncounter(
   cues: Cue[] = [],
   onlookers: readonly Character[] = [],
   lasting: Record<string, readonly StatusId[]> = {},
+  opening?: Opening,
 ): { encounter: Encounter; events: TacticalEvent[] } {
   const supporters = onlookers.flatMap((character) => {
     const support = supportOf(character);
@@ -253,7 +255,7 @@ export function startAreaEncounter(
       }),
     );
   }
-  return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, lasting, seed });
+  return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, lasting, opening, seed });
 }
 
 /**
