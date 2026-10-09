@@ -107,7 +107,9 @@ export class CombatHud {
       // Quem não tem vida pra perder não tem número pra mostrar.
       return unit.invulnerable ? `${marker}${unit.name}   —` : `${marker}${unit.name}   ${unit.currentHp}/${unit.maxHp}`;
     });
-    this.turnOrder.setText([`Rodada ${encounter.round}`, ...lines].join("\n"));
+    // Quem acompanha sem lutar fica no fim, fora da ordem: mostra se o apoio dele ainda vale nesta rodada.
+    const supporters = encounter.supporters.map((supporter) => `   ${supporter.name}   apoio ${supporter.ready ? "●" : "○"}`);
+    this.turnOrder.setText([`Rodada ${encounter.round}`, ...lines, ...supporters].join("\n"));
   }
 
   /** Os objetivos da luta em aberto, no alto da tela. Sem nenhum, a caixa some. */

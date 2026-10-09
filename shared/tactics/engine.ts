@@ -1,3 +1,4 @@
+import { foresee } from "./ai";
 import { attackEdge, attackTotals } from "./attack";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
@@ -14,7 +15,8 @@ import {
   type SurfaceId,
   type SurfaceTemplate,
 } from "./surfaces";
-import { abilityTargets, affectedProps, affectedUnits, interactTargets } from "./targeting";
+import { SUPPORTS, type SupportId, type SupportTemplate } from "./supports";
+import { abilityTargets, affectedProps, affectedUnits, interactTargets, supportTargets } from "./targeting";
 import type {
   Ability,
   AbilityCost,
@@ -63,6 +65,8 @@ export interface EncounterSetup {
    * com um lado inteiro no chão.
    */
   cues?: Cue[];
+  /** Quem acompanha o grupo do jogador sem lutar, e o apoio que cada um oferece (ver ./supports.ts). */
+  supporters?: { id: string; name: string; support: SupportId }[];
   seed: number;
 }
 
@@ -81,6 +85,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     props: setup.props ?? [],
     surfaces: [],
     cues: [...(setup.cues ?? [])],
+    supporters: (setup.supporters ?? []).map((supporter) => ({ ...supporter, ready: true })),
     rngState: setup.seed >>> 0,
   };
 
@@ -139,6 +144,8 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
       return useItem(unit, command.itemId, events);
     case "interact":
       return interact(encounter, unit, command.target, events);
+    case "support":
+      return support(encounter, unit, command.supporterId, command.target, events);
     case "endTurn":
       events.push({ type: "turnEnded", unit: unit.id });
       return undefined;
@@ -163,6 +170,8 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
         encounter.turnIndex = 0;
         encounter.round += 1;
         events.push({ type: "roundStarted", round: encounter.round });
+        // Rodada nova: quem apoia pode ser chamado de novo.
+        for (const supporter of encounter.supporters) supporter.ready = true;
         tickSurfaces(encounter, events);
         // Uma deixa de rodada pode parar a luta aqui, antes de a vez de alguém começar.
         if (fireCues(encounter, events)) return;
@@ -647,6 +656,61 @@ function interact(encounter: Encounter, unit: Unit, target: Pos, events: Tactica
     pos: { ...prop.pos },
   });
   return undefined;
+}
+
+// --- Apoios -----------------------------------------------------------------
+
+/**
+ * Chama o apoio de quem acompanha o grupo sem lutar. Não gasta nada de quem
+ * chama: o que se gasta é o apoio, que só volta na rodada seguinte.
+ */
+function support(
+  encounter: Encounter,
+  unit: Unit,
+  supporterId: string,
+  target: Pos,
+  events: TacticalEvent[],
+): CommandError | undefined {
+  const supporter = encounter.supporters.find((candidate) => candidate.id === supporterId);
+  if (!supporter) return "unknown_ability";
+  if (!supporter.ready) return "resource_spent";
+  const aimed = supportTargets(encounter, unit, supporter).find((candidate) => samePos(candidate.pos, target));
+  if (!aimed) return "invalid_target";
+
+  supporter.ready = false;
+  const template: SupportTemplate = SUPPORTS[supporter.support];
+  events.push({
+    type: "supportUsed",
+    supporter: supporter.id,
+    supporterName: supporter.name,
+    support: supporter.support,
+    name: template.name,
+    unit: unit.id,
+  });
+
+  switch (template.kind) {
+    case "reveal":
+      events.push(revealIntent(encounter, aimed));
+      return undefined;
+  }
+}
+
+/** O que `unit` pretende fazer na vez dele, como evento (ver foresee em ./ai.ts). Quem vai perder a vez não pretende nada. */
+function revealIntent(encounter: Encounter, unit: Unit): TacticalEvent {
+  if (unit.statuses.some((status) => status.skipsTurn)) {
+    return { type: "intentRevealed", unit: unit.id, tile: { ...unit.pos }, abilities: [], skips: true };
+  }
+  const plan = foresee(encounter, unit.id);
+  return {
+    type: "intentRevealed",
+    unit: unit.id,
+    tile: { ...plan.tile },
+    // O item e a habilidade bônus disputam a mesma ação bônus: com item, a bônus não sai.
+    abilities: [plan.action, plan.item ? undefined : plan.bonus].flatMap((choice) =>
+      choice ? [{ abilityId: choice.ability.id, name: choice.ability.name, target: { ...choice.target } }] : [],
+    ),
+    ...(plan.item ? { item: plan.item.item.name } : {}),
+  };
 }
 
 // --- Itens ------------------------------------------------------------------

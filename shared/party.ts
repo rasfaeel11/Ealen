@@ -1,6 +1,7 @@
 import { createStartingAttributes, createStartingInventory, startingMaxHp } from "./characterCreation";
 import { applyXpGain, xpToNextLevel } from "./leveling";
 import { MOCK_MAP_NODES } from "./mock/seed";
+import type { SupportId } from "./tactics/supports";
 import type { Character } from "./types/character";
 import { CLASS_INFO, type CharacterClass } from "./types/characterClass";
 import type { Race } from "./types/race";
@@ -17,6 +18,10 @@ import type { Race } from "./types/race";
  * ele. Quem entra e quem sai do grupo é a história que decide (`join_party` e
  * `leave_party` no texto, ver ./story/runner.ts).
  *
+ * Há quem acompanhe SEM lutar (`support` no elenco): anda na fila como os
+ * outros, mas numa luta não é unidade — fica de fora da grade e oferece um
+ * apoio que o grupo chama (ver ./tactics/supports.ts).
+ *
  * As Ordens aqui são PROVISÓRIAS: a história fala em estilos (Maré, Viés,
  * Baluarte) que o motor ainda não tem, e cada um ganhou o kit da Ordem que
  * mais se parece com o papel dele.
@@ -28,7 +33,10 @@ export const HERO_ID = "hero";
 export interface CastMember {
   name: string;
   race: Race;
+  /** A Ordem dá o kit de quem luta e, por enquanto, a cara de todos no mapa. */
   characterClass: CharacterClass;
+  /** Acompanha sem lutar: numa luta não é unidade, e oferece este apoio. */
+  support?: SupportId;
 }
 
 export const PROTAGONIST: CastMember = { name: "Halmira", race: "miraven", characterClass: "guardiao" };
@@ -37,6 +45,8 @@ export const PROTAGONIST: CastMember = { name: "Halmira", race: "miraven", chara
 export const COMPANIONS: Record<string, CastMember> = {
   lish: { name: "Lish", race: "kelbar", characterClass: "sombrilico" },
   varel: { name: "Varel", race: "miraven", characterClass: "cantor_de_ealen" },
+  // Não luta: anota. A Ordem é só a cara dele no mapa, por enquanto.
+  gil: { name: "Gil", race: "althirim", characterClass: "luminar", support: "annotate" },
 };
 
 export function isCompanionKey(key: string): boolean {
@@ -45,7 +55,21 @@ export function isCompanionKey(key: string): boolean {
 
 /** O id da ficha (e da unidade, numa luta) do companheiro de chave `key`. */
 export function companionId(key: string): string {
-  return `companion:${key}`;
+  return `${COMPANION_ID}${key}`;
+}
+
+const COMPANION_ID = "companion:";
+
+/** O apoio que a ficha `character` oferece numa luta, se ela é de quem acompanha sem lutar. Undefined em quem luta. */
+export function supportOf(character: Pick<Character, "id">): SupportId | undefined {
+  if (!character.id.startsWith(COMPANION_ID)) return undefined;
+  const key = character.id.slice(COMPANION_ID.length);
+  return isCompanionKey(key) ? COMPANIONS[key].support : undefined;
+}
+
+/** Entra na luta como unidade? Só não entra quem acompanha sem lutar. */
+export function fights(character: Pick<Character, "id">): boolean {
+  return supportOf(character) === undefined;
 }
 
 export function isOrder(value: unknown): value is CharacterClass {

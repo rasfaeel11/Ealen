@@ -68,6 +68,10 @@ Andarilha: Faz três noites que eu não durmo direito. Toma. Não é muito, mas 
     Andarilha: Ele não fala muito. Serve.
     ~ leave_party("lish")
     -> perguntas
++ {in_party("gil")} [Pedir que Gil fique com ela.]
+    Andarilha: Esse fala. Tá bom, eu aguento.
+    ~ leave_party("gil")
+    -> perguntas
 + [Seguir caminho.]
     Andarilha: Vai com o ouvido aberto.
     -> END
@@ -86,6 +90,24 @@ Andarilha: Faz três noites que eu não durmo direito. Toma. Não é muito, mas 
 + [Chamar Lish pra ir junto.]
     Lish: Então eu vou atrás. Não me espere falar.
     ~ join_party("lish")
+    -> END
++ [Deixar pra depois.]
+    -> END
+
+// PROVISÓRIO: Gil é quem acompanha SEM lutar (`support` em COMPANIONS). Anda
+// na fila como Lish, mas numa luta não é unidade: fica de fora e oferece o
+// apoio dele (Anotar: mostra o que um inimigo pretende fazer), que qualquer
+// um do grupo chama na própria vez, uma vez por rodada.
+=== gil ===
+{gil == 1:
+    Um rapaz de dedos manchados de tinta escreve de pé, com a tábua apoiada no braço, e não para quando você chega.
+    Gil: Eu não sei bater em ninguém. Mas eu vejo a mão subir antes do golpe, e anoto. Às vezes ajuda.
+- else:
+    Gil: Ainda tenho tinta.
+}
++ [Chamar Gil pra ir junto.]
+    Gil: Eu fico atrás. Sempre fico.
+    ~ join_party("gil")
     -> END
 + [Deixar pra depois.]
     -> END

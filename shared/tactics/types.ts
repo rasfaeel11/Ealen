@@ -5,6 +5,7 @@ import type { Grid, Pos } from "./grid";
 import type { Prop } from "./props";
 import type { Dice } from "./rng";
 import type { ActiveStatus, StatusId } from "./statuses";
+import type { SupportId, Supporter } from "./supports";
 import type { Surface, SurfaceId } from "./surfaces";
 
 export type TeamId = "party" | "enemy";
@@ -198,6 +199,8 @@ export interface Encounter {
   surfaces: Surface[];
   /** As deixas que ainda não dispararam, na ordem em que foram declaradas (ver Cue). */
   cues: Cue[];
+  /** Quem acompanha o grupo do jogador sem lutar, e o apoio de cada um (ver ./supports.ts). */
+  supporters: Supporter[];
   rngState: number;
   /** Preenchido quando um dos lados acaba, ou quando uma deixa dá a vitória. Depois disso nenhum comando é aceito. */
   winner?: TeamId;
@@ -212,6 +215,8 @@ export type Command =
   | { type: "useItem"; unitId: string; itemId: string }
   /** Mexe no objeto em `target` (um destrutível com `interact`, ver ./props.ts), colado nele. Custa a ação. */
   | { type: "interact"; unitId: string; target: Pos }
+  /** Chama o apoio de quem acompanha sem lutar (ver ./supports.ts) sobre `target`. Não gasta nada de quem chama; uma vez por rodada. */
+  | { type: "support"; unitId: string; supporterId: string; target: Pos }
   | { type: "endTurn"; unitId: string };
 
 export type AttackOutcome = "hit" | "miss" | "crit" | "fumble";
@@ -262,6 +267,21 @@ export type TacticalEvent =
   /** `unit` mexeu no objeto `prop`; `verb` é o que se faz com ele ("Tocar"). */
   | { type: "propUsed"; unit: string; prop: string; name: string; verb: string; pos: Pos }
   | { type: "itemUsed"; unit: string; itemId: string; itemName: string; description: string }
+  /** `supporter` (que não luta) deu o apoio dele, chamado por `unit`. O que o apoio fez vem logo depois. */
+  | { type: "supportUsed"; supporter: string; supporterName: string; support: SupportId; name: string; unit: string }
+  /**
+   * O que `unit` pretende fazer na vez dele, pelo que a luta é agora: onde
+   * parar (`tile`; o próprio quadrado se não vai andar), que habilidades usar
+   * de lá e em quê, e que item. Com `skips`, ele vai perder a vez.
+   */
+  | {
+      type: "intentRevealed";
+      unit: string;
+      tile: Pos;
+      abilities: { abilityId: string; name: string; target: Pos }[];
+      item?: string;
+      skips?: boolean;
+    }
   | { type: "death"; unit: string }
   /** A deixa `id` disparou. Se ela encerra a luta, o `battleEnded` vem logo depois. */
   | { type: "cue"; id: string }

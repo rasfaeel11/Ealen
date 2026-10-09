@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { createProtagonist, joinParty, leaveParty, partyCondition, presentCompanions, restoreParty, type PartyMember } from "../../party";
+import {
+  createProtagonist,
+  fights,
+  joinParty,
+  leaveParty,
+  partyCondition,
+  presentCompanions,
+  restoreParty,
+  supportOf,
+  type PartyMember,
+} from "../../party";
 import { applyCommand, chooseCommand, findUnit } from "../../tactics";
 import { samePos, tileAt } from "../../tactics/grid";
 import {
@@ -171,4 +181,34 @@ test("uma condição de mapa pode perguntar pelo grupo: party:lish vale enquanto
   // O que não pergunta pelo grupo, ou pergunta por quem não existe, fica pra história responder (ou pro teste acusar).
   assert.equal(partyCondition("sentinela_fora", members), undefined);
   assert.equal(partyCondition("party:ninguem", members), undefined);
+});
+
+test("quem acompanha sem lutar entra na luta como apoio, não como unidade", () => {
+  const { map, props } = loadArea("clareira");
+  const hero = createProtagonist();
+  const members: PartyMember[] = [];
+  joinParty(members, "lish", 1);
+  joinParty(members, "gil", 1);
+  const [lish, gil] = presentCompanions(members);
+  assert.equal(fights(lish), true);
+  assert.equal(fights(gil), false);
+  assert.equal(fights(hero), true);
+  assert.equal(supportOf(gil), "annotate");
+
+  const heroTile = tileOfPixel(map, map.spawns.default);
+  const group = map.enemies.filter((enemy) => enemy.group === "fiapo");
+  const party = placeParty(map, hero, heroTile, [{ character: lish, at: pixelOfTile(map, { x: heroTile.x - 1, y: heroTile.y }) }]);
+  // Passar quem luta entre os que só olham não o tira da luta nem faz dele apoio.
+  const { encounter } = startAreaEncounter(map, party, group, 5, props, undefined, [], [gil, lish]);
+
+  assert.deepEqual(encounter.supporters, [{ id: gil.id, name: "Gil", support: "annotate", ready: true }]);
+  assert.equal(findUnit(encounter, gil.id), undefined);
+  assert.ok(findUnit(encounter, lish.id));
+
+  // Fora da luta ele é do grupo como os outros: a vitória devolve as fichas e paga o XP sem tropeçar nele.
+  const before = gil.currentHp;
+  syncPartyFromEncounter(encounter, [hero, lish, gil], true);
+  assert.equal(gil.currentHp, before);
+  const rewards = grantEncounterRewards(hero, group.map((enemy) => enemy.creature), { rngState: 1 }, [], [lish, gil]);
+  assert.ok(rewards.xpGained > 0);
 });

@@ -3,6 +3,7 @@ export * from "./grid";
 export * from "./statuses";
 export * from "./surfaces";
 export * from "./props";
+export * from "./supports";
 export * from "./types";
 export * from "./abilities";
 export * from "./units";

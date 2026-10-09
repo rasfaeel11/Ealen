@@ -1,5 +1,6 @@
 import { distance, hasLineOfSight, posOfIndex, tileAt, type Pos } from "./grid";
 import { isBreakable, propAt, propTemplate, type Prop } from "./props";
+import type { Supporter } from "./supports";
 import type { Ability, Encounter, Unit } from "./types";
 import { isAlive, unitAt } from "./units";
 
@@ -99,4 +100,15 @@ export function interactTargets(encounter: Encounter, unit: Unit): Prop[] {
       propTemplate(prop).interact !== undefined &&
       distance(unit.pos, prop.pos) <= INTERACT_RANGE,
   );
+}
+
+/**
+ * Quem o apoio de `supporter` pode mirar agora, chamado por `unit` (comando
+ * `support`): qualquer inimigo de pé — quem apoia olha a luta de fora, não
+ * precisa de alcance nem de linha de visão. Ninguém, se o apoio já foi dado
+ * nesta rodada ou se quem chama não é do grupo do jogador.
+ */
+export function supportTargets(encounter: Encounter, unit: Unit, supporter: Supporter): Unit[] {
+  if (unit.team !== "party" || !supporter.ready) return [];
+  return encounter.units.filter((other) => other.team !== unit.team && isAlive(other));
 }

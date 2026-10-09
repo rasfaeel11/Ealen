@@ -24,6 +24,7 @@ import {
   npcInReach,
   parseTiledMap,
   chargeSavedClock,
+  fights,
   clockCondition,
   partyCondition,
   peopleTiles,
@@ -546,7 +547,10 @@ export default class WorldScene extends Phaser.Scene {
 
   private refreshStatus(): void {
     const { name, level, currentHp, maxHp } = this.character;
-    const company = this.followers.map(({ character }) => `   |   ${character.name}  ${character.currentHp}/${character.maxHp}`);
+    // Quem acompanha sem lutar não tem vida que importe mostrar.
+    const company = this.followers.map(({ character }) =>
+      fights(character) ? `   |   ${character.name}  ${character.currentHp}/${character.maxHp}` : `   |   ${character.name}`,
+    );
     this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}${company.join("")}`);
   }
 
@@ -701,18 +705,22 @@ export default class WorldScene extends Phaser.Scene {
     this.halt();
     this.pos = pixelOfTile(this.map, playerTile);
     this.player.place(this.pos);
-    const party = placeParty(
+    // Todo mundo ganha um quadrado só seu pra ficar de pé, mas quem acompanha sem lutar não vira unidade: vira apoio.
+    const placed = placeParty(
       this.map,
       this.character,
       playerTile,
       this.followers.map((follower) => ({ character: follower.character, at: follower.pos })),
       fighters.map((enemy) => tileOfPixel(this.map, enemy)),
     );
+    const party = placed.filter((fighter) => fights(fighter.character));
+    const onlookers = this.followers.filter((follower) => !fights(follower.character));
 
     const actors = new Map<string, MapActor>([[this.character.id, this.player]]);
     for (const enemy of fighters) actors.set(enemy.id, this.enemyActors.get(enemy.id)!);
+    // Quem só olha também entra aqui: o combate precisa saber onde ele está pra mostrar o apoio saindo dele.
     for (const follower of this.followers) {
-      const tile = party.find((fighter) => fighter.character === follower.character)?.tile;
+      const tile = placed.find((fighter) => fighter.character === follower.character)?.tile;
       if (!tile) continue;
       follower.pos = pixelOfTile(this.map, tile);
       follower.actor.place(follower.pos);
@@ -734,6 +742,7 @@ export default class WorldScene extends Phaser.Scene {
         fighters,
         party.map((fighter) => fighter.character.id),
       ),
+      onlookers.map((follower) => follower.character),
     );
 
     this.statusText.setVisible(false);

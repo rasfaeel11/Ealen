@@ -4,6 +4,7 @@ import {
   FLANK_TO_HIT,
   HEIGHT_TO_HIT,
   PROPS,
+  SUPPORTS,
   SURFACES,
   abilityTargets,
   activeUnit,
@@ -20,6 +21,7 @@ import {
   tileAt,
   reachableTiles,
   samePos,
+  supportTargets,
   tileOfPixel,
   unitAt,
   type Ability,
@@ -31,6 +33,7 @@ import {
   type Encounter,
   type PixelPos,
   type Pos,
+  type Supporter,
   type SurfaceId,
   type TacticalEvent,
   type TeamId,
@@ -44,7 +47,7 @@ import { CombatHud, type ActionButton, type AddHud } from "./CombatHud";
 export interface CombatHost {
   scene: Phaser.Scene;
   map: AreaMap;
-  /** Quem está na luta, pelo id da unidade. */
+  /** Quem está na luta, pelo id da unidade — e quem a acompanha sem lutar, pelo id do apoio. */
   actors: Map<string, MapActor>;
   /** A imagem de cada destrutível de pé na área, pelo id. O combate apaga a de quem quebrar. */
   props: Map<string, Phaser.GameObjects.Image>;
@@ -149,8 +152,11 @@ export class CombatController {
   private busy = true;
   /** A habilidade escolhida; null = modo de movimento. */
   private selected: Ability | null = null;
-  /** Escolhendo em que objeto mexer (o comando `interact`), no lugar de uma habilidade. */
-  private interacting = false;
+  /** Mirando outra coisa que não uma habilidade: um objeto pra mexer (`interact`) ou o alvo de um apoio (`support`). */
+  private aim: { kind: "interact" } | { kind: "support"; supporter: Supporter } | null = null;
+  /** O que cada inimigo anotado pretende fazer na vez dele: onde parar e o que vai atingir. Some quando a vez dele passa. */
+  private readonly foreseen = new Map<string, { tile: Pos; areas: { target: Pos; radius: number }[] }>();
+  private readonly foresight: Phaser.GameObjects.Graphics;
   /** Os objetivos ainda em aberto: as deixas com `goal` que não dispararam. */
   private goals: { id: string; text: string; when: CueWhen }[] = [];
   /** A rodada e os objetos usados como os eventos os mostraram até agora — é o que os objetivos contam. */
@@ -173,6 +179,7 @@ export class CombatController {
     this.overlay = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH));
     this.cursor = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 1));
     this.intent = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 2));
+    this.foresight = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 2));
 
     // Quem não tem vida pra perder não mostra barra de vida.
     for (const unit of encounter.units) {
@@ -217,6 +224,7 @@ export class CombatController {
     this.overlay.destroy();
     this.cursor.destroy();
     this.intent.destroy();
+    this.foresight.destroy();
     this.hud.destroy();
   }
 
@@ -263,7 +271,7 @@ export class CombatController {
 
     this.busy = false;
     this.selected = null;
-    this.interacting = false;
+    this.aim = null;
     this.refresh();
   }
 
@@ -279,7 +287,15 @@ export class CombatController {
       return;
     }
     this.selected = ability;
-    this.interacting = false;
+    this.aim = null;
+    this.refresh();
+  }
+
+  /** O botão de um apoio: escolhe-se depois em quem (um inimigo de pé). */
+  private chooseSupport(supporter: Supporter): void {
+    if (this.busy) return;
+    this.selected = null;
+    this.aim = { kind: "support", supporter };
     this.refresh();
   }
 
@@ -293,7 +309,7 @@ export class CombatController {
       return;
     }
     this.selected = null;
-    this.interacting = true;
+    this.aim = { kind: "interact" };
     this.refresh();
   }
 
@@ -333,12 +349,14 @@ export class CombatController {
     const unit = activeUnit(this.encounter)!;
     const tile = this.tileUnder(pointer);
     if (!this.options.some((option) => samePos(option, tile))) {
-      if (this.selected || this.interacting) this.hud.warn(ERROR_TEXT.invalid_target);
+      if (this.selected || this.aim) this.hud.warn(ERROR_TEXT.invalid_target);
       return;
     }
 
-    if (this.interacting) void this.issue({ type: "interact", unitId: unit.id, target: tile });
-    else if (this.selected) void this.issue({ type: "ability", unitId: unit.id, abilityId: this.selected.id, target: tile });
+    if (this.aim?.kind === "interact") void this.issue({ type: "interact", unitId: unit.id, target: tile });
+    else if (this.aim?.kind === "support") {
+      void this.issue({ type: "support", unitId: unit.id, supporterId: this.aim.supporter.id, target: tile });
+    } else if (this.selected) void this.issue({ type: "ability", unitId: unit.id, abilityId: this.selected.id, target: tile });
     else void this.issue({ type: "move", unitId: unit.id, to: tile });
   }
 
@@ -367,7 +385,7 @@ export class CombatController {
       {
         label: "Mover",
         enabled: unit.turn.movement > 0,
-        selected: this.selected === null && !this.interacting,
+        selected: this.selected === null && !this.aim,
         onClick: () => this.select(null),
       },
       ...unit.abilities.map((ability) => ({
@@ -383,11 +401,19 @@ export class CombatController {
               label: `${propTemplate(inReach[0] ?? usable[0]).interact}: ${propTemplate(inReach[0] ?? usable[0]).name}`,
               tag: "Ação",
               enabled: unit.turn.action && inReach.length > 0,
-              selected: this.interacting,
+              selected: this.aim?.kind === "interact",
               onClick: () => this.chooseInteract(),
             },
           ]
         : []),
+      // Quem acompanha sem lutar: o apoio de cada um, uma vez por rodada, sem gastar nada de quem chama.
+      ...encounter.supporters.map((supporter) => ({
+        label: `${SUPPORTS[supporter.support].name} (${supporter.name})`,
+        tag: "1 por rodada",
+        enabled: supportTargets(encounter, unit, supporter).length > 0,
+        selected: this.aim?.kind === "support" && this.aim.supporter.id === supporter.id,
+        onClick: () => this.chooseSupport(supporter),
+      })),
       ...(unit.inventory?.slots ?? []).map((slot) => ({
         label: `${slot.item.name} ×${slot.quantity}`,
         tag: "Bônus",
@@ -402,8 +428,10 @@ export class CombatController {
       buttons,
       `${unit.name}   ·   Movimento ${unit.turn.movement}/${unit.speed}   ·   Ação ${dot(unit.turn.action)}   ·   Bônus ${dot(unit.turn.bonus)}`,
     );
-    if (this.interacting) this.options = inReach.map((prop) => prop.pos);
-    else if (this.selected) this.options = abilityTargets(encounter, unit, this.selected);
+    if (this.aim?.kind === "interact") this.options = inReach.map((prop) => prop.pos);
+    else if (this.aim?.kind === "support") {
+      this.options = supportTargets(encounter, unit, this.aim.supporter).map((target) => target.pos);
+    } else if (this.selected) this.options = abilityTargets(encounter, unit, this.selected);
     else this.options = reachableTiles(encounter, unit).map((tile) => tile.pos);
     this.drawOptions();
     this.drawCursor();
@@ -455,7 +483,7 @@ export class CombatController {
   }
 
   private optionColor(): number {
-    if (this.interacting) return COLOR_USE;
+    if (this.aim) return COLOR_USE;
     if (!this.selected) return COLOR_MOVE;
     return this.selected.targets === "ally" ? COLOR_ALLY : COLOR_TARGET;
   }
@@ -475,7 +503,14 @@ export class CombatController {
    */
   private detailFor(unit: Unit, hover: Pos | null): string {
     const { encounter, selected } = this;
-    if (this.interacting) {
+    if (this.aim?.kind === "support") {
+      const { name, flavor } = SUPPORTS[this.aim.supporter.support];
+      const target = hover ? unitAt(encounter, hover) : undefined;
+      return target
+        ? `${name}: o que ${target.name} pretende fazer na vez dele. Não gasta a sua ação.`
+        : `${name} (${this.aim.supporter.name}) — ${flavor}`;
+    }
+    if (this.aim?.kind === "interact") {
       const prop = hover ? propAt(encounter, hover) : undefined;
       return prop
         ? `${propTemplate(prop).interact}: ${propTemplate(prop).name}. Custa a ação.`
@@ -514,7 +549,7 @@ export class CombatController {
     if (!hover) return;
 
     this.cursor.fillStyle(this.optionColor(), 0.45);
-    if (this.interacting) {
+    if (this.aim) {
       this.fillTile(this.cursor, hover);
       return;
     }
@@ -524,6 +559,25 @@ export class CombatController {
     }
 
     for (const tile of this.areaTiles(hover, this.selected.radius ?? 0)) this.fillTile(this.cursor, tile);
+  }
+
+  /** O que os inimigos anotados pretendem: o quadrado em que cada um vai parar (contorno) e o que vai atingir de lá (cheio). */
+  private drawForeseen(): void {
+    const size = this.host.map.tileSize;
+    this.foresight.clear();
+    for (const { tile, areas } of this.foreseen.values()) {
+      this.foresight.lineStyle(1, COLOR_USE, 0.95);
+      this.foresight.strokeRect(tile.x * size + 1, tile.y * size + 1, size - 2, size - 2);
+      this.foresight.fillStyle(COLOR_TARGET, 0.3);
+      for (const { target, radius } of areas) {
+        for (const hit of this.areaTiles(target, radius)) this.fillTile(this.foresight, hit);
+      }
+    }
+  }
+
+  /** A vez de `unit` passou (ou ele caiu): o que se sabia do plano dele não vale mais. */
+  private forgetForeseen(unit: string): void {
+    if (this.foreseen.delete(unit)) this.drawForeseen();
   }
 
   /**
@@ -580,6 +634,7 @@ export class CombatController {
       }
 
       case "turnEnded":
+        this.forgetForeseen(event.unit);
         return;
 
       case "turnSkipped":
@@ -796,7 +851,44 @@ export class CombatController {
         return;
       }
 
+      case "supportUsed": {
+        const actor = this.actor(event.supporter);
+        this.hud.log(`${event.supporterName}: ${event.name.toLowerCase()}.`);
+        this.floatOver(event.supporter, event.name, TEXT_COLORS.gold, -22, 20);
+        if (actor) this.ring(actor.pos, COLORS.gold);
+        await this.wait(260);
+        return;
+      }
+
+      case "intentRevealed": {
+        const unit = this.unit(event.unit);
+        const actor = this.actor(event.unit);
+        if (actor) this.ring(actor.pos, COLOR_USE);
+        if (event.skips) {
+          this.hud.log(`${unit.name} vai perder a vez.`);
+          await this.wait(320);
+          return;
+        }
+
+        const moves = !samePos(event.tile, unit.pos);
+        const acts = [...event.abilities.map((ability) => `usar ${ability.name}`), ...(event.item ? [`usar ${event.item}`] : [])];
+        const plan = [...(moves ? ["andar"] : []), ...acts];
+        this.hud.log(`${unit.name} pretende ${plan.length > 0 ? plan.join(" e ") : "ficar onde está"}.`);
+        this.floatOver(event.unit, event.abilities[0]?.name ?? (moves ? "Vai andar" : "Vai esperar"), TEXT_COLORS.goldBright, -22, 20);
+        this.foreseen.set(event.unit, {
+          tile: event.tile,
+          areas: event.abilities.map((ability) => ({
+            target: ability.target,
+            radius: unit.abilities.find((candidate) => candidate.id === ability.abilityId)?.radius ?? 0,
+          })),
+        });
+        this.drawForeseen();
+        await this.wait(420);
+        return;
+      }
+
       case "death":
+        this.forgetForeseen(event.unit);
         this.hud.log(`${this.unit(event.unit).name} cai.`);
         await this.actor(event.unit)?.collapse(420);
         return;

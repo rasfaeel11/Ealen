@@ -113,6 +113,23 @@ export function chooseCommand(encounter: Encounter): Command {
   return { type: "endTurn", unitId: unit.id };
 }
 
+/**
+ * O que `unitId` faria se a vez dele começasse AGORA: o plano da IA pra ele,
+ * numa cópia da luta em que é ele quem age, com o turno inteiro pra gastar.
+ * Não muda `encounter` nem rola dado. É uma intenção: até a vez dele chegar,
+ * a luta muda e o plano pode mudar junto.
+ */
+export function foresee(encounter: Encounter, unitId: string): AiPlan {
+  const sim = structuredClone(encounter);
+  const unit = sim.units.find((candidate) => candidate.id === unitId);
+  const turnIndex = sim.order.indexOf(unitId);
+  if (!unit || turnIndex < 0 || !isAlive(unit)) throw new Error(`"${unitId}" não está de pé nesta luta.`);
+
+  sim.turnIndex = turnIndex;
+  unit.turn = { movement: unit.speed, action: true, bonus: true, reaction: unit.turn.reaction };
+  return planTurn(sim);
+}
+
 /** A jogada de maior nota pra quem está no turno. Não muda `encounter`. */
 export function planTurn(encounter: Encounter): AiPlan {
   const actor = activeUnit(encounter);

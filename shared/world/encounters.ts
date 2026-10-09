@@ -12,7 +12,7 @@ import { findUnit, syncCharacterFromUnit, unitFromCharacter } from "../tactics/u
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
 import type { LevelUpResult } from "../types/levelUp";
-import { HERO_ID, companionId } from "../party";
+import { HERO_ID, companionId, supportOf } from "../party";
 import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
 
 /**
@@ -210,7 +210,9 @@ export function fightCues(
  * nela (`props`, de standAreaProps). Inimigo cuja criatura não exista no
  * bestiário é ignorado — o teste dos mapas acusa esse erro antes de ele
  * chegar aqui. `surprised` é o lado pego de surpresa, numa emboscada (ver
- * EncounterSetup); `cues`, o roteiro da luta (de fightCues).
+ * EncounterSetup); `cues`, o roteiro da luta (de fightCues); `onlookers`, as
+ * fichas de quem acompanha o grupo sem lutar — não viram unidade, viram o
+ * apoio que oferecem (quem não oferece nenhum é ignorado).
  */
 export function startAreaEncounter(
   map: AreaMap,
@@ -220,7 +222,12 @@ export function startAreaEncounter(
   props: Prop[] = [],
   surprised?: TeamId,
   cues: Cue[] = [],
+  onlookers: readonly Character[] = [],
 ): { encounter: Encounter; events: TacticalEvent[] } {
+  const supporters = onlookers.flatMap((character) => {
+    const support = supportOf(character);
+    return support ? [{ id: character.id, name: character.name, support }] : [];
+  });
   const units = party.map(({ character, tile }) => unitFromCharacter(character, { team: "party", pos: tile }));
   for (const enemy of enemies) {
     const entry = findBestiaryEntry(enemy.creature);
@@ -235,7 +242,7 @@ export function startAreaEncounter(
       }),
     );
   }
-  return startEncounter({ grid: map.grid, units, props, surprised, cues, seed });
+  return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, seed });
 }
 
 /**
