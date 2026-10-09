@@ -108,6 +108,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     lore: "Rouba memórias recentes para se completar, e nunca se completa. Quem escapa dele volta sem lembrar por quê — e às vezes volta chamando o próprio nome errado.",
     // Quer se completar, não morrer: fica longe e se refaz.
     ai: { caution: 1.2, support: 1.3 },
+    // Um padrão não tem corpo pra ferir: a luta com ele acaba de outro jeito (uma deixa).
+    invulnerable: true,
     carries: ["item-lagrima-de-eir"],
     drops: [
       { itemId: "item-oleo-da-coruja-de-miraven", chance: 0.35 },

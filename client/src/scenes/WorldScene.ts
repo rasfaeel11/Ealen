@@ -705,7 +705,12 @@ export default class WorldScene extends Phaser.Scene {
       seed,
       this.props,
       surprised,
-      fightCues(this.map, cues, fighters),
+      fightCues(
+        this.map,
+        cues,
+        fighters,
+        party.map((fighter) => fighter.character.id),
+      ),
     );
 
     this.statusText.setVisible(false);
@@ -719,6 +724,7 @@ export default class WorldScene extends Phaser.Scene {
         addWorld: (object) => this.addWorld(object),
         addHud: (object) => this.addHud(object),
         onCue: (id) => this.playCue(encounter, cues.find((cue) => cue.id === id)?.dialog),
+        goals: cues.flatMap((cue) => (cue.goal !== undefined ? [{ cue: cue.id, text: cue.goal }] : [])),
       },
       encounter,
       (winner) => void this.endCombat(encounter, group, fighters, winner),

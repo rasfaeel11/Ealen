@@ -12,9 +12,11 @@ import {
   chooseCommand,
   findPath,
   findUnit,
+  interactTargets,
   isOver,
   pixelOfTile,
   propAt,
+  propTemplate,
   tileAt,
   reachableTiles,
   samePos,
@@ -25,6 +27,7 @@ import {
   type AttackOutcome,
   type Command,
   type CommandError,
+  type CueWhen,
   type Encounter,
   type PixelPos,
   type Pos,
@@ -50,6 +53,8 @@ export interface CombatHost {
   addHud: AddHud;
   /** Uma deixa do roteiro da luta disparou: a cena faz o que ela pede (uma fala) e a luta espera. */
   onCue: (id: string) => Promise<void>;
+  /** Os objetivos da luta: o texto de cada deixa que tem um (`goal` no mapa), pelo id dela. */
+  goals?: { cue: string; text: string }[];
 }
 
 /** Entre o chão e tudo que fica de pé: os quadrados acesos passam por baixo de árvores e personagens. */
@@ -69,6 +74,8 @@ const HEAVY_HIT_STOP_MS = 120;
 const COLOR_MOVE = 0x6fa8dc;
 const COLOR_TARGET = 0xe0566c;
 const COLOR_ALLY = 0x7fb069;
+/** Os objetos em que dá pra mexer. */
+const COLOR_USE = 0xe0b85a;
 /** A cor de cada superfície no chão. */
 const SURFACE_COLOR: Record<SurfaceId, number> = { fire: 0xe8792b, frost: 0x9fd8e8 };
 
@@ -140,6 +147,13 @@ export class CombatController {
   private busy = true;
   /** A habilidade escolhida; null = modo de movimento. */
   private selected: Ability | null = null;
+  /** Escolhendo em que objeto mexer (o comando `interact`), no lugar de uma habilidade. */
+  private interacting = false;
+  /** Os objetivos ainda em aberto: as deixas com `goal` que não dispararam. */
+  private goals: { id: string; text: string; when: CueWhen }[] = [];
+  /** A rodada e os objetos usados como os eventos os mostraram até agora — é o que os objetivos contam. */
+  private shownRound = 1;
+  private readonly usedProps = new Set<string>();
   /** Os quadrados clicáveis no modo atual. */
   private options: Pos[] = [];
   private hover: Pos | null = null;
@@ -158,7 +172,15 @@ export class CombatController {
     this.cursor = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 1));
     this.intent = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 2));
 
-    for (const unit of encounter.units) host.actors.get(unit.id)?.setHp(unit.currentHp, unit.maxHp);
+    // Quem não tem vida pra perder não mostra barra de vida.
+    for (const unit of encounter.units) {
+      if (!unit.invulnerable) host.actors.get(unit.id)?.setHp(unit.currentHp, unit.maxHp);
+    }
+    this.goals = encounter.cues.flatMap((cue) => {
+      const goal = host.goals?.find((candidate) => candidate.cue === cue.id);
+      return goal ? [{ id: cue.id, text: goal.text, when: cue.when }] : [];
+    });
+    this.refreshGoals();
 
     scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
@@ -239,6 +261,7 @@ export class CombatController {
 
     this.busy = false;
     this.selected = null;
+    this.interacting = false;
     this.refresh();
   }
 
@@ -254,6 +277,21 @@ export class CombatController {
       return;
     }
     this.selected = ability;
+    this.interacting = false;
+    this.refresh();
+  }
+
+  /** O botão de mexer: com um objeto só ao alcance, mexe nele; com mais de um, deixa escolher. */
+  private chooseInteract(): void {
+    if (this.busy) return;
+    const unit = activeUnit(this.encounter)!;
+    const targets = interactTargets(this.encounter, unit);
+    if (targets.length === 1) {
+      void this.issue({ type: "interact", unitId: unit.id, target: targets[0].pos });
+      return;
+    }
+    this.selected = null;
+    this.interacting = true;
     this.refresh();
   }
 
@@ -293,15 +331,13 @@ export class CombatController {
     const unit = activeUnit(this.encounter)!;
     const tile = this.tileUnder(pointer);
     if (!this.options.some((option) => samePos(option, tile))) {
-      if (this.selected) this.hud.warn(ERROR_TEXT.invalid_target);
+      if (this.selected || this.interacting) this.hud.warn(ERROR_TEXT.invalid_target);
       return;
     }
 
-    void this.issue(
-      this.selected
-        ? { type: "ability", unitId: unit.id, abilityId: this.selected.id, target: tile }
-        : { type: "move", unitId: unit.id, to: tile },
-    );
+    if (this.interacting) void this.issue({ type: "interact", unitId: unit.id, target: tile });
+    else if (this.selected) void this.issue({ type: "ability", unitId: unit.id, abilityId: this.selected.id, target: tile });
+    else void this.issue({ type: "move", unitId: unit.id, to: tile });
   }
 
   // ------------------------------------------------------------- interface
@@ -322,11 +358,14 @@ export class CombatController {
     this.hud.setTurnOrder(encounter);
 
     const canPay = (ability: Ability) => (ability.cost === "action" ? unit.turn.action : unit.turn.bonus);
+    // O botão de mexer existe enquanto houver na luta algo em que mexer, e acende com quem está colado nele.
+    const usable = encounter.props.filter((prop) => prop.hp > 0 && !prop.used && propTemplate(prop).interact !== undefined);
+    const inReach = interactTargets(encounter, unit);
     const buttons: ActionButton[] = [
       {
         label: "Mover",
         enabled: unit.turn.movement > 0,
-        selected: this.selected === null,
+        selected: this.selected === null && !this.interacting,
         onClick: () => this.select(null),
       },
       ...unit.abilities.map((ability) => ({
@@ -336,6 +375,17 @@ export class CombatController {
         selected: this.selected?.id === ability.id,
         onClick: () => this.select(ability),
       })),
+      ...(usable.length > 0
+        ? [
+            {
+              label: `${propTemplate(inReach[0] ?? usable[0]).interact}: ${propTemplate(inReach[0] ?? usable[0]).name}`,
+              tag: "Ação",
+              enabled: unit.turn.action && inReach.length > 0,
+              selected: this.interacting,
+              onClick: () => this.chooseInteract(),
+            },
+          ]
+        : []),
       ...(unit.inventory?.slots ?? []).map((slot) => ({
         label: `${slot.item.name} ×${slot.quantity}`,
         tag: "Bônus",
@@ -350,9 +400,9 @@ export class CombatController {
       buttons,
       `${unit.name}   ·   Movimento ${unit.turn.movement}/${unit.speed}   ·   Ação ${dot(unit.turn.action)}   ·   Bônus ${dot(unit.turn.bonus)}`,
     );
-    this.options = this.selected
-      ? abilityTargets(encounter, unit, this.selected)
-      : reachableTiles(encounter, unit).map((tile) => tile.pos);
+    if (this.interacting) this.options = inReach.map((prop) => prop.pos);
+    else if (this.selected) this.options = abilityTargets(encounter, unit, this.selected);
+    else this.options = reachableTiles(encounter, unit).map((tile) => tile.pos);
     this.drawOptions();
     this.drawCursor();
   }
@@ -403,6 +453,7 @@ export class CombatController {
   }
 
   private optionColor(): number {
+    if (this.interacting) return COLOR_USE;
     if (!this.selected) return COLOR_MOVE;
     return this.selected.targets === "ally" ? COLOR_ALLY : COLOR_TARGET;
   }
@@ -422,6 +473,12 @@ export class CombatController {
    */
   private detailFor(unit: Unit, hover: Pos | null): string {
     const { encounter, selected } = this;
+    if (this.interacting) {
+      const prop = hover ? propAt(encounter, hover) : undefined;
+      return prop
+        ? `${propTemplate(prop).interact}: ${propTemplate(prop).name}. Custa a ação.`
+        : "Clique no objeto em que mexer. Esc ou botão direito volta a andar.";
+    }
     if (!selected) {
       const level = (pos: Pos) => tileAt(encounter.grid, pos)?.elevation ?? 0;
       const hazard = hover ? (findPath(encounter, unit, hover)?.hazard ?? 0) : 0;
@@ -436,6 +493,7 @@ export class CombatController {
     if (prop) return `${PROPS[prop.kind].name}: ${prop.hp} de vida. Objeto não se esquiva — o golpe sempre pega.`;
 
     const target = hover && selected.radius === undefined ? unitAt(encounter, hover) : undefined;
+    if (target?.invulnerable) return `${target.name} não tem vida pra perder: golpe nenhum o fere.`;
     if (!target || !selected.attack) return `${describeAbility(selected)} — ${selected.flavor}`;
 
     const odds = attackOdds(encounter, unit, selected, target);
@@ -454,12 +512,33 @@ export class CombatController {
     if (!hover) return;
 
     this.cursor.fillStyle(this.optionColor(), 0.45);
+    if (this.interacting) {
+      this.fillTile(this.cursor, hover);
+      return;
+    }
     if (!this.selected) {
       for (const step of findPath(this.encounter, unit, hover)?.path ?? []) this.fillTile(this.cursor, step);
       return;
     }
 
     for (const tile of this.areaTiles(hover, this.selected.radius ?? 0)) this.fillTile(this.cursor, tile);
+  }
+
+  /**
+   * Os objetivos em aberto, cada um com a conta que lhe cabe: a de rodadas
+   * (uma deixa `round` dispara quando a rodada N COMEÇA: sobram N-1 pra jogar)
+   * ou a de objetos já mexidos.
+   */
+  private refreshGoals(): void {
+    this.hud.setGoals(
+      this.goals.map(({ text, when }) => {
+        if (when.kind === "round") return `${text} (rodada ${Math.min(this.shownRound, when.round - 1)} de ${when.round - 1})`;
+        if (when.kind === "used" && when.props.length > 1) {
+          return `${text} (${when.props.filter((id) => this.usedProps.has(id)).length}/${when.props.length})`;
+        }
+        return text;
+      }),
+    );
   }
 
   // ------------------------------------------------------------- reprodução
@@ -484,6 +563,8 @@ export class CombatController {
 
       case "roundStarted":
         if (event.round > 1) this.hud.log(`— Rodada ${event.round} —`);
+        this.shownRound = event.round;
+        this.refreshGoals();
         return;
 
       case "turnStarted": {
@@ -592,6 +673,15 @@ export class CombatController {
         return;
       }
 
+      case "immune": {
+        const actor = this.actor(event.target);
+        this.floatOver(event.target, "Nada o fere", TEXT_COLORS.inkDim, -22, 22);
+        if (actor) this.ring(actor.pos, COLORS.guard);
+        this.hud.log(`O golpe atravessa ${this.unit(event.target).name} sem tirar nada.`);
+        await this.wait(260);
+        return;
+      }
+
       case "heal": {
         const unit = this.unit(event.target);
         const actor = this.actor(event.target);
@@ -679,6 +769,22 @@ export class CombatController {
         return;
       }
 
+      case "propUsed": {
+        const at = this.tileCenter(event.pos);
+        const image = this.host.props.get(event.prop);
+        this.actor(event.unit)?.faceToward(at);
+        this.usedProps.add(event.prop);
+        this.refreshGoals();
+        this.floatAt(at, event.verb, TEXT_COLORS.goldBright, -10, 24);
+        this.ring({ x: at.x, y: at.y + this.host.map.tileSize / 2 }, COLORS.gold);
+        this.hud.log(`${this.unit(event.unit).name}: ${event.verb.toLowerCase()} — ${event.name}.`);
+        if (image) {
+          this.host.scene.tweens.add({ targets: image, scaleX: 1.12, scaleY: 0.92, duration: 80, yoyo: true, repeat: 1 });
+        }
+        await this.wait(360);
+        return;
+      }
+
       case "itemUsed": {
         const actor = this.actor(event.unit);
         this.hud.log(`${this.unit(event.unit).name} usa ${event.itemName}: ${event.description}`);
@@ -698,6 +804,9 @@ export class CombatController {
         this.hud.setVisible(false);
         await this.host.onCue(event.id);
         this.hud.setVisible(true);
+        // O objetivo que ela era está cumprido (ou perdido): sai da lista.
+        this.goals = this.goals.filter((goal) => goal.id !== event.id);
+        this.refreshGoals();
         return;
 
       case "battleEnded":

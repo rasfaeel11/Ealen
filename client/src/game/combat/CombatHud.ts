@@ -34,6 +34,7 @@ const BOX_STYLE = { backgroundColor: "rgba(20, 17, 16, 0.82)", padding: { x: 12,
 export class CombatHud {
   private readonly turnOrder: Phaser.GameObjects.Text;
   private readonly logText: Phaser.GameObjects.Text;
+  private readonly goals: Phaser.GameObjects.Text;
   private readonly bar: Phaser.GameObjects.Graphics;
   private readonly resources: Phaser.GameObjects.Text;
   private readonly detail: Phaser.GameObjects.Text;
@@ -42,6 +43,9 @@ export class CombatHud {
   private buttons: ActionButton[] = [];
   private logLines: string[] = [];
   private readonly resultObjects: Phaser.GameObjects.GameObject[] = [];
+  private hasGoals = false;
+  /** Falso enquanto a história fala no meio da luta (ver setVisible). */
+  private shown = true;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -56,6 +60,20 @@ export class CombatHud {
         wordWrap: { width: 400 },
         ...BOX_STYLE,
       }).setOrigin(1, 0),
+    );
+
+    this.goals = addHud(
+      addBodyText(scene, GAME_WIDTH / 2, 20, "", {
+        fontSize: "18px",
+        lineSpacing: 4,
+        align: "center",
+        color: TEXT_COLORS.goldBright,
+        // Cabe entre a ordem dos turnos e o registro.
+        wordWrap: { width: 520 },
+        ...BOX_STYLE,
+      })
+        .setOrigin(0.5, 0)
+        .setVisible(false),
     );
 
     this.bar = addHud(addPanel(scene, BAR_X, BAR_Y, GAME_WIDTH - BAR_X * 2, BAR_HEIGHT, true));
@@ -83,9 +101,17 @@ export class CombatHud {
     const lines = encounter.order.map((id) => {
       const unit = encounter.units.find((candidate) => candidate.id === id)!;
       const marker = unit === active ? "▸ " : "   ";
-      return isAlive(unit) ? `${marker}${unit.name}   ${unit.currentHp}/${unit.maxHp}` : `${marker}${unit.name}   caiu`;
+      if (!isAlive(unit)) return `${marker}${unit.name}   caiu`;
+      // Quem não tem vida pra perder não tem número pra mostrar.
+      return unit.invulnerable ? `${marker}${unit.name}   —` : `${marker}${unit.name}   ${unit.currentHp}/${unit.maxHp}`;
     });
     this.turnOrder.setText([`Rodada ${encounter.round}`, ...lines].join("\n"));
+  }
+
+  /** Os objetivos da luta em aberto, no alto da tela. Sem nenhum, a caixa some. */
+  setGoals(lines: string[]): void {
+    this.hasGoals = lines.length > 0;
+    this.goals.setText(lines.map((line) => `◆ ${line}`).join("\n")).setVisible(this.hasGoals && this.shown);
   }
 
   /** Troca as opções da barra. As nove primeiras ganham as teclas 1 a 9. */
@@ -212,9 +238,11 @@ export class CombatHud {
 
   /** Tira a interface da frente (e a devolve) enquanto a história fala no meio da luta. */
   setVisible(visible: boolean): void {
+    this.shown = visible;
     for (const object of [this.turnOrder, this.logText, this.bar, this.resources, this.detail, this.warning, ...this.buttonTexts]) {
       object.setVisible(visible);
     }
+    this.goals.setVisible(visible && this.hasGoals);
   }
 
   destroy(): void {
@@ -222,6 +250,7 @@ export class CombatHud {
     for (const object of [
       this.turnOrder,
       this.logText,
+      this.goals,
       this.bar,
       this.resources,
       this.detail,

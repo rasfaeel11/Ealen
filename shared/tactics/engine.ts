@@ -14,7 +14,7 @@ import {
   type SurfaceId,
   type SurfaceTemplate,
 } from "./surfaces";
-import { abilityTargets, affectedProps, affectedUnits } from "./targeting";
+import { abilityTargets, affectedProps, affectedUnits, interactTargets } from "./targeting";
 import type {
   Ability,
   AbilityCost,
@@ -39,7 +39,7 @@ import { activeUnit, effectiveAttribute, findUnit, isAlive, isOver, primaryAttri
  *
  * Uma luta anda de comando em comando: `applyCommand` recebe UMA coisa que
  * o combatente da vez quer fazer (andar, usar uma habilidade, usar um item,
- * passar a vez), valida, muta a luta e devolve a lista ORDENADA do que
+ * mexer num objeto, passar a vez), valida, muta a luta e devolve a lista ORDENADA do que
  * aconteceu. Não anima nada, não espera nada, não sabe se quem pediu foi um
  * clique ou a IA.
  *
@@ -137,6 +137,8 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
       return useAbility(encounter, unit, command.abilityId, command.target, events);
     case "useItem":
       return useItem(unit, command.itemId, events);
+    case "interact":
+      return interact(encounter, unit, command.target, events);
     case "endTurn":
       events.push({ type: "turnEnded", unit: unit.id });
       return undefined;
@@ -222,6 +224,8 @@ function isDue(encounter: Encounter, when: CueWhen): boolean {
     }
     case "broken":
       return encounter.props.some((prop) => prop.id === when.prop && prop.hp <= 0);
+    case "used":
+      return when.props.every((id) => encounter.props.some((prop) => prop.id === id && prop.used));
     case "defeat":
       return !encounter.units.some((unit) => unit.team === "party" && isAlive(unit));
   }
@@ -229,7 +233,7 @@ function isDue(encounter: Encounter, when: CueWhen): boolean {
 
 /**
  * Dispara as deixas cuja hora chegou, na ordem em que foram declaradas, cada
- * uma uma vez só. A primeira que encerra a luta encerra — as que vinham
+ * uma uma vez só. A que traz uma condição a aplica ali. A primeira que encerra a luta encerra — as que vinham
  * depois dela não disparam. Devolve se a luta acabou.
  */
 function fireCues(encounter: Encounter, events: TacticalEvent[]): boolean {
@@ -237,6 +241,12 @@ function fireCues(encounter: Encounter, events: TacticalEvent[]): boolean {
     if (!isDue(encounter, cue.when)) continue;
     encounter.cues = encounter.cues.filter((other) => other !== cue);
     events.push({ type: "cue", id: cue.id });
+    if (cue.apply) {
+      for (const id of cue.apply.units) {
+        const unit = findUnit(encounter, id);
+        if (unit && isAlive(unit)) addStatus(unit, STATUSES[cue.apply.statusId], cue.apply.turns, events);
+      }
+    }
 
     const ends = cueEnding(cue);
     if (!ends) continue;
@@ -256,6 +266,7 @@ function fireCues(encounter: Encounter, events: TacticalEvent[]): boolean {
 
 /** Aplica uma condição. Reaplicar a mesma renova a duração em vez de empilhar. */
 function addStatus(unit: Unit, status: StatusTemplate, turns: number, events: TacticalEvent[]): void {
+  if (status.breaksGuard) removeStatuses(unit, (active) => active.guard === true, events);
   unit.statuses = unit.statuses.filter((active) => active.id !== status.id);
   unit.statuses.push({ ...status, turnsLeft: turns });
   events.push({ type: "statusApplied", target: unit.id, statusId: status.id, name: status.name, turns });
@@ -312,7 +323,7 @@ function tickSurfaces(encounter: Encounter, events: TacticalEvent[]): void {
 function touchSurface(encounter: Encounter, unit: Unit, events: TacticalEvent[]): void {
   const surface = encounter.surfaces.find((candidate) => samePos(candidate.pos, unit.pos));
   const damage = surface && (SURFACES[surface.id] as SurfaceTemplate).damage;
-  if (!surface || !damage || !isAlive(unit)) return;
+  if (!surface || !damage || !isAlive(unit) || unit.invulnerable) return;
 
   events.push({ type: "surfaceTriggered", unit: unit.id, surfaceId: surface.id, name: SURFACES[surface.id].name });
   dealDamage(unit, rollDice(encounter, damage), events);
@@ -518,6 +529,10 @@ function applyEffect(
 ): void {
   switch (effect.kind) {
     case "damage": {
+      if (target.invulnerable) {
+        events.push({ type: "immune", target: target.id });
+        return;
+      }
       let amount = rollDamage(encounter, actor, effect);
       if (critical) amount *= 2;
 
@@ -609,6 +624,29 @@ function damageProp(encounter: Encounter, prop: Prop, amount: number, events: Ta
   if (spill) {
     laySurface(encounter, spill.surface, spreadTiles(encounter.grid, prop.pos, spill.radius), spill.rounds, events);
   }
+}
+
+/**
+ * Mexe no objeto em `target`: quem está colado nele gasta a ação e o objeto
+ * fica usado. Só isso — o que mexer nele SIGNIFICA é de uma deixa `used`.
+ */
+function interact(encounter: Encounter, unit: Unit, target: Pos, events: TacticalEvent[]): CommandError | undefined {
+  const prop = interactTargets(encounter, unit).find((candidate) => samePos(candidate.pos, target));
+  if (!prop) return "invalid_target";
+  if (!unit.turn.action) return "resource_spent";
+
+  unit.turn.action = false;
+  prop.used = true;
+  const template: PropTemplate = PROPS[prop.kind];
+  events.push({
+    type: "propUsed",
+    unit: unit.id,
+    prop: prop.id,
+    name: template.name,
+    verb: template.interact!,
+    pos: { ...prop.pos },
+  });
+  return undefined;
 }
 
 // --- Itens ------------------------------------------------------------------

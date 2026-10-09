@@ -1,5 +1,5 @@
 import { distance, hasLineOfSight, posOfIndex, tileAt, type Pos } from "./grid";
-import { propAt, type Prop } from "./props";
+import { isBreakable, propAt, propTemplate, type Prop } from "./props";
 import type { Ability, Encounter, Unit } from "./types";
 import { isAlive, unitAt } from "./units";
 
@@ -41,7 +41,7 @@ export function abilityTargets(encounter: Encounter, unit: Unit, ability: Abilit
   if (wantsAlly || !dealsDamage(ability)) return targets;
 
   const props = encounter.props
-    .filter((prop) => prop.hp > 0 && canTarget(encounter, unit, ability, prop.pos))
+    .filter((prop) => isBreakable(prop) && canTarget(encounter, unit, ability, prop.pos))
     .map((prop) => ({ ...prop.pos }));
   return [...targets, ...props];
 }
@@ -73,11 +73,30 @@ export function affectedProps(encounter: Encounter, ability: Ability, target: Po
   if (!dealsDamage(ability)) return [];
   if (ability.radius === undefined) {
     const prop = propAt(encounter, target);
-    return prop ? [prop] : [];
+    return prop && isBreakable(prop) ? [prop] : [];
   }
 
   const radius = ability.radius;
   return encounter.props.filter(
-    (prop) => prop.hp > 0 && distance(prop.pos, target) <= radius && hasLineOfSight(encounter.grid, target, prop.pos),
+    (prop) => isBreakable(prop) && distance(prop.pos, target) <= radius && hasLineOfSight(encounter.grid, target, prop.pos),
+  );
+}
+
+/** A quantos quadrados se mexe num objeto: colado nele, diagonal inclusive. */
+export const INTERACT_RANGE = 1;
+
+/**
+ * Os objetos em que `unit` pode mexer de onde está (comando `interact`): os
+ * que têm `interact`, estão de pé, ainda não foram usados e estão colados
+ * nele. Só o grupo do jogador mexe em alguma coisa — objetivo é coisa dele.
+ */
+export function interactTargets(encounter: Encounter, unit: Unit): Prop[] {
+  if (unit.team !== "party") return [];
+  return encounter.props.filter(
+    (prop) =>
+      prop.hp > 0 &&
+      !prop.used &&
+      propTemplate(prop).interact !== undefined &&
+      distance(unit.pos, prop.pos) <= INTERACT_RANGE,
   );
 }

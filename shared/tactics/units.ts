@@ -15,6 +15,8 @@ export interface UnitPlacement {
   id?: string;
   /** Pesos da IA de quem não é comandado pelo jogador (ver AiProfile). */
   ai?: Partial<AiProfile>;
+  /** Não tem vida pra perder (ver `invulnerable` em Unit). */
+  invulnerable?: boolean;
 }
 
 /**
@@ -38,6 +40,7 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     statuses: [],
     inventory: character.inventory ? structuredClone(character.inventory) : undefined,
     ai: placement.ai ? { ...placement.ai } : undefined,
+    ...(placement.invulnerable ? { invulnerable: true } : {}),
     turn: { movement: 0, action: false, bonus: false, reaction: true },
   };
 }

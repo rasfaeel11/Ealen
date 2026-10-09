@@ -28,6 +28,12 @@ export interface BestiaryEntry {
   /** Como ela luta: os pesos da IA que fogem do padrão (ver AiProfile). */
   ai?: Partial<AiProfile>;
   /**
+   * Não tem vida pra perder: nada a fere e ela nunca cai (ver `invulnerable`
+   * em Unit). A luta com ela só acaba por uma deixa do roteiro — o teste dos
+   * mapas acusa o grupo que tem uma destas e nenhuma deixa que encerre.
+   */
+  invulnerable?: boolean;
+  /**
    * Ids dos consumíveis que ela leva pra luta (repita o id pra levar mais de
    * um). A IA usa quando vale a pena; o que sobrar fica pra quem a vencer.
    */

@@ -45,7 +45,9 @@ import type { CueEnding } from "../tactics/types";
  *     `prop`   um destrutível: um TILE posto como objeto (Insert Tile, não
  *              pintado numa camada), com a propriedade `kind` (id em PROPS,
  *              ver ../tactics/props.ts). Ocupa o quadrado em que a base do
- *              tile cai. O que ele barra vem de `kind`, não do tile.
+ *              tile cai. O que ele barra vem de `kind`, não do tile. Há os
+ *              que não se quebram, se MEXEM, na luta (um sino): também vêm
+ *              de `kind`
  *     `trigger` retângulo; pisar nele abre o trecho da história em `dialog`,
  *              sem apertar nada. Uma vez só, a não ser com `once` = false
  *              (aí abre toda vez que se ENTRA nele). Cobrindo um ponto de
@@ -58,13 +60,22 @@ import type { CueEnding } from "../tactics/types";
  *                                 tem esse Nome; `down hero` é a protagonista,
  *                                 `down party:lish` um companheiro
  *                `broken Nome`    quando quebra o destrutível com esse Nome
+ *                `used Nome`      quando alguém do grupo mexe no objeto com
+ *                                 esse Nome; `used A, B, C` espera os três
  *                `defeat`         quando o grupo do jogador cairia inteiro: a
  *                                 deixa acontece NO LUGAR da derrota
  *              Opcionais: `dialog` (o trecho da história que abre nessa hora,
  *              no meio da luta) e `ends` — `win` (a luta acaba ali, vencida,
  *              com quem estiver de pé) ou `stop` (a luta para, sem vencedor
  *              nem recompensa, e o grupo não volta). Sem `ends` a luta segue;
- *              a de `defeat` sempre encerra (`stop`, se não disser outra coisa)
+ *              a de `defeat` sempre encerra (`stop`, se não disser outra coisa).
+ *              `apply` é a condição que cai sobre alguém nessa hora — o id em
+ *              STATUSES e por quantos turnos (`exposed 2`; sem número, 1) — e
+ *              `on` diz sobre quem: `enemies` (o padrão), `party`, `hero`,
+ *              `party:lish` ou o Nome de um inimigo do grupo. `goal` é o
+ *              objetivo que a deixa representa, escrito pro jogador ("Toque o
+ *              sino"): fica à vista durante a luta até ela disparar, com a
+ *              conta de rodadas (numa de `round`) ou de objetos (numa de `used`)
  *
  *   `npc`, `enemy`, `trigger`, `exit` e `cue` aceitam ainda `if` e `unless`: o nome
  *   de uma variável (VAR) da história. O objeto só existe enquanto a de `if`
@@ -153,6 +164,8 @@ export type AreaCueWhen =
   | { kind: "down"; who: string }
   /** O Nome de um destrutível da área. */
   | { kind: "broken"; prop: string }
+  /** Os Nomes dos objetos da área em que é preciso mexer — todos. */
+  | { kind: "used"; props: string[] }
   | { kind: "defeat" };
 
 /** Uma deixa de luta (ver Cue em ../tactics/types.ts): o roteiro da luta com um grupo. */
@@ -164,7 +177,14 @@ export interface AreaCue extends AreaCondition {
   /** O trecho da história que abre quando ela dispara, no meio da luta. */
   dialog?: string;
   ends?: CueEnding;
+  /** A condição que ela aplica ao disparar: o id em STATUSES, por quantos turnos e sobre quem (ver o contrato acima). */
+  apply?: { status: string; turns: number; on: string };
+  /** O objetivo que ela representa, como o jogador o lê durante a luta. */
+  goal?: string;
 }
+
+/** Sobre quem cai a condição de uma deixa que não diz: todos os inimigos da luta. */
+export const CUE_ON_ENEMIES = "enemies";
 
 /** Lê a propriedade `when` de uma deixa. Undefined se não der pra entender. */
 export function parseCueWhen(text: string): AreaCueWhen | undefined {
@@ -174,13 +194,23 @@ export function parseCueWhen(text: string): AreaCueWhen | undefined {
   if (rest === "") return undefined;
   if (kind === "down") return { kind, who: rest };
   if (kind === "broken") return { kind, prop: rest };
+  if (kind === "used") {
+    const props = rest.split(",").map((name) => name.trim());
+    return props.every((name) => name !== "") ? { kind, props } : undefined;
+  }
   return undefined;
+}
+
+/** Lê a propriedade `apply` de uma deixa: `exposed 2`, ou só `exposed` (1 turno). */
+export function parseCueApply(text: string): { status: string; turns: number } | undefined {
+  const [, status, turns] = /^(\S+)(?:\s+([1-9]\d*))?$/.exec(text.trim()) ?? [];
+  return status === undefined ? undefined : { status, turns: turns === undefined ? 1 : Number(turns) };
 }
 
 export interface AreaProp {
   /** Único dentro da área. */
   id: string;
-  /** O nome do objeto no mapa: é por ele que uma deixa `broken` o aponta. */
+  /** O nome do objeto no mapa: é por ele que uma deixa `broken` ou `used` o aponta. */
   name: string;
   /** Id em PROPS. Um que não exista é ignorado — o teste dos mapas acusa. */
   kind: string;
@@ -410,12 +440,17 @@ export function parseTiledMap(raw: unknown): AreaMap {
         props.push({ id: `prop-${object.id}`, name: object.name ?? "", kind: propKind, tile, gid: object.gid & GID_MASK });
       } else if (kind === "cue") {
         const properties = propertiesOf(object);
-        const { group, dialog, ends } = properties;
+        const { group, dialog, ends, on, goal } = properties;
         const when = typeof properties.when === "string" ? parseCueWhen(properties.when) : undefined;
         if (typeof group !== "string" || !when) {
           throw new Error(
-            `Deixa "${object.name ?? ""}" precisa das propriedades "group" e "when" (round N, down Nome, broken Nome ou defeat).`,
+            `Deixa "${object.name ?? ""}" precisa das propriedades "group" e "when" (round N, down Nome, broken Nome, used Nome ou defeat).`,
           );
+        }
+        const wantsApply = typeof properties.apply === "string" && properties.apply !== "";
+        const apply = wantsApply ? parseCueApply(properties.apply as string) : undefined;
+        if (wantsApply && !apply) {
+          throw new Error(`Deixa "${object.name ?? ""}": "apply" é uma condição e, se quiser, os turnos ("exposed 2").`);
         }
         if (ends !== undefined && ends !== "" && ends !== "win" && ends !== "stop") {
           throw new Error(`Deixa "${object.name ?? ""}": "ends" é "win" ou "stop", não "${String(ends)}".`);
@@ -426,6 +461,8 @@ export function parseTiledMap(raw: unknown): AreaMap {
           when,
           ...(typeof dialog === "string" && dialog !== "" ? { dialog } : {}),
           ...(ends === "win" || ends === "stop" ? { ends } : {}),
+          ...(apply ? { apply: { ...apply, on: typeof on === "string" && on !== "" ? on : CUE_ON_ENEMIES } } : {}),
+          ...(typeof goal === "string" && goal !== "" ? { goal } : {}),
           ...conditionOf(properties),
         });
       }

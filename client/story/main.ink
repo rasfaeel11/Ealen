@@ -43,8 +43,10 @@ EXTERNAL unlock_order(id)   // destrava uma Ordem pra Halmira nos próximos jogo
 // pisa ali, e um inimigo com `onDefeat` abre o dele quando o grupo cai.
 //
 // E uma luta pode ter roteiro: uma deixa (`cue`) no mapa abre o trecho dela NO
-// MEIO da luta — numa rodada, quando alguém cai, quando algo quebra, ou no
-// lugar da derrota — e pode encerrá-la ali. O trecho de uma deixa que NÃO
+// MEIO da luta — numa rodada, quando alguém cai, quando algo quebra, quando
+// alguém mexe em alguma coisa, ou no lugar da derrota — e pode encerrá-la ali.
+// A mesma deixa pode pôr uma condição em quem luta (`apply` no mapa): o texto
+// conta o que aconteceu, o mapa diz o que isso muda nas regras. O trecho de uma deixa que NÃO
 // encerra a luta só fala e mexe em variáveis: se a luta for perdida depois, a
 // história volta ao que era antes dela, e o que ele tivesse dado, não.
 

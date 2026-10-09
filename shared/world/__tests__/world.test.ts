@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { findBestiaryEntry } from "../../mock/bestiary";
 import { COMPANIONS, HERO_ID, companionId } from "../../party";
-import { activeUnit, applyCommand, chooseCommand, isOver } from "../../tactics";
+import { activeUnit, applyCommand, chooseCommand, findUnit, isOver, type Encounter } from "../../tactics";
 import { distance, samePos, stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
-import { isPropId } from "../../tactics/props";
+import { PROPS, isPropId, type PropTemplate } from "../../tactics/props";
+import { isStatusId } from "../../tactics/statuses";
 import type { Character } from "../../types/character";
 import { CLASS_INFO } from "../../types/characterClass";
 import {
@@ -23,6 +24,7 @@ import {
   isActive,
   isBlocked,
   npcInReach,
+  parseCueApply,
   parseCueWhen,
   parseTiledMap,
   peopleTiles,
@@ -186,7 +188,37 @@ for (const [areaId, map] of Object.entries(maps)) {
       } else if (when.kind === "down" && when.who !== "hero") {
         const named = group.filter((enemy) => enemy.name === when.who).length;
         assert.equal(named, 1, `${cue.id} espera a queda de "${when.who}": há ${named} com esse Nome no grupo "${cue.group}"`);
+      } else if (when.kind === "used") {
+        for (const name of when.props) {
+          const named = map.props.filter((prop) => prop.name === name);
+          assert.equal(named.length, 1, `${cue.id} espera que mexam em "${name}": há ${named.length} objetos com esse Nome`);
+          const template: PropTemplate | undefined = isPropId(named[0].kind) ? PROPS[named[0].kind] : undefined;
+          assert.ok(template?.interact, `${cue.id} espera que mexam em "${name}", que não é de mexer`);
+        }
       }
+      if (when.kind === "broken") {
+        const prop = map.props.find((candidate) => candidate.name === when.prop);
+        const template: PropTemplate | undefined = prop && isPropId(prop.kind) ? PROPS[prop.kind] : undefined;
+        assert.ok(!template?.unbreakable, `${cue.id} espera quebrar "${when.prop}", que não se quebra`);
+      }
+
+      const { apply } = cue;
+      if (!apply) continue;
+      assert.ok(isStatusId(apply.status), `${cue.id} aplica "${apply.status}", condição que não existe`);
+      if (apply.on.startsWith("party:")) {
+        assert.ok(apply.on.slice("party:".length) in COMPANIONS, `${cue.id} aplica uma condição em "${apply.on}", que não é companheiro`);
+      } else if (!["enemies", "party", "hero"].includes(apply.on)) {
+        const named = group.filter((enemy) => enemy.name === apply.on).length;
+        assert.equal(named, 1, `${cue.id} aplica uma condição em "${apply.on}": há ${named} com esse Nome no grupo "${cue.group}"`);
+      }
+    }
+    // Quem não tem vida não cai: a luta com ele precisa de uma deixa que a encerre sem depender da derrota.
+    for (const enemy of map.enemies) {
+      if (!findBestiaryEntry(enemy.creature)?.invulnerable) continue;
+      assert.ok(
+        map.cues.some((cue) => cue.group === enemy.group && cue.ends !== undefined && cue.when.kind !== "defeat"),
+        `${enemy.id} não tem vida e a luta com "${enemy.group}" não tem deixa que a encerre: não acabaria nunca`,
+      );
     }
     // Duas deixas iguais no mesmo grupo: a segunda nunca seria a que decide.
     const keys = map.cues.map((cue) => JSON.stringify([cue.group, cue.when, cue.if, cue.unless]));
@@ -595,7 +627,14 @@ test("a deixa do Tiled chega lida: de que grupo é, quando dispara, o que abre e
   assert.deepEqual(parseCueWhen("down party:lish"), { kind: "down", who: "party:lish" });
   assert.deepEqual(parseCueWhen("broken Sino"), { kind: "broken", prop: "Sino" });
   assert.deepEqual(parseCueWhen("defeat"), { kind: "defeat" });
-  for (const bad of ["", "round", "round 0", "round três", "down", "broken", "defeat agora", "quando der"]) {
+  assert.deepEqual(parseCueWhen("used Sino"), { kind: "used", props: ["Sino"] });
+  assert.deepEqual(parseCueWhen("used A cera,  Os nomes , O rol"), { kind: "used", props: ["A cera", "Os nomes", "O rol"] });
+  assert.deepEqual(parseCueApply("exposed"), { status: "exposed", turns: 1 });
+  assert.deepEqual(parseCueApply(" exposed 2 "), { status: "exposed", turns: 2 });
+  for (const bad of ["", "exposed 0", "exposed dois", "exposed 2 3"]) {
+    assert.equal(parseCueApply(bad), undefined, `"${bad}" não deveria ser aceito`);
+  }
+  for (const bad of ["", "round", "round 0", "round três", "down", "broken", "used", "used Sino,", "defeat agora", "quando der"]) {
     assert.equal(parseCueWhen(bad), undefined, `"${bad}" não deveria ser aceito`);
   }
 
@@ -616,6 +655,17 @@ test("a deixa do Tiled chega lida: de que grupo é, quando dispara, o que abre e
   );
   // Sem `dialog` e sem `ends`, não leva nenhum dos dois.
   assert.deepEqual(parse(property("group", "chefe"), property("when", "defeat")), [{ id: "cue-7", group: "chefe", when: { kind: "defeat" } }]);
+  // A condição que ela aplica (sem `on`, nos inimigos) e o objetivo que o jogador lê.
+  assert.deepEqual(
+    parse(property("group", "chefe"), property("when", "used Sino"), property("apply", "exposed 2"), property("goal", "Toque o sino")),
+    [{ id: "cue-7", group: "chefe", when: { kind: "used", props: ["Sino"] }, apply: { status: "exposed", turns: 2, on: "enemies" }, goal: "Toque o sino" }],
+  );
+  assert.deepEqual(parse(property("group", "chefe"), property("when", "round 2"), property("apply", "exposed"), property("on", "party:lish"))[0].apply, {
+    status: "exposed",
+    turns: 1,
+    on: "party:lish",
+  });
+  assert.throws(() => parse(property("group", "chefe"), property("when", "round 3"), property("apply", "exposed muito")));
   assert.throws(() => parse(property("when", "round 3")));
   assert.throws(() => parse(property("group", "chefe"), property("when", "um dia")));
   assert.throws(() => parse(property("group", "chefe"), property("when", "round 3"), property("ends", "lose")));
@@ -623,8 +673,14 @@ test("a deixa do Tiled chega lida: de que grupo é, quando dispara, o que abre e
 
 test("o roteiro vai pra luta com os nomes do mapa trocados por ids, e sem as deixas de quem não está nela", () => {
   const boss = enemy("enemy-1", 5, 5, { name: "Chefe", group: "chefe" });
-  const map = room({ props: [{ id: "prop-9", name: "Sino", kind: "crate", tile: { x: 2, y: 2 }, gid: 1 }] });
+  const map = room({
+    props: [
+      { id: "prop-9", name: "Sino", kind: "crate", tile: { x: 2, y: 2 }, gid: 1 },
+      { id: "prop-10", name: "Gongo de bronze", kind: "bell", tile: { x: 3, y: 2 }, gid: 1 },
+    ],
+  });
   const cue = (id: string, when: AreaCue["when"], ends?: AreaCue["ends"]): AreaCue => ({ id, group: "chefe", when, dialog: id, ...(ends ? { ends } : {}) });
+  const applying = (id: string, on: string, status = "exposed"): AreaCue => ({ ...cue(id, { kind: "round", round: 2 }), apply: { status, turns: 2, on } });
 
   assert.deepEqual(
     fightCues(
@@ -639,8 +695,19 @@ test("o roteiro vai pra luta com os nomes do mapa trocados por ids, e sem as dei
         // Quem não entrou na luta e o que a área não tem: de fora.
         cue("g", { kind: "down", who: "Capanga" }),
         cue("h", { kind: "broken", prop: "Gongo" }),
+        cue("i", { kind: "used", props: ["Gongo de bronze", "Sino"] }, "win"),
+        cue("j", { kind: "used", props: ["Gongo de bronze", "Tambor"] }),
+        // A condição vai com os ids de quem a recebe; a que não existe, ou sem ninguém pra receber, não vai (a deixa fica).
+        applying("k", "enemies"),
+        applying("l", "party"),
+        applying("m", "hero"),
+        applying("n", "party:lish"),
+        applying("o", "Chefe"),
+        applying("p", "Capanga"),
+        applying("q", "enemies", "enfeitiçado"),
       ],
       [boss],
+      [HERO_ID, companionId("lish")],
     ),
     [
       { id: "a", when: { kind: "round", round: 2 } },
@@ -649,6 +716,14 @@ test("o roteiro vai pra luta com os nomes do mapa trocados por ids, e sem as dei
       { id: "d", when: { kind: "down", unit: companionId("lish") }, ends: "stop" },
       { id: "e", when: { kind: "broken", prop: "prop-9" }, ends: "win" },
       { id: "f", when: { kind: "defeat" } },
+      { id: "i", when: { kind: "used", props: ["prop-10", "prop-9"] }, ends: "win" },
+      { id: "k", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: ["enemy-1"] } },
+      { id: "l", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: [HERO_ID, companionId("lish")] } },
+      { id: "m", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: [HERO_ID] } },
+      { id: "n", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: [companionId("lish")] } },
+      { id: "o", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: ["enemy-1"] } },
+      { id: "p", when: { kind: "round", round: 2 } },
+      { id: "q", when: { kind: "round", round: 2 } },
     ],
   );
 });
@@ -696,4 +771,67 @@ test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa
   assert.equal(encounter.stopped, true);
   assert.equal(encounter.winner, undefined);
   assert.deepEqual(log.slice(-2), [{ type: "cue", id: stop.id }, { type: "battleEnded" }]);
+
+  // Na rodada 3 a história mexe nas regras: a guarda dela cai (`apply` na deixa).
+  const jam = cues.find((cue) => cue.apply !== undefined);
+  assert.ok(jam, "a luta da Sentinela deveria ter uma deixa que aplica uma condição");
+  const at = log.findIndex((event) => event.type === "cue" && event.id === jam.id);
+  assert.deepEqual(log[at - 1], { type: "roundStarted", round: 3 });
+  assert.deepEqual(log[at + 1], { type: "statusApplied", target: group[0].id, statusId: "exposed", name: "Sem guarda", turns: 2 });
+});
+
+test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou para sozinha na rodada 6", () => {
+  const map = maps.ruinas;
+  const group = map.enemies.filter((candidate) => candidate.group === "coletor");
+  const cues = map.cues.filter((cue) => cue.group === "coletor");
+  const bell = map.props.find((prop) => prop.name === "Sino")!;
+  const hero = (): Character => ({
+    id: HERO_ID,
+    name: "Herói",
+    race: "althirim",
+    characterClass: "guardiao",
+    level: 1,
+    xp: 0,
+    attributes: { dain: 5, eir: 5, nath: 5, il: 5, or: 5, len: 5, ul: 5 },
+    currentHp: 5000,
+    maxHp: 5000,
+    currentNodeId: "",
+  });
+  const fight = (tile: Pos) =>
+    startAreaEncounter(map, [{ character: hero(), tile }], group, 7, standAreaProps(loadArea("ruinas")), undefined, fightCues(map, cues, group));
+  const collector = (encounter: Encounter) => findUnit(encounter, group[0].id)!;
+
+  // Colado no sino: quando a vez chega, toca, e a luta acaba vencida com o Coletor inteiro.
+  const won = fight({ x: bell.tile.x + 1, y: bell.tile.y });
+  assert.equal(collector(won.encounter).invulnerable, true);
+  const log = [...won.events];
+  for (let i = 0; i < 400 && !isOver(won.encounter); i++) {
+    const unit = activeUnit(won.encounter)!;
+    const result = applyCommand(
+      won.encounter,
+      unit.team === "party" ? { type: "interact", unitId: unit.id, target: bell.tile } : chooseCommand(won.encounter),
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) log.push(...result.events);
+  }
+  assert.equal(won.encounter.winner, "party");
+  assert.equal(collector(won.encounter).currentHp, collector(won.encounter).maxHp);
+  assert.deepEqual(log.slice(-2), [{ type: "cue", id: cues.find((cue) => cue.ends === "win")!.id }, { type: "battleEnded", winner: "party" }]);
+
+  // Batendo nele a luta não anda: nada o fere, e ela para sozinha quando a rodada 6 começa.
+  const tile = tileOfPixel(map, group[0]);
+  const stalled = fight({ x: tile.x - 1, y: tile.y });
+  let immune = 0;
+  for (let i = 0; i < 400 && !isOver(stalled.encounter); i++) {
+    const unit = activeUnit(stalled.encounter)!;
+    const strike = { type: "ability", unitId: unit.id, abilityId: "guardiao.attack", target: collector(stalled.encounter).pos } as const;
+    let result = applyCommand(stalled.encounter, unit.team === "party" ? strike : chooseCommand(stalled.encounter));
+    if (!result.ok) result = applyCommand(stalled.encounter, { type: "endTurn", unitId: unit.id });
+    assert.equal(result.ok, true);
+    if (result.ok) immune += result.events.filter((event) => event.type === "immune").length;
+  }
+  assert.ok(immune > 0, "nenhum golpe chegou a pegar nele");
+  assert.equal(stalled.encounter.stopped, true);
+  assert.equal(stalled.encounter.round, 6);
+  assert.equal(collector(stalled.encounter).currentHp, collector(stalled.encounter).maxHp);
 });

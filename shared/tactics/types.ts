@@ -106,6 +106,7 @@ export interface AiProfile {
  * - `round`: ao começar a rodada N (a 1 é a abertura da luta);
  * - `down`: quando a unidade `unit` cai;
  * - `broken`: quando o destrutível `prop` quebra;
+ * - `used`: quando alguém já mexeu em TODOS os `props` (ver o comando `interact`);
  * - `defeat`: quando o grupo do jogador inteiro está no chão — NO LUGAR da
  *   derrota, que não acontece.
  */
@@ -113,20 +114,35 @@ export type CueWhen =
   | { kind: "round"; round: number }
   | { kind: "down"; unit: string }
   | { kind: "broken"; prop: string }
+  | { kind: "used"; props: string[] }
   | { kind: "defeat" };
+
+/**
+ * A condição que uma deixa põe em quem está na luta ao disparar: é a história
+ * mexendo nas regras (o velho adianta a maré e os fiscais perdem a guarda).
+ * `units` são os ids de quem a recebe; quem já caiu fica de fora.
+ */
+export interface CueStatus {
+  statusId: StatusId;
+  turns: number;
+  units: string[];
+}
 
 /** Como uma deixa encerra a luta: `win` é vitória do grupo do jogador, com inimigo de pé e tudo; `stop` é a luta que para, sem vencedor. */
 export type CueEnding = "win" | "stop";
 
 /**
  * Uma deixa: o ponto de uma luta com roteiro em que alguma coisa acontece
- * fora das regras — alguém fala, a luta acaba antes de um lado cair. O motor
- * só sabe QUANDO ela dispara e se ela encerra a luta; o que se diz nessa hora
- * é de quem reproduz o evento `cue`. Cada uma dispara uma vez só.
+ * fora das regras — alguém fala, uma condição cai sobre um lado, a luta acaba
+ * antes de um lado cair. O motor só sabe QUANDO ela dispara, que condição ela
+ * aplica e se ela encerra a luta; o que se diz nessa hora é de quem reproduz
+ * o evento `cue`. Cada uma dispara uma vez só.
  */
 export interface Cue {
   id: string;
   when: CueWhen;
+  /** A condição que ela aplica ao disparar, logo depois do evento `cue`. */
+  apply?: CueStatus;
   /** Encerra a luta ao disparar. Uma deixa `defeat` sempre encerra: sem isto, vale `stop`. */
   ends?: CueEnding;
 }
@@ -153,6 +169,12 @@ export interface Unit {
   inventory?: Inventory<ConsumableItem>;
   /** Pesos da IA, quando fogem do padrão. Ignorado em quem o jogador comanda. */
   ai?: Partial<AiProfile>;
+  /**
+   * Não tem vida pra perder: golpe e chão que fere não lhe tiram nada (evento
+   * `immune`), e ele nunca cai. Condição e empurrão pegam normalmente. A luta
+   * com um destes só acaba por uma deixa.
+   */
+  invulnerable?: boolean;
   turn: TurnResources;
 }
 
@@ -188,6 +210,8 @@ export type Command =
   | { type: "move"; unitId: string; to: Pos }
   | { type: "ability"; unitId: string; abilityId: string; target: Pos }
   | { type: "useItem"; unitId: string; itemId: string }
+  /** Mexe no objeto em `target` (um destrutível com `interact`, ver ./props.ts), colado nele. Custa a ação. */
+  | { type: "interact"; unitId: string; target: Pos }
   | { type: "endTurn"; unitId: string };
 
 export type AttackOutcome = "hit" | "miss" | "crit" | "fumble";
@@ -223,6 +247,8 @@ export type TacticalEvent =
     }
   | { type: "blocked"; unit: string; amount: number }
   | { type: "damage"; target: string; amount: number; remainingHp: number }
+  /** O golpe pegou em quem não tem vida pra perder (`invulnerable`): nada acontece. */
+  | { type: "immune"; target: string }
   | { type: "heal"; target: string; amount: number; remainingHp: number }
   | { type: "pushed"; unit: string; from: Pos; to: Pos }
   | { type: "statusApplied"; target: string; statusId: string; name: string; turns: number }
@@ -233,6 +259,8 @@ export type TacticalEvent =
   | { type: "surfaceTriggered"; unit: string; surfaceId: SurfaceId; name: string }
   | { type: "propDamaged"; prop: string; name: string; pos: Pos; amount: number; remainingHp: number }
   | { type: "propDestroyed"; prop: string; name: string; pos: Pos }
+  /** `unit` mexeu no objeto `prop`; `verb` é o que se faz com ele ("Tocar"). */
+  | { type: "propUsed"; unit: string; prop: string; name: string; verb: string; pos: Pos }
   | { type: "itemUsed"; unit: string; itemId: string; itemName: string; description: string }
   | { type: "death"; unit: string }
   /** A deixa `id` disparou. Se ela encerra a luta, o `battleEnded` vem logo depois. */

@@ -5,14 +5,15 @@ import { findItemTemplate } from "../mock/items";
 import { startEncounter } from "../tactics/engine";
 import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "../tactics/grid";
 import { isPropId, standProp, type Prop } from "../tactics/props";
+import { isStatusId } from "../tactics/statuses";
 import { nextRandom, type RngHolder } from "../tactics/rng";
-import type { Cue, Encounter, TacticalEvent, TeamId } from "../tactics/types";
+import type { Cue, CueStatus, Encounter, TacticalEvent, TeamId } from "../tactics/types";
 import { findUnit, syncCharacterFromUnit, unitFromCharacter } from "../tactics/units";
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
 import type { LevelUpResult } from "../types/levelUp";
 import { HERO_ID, companionId } from "../party";
-import { tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
+import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
 
 /**
  * A ponte entre o mundo e o combate: quando uma luta começa, quem entra
@@ -137,35 +138,67 @@ function nearestFree(center: Pos, isFree: (tile: Pos) => boolean, maxRadius: num
   return undefined;
 }
 
-/** Quem uma deixa `down` aponta quando não é um inimigo: a protagonista e os companheiros. */
+/** Quem uma deixa aponta quando não é um inimigo: a protagonista, um companheiro, o grupo inteiro. */
 const CUE_HERO = "hero";
 const CUE_COMPANION = "party:";
+const CUE_PARTY = "party";
+
+/** O id, na luta, de quem o mapa chama de `who`: `hero`, `party:chave` ou o Nome de um inimigo dos que lutam. */
+function cueUnit(who: string, enemies: readonly AreaEnemy[]): string | undefined {
+  if (who === CUE_HERO) return HERO_ID;
+  if (who.startsWith(CUE_COMPANION)) return companionId(who.slice(CUE_COMPANION.length));
+  return enemies.find((candidate) => candidate.name === who)?.id;
+}
+
+/** A condição de uma deixa, com o `on` do mapa trocado pelos ids de quem a recebe. Undefined se a condição não existe ou não há quem a receba. */
+function cueStatus(
+  apply: NonNullable<AreaCue["apply"]>,
+  enemies: readonly AreaEnemy[],
+  party: readonly string[],
+): CueStatus | undefined {
+  if (!isStatusId(apply.status)) return undefined;
+  let units: string[];
+  if (apply.on === CUE_ON_ENEMIES) units = enemies.map((enemy) => enemy.id);
+  else if (apply.on === CUE_PARTY) units = [...party];
+  else units = [cueUnit(apply.on, enemies)].filter((id): id is string => id !== undefined);
+  return units.length > 0 ? { statusId: apply.status, turns: apply.turns, units } : undefined;
+}
 
 /**
  * O roteiro de uma luta, na língua do motor: as deixas de `cues` (as do
  * grupo que vai lutar e que valem agora — quem filtra é quem chama) com os
- * nomes do mapa trocados por ids. `enemies` são os que entram na luta. Uma
- * deixa que espera a queda de quem não está nela, ou um destrutível que a
- * área não tem, fica de fora: não dispararia nunca.
+ * nomes do mapa trocados por ids. `enemies` são os que entram na luta e
+ * `party`, os ids de quem luta do lado do jogador (só importa pra condição
+ * que cai sobre o grupo inteiro). Uma deixa que espera a queda de quem não
+ * está nela, ou um objeto que a área não tem, fica de fora: não dispararia
+ * nunca.
  */
-export function fightCues(map: AreaMap, cues: readonly AreaCue[], enemies: readonly AreaEnemy[]): Cue[] {
-  return cues.flatMap(({ id, when, ends }): Cue[] => {
-    const cue = (resolved: Cue["when"]): Cue[] => [{ id, when: resolved, ...(ends ? { ends } : {}) }];
+export function fightCues(
+  map: AreaMap,
+  cues: readonly AreaCue[],
+  enemies: readonly AreaEnemy[],
+  party: readonly string[] = [HERO_ID],
+): Cue[] {
+  return cues.flatMap(({ id, when, ends, apply }): Cue[] => {
+    const status = apply && cueStatus(apply, enemies, party);
+    const cue = (resolved: Cue["when"]): Cue[] => [
+      { id, when: resolved, ...(status ? { apply: status } : {}), ...(ends ? { ends } : {}) },
+    ];
     switch (when.kind) {
       case "round":
       case "defeat":
         return cue(when);
       case "down": {
-        if (when.who === CUE_HERO) return cue({ kind: "down", unit: HERO_ID });
-        if (when.who.startsWith(CUE_COMPANION)) {
-          return cue({ kind: "down", unit: companionId(when.who.slice(CUE_COMPANION.length)) });
-        }
-        const enemy = enemies.find((candidate) => candidate.name === when.who);
-        return enemy ? cue({ kind: "down", unit: enemy.id }) : [];
+        const unit = cueUnit(when.who, enemies);
+        return unit !== undefined ? cue({ kind: "down", unit }) : [];
       }
       case "broken": {
         const prop = map.props.find((candidate) => candidate.name === when.prop);
         return prop ? cue({ kind: "broken", prop: prop.id }) : [];
+      }
+      case "used": {
+        const props = when.props.map((name) => map.props.find((candidate) => candidate.name === name)?.id);
+        return props.every((prop): prop is string => prop !== undefined) ? cue({ kind: "used", props }) : [];
       }
     }
   });
@@ -193,7 +226,13 @@ export function startAreaEncounter(
     const entry = findBestiaryEntry(enemy.creature);
     if (!entry) continue;
     units.push(
-      unitFromCharacter(spawnCreature(entry), { team: "enemy", pos: tileOfPixel(map, enemy), id: enemy.id, ai: entry.ai }),
+      unitFromCharacter(spawnCreature(entry), {
+        team: "enemy",
+        pos: tileOfPixel(map, enemy),
+        id: enemy.id,
+        ai: entry.ai,
+        invulnerable: entry.invulnerable,
+      }),
     );
   }
   return startEncounter({ grid: map.grid, units, props, surprised, cues, seed });

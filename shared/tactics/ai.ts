@@ -450,6 +450,8 @@ function forecast(
 
   const targetOr = effectiveAttribute(target, "or");
   const damageOn = (critical: boolean) => {
+    // Quem não tem vida pra perder não sofre dano nenhum.
+    if (target.invulnerable) return 0;
     let total = 0;
     for (const effect of ability.effects) {
       if (effect.kind !== "damage") continue;

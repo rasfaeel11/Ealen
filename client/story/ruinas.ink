@@ -100,3 +100,37 @@ Cale o fiapo, e o servo fica sem ter o que seguir.
 === salao_silencio ===
 O zumbido some. O servo dá mais meio passo no compasso que não existe mais, e desaba sobre o próprio peso.
 -> END
+
+// Uma deixa também mexe nas regras: a de `when` = round 3 da Sentinela traz
+// `apply` = exposed 2 (sem `on`, cai sobre os inimigos). O trecho só conta o
+// que se vê; quem tira a guarda dela é o mapa.
+=== sentinela_trava ===
+Alguma coisa range fundo no ombro dela. O braço do escudo desce e não volta a subir.
+-> END
+
+// PROVISÓRIO: a luta que não se vence batendo. O Coletor não tem vida
+// (`invulnerable` no bestiário): golpe nenhum lhe tira nada. O mapa dá dois
+// fins a ela, os dois com `goal` (o objetivo fica escrito no alto da tela):
+// mexer no Sino (`when` = used Sino, `ends` = win) ou aguentar até a rodada 6
+// (`ends` = stop). O gatilho em volta dele é o chefe que fala antes de lutar.
+
+VAR coletor_fora = false
+
+=== coletor_chegada ===
+Entre as árvores do fundo, o ar tem o formato de alguém. Não é um corpo: é o lugar onde um corpo caberia.
+Você tenta lembrar por onde entrou nas ruínas, e a lembrança vem com um buraco no meio.
+Atrás de você, num cavalete, um sino de bronze que ninguém toca há muito tempo.
+~ start_fight("coletor")
+-> END
+
+=== coletor_sino ===
+~ coletor_fora = true
+O bronze responde com uma nota só, cheia, sem eco torto.
+O formato no ar perde a borda. O que ele tinha juntado se solta, e o mato volta a ser só mato.
+-> END
+
+=== coletor_farto ===
+~ coletor_fora = true
+O formato no ar para, como quem confere uma conta e acha que fechou.
+Ele se desfaz sem pressa. Você fica com a certeza de ter esquecido alguma coisa, e sem ter como saber o quê.
+-> END

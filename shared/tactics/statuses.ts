@@ -15,6 +15,8 @@ export interface StatusTemplate {
   guard?: boolean;
   /** O próximo ataque do portador é crítico; a condição se gasta nele. */
   guaranteedCrit?: boolean;
+  /** Ao cair sobre alguém, derruba a guarda que ele tivesse (as condições com `guard`). */
+  breaksGuard?: boolean;
   /** O portador perde o turno em que ela está ativa: a vez começa, a condição conta e a vez passa. */
   skipsTurn?: boolean;
 }
@@ -31,9 +33,15 @@ export interface ActiveStatus extends StatusTemplate {
 export const STATUSES = {
   guarding: { id: "guarding", name: "Em guarda", guard: true },
   off_balance: { id: "off_balance", name: "Desequilibrado", attributeBonus: { or: -3 } },
+  /** A guarda aberta à força: a que estava de pé cai, e a armadura vale menos. */
+  exposed: { id: "exposed", name: "Sem guarda", attributeBonus: { or: -3 }, breaksGuard: true },
   focused: { id: "focused", name: "Foco", guaranteedCrit: true },
   /** Quem foi pego de surpresa (ver `surprised` em EncounterSetup): perde o primeiro turno. */
   surprised: { id: "surprised", name: "Surpreso", skipsTurn: true },
 } satisfies Record<string, StatusTemplate>;
 
 export type StatusId = keyof typeof STATUSES;
+
+export function isStatusId(id: unknown): id is StatusId {
+  return typeof id === "string" && id in STATUSES;
+}
