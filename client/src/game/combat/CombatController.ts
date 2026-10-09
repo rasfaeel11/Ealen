@@ -22,12 +22,13 @@ import {
   propTemplate,
   tileAt,
   reachableTiles,
+  readiness,
   samePos,
   styleLabel,
   supportTargets,
   tileOfPixel,
   unitAt,
-  usesLeft,
+  cooldownLeft,
   type Ability,
   type AreaMap,
   type AttackOutcome,
@@ -96,6 +97,8 @@ const ERROR_TEXT: Record<CommandError, string> = {
   unreachable: "Não dá pra chegar lá neste turno.",
   unknown_ability: "Habilidade desconhecida.",
   resource_spent: "Você já gastou isso neste turno.",
+  no_breath: "Falta Fôlego pra isso.",
+  recharging: "Ainda está em recarga.",
   invalid_target: "Alvo fora de alcance ou fora de vista.",
   item_unavailable: "Esse item não está na mochila.",
 };
@@ -119,10 +122,13 @@ export function describeAbility(ability: Ability): string {
     else if (effect.kind === "status") {
       parts.push(effect.statusId === "guarding" ? "em guarda até o próximo turno" : `${STATUSES[effect.statusId].name} por ${effect.turns} turnos`);
     }
+    else if (effect.kind === "breath") parts.push(`devolve ${effect.amount} de Fôlego`);
     else parts.push(effect.distance > 0 ? `empurra ${effect.distance}` : `puxa ${-effect.distance}`);
   }
   if (ability.surface) parts.push(`deixa ${SURFACES[ability.surface.id].name} por ${ability.surface.rounds} rodadas`);
   if (ability.limit !== undefined) parts.push(ability.limit === 1 ? "uma vez por luta" : `${ability.limit} vezes por luta`);
+  if (ability.breath) parts.push(`custa ${ability.breath} de Fôlego`);
+  if (ability.cooldown) parts.push(ability.cooldown === 1 ? "não sai em dois turnos seguidos" : `recarga de ${ability.cooldown} turnos`);
   if (ability.backlash) parts.push(`cobra de você: ${STATUSES[ability.backlash.statusId].name}`);
   return parts.join(" · ");
 }
@@ -390,8 +396,16 @@ export class CombatController {
     const unit = activeUnit(encounter)!;
     this.hud.setTurnOrder(encounter);
 
-    const canPay = (ability: Ability) =>
-      (ability.cost === "action" ? unit.turn.action : unit.turn.bonus) && usesLeft(unit, ability) > 0;
+    const canPay = (ability: Ability) => readiness(unit, ability) === "ready";
+    // O que ela custa, à vista no botão: a ação, o Fôlego e, em recarga, em quantos turnos volta.
+    const price = (ability: Ability) => {
+      const wait = cooldownLeft(unit, ability);
+      return [
+        ability.cost === "action" ? "Ação" : "Bônus",
+        ...(ability.breath ? [`${ability.breath} fôlego`] : []),
+        ...(wait > 0 ? [`volta em ${wait}`] : []),
+      ].join(" · ");
+    };
     // O botão de mexer existe enquanto esta luta espera que mexam em alguma coisa (uma deixa `used`), ou com algo
     // de mexer ao alcance — um sino do outro lado do mapa não é assunto dela. Acende com quem está colado nele.
     const inReach = interactTargets(encounter, unit);
@@ -408,7 +422,7 @@ export class CombatController {
       },
       ...unit.abilities.map((ability) => ({
         label: ability.name,
-        tag: ability.cost === "action" ? "Ação" : "Bônus",
+        tag: price(ability),
         enabled: canPay(ability) && abilityTargets(encounter, unit, ability).length > 0,
         selected: this.selected?.id === ability.id,
         onClick: () => this.select(ability),
@@ -449,6 +463,7 @@ export class CombatController {
         `Movimento ${unit.turn.movement}/${unit.speed}`,
         `Ação ${dot(unit.turn.action)}`,
         `Bônus ${dot(unit.turn.bonus)}`,
+        `Fôlego ${unit.breath}/${unit.maxBreath}`,
       ].join("   ·   "),
     );
     if (this.aim?.kind === "interact") this.options = inReach.map((prop) => prop.pos);
@@ -699,6 +714,14 @@ export class CombatController {
         await this.glide(actor, home, 90, false);
         return;
       }
+
+      case "breathSpent":
+        // Quem age pelo jogador vê o Fôlego na barra; o golpe que ele pagou vem logo depois.
+        return;
+
+      case "breathRecovered":
+        this.hud.log(`${this.unit(event.unit).name} toma fôlego (+${event.amount}).`);
+        return;
 
       case "attackRoll": {
         const target = this.unit(event.target);

@@ -34,6 +34,8 @@ export type Effect =
   /** Cura: atributo + dados, limitada ao HP que falta. */
   | { kind: "heal"; dice: Dice; attribute?: AttributeRef }
   | { kind: "status"; statusId: StatusId; turns: number }
+  /** Devolve Fôlego ao alvo (ver ../breath.ts), até o que ele tem descansado. */
+  | { kind: "breath"; amount: number }
   /**
    * Empurra o alvo pra longe de quem usou, até `distance` quadrados
    * (negativo puxa). Para na primeira parede ou corpo no caminho.
@@ -81,6 +83,13 @@ export interface Ability {
   limit?: number;
   /** O que ela cobra de quem usa, depois de feita: uma condição sobre ele mesmo (o fôlego que a magia leva). */
   backlash?: { statusId: StatusId; turns: number };
+  /** Quanto Fôlego custa a quem usa (ver ../breath.ts). Sem isto, nada: o golpe comum não cansa. */
+  breath?: number;
+  /**
+   * Recarga: por quantos turnos de quem a usou ela fica sem poder ser usada
+   * de novo. Com 1, não sai em dois turnos seguidos. Sem isto, volta na hora.
+   */
+  cooldown?: number;
 }
 
 /** O que um combatente ainda pode gastar no turno atual. */
@@ -209,6 +218,14 @@ export interface Unit {
   habit?: { now?: string; last?: string; repeated: boolean; attackTurns: number };
   /** Quantas vezes já usou, nesta luta, cada habilidade que tem `limit`. */
   used?: Record<string, number>;
+  /** O Fôlego que resta e o de quem está descansado (ver ../breath.ts). Na luta só volta por um efeito `breath`. */
+  breath: number;
+  maxBreath: number;
+  /**
+   * As habilidades em recarga: quantos FINS de turno dele ainda faltam pra
+   * cada uma voltar. A pergunta certa é `cooldownLeft` (./units.ts).
+   */
+  cooldowns?: Record<string, number>;
   /**
    * Não tem vida pra perder: golpe e chão que fere não lhe tiram nada (evento
    * `immune`), e ele nunca cai. Condição e empurrão pegam normalmente. A luta
@@ -274,6 +291,10 @@ export type TacticalEvent =
   | { type: "turnSkipped"; unit: string; name: string }
   /** `path` não inclui `from`. Um movimento interrompido por um ataque de oportunidade vira dois destes. */
   | { type: "moved"; unit: string; from: Pos; path: Pos[] }
+  /** `unit` pagou o Fôlego de uma habilidade. O `abilityUsed` dela vem logo depois. */
+  | { type: "breathSpent"; unit: string; amount: number; remaining: number }
+  /** `unit` recuperou Fôlego (o efeito `breath`). */
+  | { type: "breathRecovered"; unit: string; amount: number; remaining: number }
   | { type: "abilityUsed"; unit: string; abilityId: string; name: string; target: Pos; reaction: boolean }
   | {
       type: "attackRoll";
@@ -342,6 +363,10 @@ export type CommandError =
   | "unreachable"
   | "unknown_ability"
   | "resource_spent"
+  /** Falta Fôlego pra habilidade. */
+  | "no_breath"
+  /** A habilidade ainda está em recarga. */
+  | "recharging"
   | "invalid_target"
   | "item_unavailable";
 

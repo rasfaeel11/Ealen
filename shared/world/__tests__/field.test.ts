@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { breathOf, maxBreath } from "../../breath";
 import { addItemToInventory, findInventorySlot } from "../../inventoryEffects";
 import { findItemTemplate } from "../../mock/items";
 import { HERO_ID, createProtagonist, joinParty } from "../../party";
@@ -11,6 +12,7 @@ import {
   AMBUSH_RANGE,
   AREAS,
   aggroedGroup,
+  canAfford,
   fieldUse,
   mend,
   openingStrikes,
@@ -107,6 +109,34 @@ test("a cura fora de luta usa a conta do motor, não passa da vida cheia e não 
   assert.equal(mend(healer, ability(healer, "heal"), almost, rng), undefined, "quem está inteiro não gasta a cura");
   assert.equal(mend(healer, ability(healer, "attack"), hurt, rng), undefined, "golpe não cura");
   assert.equal(rng.rngState, before);
+});
+
+test("fora de luta a habilidade custa o mesmo Fôlego: a cura cobra de quem a faz, e sem ele não sai", () => {
+  const healer = sheet("l", "luminar");
+  const heal = ability(healer, "heal");
+  const full = maxBreath(healer);
+  const rng = { rngState: 3 };
+
+  const hurt = sheet("h", "guardiao", { currentHp: 5 });
+  assert.ok(mend(healer, heal, hurt, rng)! > 0);
+  assert.equal(breathOf(healer), full - heal.breath!);
+
+  // Quem está inteiro não gasta o Fôlego de ninguém.
+  assert.equal(mend(healer, heal, sheet("a", "guardiao"), rng), undefined);
+  assert.equal(breathOf(healer), full - heal.breath!);
+
+  healer.breath = heal.breath! - 1;
+  const before = { hp: hurt.currentHp, rng: rng.rngState };
+  assert.equal(canAfford(healer, heal), false);
+  assert.equal(mend(healer, heal, hurt, rng), undefined);
+  assert.deepEqual({ hp: hurt.currentHp, rng: rng.rngState }, before);
+  assert.equal(healer.breath, heal.breath! - 1);
+
+  // Sem Fôlego pro golpe pesado não há em quem abrir a luta com ele; com o golpe comum, há.
+  const hero = sheet("hero", "rachador", { breath: 0 });
+  const wolf = enemy("lobo", 7, 2);
+  assert.deepEqual(openingStrikes(room(), hero, { x: 2, y: 2 }, ability(hero, "heavy_attack"), [wolf]), []);
+  assert.equal(openingStrikes(room(), hero, { x: 2, y: 2 }, ability(hero, "attack"), [wolf]).length, 1);
 });
 
 test("item que cura se usa em qualquer um do grupo; o que é de luta fica pra luta, e recusa não gasta nada", () => {

@@ -212,6 +212,8 @@ function isCharacter(value: unknown): value is Character {
     isNumber(value.xp) &&
     isNumber(value.currentHp) &&
     isNumber(value.maxHp) &&
+    // De antes de o Fôlego existir, a ficha não o tem: vale cheio (ver ../breath.ts), sem migração.
+    (value.breath === undefined || isNumber(value.breath)) &&
     isObject(attributes) &&
     ATTRIBUTE_KEYS.every((key) => isNumber(attributes[key])) &&
     (inventory === undefined || (isObject(inventory) && Array.isArray(inventory.slots)))

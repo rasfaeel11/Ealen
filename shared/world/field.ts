@@ -1,3 +1,4 @@
+import { breathOf } from "../breath";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { castOf } from "../party";
@@ -27,8 +28,10 @@ import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
  *   surpreso (ver Opening em ../tactics/engine.ts). Quem luta de perto corre
  *   até o alvo antes — a investida.
  *
- * TUDO PROVISÓRIO, como os kits: não há recurso que uma habilidade gaste
- * fora de luta (o que há é o relógio — ver quem chama).
+ * Fora de luta uma habilidade custa o mesmo Fôlego que dentro (ver
+ * ../breath.ts) — a cura na hora, o golpe de abertura pelo motor, ao começar
+ * a luta. Recarga não há: é coisa de turno. A cura ainda gasta o relógio
+ * (ver quem chama). TUDO PROVISÓRIO, como os kits.
  */
 
 /** Tudo que uma ficha sabe fazer: o kit da Ordem e o que só ela sabe (`gifts` no elenco). */
@@ -48,17 +51,24 @@ export function fieldUse(ability: Ability): FieldUse | undefined {
   return "opening";
 }
 
+/** `character` tem Fôlego pra usar `ability` fora de luta? */
+export function canAfford(character: Pick<Character, "level" | "attributes" | "breath">, ability: Ability): boolean {
+  return breathOf(character) >= (ability.breath ?? 0);
+}
+
 /**
  * `caster` usa a habilidade de cura `ability` em `target`, fora de luta.
- * Muta `target` e devolve quanto curou; undefined se não é uma cura, se ela
- * só serve em quem a faz e o alvo é outro, ou se o alvo não precisa (e aí o
- * dado nem rola).
+ * Muta `target`, cobra o Fôlego de `caster` e devolve quanto curou; undefined
+ * se não é uma cura, se ela só serve em quem a faz e o alvo é outro, se falta
+ * Fôlego (ver canAfford) ou se o alvo não precisa — e aí nada se gasta, nem o
+ * dado rola.
  */
 export function mend(caster: Character, ability: Ability, target: Character, rng: RngHolder): number | undefined {
   if (fieldUse(ability) !== "mend") return undefined;
   if (ability.targets === "self" && target !== caster) return undefined;
-  if (target.currentHp >= target.maxHp) return undefined;
+  if (target.currentHp >= target.maxHp || !canAfford(caster, ability)) return undefined;
 
+  if (ability.breath) caster.breath = breathOf(caster) - ability.breath;
   let healed = 0;
   for (const effect of ability.effects) {
     if (effect.kind !== "heal") continue;
@@ -112,7 +122,8 @@ export interface OpeningStrike {
  * AMBUSH_RANGE; os `passive` não entram) e que ele alcança com ela — de onde
  * está ou, se não der, do quadrado mais perto aonde chega com o movimento de
  * um turno. `enemies` são os que estão de pé na área; todos barram o caminho.
- * Do mais próximo pro mais distante.
+ * Do mais próximo pro mais distante. Sem Fôlego pra ela (ver canAfford),
+ * ninguém.
  *
  * Uma habilidade que não mira (`foes`) abre a luta com o grupo mais próximo.
  */
@@ -124,7 +135,7 @@ export function openingStrikes(
   enemies: readonly AreaEnemy[],
   props: Prop[] = [],
 ): OpeningStrike[] {
-  if (fieldUse(ability) !== "opening") return [];
+  if (fieldUse(ability) !== "opening" || !canAfford(hero, ability)) return [];
   const hostile = enemies.filter((enemy) => !enemy.passive && findBestiaryEntry(enemy.creature));
   const gap = (enemy: AreaEnemy) => distance(tileOfPixel(map, enemy), heroTile);
   const near = hostile.filter((enemy) => gap(enemy) <= AMBUSH_RANGE).sort((a, b) => gap(a) - gap(b));

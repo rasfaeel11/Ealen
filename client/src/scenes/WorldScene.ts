@@ -12,7 +12,10 @@ import {
   distance,
   exitAt,
   extendTrail,
+  breathOf,
+  canAfford,
   fieldUse,
+  maxBreath,
   fightCues,
   findUnit,
   firedTrigger,
@@ -578,7 +581,8 @@ export default class WorldScene extends Phaser.Scene {
     const company = this.followers.map(({ character }) =>
       fights(character) ? `   |   ${character.name}  ${character.currentHp}/${character.maxHp}` : `   |   ${character.name}`,
     );
-    this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}${company.join("")}`);
+    const breath = `Fôlego ${breathOf(this.character)}/${maxBreath(this.character)}`;
+    this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}  ·  ${breath}${company.join("")}`);
   }
 
   /** Com quem dá pra falar daqui, se houver alguém. */
@@ -612,7 +616,7 @@ export default class WorldScene extends Phaser.Scene {
     this.tweens.add({ targets: banner, alpha: 0, delay: 2000, duration: 800, onComplete: () => banner.destroy() });
   }
 
-  /** Provisório, no lugar de acampamento/estalagem: recupera todo o HP do grupo, em qualquer lugar fora de luta. */
+  /** Provisório, no lugar de acampamento/estalagem: recupera todo o HP e o Fôlego do grupo, em qualquer lugar fora de luta. */
   private rest(): void {
     if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
     restoreParty(this.character, this.save.companions);
@@ -822,13 +826,14 @@ export default class WorldScene extends Phaser.Scene {
     if (knot === undefined || !unit) return;
 
     // A ficha só fica com a cara da luta enquanto a história fala: quem fecha o jogo no meio da luta a tem como era antes.
-    const { currentHp, inventory } = character;
+    const { currentHp, breath, inventory } = character;
     syncCharacterFromUnit(character, unit);
     try {
       this.fightSteps.push(...(await this.read(knot)));
     } finally {
       syncUnitInventory(unit, character);
       character.currentHp = currentHp;
+      character.breath = breath;
       character.inventory = inventory;
     }
   }
@@ -955,6 +960,7 @@ export default class WorldScene extends Phaser.Scene {
       const ability = this.fieldAbilities()[Number(event.code.slice(-1)) - 1];
       if (!ability) return;
       if (fieldUse(ability) === "mend") this.openSheet();
+      else if (!canAfford(this.character, ability)) this.showBanner("Falta Fôlego pra isso.");
       else if (!this.aimOpening(ability)) this.showBanner("Ninguém ao alcance que ainda não tenha te percebido.");
     }
   }
@@ -1007,8 +1013,8 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * Uma cura feita fora de luta. Não há recurso que ela gaste (provisório): o
-   * que ela gasta é tempo — o de uma rodada, se a história está contando.
+   * Uma cura feita fora de luta. Custa o Fôlego de quem a faz (ver `mend`) e
+   * tempo — o de uma rodada, se a história está contando.
    */
   private mendOutside(caster: Character, ability: Ability, target: Character): number | undefined {
     const healed = mend(caster, ability, target, STORY_RNG);

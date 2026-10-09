@@ -5,9 +5,12 @@ import {
   RACE_INFO,
   STATUSES,
   STYLES,
+  breathOf,
+  canAfford,
   castOf,
   fieldUse,
   fights,
+  maxBreath,
   sheetAbilities,
   styleLabel,
   xpToNextLevel,
@@ -161,7 +164,9 @@ export class SheetPanel {
       `${RACE_INFO[character.race].name}  ·  ${info.name}`,
       info.role,
       `Nível ${character.level}  ·  XP ${character.xp}/${xpToNextLevel(character.level)}`,
-      fights(character) ? `Vida ${character.currentHp}/${character.maxHp}` : "Acompanha sem lutar",
+      fights(character)
+        ? `Vida ${character.currentHp}/${character.maxHp}  ·  Fôlego ${breathOf(character)}/${maxBreath(character)}`
+        : "Acompanha sem lutar",
     ];
     if (cast?.style) {
       lines.push(`${styleLabel({ style: cast.style.id, grade: cast.style.grade })}  ·  ${STYLES[cast.style.id].trait}`);
@@ -216,6 +221,13 @@ export class SheetPanel {
   /** O que dá pra fazer com `ability` agora, fora de luta — o rótulo da lista e a linha da descrição. */
   private usage(ability: Ability): { tag: string; text: string } {
     const use = fights(this.character) ? fieldUse(ability) : undefined;
+    // Fora de luta ela custa o mesmo Fôlego que dentro, e só o descanso o devolve.
+    if (use !== undefined && (use === "mend" || this.index === 0) && !canAfford(this.character, ability)) {
+      return {
+        tag: "  ·  sem fôlego",
+        text: `Falta Fôlego: custa ${ability.breath}, e ${this.character.name} tem ${breathOf(this.character)}. Descansar devolve.`,
+      };
+    }
     if (use === "mend") return { tag: "  ·  cura", text: "Enter: usar agora em alguém do grupo." };
     if (use === "opening" && this.index === 0) {
       return {
@@ -245,7 +257,8 @@ export class SheetPanel {
 
   private use(ability: Ability): void {
     const use = fights(this.character) ? fieldUse(ability) : undefined;
-    if (use === "mend") this.chooseTarget(ability);
+    if (use !== undefined && !canAfford(this.character, ability)) this.say(this.usage(ability).text);
+    else if (use === "mend") this.chooseTarget(ability);
     else if (use === "opening" && this.index === 0) {
       if (!this.host.onOpening(ability)) this.say("Ninguém ao alcance que ainda não tenha te percebido.");
     } else this.say(this.usage(ability).text);

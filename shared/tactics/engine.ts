@@ -20,7 +20,6 @@ import { SUPPORTS, type SupportId, type SupportTemplate } from "./supports";
 import { abilityTargets, affectedProps, affectedUnits, interactTargets, supportTargets } from "./targeting";
 import type {
   Ability,
-  AbilityCost,
   AttackOutcome,
   AttributeRef,
   Command,
@@ -35,7 +34,7 @@ import type {
   TeamId,
   Unit,
 } from "./types";
-import { activeUnit, effectiveAttribute, findUnit, isAlive, isOver, primaryAttribute, unitAt, usesLeft } from "./units";
+import { activeUnit, effectiveAttribute, findUnit, isAlive, isOver, primaryAttribute, readiness, unitAt } from "./units";
 
 /**
  * O motor de combate tático.
@@ -86,8 +85,8 @@ export interface EncounterSetup {
  * primeiro turno de quem o deu. Com `from`, ele antes corre até esse quadrado
  * (a investida de quem luta de perto), com o movimento de um turno.
  *
- * Um golpe de abertura que não vale (habilidade que ele não tem, alvo fora de
- * alcance, quadrado aonde não chega) simplesmente não acontece: a luta começa
+ * Um golpe de abertura que não vale (habilidade que ele não tem ou não pode
+ * pagar, alvo fora de alcance, quadrado aonde não chega) simplesmente não acontece: a luta começa
  * sem ele.
  */
 export interface Opening {
@@ -153,7 +152,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
 function strikeFirst(encounter: Encounter, opening: Opening, events: TacticalEvent[]): void {
   const unit = findUnit(encounter, opening.unitId);
   const ability = unit?.abilities.find((candidate) => candidate.id === opening.abilityId);
-  if (!unit || !ability || !isAlive(unit) || usesLeft(unit, ability) <= 0) return;
+  if (!unit || !ability || !isAlive(unit) || readiness(unit, ability, true) !== "ready") return;
 
   if (opening.from && !samePos(opening.from, unit.pos)) {
     // A investida anda com o movimento de um turno, e não o tira do primeiro turno de verdade.
@@ -164,7 +163,7 @@ function strikeFirst(encounter: Encounter, opening: Opening, events: TacticalEve
   }
   if (!abilityTargets(encounter, unit, ability).some((pos) => samePos(pos, opening.target))) return;
 
-  if (ability.limit !== undefined) unit.used = { ...unit.used, [ability.id]: (unit.used?.[ability.id] ?? 0) + 1 };
+  charge(unit, ability, false, events);
   resolveAbility(encounter, unit, ability, opening.target, affectedUnits(encounter, ability, opening.target), false, events);
   if (ability.backlash && isAlive(unit)) addStatus(unit, STATUSES[ability.backlash.statusId], ability.backlash.turns, events);
 }
@@ -199,7 +198,7 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
     case "support":
       return support(encounter, unit, command.supporterId, command.target, events);
     case "endTurn":
-      closeHabit(unit);
+      closeTurn(unit);
       events.push({ type: "turnEnded", unit: unit.id });
       return undefined;
   }
@@ -246,9 +245,18 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
     if (!skip) return;
 
     next.turn = { movement: 0, action: false, bonus: false, reaction: true };
-    closeHabit(next);
+    closeTurn(next);
     events.push({ type: "turnSkipped", unit: next.id, name: skip.name }, { type: "turnEnded", unit: next.id });
   }
+}
+
+/** O turno de `unit` acabou (ou foi perdido): fecha o que ele vem fazendo e conta um turno nas recargas. */
+function closeTurn(unit: Unit): void {
+  closeHabit(unit);
+  if (!unit.cooldowns) return;
+  const left = Object.entries(unit.cooldowns).filter(([, turns]) => turns > 1);
+  if (left.length > 0) unit.cooldowns = Object.fromEntries(left.map(([id, turns]) => [id, turns - 1]));
+  else delete unit.cooldowns;
 }
 
 /**
@@ -433,6 +441,7 @@ function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]
     for (const threat of opportunityThreats(encounter, unit, step)) {
       flush();
       threat.attacker.turn.reaction = false;
+      charge(threat.attacker, threat.ability, false, events);
       resolveAbility(encounter, threat.attacker, threat.ability, unit.pos, [unit], true, events);
       if (!isAlive(unit)) return undefined;
     }
@@ -456,7 +465,10 @@ function opportunityThreats(encounter: Encounter, mover: Unit, next: Pos): { att
   for (const attacker of encounter.units) {
     if (attacker.team === mover.team || !isAlive(attacker) || !attacker.turn.reaction) continue;
 
-    const ability = attacker.abilities.find((candidate) => candidate.opportunity);
+    // A reação paga como qualquer uso: sem Fôlego, ou em recarga, o golpe não sai.
+    const ability = attacker.abilities.find(
+      (candidate) => candidate.opportunity && readiness(attacker, candidate, true) === "ready",
+    );
     if (!ability) continue;
     if (distance(attacker.pos, mover.pos) <= ability.range && distance(attacker.pos, next) > ability.range) {
       threats.push({ attacker, ability });
@@ -467,13 +479,18 @@ function opportunityThreats(encounter: Encounter, mover: Unit, next: Pos): { att
 
 // --- Habilidades ------------------------------------------------------------
 
-function hasResource(unit: Unit, cost: AbilityCost): boolean {
-  return cost === "action" ? unit.turn.action : unit.turn.bonus;
-}
-
-function spendResource(unit: Unit, cost: AbilityCost): void {
-  if (cost === "action") unit.turn.action = false;
-  else unit.turn.bonus = false;
+/**
+ * Cobra de `unit` o que `ability` custa além da ação do turno: um uso do
+ * `limit`, o Fôlego (evento `breathSpent`) e a recarga. `inTurn` diz se ela
+ * saiu no turno dele: aí o fim deste turno não conta na recarga.
+ */
+function charge(unit: Unit, ability: Ability, inTurn: boolean, events: TacticalEvent[]): void {
+  if (ability.limit !== undefined) unit.used = { ...unit.used, [ability.id]: (unit.used?.[ability.id] ?? 0) + 1 };
+  if (ability.breath) {
+    unit.breath -= ability.breath;
+    events.push({ type: "breathSpent", unit: unit.id, amount: ability.breath, remaining: unit.breath });
+  }
+  if (ability.cooldown) unit.cooldowns = { ...unit.cooldowns, [ability.id]: ability.cooldown + (inTurn ? 1 : 0) };
 }
 
 function useAbility(
@@ -485,11 +502,15 @@ function useAbility(
 ): CommandError | undefined {
   const ability = unit.abilities.find((candidate) => candidate.id === abilityId);
   if (!ability) return "unknown_ability";
-  if (!hasResource(unit, ability.cost) || usesLeft(unit, ability) <= 0) return "resource_spent";
+  const state = readiness(unit, ability);
+  if (state === "breath") return "no_breath";
+  if (state === "recharging") return "recharging";
+  if (state !== "ready") return "resource_spent";
   if (!abilityTargets(encounter, unit, ability).some((pos) => samePos(pos, target))) return "invalid_target";
 
-  spendResource(unit, ability.cost);
-  if (ability.limit !== undefined) unit.used = { ...unit.used, [ability.id]: (unit.used?.[ability.id] ?? 0) + 1 };
+  if (ability.cost === "action") unit.turn.action = false;
+  else unit.turn.bonus = false;
+  charge(unit, ability, true, events);
   // O que ele fez com a ação deste turno: é o que a Rachadura e as manias da IA leem depois.
   if (ability.cost === "action") unit.habit = { repeated: false, attackTurns: 0, ...unit.habit, now: ability.id };
   resolveAbility(encounter, unit, ability, target, affectedUnits(encounter, ability, target), false, events);
@@ -662,6 +683,13 @@ function applyEffect(
     case "status":
       addStatus(target, STATUSES[effect.statusId], effect.turns, events);
       return;
+    case "breath": {
+      const amount = Math.min(target.maxBreath - target.breath, effect.amount);
+      if (amount <= 0) return;
+      target.breath += amount;
+      events.push({ type: "breathRecovered", unit: target.id, amount, remaining: target.breath });
+      return;
+    }
     case "push":
       push(encounter, actor, target, effect.distance, events);
       return;

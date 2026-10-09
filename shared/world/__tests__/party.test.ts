@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { maxBreath } from "../../breath";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
@@ -168,8 +169,10 @@ test("o grupo luta junto até o fim; quem cai numa vitória se levanta com 1 de 
   findUnit(encounter, company[1].id)!.currentHp = 0;
   syncPartyFromEncounter(encounter, [hero, ...company], false);
   assert.equal(company[1].currentHp, 0);
+  hero.breath = 0;
   restoreParty(hero, members);
   for (const character of [hero, ...company]) assert.equal(character.currentHp, character.maxHp);
+  for (const character of [hero, ...company]) assert.equal(character.breath, maxBreath(character));
 });
 
 test("uma condição de mapa pode perguntar pelo grupo: party:lish vale enquanto ele anda junto", () => {

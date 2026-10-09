@@ -15,6 +15,8 @@ export interface Character {
   currentHp: number;
   maxHp: number;
   currentNodeId: string;
+  /** O Fôlego que resta (ver ../breath.ts). Ausente = cheio. */
+  breath?: number;
   /** Ausente = personagem ainda não tem mochila inicializada. */
   inventory?: Inventory<ConsumableItem>;
   /**

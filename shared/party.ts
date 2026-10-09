@@ -1,4 +1,5 @@
 import { createStartingAttributes, createStartingInventory, startingMaxHp } from "./characterCreation";
+import { restoreBreath } from "./breath";
 import { applyXpGain, xpToNextLevel } from "./leveling";
 import { MOCK_MAP_NODES } from "./mock/seed";
 import type { GiftId } from "./tactics/abilities";
@@ -195,7 +196,10 @@ export function leaveParty(members: PartyMember[], key: string): Character | und
   return member.character;
 }
 
-/** Vida cheia pra todo mundo que já andou com ela, presente ou não. */
+/** Vida e Fôlego cheios pra todo mundo que já andou com ela, presente ou não. */
 export function restoreParty(hero: Character, members: readonly PartyMember[]): void {
-  for (const character of [hero, ...members.map((member) => member.character)]) character.currentHp = character.maxHp;
+  for (const character of [hero, ...members.map((member) => member.character)]) {
+    character.currentHp = character.maxHp;
+    restoreBreath(character);
+  }
 }

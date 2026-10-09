@@ -11,6 +11,11 @@ import type { Ability, Effect } from "./types";
  * motor — distância, área, empurrão, ação bônus — enquanto a história não
  * diz o que cada Ordem realmente faz. Trocar o kit de uma Ordem é editar
  * dados neste arquivo; o motor não muda.
+ *
+ * O que custa Fôlego (ver ../breath.ts) é o que pesa: o golpe pesado, a cura
+ * e o que só uma pessoa sabe. Golpe comum e golpe rápido não cansam, e quem
+ * se põe em guarda TOMA fôlego: sempre há o que fazer com ele no zero, e o
+ * jeito de tê-lo de volta no meio da luta é gastar a ação do turno nisso.
  */
 
 /** Alcance dos ataques de cada Ordem, em quadrados. 1 = corpo a corpo. */
@@ -24,6 +29,13 @@ const ATTACK_RANGE: Record<CharacterClass, number> = {
 };
 
 const HEAL_RANGE = 4;
+
+const HEAVY_BREATH = 2;
+/** O golpe pesado não sai em dois turnos seguidos. */
+const HEAVY_COOLDOWN = 1;
+const HEAL_BREATH = 2;
+/** O Fôlego que um turno em guarda devolve. */
+const GUARD_BREATH = 1;
 
 const D6 = { count: 1, sides: 6 };
 
@@ -62,14 +74,26 @@ function buildAbility(characterClass: CharacterClass, stance: CombatStance, art:
         opportunity: range === 1,
       };
     case "heavy_attack":
-      return { ...base, cost: "action", range, targets: "enemy", attack: { toHit: -4 }, effects: [HEAVY_DAMAGE] };
+      return {
+        ...base,
+        cost: "action",
+        range,
+        targets: "enemy",
+        attack: { toHit: -4 },
+        effects: [HEAVY_DAMAGE],
+        breath: HEAVY_BREATH,
+        cooldown: HEAVY_COOLDOWN,
+      };
     case "defend":
       return {
         ...base,
         cost: "action",
         range: 0,
         targets: "self",
-        effects: [{ kind: "status", statusId: "guarding", turns: 1 }],
+        effects: [
+          { kind: "status", statusId: "guarding", turns: 1 },
+          { kind: "breath", amount: GUARD_BREATH },
+        ],
       };
     case "heal":
       return {
@@ -78,6 +102,7 @@ function buildAbility(characterClass: CharacterClass, stance: CombatStance, art:
         range: HEAL_RANGE,
         targets: "ally",
         effects: [{ kind: "heal", dice: D6, attribute: "eir" }],
+        breath: HEAL_BREATH,
       };
   }
 }
@@ -104,7 +129,8 @@ const CLASS_TWISTS: Partial<Record<CharacterClass, Partial<Record<CombatStance, 
  * sabe fazer além do kit (`gifts` em ../party.ts). Provisórias como o resto.
  *
  * `tide_pull` é o repuxo de Varel: adianta a maré e abre a guarda de todo
- * inimigo de pé. Uma vez por luta, e a magia cobra — o turno seguinte dele.
+ * inimigo de pé. Uma vez por luta, e a magia cobra — Fôlego, e o turno
+ * seguinte dele.
  */
 export const GIFTS = {
   tide_pull: {
@@ -116,6 +142,7 @@ export const GIFTS = {
     targets: "foes",
     effects: [{ kind: "status", statusId: "exposed", turns: 2 }],
     limit: 1,
+    breath: 3,
     backlash: { statusId: "winded", turns: 1 },
   },
 } satisfies Record<string, Ability>;

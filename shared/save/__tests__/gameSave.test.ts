@@ -78,6 +78,7 @@ test("o que não é um save é recusado sem lançar", () => {
     { version: SAVE_VERSION, character: { ...makeCharacter(), race: "toString" }, story: null },
     { version: SAVE_VERSION, character: { ...makeCharacter(), level: "3" }, story: null },
     { version: SAVE_VERSION, character: { ...makeCharacter(), attributes: { dain: 5 } }, story: null },
+    { version: SAVE_VERSION, character: { ...makeCharacter(), breath: "cheio" }, story: null },
     { version: SAVE_VERSION, character: makeCharacter(), story: 12 },
     // Versão sem caminho de migração.
     { version: 0, character: makeCharacter() },
@@ -85,6 +86,14 @@ test("o que não é um save é recusado sem lançar", () => {
   for (const raw of broken) {
     assert.deepEqual(parseSave(raw), { ok: false, problem: "invalid" }, JSON.stringify(raw));
   }
+});
+
+test("o Fôlego gasto vai no save, e a ficha de antes de ele existir abre sem ele (cheia)", () => {
+  const spent = parseSave(serializeSave(newGame({ ...makeCharacter(), breath: 2 })));
+  assert.equal(spent.ok && spent.save.character.breath, 2);
+
+  const old = parseSave(serializeSave(newGame(makeCharacter())));
+  assert.equal(old.ok && old.save.character.breath, undefined);
 });
 
 test("save de uma versão mais nova do jogo é recusado com o motivo", () => {

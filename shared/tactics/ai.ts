@@ -9,7 +9,7 @@ import { abilityTargets, affectedProps, affectedUnits, canAimAt } from "./target
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
-import { activeUnit, effectiveAttribute, isAlive, primaryAttribute, unitAt } from "./units";
+import { activeUnit, effectiveAttribute, isAlive, primaryAttribute, readiness, unitAt } from "./units";
 
 /**
  * A IA de inimigo, por utilidade.
@@ -38,7 +38,9 @@ import { activeUnit, effectiveAttribute, isAlive, primaryAttribute, unitAt } fro
  *
  * A IA não rola dado nem simula o futuro: trabalha com médias, não mexe na
  * luta e, pra mesma luta, devolve sempre o mesmo comando. Ela só propõe o
- * que `abilityTargets` e `reachableTiles` oferecem — o que o motor aceita.
+ * que `readiness`, `abilityTargets` e `reachableTiles` oferecem — o que o
+ * motor aceita. Fôlego ela gasta sem poupar (criatura só luta uma vez) e
+ * dá valor a recuperar.
  */
 
 export const DEFAULT_AI_PROFILE: AiProfile = { aggression: 1, finisher: 1, support: 1, caution: 0.5 };
@@ -55,6 +57,8 @@ const APPROACH_VALUE = 2;
 const ATTRIBUTE_POINT_VALUE = 0.5;
 /** Quanto vale garantir um crítico. */
 const GUARANTEED_CRIT_VALUE = 4;
+/** Quanto vale cada ponto de Fôlego recuperado: é o que paga o próximo golpe pesado. */
+const BREATH_VALUE = 1.5;
 /** Quanto vale cada quadrado de empurrão. Quase nada: só desempata. */
 const PUSH_VALUE = 0.25;
 /** Quanto vale pôr sob os pés de alguém uma superfície que atrapalha o passo. */
@@ -153,7 +157,9 @@ export function planTurn(encounter: Encounter): AiPlan {
   // As manias (ver AiQuirks): quem só revida, e quem repete o tipo da última ação de alguém.
   const provoked = (unit: Unit) => (unit.habit?.attackTurns ?? 0) >= (me.quirks?.retaliates ?? 0);
   const copied = stanceOf(sim.units.find((unit) => unit.id === me.quirks?.mirrors)?.habit?.last);
-  const mirrors = copied !== undefined && me.abilities.some((ability) => ability.cost === "action" && stanceOf(ability.id) === copied);
+  // O que falta Fôlego pra fazer, ou está em recarga, não entra na conta (a ação do turno se confere adiante).
+  const usable = me.abilities.filter((ability) => readiness(me, ability, true) === "ready");
+  const mirrors = copied !== undefined && usable.some((ability) => ability.cost === "action" && stanceOf(ability.id) === copied);
 
   for (const stop of stops) {
     me.pos = { ...stop.pos };
@@ -161,7 +167,7 @@ export function planTurn(encounter: Encounter): AiPlan {
     let action: AiChoice | undefined;
     let bonus: AiChoice | undefined;
     let canStrike = false;
-    for (const ability of me.abilities) {
+    for (const ability of usable) {
       if (mirrors && ability.cost === "action" && stanceOf(ability.id) !== copied) continue;
       const offensive = isOffensive(ability);
       for (const target of aimPoints(sim, me, ability, foes)) {
@@ -264,6 +270,9 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
         }
         case "status":
           favor += outlook.lands * statusFavor(encounter, victim, effect.statusId, effect.turns, profile);
+          break;
+        case "breath":
+          favor += outlook.lands * BREATH_VALUE * Math.min(effect.amount, victim.maxBreath - victim.breath);
           break;
         case "push":
           favor -= outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
@@ -527,7 +536,7 @@ function threatAt(encounter: Encounter, victim: Unit, guarded: boolean): number 
 
     let worst = 0;
     for (const ability of foe.abilities) {
-      if (!isOffensive(ability)) continue;
+      if (!isOffensive(ability) || readiness(foe, ability, true) !== "ready") continue;
       if (distance(foe.pos, pos) > ability.range + (ability.radius ?? 0)) continue;
       if (!hasLineOfSight(encounter.grid, foe.pos, pos)) continue;
       worst = Math.max(worst, forecast(encounter, foe, ability, victim, guarded).damage);
@@ -546,7 +555,7 @@ function opportunityDamage(encounter: Encounter, mover: Unit, from: Pos, to: Pos
   for (const foe of encounter.units) {
     if (foe.team === mover.team || !isAlive(foe) || !foe.turn.reaction) continue;
 
-    const ability = foe.abilities.find((candidate) => candidate.opportunity);
+    const ability = foe.abilities.find((candidate) => candidate.opportunity && readiness(foe, candidate, true) === "ready");
     if (!ability) continue;
     if (distance(foe.pos, from) <= ability.range && distance(foe.pos, to) > ability.range) {
       total += forecast(encounter, foe, ability, mover, isGuarding(mover)).damage;
@@ -598,7 +607,7 @@ export function basicCommand(encounter: Encounter): Command {
 
   for (const ability of unit.abilities) {
     if (ability.targets === "self" || ability.targets === "ally") continue;
-    if (!(ability.cost === "action" ? unit.turn.action : unit.turn.bonus)) continue;
+    if (readiness(unit, ability) !== "ready") continue;
 
     const target = abilityTargets(encounter, unit, ability).find((pos) =>
       enemies.some((enemy) => samePos(enemy.pos, pos)),

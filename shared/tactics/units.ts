@@ -1,3 +1,4 @@
+import { breathOf, maxBreath } from "../breath";
 import type { Attributes } from "../types/attributes";
 import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
@@ -45,6 +46,8 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     speed: DEFAULT_SPEED,
     abilities: [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))],
     statuses: [],
+    breath: breathOf(character),
+    maxBreath: maxBreath(character),
     inventory: character.inventory ? structuredClone(character.inventory) : undefined,
     ai: placement.ai ? { ...placement.ai } : undefined,
     ...(placement.invulnerable ? { invulnerable: true } : {}),
@@ -54,9 +57,10 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
   };
 }
 
-/** Devolve à ficha o que a luta gastou: HP e mochila. */
+/** Devolve à ficha o que a luta gastou: HP, Fôlego e mochila. */
 export function syncCharacterFromUnit(character: Character, unit: Unit): void {
   character.currentHp = unit.currentHp;
+  character.breath = unit.breath;
   if (unit.inventory) character.inventory = structuredClone(unit.inventory);
 }
 
@@ -71,6 +75,31 @@ export function syncUnitInventory(unit: Unit, character: Character): void {
 /** Quantas vezes `unit` ainda pode usar `ability` nesta luta. Infinito em quem não tem `limit`. */
 export function usesLeft(unit: Unit, ability: Ability): number {
   return ability.limit === undefined ? Infinity : Math.max(0, ability.limit - (unit.used?.[ability.id] ?? 0));
+}
+
+/** Por quantos turnos de `unit` a habilidade ainda fica em recarga. 0 = pronta. */
+export function cooldownLeft(unit: Unit, ability: Ability): number {
+  return Math.min(unit.cooldowns?.[ability.id] ?? 0, ability.cooldown ?? 0);
+}
+
+/**
+ * Por que `unit` não pode usar `ability` agora — ou `ready`, se pode: `spent`
+ * é a ação (ou a bônus) do turno já gasta, `limit` os usos da luta,
+ * `recharging` a recarga e `breath` o Fôlego que falta. Não olha alvo.
+ */
+export type Readiness = "ready" | "spent" | "limit" | "recharging" | "breath";
+
+/**
+ * `unit` pode usar `ability` agora? É a mesma pergunta pro motor, pra IA e
+ * pra interface. Com `outOfTurn`, não confere a ação do turno: é o golpe dado
+ * fora dele (o de abertura, o ataque de oportunidade).
+ */
+export function readiness(unit: Unit, ability: Ability, outOfTurn = false): Readiness {
+  if (!outOfTurn && !(ability.cost === "action" ? unit.turn.action : unit.turn.bonus)) return "spent";
+  if (usesLeft(unit, ability) <= 0) return "limit";
+  if ((unit.cooldowns?.[ability.id] ?? 0) > 0) return "recharging";
+  if (unit.breath < (ability.breath ?? 0)) return "breath";
+  return "ready";
 }
 
 export function isAlive(unit: Unit): boolean {
