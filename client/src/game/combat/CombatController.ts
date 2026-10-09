@@ -12,6 +12,7 @@ import {
   chooseCommand,
   findPath,
   findUnit,
+  isOver,
   pixelOfTile,
   propAt,
   tileAt,
@@ -47,6 +48,8 @@ export interface CombatHost {
   /** Põe um objeto na cena de modo que só a câmera do mundo o desenhe. */
   addWorld: <T extends Phaser.GameObjects.GameObject>(object: T) => T;
   addHud: AddHud;
+  /** Uma deixa do roteiro da luta disparou: a cena faz o que ela pede (uma fala) e a luta espera. */
+  onCue: (id: string) => Promise<void>;
 }
 
 /** Entre o chão e tudo que fica de pé: os quadrados acesos passam por baixo de árvores e personagens. */
@@ -144,7 +147,8 @@ export class CombatController {
   constructor(
     private readonly host: CombatHost,
     private readonly encounter: Encounter,
-    private readonly onEnd: (winner: TeamId) => void,
+    /** Sem `winner`, a luta parou sem vencedor (uma deixa a encerrou). */
+    private readonly onEnd: (winner: TeamId | undefined) => void,
   ) {
     const { scene } = host;
     this.hud = new CombatHud(scene, host.addHud);
@@ -214,7 +218,7 @@ export class CombatController {
   private async proceed(): Promise<void> {
     const { encounter } = this;
 
-    while (!encounter.winner && activeUnit(encounter)?.team === "enemy") {
+    while (!isOver(encounter) && activeUnit(encounter)?.team === "enemy") {
       this.refreshHud();
       const command = chooseCommand(encounter);
       await this.wait(ENEMY_THINK_MS);
@@ -227,7 +231,7 @@ export class CombatController {
       await this.play(result.events);
     }
 
-    if (encounter.winner) {
+    if (isOver(encounter)) {
       this.hud.setTurnOrder(encounter);
       this.onEnd(encounter.winner);
       return;
@@ -687,6 +691,13 @@ export class CombatController {
       case "death":
         this.hud.log(`${this.unit(event.unit).name} cai.`);
         await this.actor(event.unit)?.collapse(420);
+        return;
+
+      case "cue":
+        // A história fala no meio da luta: a interface do combate sai da frente da caixa.
+        this.hud.setVisible(false);
+        await this.host.onCue(event.id);
+        this.hud.setVisible(true);
         return;
 
       case "battleEnded":

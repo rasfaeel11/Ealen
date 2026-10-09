@@ -210,6 +210,13 @@ export class CombatHud {
     });
   }
 
+  /** Tira a interface da frente (e a devolve) enquanto a história fala no meio da luta. */
+  setVisible(visible: boolean): void {
+    for (const object of [this.turnOrder, this.logText, this.bar, this.resources, this.detail, this.warning, ...this.buttonTexts]) {
+      object.setVisible(visible);
+    }
+  }
+
   destroy(): void {
     this.scene.tweens.killTweensOf(this.warning);
     for (const object of [

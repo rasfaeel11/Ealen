@@ -1,4 +1,5 @@
 import { FLOOR, type Grid, type Pos, type Tile } from "../tactics/grid";
+import type { CueEnding } from "../tactics/types";
 
 /**
  * Lê um mapa do Tiled (.tmj) e tira dele o que é REGRA: onde dá pra pisar,
@@ -49,8 +50,23 @@ import { FLOOR, type Grid, type Pos, type Tile } from "../tactics/grid";
  *              sem apertar nada. Uma vez só, a não ser com `once` = false
  *              (aí abre toda vez que se ENTRA nele). Cobrindo um ponto de
  *              chegada, é a cena de quem chega na área
+ *     `cue`    ponto (onde fica não importa); uma DEIXA: o que faz de uma luta
+ *              uma luta com roteiro. Propriedades `group` (o grupo de inimigos
+ *              de cuja luta ela é) e `when` (quando dispara, uma vez por luta):
+ *                `round 3`        ao começar a rodada 3
+ *                `down Nome`      quando cai o inimigo desse grupo cujo objeto
+ *                                 tem esse Nome; `down hero` é a protagonista,
+ *                                 `down party:lish` um companheiro
+ *                `broken Nome`    quando quebra o destrutível com esse Nome
+ *                `defeat`         quando o grupo do jogador cairia inteiro: a
+ *                                 deixa acontece NO LUGAR da derrota
+ *              Opcionais: `dialog` (o trecho da história que abre nessa hora,
+ *              no meio da luta) e `ends` — `win` (a luta acaba ali, vencida,
+ *              com quem estiver de pé) ou `stop` (a luta para, sem vencedor
+ *              nem recompensa, e o grupo não volta). Sem `ends` a luta segue;
+ *              a de `defeat` sempre encerra (`stop`, se não disser outra coisa)
  *
- *   `npc`, `enemy`, `trigger` e `exit` aceitam ainda `if` e `unless`: o nome
+ *   `npc`, `enemy`, `trigger`, `exit` e `cue` aceitam ainda `if` e `unless`: o nome
  *   de uma variável (VAR) da história. O objeto só existe enquanto a de `if`
  *   for verdadeira e a de `unless` for falsa — é como a história põe e tira
  *   gente do mapa, arma um gatilho ou tranca uma saída (ver ./presence.ts).
@@ -130,9 +146,42 @@ export interface AreaNpc extends AreaCondition {
   y: number;
 }
 
+/** Quando uma deixa dispara, como o mapa escreve: com NOMES, que só viram ids na hora da luta (ver fightCues em ./encounters.ts). */
+export type AreaCueWhen =
+  | { kind: "round"; round: number }
+  /** O Nome de um inimigo do grupo, `hero` ou `party:chave`. */
+  | { kind: "down"; who: string }
+  /** O Nome de um destrutível da área. */
+  | { kind: "broken"; prop: string }
+  | { kind: "defeat" };
+
+/** Uma deixa de luta (ver Cue em ../tactics/types.ts): o roteiro da luta com um grupo. */
+export interface AreaCue extends AreaCondition {
+  /** Único dentro da área — é também o id da deixa na luta. */
+  id: string;
+  group: string;
+  when: AreaCueWhen;
+  /** O trecho da história que abre quando ela dispara, no meio da luta. */
+  dialog?: string;
+  ends?: CueEnding;
+}
+
+/** Lê a propriedade `when` de uma deixa. Undefined se não der pra entender. */
+export function parseCueWhen(text: string): AreaCueWhen | undefined {
+  const [, kind, rest = ""] = /^(\S+)\s*(.*)$/.exec(text.trim()) ?? [];
+  if (kind === "defeat") return rest === "" ? { kind } : undefined;
+  if (kind === "round") return /^[1-9]\d*$/.test(rest) ? { kind, round: Number(rest) } : undefined;
+  if (rest === "") return undefined;
+  if (kind === "down") return { kind, who: rest };
+  if (kind === "broken") return { kind, prop: rest };
+  return undefined;
+}
+
 export interface AreaProp {
   /** Único dentro da área. */
   id: string;
+  /** O nome do objeto no mapa: é por ele que uma deixa `broken` o aponta. */
+  name: string;
   /** Id em PROPS. Um que não exista é ignorado — o teste dos mapas acusa. */
   kind: string;
   tile: Pos;
@@ -157,6 +206,8 @@ export interface AreaMap {
   npcs: AreaNpc[];
   props: AreaProp[];
   triggers: AreaTrigger[];
+  /** As deixas de todas as lutas da área (ver AreaCue). */
+  cues: AreaCue[];
 }
 
 interface TiledProperty {
@@ -279,6 +330,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
   const npcs: AreaNpc[] = [];
   const props: AreaProp[] = [];
   const triggers: AreaTrigger[] = [];
+  const cues: AreaCue[] = [];
   for (const layer of layers) {
     for (const object of layer.objects ?? []) {
       const kind = object.type || object.class;
@@ -355,7 +407,27 @@ export function parseTiledMap(raw: unknown): AreaMap {
           x: Math.floor((object.x + map.tilewidth / 2) / map.tilewidth),
           y: Math.floor((object.y - 1) / map.tileheight),
         };
-        props.push({ id: `prop-${object.id}`, kind: propKind, tile, gid: object.gid & GID_MASK });
+        props.push({ id: `prop-${object.id}`, name: object.name ?? "", kind: propKind, tile, gid: object.gid & GID_MASK });
+      } else if (kind === "cue") {
+        const properties = propertiesOf(object);
+        const { group, dialog, ends } = properties;
+        const when = typeof properties.when === "string" ? parseCueWhen(properties.when) : undefined;
+        if (typeof group !== "string" || !when) {
+          throw new Error(
+            `Deixa "${object.name ?? ""}" precisa das propriedades "group" e "when" (round N, down Nome, broken Nome ou defeat).`,
+          );
+        }
+        if (ends !== undefined && ends !== "" && ends !== "win" && ends !== "stop") {
+          throw new Error(`Deixa "${object.name ?? ""}": "ends" é "win" ou "stop", não "${String(ends)}".`);
+        }
+        cues.push({
+          id: `cue-${object.id}`,
+          group,
+          when,
+          ...(typeof dialog === "string" && dialog !== "" ? { dialog } : {}),
+          ...(ends === "win" || ends === "stop" ? { ends } : {}),
+          ...conditionOf(properties),
+        });
       }
     }
   }
@@ -370,6 +442,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
     npcs,
     props,
     triggers,
+    cues,
   };
 }
 

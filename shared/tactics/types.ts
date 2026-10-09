@@ -102,6 +102,36 @@ export interface AiProfile {
 }
 
 /**
+ * Quando uma deixa dispara:
+ * - `round`: ao começar a rodada N (a 1 é a abertura da luta);
+ * - `down`: quando a unidade `unit` cai;
+ * - `broken`: quando o destrutível `prop` quebra;
+ * - `defeat`: quando o grupo do jogador inteiro está no chão — NO LUGAR da
+ *   derrota, que não acontece.
+ */
+export type CueWhen =
+  | { kind: "round"; round: number }
+  | { kind: "down"; unit: string }
+  | { kind: "broken"; prop: string }
+  | { kind: "defeat" };
+
+/** Como uma deixa encerra a luta: `win` é vitória do grupo do jogador, com inimigo de pé e tudo; `stop` é a luta que para, sem vencedor. */
+export type CueEnding = "win" | "stop";
+
+/**
+ * Uma deixa: o ponto de uma luta com roteiro em que alguma coisa acontece
+ * fora das regras — alguém fala, a luta acaba antes de um lado cair. O motor
+ * só sabe QUANDO ela dispara e se ela encerra a luta; o que se diz nessa hora
+ * é de quem reproduz o evento `cue`. Cada uma dispara uma vez só.
+ */
+export interface Cue {
+  id: string;
+  when: CueWhen;
+  /** Encerra a luta ao disparar. Uma deixa `defeat` sempre encerra: sem isto, vale `stop`. */
+  ends?: CueEnding;
+}
+
+/**
  * Um combatente dentro de uma luta. É uma CÓPIA do que importa da ficha
  * (ver unitFromCharacter em ./units.ts): a luta nunca mexe no personagem
  * salvo, e o estado inteiro continua sendo dado puro, clonável.
@@ -144,9 +174,13 @@ export interface Encounter {
   props: Prop[];
   /** O que há no chão por cima do terreno (ver ./surfaces.ts). No máximo uma por quadrado. */
   surfaces: Surface[];
+  /** As deixas que ainda não dispararam, na ordem em que foram declaradas (ver Cue). */
+  cues: Cue[];
   rngState: number;
-  /** Preenchido quando um dos lados acaba. Depois disso nenhum comando é aceito. */
+  /** Preenchido quando um dos lados acaba, ou quando uma deixa dá a vitória. Depois disso nenhum comando é aceito. */
   winner?: TeamId;
+  /** Uma deixa parou a luta sem vencedor. Como `winner`, encerra tudo (ver isOver em ./units.ts). */
+  stopped?: boolean;
 }
 
 /** O que um combatente pede pra fazer. Só quem está no turno pode pedir. */
@@ -201,7 +235,10 @@ export type TacticalEvent =
   | { type: "propDestroyed"; prop: string; name: string; pos: Pos }
   | { type: "itemUsed"; unit: string; itemId: string; itemName: string; description: string }
   | { type: "death"; unit: string }
-  | { type: "battleEnded"; winner: TeamId };
+  /** A deixa `id` disparou. Se ela encerra a luta, o `battleEnded` vem logo depois. */
+  | { type: "cue"; id: string }
+  /** Sem `winner`, a luta parou sem vencedor (uma deixa `stop`). */
+  | { type: "battleEnded"; winner?: TeamId };
 
 /** Por que um comando foi recusado. Um comando recusado não muda nada na luta. */
 export type CommandError =

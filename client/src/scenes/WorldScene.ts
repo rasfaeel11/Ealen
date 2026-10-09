@@ -12,6 +12,7 @@ import {
   distance,
   exitAt,
   extendTrail,
+  fightCues,
   findUnit,
   firedTrigger,
   grantEncounterRewards,
@@ -32,12 +33,15 @@ import {
   standPeople,
   startAreaEncounter,
   stepToward,
+  syncCharacterFromUnit,
   syncPartyFromEncounter,
+  syncUnitInventory,
   talkers,
   tileOfPixel,
   trailPoint,
   unusedItems,
   walk,
+  type Aftermath,
   type AreaDef,
   type AreaEnemy,
   type AreaExit,
@@ -144,6 +148,12 @@ export default class WorldScene extends Phaser.Scene {
   private peoplePending = false;
   /** Pra onde a história mandou ir depois da luta que ela mesma começou, se for vencida. */
   private travelAfterFight?: { area: string; spawn: string };
+  /**
+   * O que a história disse no MEIO da luta em andamento (as deixas dela). Só
+   * vale se a luta não for perdida: numa derrota a história volta ao que era
+   * antes dela, junto com a área.
+   */
+  private fightSteps: DialogueStep[] = [];
   /** Destrutíveis ainda de pé nesta área (já escritos na grade), e a imagem de cada um. */
   private props: Prop[] = [];
   private propImages = new Map<string, Phaser.GameObjects.Image>();
@@ -181,6 +191,7 @@ export default class WorldScene extends Phaser.Scene {
     this.insideTriggers = new Set();
     this.peoplePending = false;
     this.travelAfterFight = undefined;
+    this.fightSteps = [];
     this.props = [];
     this.propImages = new Map();
   }
@@ -577,11 +588,32 @@ export default class WorldScene extends Phaser.Scene {
    * uma viagem.
    */
   private async converse(knot: string, toward?: PixelPos): Promise<void> {
-    this.talking = true;
     this.halt();
     if (toward) this.player.faceToward(pixelOfTile(this.map, tileOfPixel(this.map, toward)));
 
+    let steps: DialogueStep[] = [];
+    try {
+      steps = await this.read(knot);
+    } finally {
+      this.save.story = this.story.save();
+      this.syncPresence();
+      this.persist();
+      this.refreshStatus();
+      this.refreshHint();
+    }
+    this.settle(aftermath(steps));
+  }
+
+  /**
+   * Lê um trecho da história na caixa, do começo ao fim, e devolve o que ele
+   * trouxe. Só isso: gravar, acertar o mapa e cumprir o que o texto pediu é de
+   * quem chamou — uma conversa faz tudo na hora (`converse`), uma deixa no
+   * meio da luta espera a luta acabar (`playCue`).
+   */
+  private async read(knot: string): Promise<DialogueStep[]> {
+    this.talking = true;
     const steps: DialogueStep[] = [];
+    const hud = [this.statusText, this.hintText].filter((text) => text.visible);
     let box: DialogueBox | undefined;
     try {
       let step = this.story.start(knot);
@@ -589,8 +621,7 @@ export default class WorldScene extends Phaser.Scene {
         steps.push(step);
         // Um trecho que só mexe em flags (ou decide que não tem nada a dizer) passa sem abrir a caixa.
         if (!box && !isSilent(step)) {
-          this.statusText.setVisible(false);
-          this.hintText.setVisible(false);
+          for (const text of hud) text.setVisible(false);
           box = new DialogueBox(this, (object) => this.addHud(object));
         }
         const choice = box ? await box.play(step) : null;
@@ -600,17 +631,14 @@ export default class WorldScene extends Phaser.Scene {
     } finally {
       // Um erro no texto não pode deixar o jogador preso numa conversa que não fecha.
       box?.destroy();
-      this.save.story = this.story.save();
-      this.syncPresence();
-      this.persist();
-      this.statusText.setVisible(true);
-      this.hintText.setVisible(true);
-      this.refreshStatus();
-      this.refreshHint();
+      for (const text of hud) text.setVisible(true);
       this.talking = false;
     }
+    return steps;
+  }
 
-    const { fight, travel, unlocks } = aftermath(steps);
+  /** Cumpre o que o texto deixou pra depois da última fala: o que destravou, uma luta, uma viagem. */
+  private settle({ fight, travel, unlocks }: Aftermath): void {
     // O que o texto destravou é do jogador, não desta partida: vai pro perfil.
     unlockOrders(unlocks);
     if (fight !== undefined && this.enemies.some((enemy) => enemy.group === fight)) {
@@ -635,10 +663,13 @@ export default class WorldScene extends Phaser.Scene {
   /**
    * A luta com um grupo de inimigos começa, onde cada um está: porque ele
    * percebeu o personagem, porque a história mandou ou — com `surprised` —
-   * porque o personagem o emboscou.
+   * porque o personagem o emboscou. Se o mapa tem deixas (`cue`) pra esse
+   * grupo, a luta tem roteiro: elas entram junto.
    */
   private startCombat(group: string, surprised?: TeamId): void {
     const fighters = this.enemies.filter((enemy) => enemy.group === group);
+    const cues = this.map.cues.filter((cue) => cue.group === group && isActive(cue, this.flag));
+    this.fightSteps = [];
     const playerTile = tileOfPixel(this.map, this.pos);
     // Quem estava parado ocupando um quadrado agora é uma unidade, que anda.
     this.occupy(fighters);
@@ -667,7 +698,15 @@ export default class WorldScene extends Phaser.Scene {
     }
 
     const seed = Math.floor(Math.random() * 0xffffffff);
-    const { encounter, events } = startAreaEncounter(this.map, party, fighters, seed, this.props, surprised);
+    const { encounter, events } = startAreaEncounter(
+      this.map,
+      party,
+      fighters,
+      seed,
+      this.props,
+      surprised,
+      fightCues(this.map, cues, fighters),
+    );
 
     this.statusText.setVisible(false);
     this.hintText.setVisible(false);
@@ -679,6 +718,7 @@ export default class WorldScene extends Phaser.Scene {
         props: this.propImages,
         addWorld: (object) => this.addWorld(object),
         addHud: (object) => this.addHud(object),
+        onCue: (id) => this.playCue(encounter, cues.find((cue) => cue.id === id)?.dialog),
       },
       encounter,
       (winner) => void this.endCombat(encounter, group, fighters, winner),
@@ -686,14 +726,50 @@ export default class WorldScene extends Phaser.Scene {
     void this.combat.start(events);
   }
 
-  /** A luta acabou: devolve à ficha o que ela gastou, paga a vitória (ou cobra a derrota) e volta a andar. */
-  private async endCombat(encounter: Encounter, group: string, fighters: AreaEnemy[], winner: TeamId): Promise<void> {
+  /**
+   * Uma deixa da luta disparou e tem o que dizer: a história fala ali mesmo,
+   * com a luta parada. Ela lê a mochila como a luta a deixou, e o que der ou
+   * tirar já vale pra quem está lutando. Nada é gravado nem cumprido agora —
+   * isso fica pro fim da luta, e só se ela não for perdida (`endCombat`).
+   */
+  private async playCue(encounter: Encounter, knot: string | undefined): Promise<void> {
+    const { character } = this;
+    const unit = findUnit(encounter, character.id);
+    if (knot === undefined || !unit) return;
+
+    // A ficha só fica com a cara da luta enquanto a história fala: quem fecha o jogo no meio da luta a tem como era antes.
+    const { currentHp, inventory } = character;
+    syncCharacterFromUnit(character, unit);
+    try {
+      this.fightSteps.push(...(await this.read(knot)));
+    } finally {
+      syncUnitInventory(unit, character);
+      character.currentHp = currentHp;
+      character.inventory = inventory;
+    }
+  }
+
+  /**
+   * A luta acabou: devolve à ficha o que ela gastou, paga a vitória (ou cobra
+   * a derrota) e volta a andar. Sem `winner`, uma deixa a parou: ninguém
+   * venceu, não há recompensa nem castigo, e o grupo de inimigos sai do mapa
+   * como o vencido sai.
+   */
+  private async endCombat(
+    encounter: Encounter,
+    group: string,
+    fighters: AreaEnemy[],
+    winner: TeamId | undefined,
+  ): Promise<void> {
     const combat = this.combat!;
     const { character } = this;
     const unit = findUnit(encounter, character.id)!;
     const company = this.followers.map((follower) => follower.character);
-    syncPartyFromEncounter(encounter, [character, ...company], winner === "party");
-    const travel = this.travelAfterFight;
+    syncPartyFromEncounter(encounter, [character, ...company], winner !== "enemy");
+    // O que a história pediu pra depois: no meio da luta (as deixas) e, antes disso, na conversa que a começou.
+    const after = aftermath(this.fightSteps);
+    after.travel ??= this.travelAfterFight;
+    this.fightSteps = [];
     this.travelAfterFight = undefined;
 
     if (winner === "enemy") {
@@ -710,13 +786,16 @@ export default class WorldScene extends Phaser.Scene {
       return;
     }
 
-    const rewards = grantEncounterRewards(
-      character,
-      fighters.map((enemy) => enemy.creature),
-      encounter,
-      unusedItems(encounter, "enemy"),
-      company,
-    );
+    const rewards =
+      winner === "party"
+        ? grantEncounterRewards(
+            character,
+            fighters.map((enemy) => enemy.creature),
+            encounter,
+            unusedItems(encounter, "enemy"),
+            company,
+          )
+        : undefined;
     markDefeated(this.save, this.groupKey(group));
     // O que quebrou na luta fica quebrado; numa derrota a área inteira volta ao que era.
     markBroken(
@@ -732,17 +811,22 @@ export default class WorldScene extends Phaser.Scene {
       if (fought) follower.pos = pixelOfTile(this.map, fought.pos);
     }
     this.trail = [{ ...this.pos }, ...this.followers.map((follower) => ({ ...follower.pos }))];
+    // Agora o que as deixas disseram vale: a luta não foi perdida.
+    this.save.story = this.story.save();
     this.persist();
 
-    const lines = [`+${rewards.xpGained} de XP`];
-    if (rewards.levelUp.leveledUp) lines.push(`Subiu para o nível ${rewards.levelUp.newLevel}!`);
-    for (const { name, level } of rewards.companionLevels) lines.push(`${name} subiu para o nível ${level}!`);
-    lines.push(
-      rewards.loot.length > 0
-        ? `Encontrou: ${rewards.loot.map((item) => item.name).join(", ")}`
-        : "Nada ficou pra trás.",
-    );
-    await combat.showResult("VITÓRIA", lines, TEXT_COLORS.goldBright);
+    // Numa luta que parou, o resultado é o que a história acabou de dizer: não há painel.
+    if (rewards) {
+      const lines = [`+${rewards.xpGained} de XP`];
+      if (rewards.levelUp.leveledUp) lines.push(`Subiu para o nível ${rewards.levelUp.newLevel}!`);
+      for (const { name, level } of rewards.companionLevels) lines.push(`${name} subiu para o nível ${level}!`);
+      lines.push(
+        rewards.loot.length > 0
+          ? `Encontrou: ${rewards.loot.map((item) => item.name).join(", ")}`
+          : "Nada ficou pra trás.",
+      );
+      await combat.showResult("VITÓRIA", lines, TEXT_COLORS.goldBright);
+    }
 
     combat.destroy();
     this.combat = undefined;
@@ -760,10 +844,10 @@ export default class WorldScene extends Phaser.Scene {
     this.refreshStatus();
     this.refreshHint();
 
-    // O que a história tem a dizer sobre a queda do grupo, e depois a viagem que ela tinha deixado marcada.
-    const knot = fighters.find((enemy) => enemy.onDefeat !== undefined)?.onDefeat;
+    // O que a história tem a dizer sobre a queda do grupo (se ele caiu), e depois o que ela tinha deixado marcado.
+    const knot = winner === "party" ? fighters.find((enemy) => enemy.onDefeat !== undefined)?.onDefeat : undefined;
     if (knot !== undefined) await this.converse(knot);
-    if (travel && !this.combat && !this.leaving) this.leave(travel);
+    if (!this.combat && !this.leaving) this.settle(after);
   }
 
   // ------------------------------------------------------------------ pausa

@@ -41,6 +41,12 @@ EXTERNAL unlock_order(id)   // destrava uma Ordem pra Halmira nos próximos jogo
 //
 // Um trecho não precisa de npc: um `trigger` no mapa abre o dele quando se
 // pisa ali, e um inimigo com `onDefeat` abre o dele quando o grupo cai.
+//
+// E uma luta pode ter roteiro: uma deixa (`cue`) no mapa abre o trecho dela NO
+// MEIO da luta — numa rodada, quando alguém cai, quando algo quebra, ou no
+// lugar da derrota — e pode encerrá-la ali. O trecho de uma deixa que NÃO
+// encerra a luta só fala e mexe em variáveis: se a luta for perdida depois, a
+// história volta ao que era antes dela, e o que ele tivesse dado, não.
 
 INCLUDE clareira.ink
 INCLUDE ruinas.ink

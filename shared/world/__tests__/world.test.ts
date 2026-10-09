@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { findBestiaryEntry } from "../../mock/bestiary";
-import { applyCommand, chooseCommand } from "../../tactics";
+import { COMPANIONS, HERO_ID, companionId } from "../../party";
+import { activeUnit, applyCommand, chooseCommand, isOver } from "../../tactics";
 import { distance, samePos, stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
 import { isPropId } from "../../tactics/props";
 import type { Character } from "../../types/character";
@@ -16,11 +17,13 @@ import {
   aggroedGroup,
   ambushableGroup,
   exitAt,
+  fightCues,
   firedTrigger,
   grantEncounterRewards,
   isActive,
   isBlocked,
   npcInReach,
+  parseCueWhen,
   parseTiledMap,
   peopleTiles,
   standAreaProps,
@@ -30,6 +33,7 @@ import {
   tileOfPixel,
   unusedItems,
   walk,
+  type AreaCue,
   type AreaEnemy,
   type AreaMap,
 } from "../index";
@@ -168,6 +172,27 @@ for (const [areaId, map] of Object.entries(maps)) {
     }
   });
 
+  test(`${areaId}: toda deixa é de um grupo que existe, e quem (ou o quê) ela espera está lá, sem ambiguidade`, () => {
+    for (const cue of map.cues) {
+      const group = map.enemies.filter((enemy) => enemy.group === cue.group);
+      assert.ok(group.length > 0, `${cue.id} é da luta com "${cue.group}", grupo que não existe`);
+
+      const { when } = cue;
+      if (when.kind === "broken") {
+        const named = map.props.filter((prop) => prop.name === when.prop).length;
+        assert.equal(named, 1, `${cue.id} espera quebrar "${when.prop}": há ${named} destrutíveis com esse Nome`);
+      } else if (when.kind === "down" && when.who.startsWith("party:")) {
+        assert.ok(when.who.slice("party:".length) in COMPANIONS, `${cue.id} espera a queda de "${when.who}", que não é companheiro`);
+      } else if (when.kind === "down" && when.who !== "hero") {
+        const named = group.filter((enemy) => enemy.name === when.who).length;
+        assert.equal(named, 1, `${cue.id} espera a queda de "${when.who}": há ${named} com esse Nome no grupo "${cue.group}"`);
+      }
+    }
+    // Duas deixas iguais no mesmo grupo: a segunda nunca seria a que decide.
+    const keys = map.cues.map((cue) => JSON.stringify([cue.group, cue.when, cue.if, cue.unless]));
+    assert.equal(new Set(keys).size, keys.length, "há deixas repetidas");
+  });
+
   test(`${areaId}: ninguém chega na área já dentro de uma luta`, () => {
     for (const [name, spawn] of Object.entries(map.spawns)) {
       for (const enemy of map.enemies.filter((candidate) => !candidate.passive)) {
@@ -296,6 +321,7 @@ test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
     npcs: [],
     props: [],
     triggers: [],
+    cues: [],
   };
   const body = { halfWidth: 4, height: 4 };
 
@@ -333,6 +359,7 @@ function room(extra: Partial<AreaMap> = {}): AreaMap {
     npcs: [],
     props: [],
     triggers: [],
+    cues: [],
     ...extra,
   };
 }
@@ -558,4 +585,115 @@ test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda
   const skipped = log.flatMap((event) => (event.type === "turnSkipped" ? [event.unit] : []));
   assert.ok(skipped.length >= 1 && skipped.length <= 2);
   assert.equal(new Set(skipped).size, skipped.length);
+});
+
+// --- Lutas com roteiro ------------------------------------------------------
+
+test("a deixa do Tiled chega lida: de que grupo é, quando dispara, o que abre e como encerra", () => {
+  assert.deepEqual(parseCueWhen("round 3"), { kind: "round", round: 3 });
+  assert.deepEqual(parseCueWhen("  down Velha Sentinela "), { kind: "down", who: "Velha Sentinela" });
+  assert.deepEqual(parseCueWhen("down party:lish"), { kind: "down", who: "party:lish" });
+  assert.deepEqual(parseCueWhen("broken Sino"), { kind: "broken", prop: "Sino" });
+  assert.deepEqual(parseCueWhen("defeat"), { kind: "defeat" });
+  for (const bad of ["", "round", "round 0", "round três", "down", "broken", "defeat agora", "quando der"]) {
+    assert.equal(parseCueWhen(bad), undefined, `"${bad}" não deveria ser aceito`);
+  }
+
+  const property = (name: string, value: unknown) => ({ name, value });
+  const parse = (...properties: { name: string; value: unknown }[]) =>
+    parseTiledMap({
+      width: 2,
+      height: 2,
+      tilewidth: 16,
+      tileheight: 16,
+      tilesets: [],
+      layers: [{ type: "objectgroup", objects: [{ id: 7, name: "deixa", type: "cue", x: 0, y: 0, properties }] }],
+    }).cues;
+
+  assert.deepEqual(
+    parse(property("group", "chefe"), property("when", "round 3"), property("dialog", "chefe_cansa"), property("ends", "stop"), property("unless", "chefe_fugiu")),
+    [{ id: "cue-7", group: "chefe", when: { kind: "round", round: 3 }, dialog: "chefe_cansa", ends: "stop", unless: "chefe_fugiu" }],
+  );
+  // Sem `dialog` e sem `ends`, não leva nenhum dos dois.
+  assert.deepEqual(parse(property("group", "chefe"), property("when", "defeat")), [{ id: "cue-7", group: "chefe", when: { kind: "defeat" } }]);
+  assert.throws(() => parse(property("when", "round 3")));
+  assert.throws(() => parse(property("group", "chefe"), property("when", "um dia")));
+  assert.throws(() => parse(property("group", "chefe"), property("when", "round 3"), property("ends", "lose")));
+});
+
+test("o roteiro vai pra luta com os nomes do mapa trocados por ids, e sem as deixas de quem não está nela", () => {
+  const boss = enemy("enemy-1", 5, 5, { name: "Chefe", group: "chefe" });
+  const map = room({ props: [{ id: "prop-9", name: "Sino", kind: "crate", tile: { x: 2, y: 2 }, gid: 1 }] });
+  const cue = (id: string, when: AreaCue["when"], ends?: AreaCue["ends"]): AreaCue => ({ id, group: "chefe", when, dialog: id, ...(ends ? { ends } : {}) });
+
+  assert.deepEqual(
+    fightCues(
+      map,
+      [
+        cue("a", { kind: "round", round: 2 }),
+        cue("b", { kind: "down", who: "Chefe" }, "win"),
+        cue("c", { kind: "down", who: "hero" }),
+        cue("d", { kind: "down", who: "party:lish" }, "stop"),
+        cue("e", { kind: "broken", prop: "Sino" }, "win"),
+        cue("f", { kind: "defeat" }),
+        // Quem não entrou na luta e o que a área não tem: de fora.
+        cue("g", { kind: "down", who: "Capanga" }),
+        cue("h", { kind: "broken", prop: "Gongo" }),
+      ],
+      [boss],
+    ),
+    [
+      { id: "a", when: { kind: "round", round: 2 } },
+      { id: "b", when: { kind: "down", unit: "enemy-1" }, ends: "win" },
+      { id: "c", when: { kind: "down", unit: HERO_ID } },
+      { id: "d", when: { kind: "down", unit: companionId("lish") }, ends: "stop" },
+      { id: "e", when: { kind: "broken", prop: "prop-9" }, ends: "win" },
+      { id: "f", when: { kind: "defeat" } },
+    ],
+  );
+});
+
+test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa", () => {
+  const map = maps.ruinas;
+  const group = map.enemies.filter((candidate) => candidate.group === "sentinela");
+  const cues = map.cues.filter((cue) => cue.group === "sentinela");
+  const stop = cues.find((cue) => cue.ends === "stop");
+  assert.ok(stop, "a luta da Sentinela deveria ter uma deixa que a para");
+
+  const hero: Character = {
+    id: HERO_ID,
+    name: "Herói",
+    race: "althirim",
+    characterClass: "guardiao",
+    level: 1,
+    xp: 0,
+    attributes: { dain: 5, eir: 5, nath: 5, il: 5, or: 5, len: 5, ul: 5 },
+    currentHp: 500,
+    maxHp: 500,
+    currentNodeId: "",
+  };
+  const tile = tileOfPixel(map, group[0]);
+  const { encounter, events } = startAreaEncounter(
+    map,
+    [{ character: hero, tile: { x: tile.x + 2, y: tile.y } }],
+    group,
+    7,
+    props.ruinas,
+    undefined,
+    fightCues(map, cues, group),
+  );
+
+  // O herói só aguenta: passa a vez. Quem bate é ela.
+  const log = [...events];
+  for (let i = 0; i < 400 && !isOver(encounter); i++) {
+    const unit = activeUnit(encounter)!;
+    const result = applyCommand(encounter, unit.team === "party" ? { type: "endTurn", unitId: unit.id } : chooseCommand(encounter));
+    assert.equal(result.ok, true);
+    if (result.ok) log.push(...result.events);
+  }
+
+  assert.equal(encounter.round, 4);
+  assert.equal(encounter.stopped, true);
+  assert.equal(encounter.winner, undefined);
+  assert.deepEqual(log.slice(-2), [{ type: "cue", id: stop.id }, { type: "battleEnded" }]);
 });

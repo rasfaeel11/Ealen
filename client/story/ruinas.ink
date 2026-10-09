@@ -75,3 +75,28 @@ Um servo de metal fosco, de pé num canto onde não sobrou nada pra guardar. A c
 Entre as peças no chão, uma coisa que não é ferrugem.
 ~ give_item("item-estilhaco-de-prumo")
 -> END
+
+// PROVISÓRIO: as lutas com roteiro. Uma deixa (`cue`) no mapa abre um trecho
+// NO MEIO da luta, e pode encerrá-la.
+//
+// A da Sentinela é a luta que acaba numa rodada (`when` = round 4, `ends` =
+// stop): quem aguenta três rodadas vê o turno dela acabar sozinho. Ninguém
+// vence, não há XP nem espólio — o estilhaço é de quem a derruba antes.
+=== sentinela_fim_do_turno ===
+~ sentinela_fora = true
+O braço dela para no meio do golpe. Lá dentro, alguma coisa termina de contar.
+Sentinela: Fim do turno da noite. Posto entregue.
+A luz atrás dos olhos apaga. Ela fica de pé onde estava, e não é mais guarda de nada.
+-> END
+
+// As do salão são a luta que acaba num objetivo. A primeira (`when` = round
+// 2, sem `ends`) só fala, e a luta segue: é a dica. A segunda (`when` = down
+// Fiapo, `ends` = win) dá a vitória quando o Fiapo cai, com o servo de pé.
+=== salao_compasso ===
+O servo não bate a esmo. Cada golpe cai junto com o zumbido do fiapo, como quem segue um compasso.
+Cale o fiapo, e o servo fica sem ter o que seguir.
+-> END
+
+=== salao_silencio ===
+O zumbido some. O servo dá mais meio passo no compasso que não existe mais, e desaba sobre o próprio peso.
+-> END

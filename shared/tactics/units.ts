@@ -48,6 +48,14 @@ export function syncCharacterFromUnit(character: Character, unit: Unit): void {
   if (unit.inventory) character.inventory = structuredClone(unit.inventory);
 }
 
+/**
+ * O contrário: a mochila da ficha passa a ser a da unidade. É como o que a
+ * história dá ou tira NO MEIO de uma luta (uma deixa) chega a quem está lutando.
+ */
+export function syncUnitInventory(unit: Unit, character: Character): void {
+  unit.inventory = character.inventory ? structuredClone(character.inventory) : undefined;
+}
+
 export function isAlive(unit: Unit): boolean {
   return unit.currentHp > 0;
 }
@@ -56,9 +64,14 @@ export function findUnit(encounter: Encounter, id: string): Unit | undefined {
   return encounter.units.find((unit) => unit.id === id);
 }
 
+/** A luta acabou: um lado venceu, ou uma deixa a parou sem vencedor. */
+export function isOver(encounter: Encounter): boolean {
+  return encounter.winner !== undefined || encounter.stopped === true;
+}
+
 /** Quem está no turno. Undefined só depois que a luta acabou. */
 export function activeUnit(encounter: Encounter): Unit | undefined {
-  if (encounter.winner) return undefined;
+  if (isOver(encounter)) return undefined;
   return findUnit(encounter, encounter.order[encounter.turnIndex]);
 }
 

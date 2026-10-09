@@ -6,12 +6,13 @@ import { startEncounter } from "../tactics/engine";
 import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "../tactics/grid";
 import { isPropId, standProp, type Prop } from "../tactics/props";
 import { nextRandom, type RngHolder } from "../tactics/rng";
-import type { Encounter, TacticalEvent, TeamId } from "../tactics/types";
+import type { Cue, Encounter, TacticalEvent, TeamId } from "../tactics/types";
 import { findUnit, syncCharacterFromUnit, unitFromCharacter } from "../tactics/units";
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
 import type { LevelUpResult } from "../types/levelUp";
-import { tileOfPixel, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
+import { HERO_ID, companionId } from "../party";
+import { tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
 
 /**
  * A ponte entre o mundo e o combate: quando uma luta começa, quem entra
@@ -27,6 +28,10 @@ import { tileOfPixel, type AreaEnemy, type AreaMap, type PixelPos } from "./tile
  *   EMBOSCADA, o grupo entra surpreso e perde o primeiro turno;
  * - a história manda (start_fight no texto, ver ../story/runner.ts): luta
  *   comum, e o único jeito de lutar com um grupo `passive`.
+ *
+ * E acaba de dois: um lado inteiro no chão, ou uma DEIXA do roteiro dela (os
+ * objetos `cue` do mapa, ver fightCues) — a luta que acaba numa rodada, num
+ * objetivo cumprido, ou que não se perde.
  */
 
 /**
@@ -132,13 +137,47 @@ function nearestFree(center: Pos, isFree: (tile: Pos) => boolean, maxRadius: num
   return undefined;
 }
 
+/** Quem uma deixa `down` aponta quando não é um inimigo: a protagonista e os companheiros. */
+const CUE_HERO = "hero";
+const CUE_COMPANION = "party:";
+
+/**
+ * O roteiro de uma luta, na língua do motor: as deixas de `cues` (as do
+ * grupo que vai lutar e que valem agora — quem filtra é quem chama) com os
+ * nomes do mapa trocados por ids. `enemies` são os que entram na luta. Uma
+ * deixa que espera a queda de quem não está nela, ou um destrutível que a
+ * área não tem, fica de fora: não dispararia nunca.
+ */
+export function fightCues(map: AreaMap, cues: readonly AreaCue[], enemies: readonly AreaEnemy[]): Cue[] {
+  return cues.flatMap(({ id, when, ends }): Cue[] => {
+    const cue = (resolved: Cue["when"]): Cue[] => [{ id, when: resolved, ...(ends ? { ends } : {}) }];
+    switch (when.kind) {
+      case "round":
+      case "defeat":
+        return cue(when);
+      case "down": {
+        if (when.who === CUE_HERO) return cue({ kind: "down", unit: HERO_ID });
+        if (when.who.startsWith(CUE_COMPANION)) {
+          return cue({ kind: "down", unit: companionId(when.who.slice(CUE_COMPANION.length)) });
+        }
+        const enemy = enemies.find((candidate) => candidate.name === when.who);
+        return enemy ? cue({ kind: "down", unit: enemy.id }) : [];
+      }
+      case "broken": {
+        const prop = map.props.find((candidate) => candidate.name === when.prop);
+        return prop ? cue({ kind: "broken", prop: prop.id }) : [];
+      }
+    }
+  });
+}
+
 /**
  * Abre a luta entre o grupo do jogador (`party`, de placeParty — o primeiro é
  * o personagem) e um grupo de inimigos da área, com os destrutíveis de pé
  * nela (`props`, de standAreaProps). Inimigo cuja criatura não exista no
  * bestiário é ignorado — o teste dos mapas acusa esse erro antes de ele
  * chegar aqui. `surprised` é o lado pego de surpresa, numa emboscada (ver
- * EncounterSetup).
+ * EncounterSetup); `cues`, o roteiro da luta (de fightCues).
  */
 export function startAreaEncounter(
   map: AreaMap,
@@ -147,6 +186,7 @@ export function startAreaEncounter(
   seed: number,
   props: Prop[] = [],
   surprised?: TeamId,
+  cues: Cue[] = [],
 ): { encounter: Encounter; events: TacticalEvent[] } {
   const units = party.map(({ character, tile }) => unitFromCharacter(character, { team: "party", pos: tile }));
   for (const enemy of enemies) {
@@ -156,7 +196,7 @@ export function startAreaEncounter(
       unitFromCharacter(spawnCreature(entry), { team: "enemy", pos: tileOfPixel(map, enemy), id: enemy.id, ai: entry.ai }),
     );
   }
-  return startEncounter({ grid: map.grid, units, props, surprised, seed });
+  return startEncounter({ grid: map.grid, units, props, surprised, cues, seed });
 }
 
 /**

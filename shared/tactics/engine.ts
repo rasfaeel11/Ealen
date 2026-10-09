@@ -23,13 +23,16 @@ import type {
   Command,
   CommandError,
   CommandResult,
+  Cue,
+  CueEnding,
+  CueWhen,
   Effect,
   Encounter,
   TacticalEvent,
   TeamId,
   Unit,
 } from "./types";
-import { activeUnit, effectiveAttribute, isAlive, primaryAttribute, unitAt } from "./units";
+import { activeUnit, effectiveAttribute, findUnit, isAlive, isOver, primaryAttribute, unitAt } from "./units";
 
 /**
  * O motor de combate tático.
@@ -54,6 +57,12 @@ export interface EncounterSetup {
    * perde o primeiro turno e, até lá, não tem reação (não pune quem passa).
    */
   surprised?: TeamId;
+  /**
+   * O roteiro da luta: as deixas dela, na ordem em que valem quando duas
+   * disparam juntas (ver Cue em ./types.ts). Sem nenhuma, a luta só acaba
+   * com um lado inteiro no chão.
+   */
+  cues?: Cue[];
   seed: number;
 }
 
@@ -71,6 +80,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     round: 1,
     props: setup.props ?? [],
     surfaces: [],
+    cues: [...(setup.cues ?? [])],
     rngState: setup.seed >>> 0,
   };
 
@@ -103,7 +113,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
 }
 
 export function applyCommand(encounter: Encounter, command: Command): CommandResult {
-  if (encounter.winner) return { ok: false, reason: "battle_over" };
+  if (isOver(encounter)) return { ok: false, reason: "battle_over" };
 
   const unit = activeUnit(encounter);
   if (!unit || unit.id !== command.unitId) return { ok: false, reason: "not_your_turn" };
@@ -152,6 +162,8 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
         encounter.round += 1;
         events.push({ type: "roundStarted", round: encounter.round });
         tickSurfaces(encounter, events);
+        // Uma deixa de rodada pode parar a luta aqui, antes de a vez de alguém começar.
+        if (fireCues(encounter, events)) return;
       }
       next = activeUnit(encounter);
     } while (!next || !isAlive(next));
@@ -174,8 +186,14 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
   }
 }
 
-/** Se um dos lados acabou, encerra a luta. Sem ninguém de pé dos dois lados, o grupo perdeu. */
+/**
+ * Se a luta acabou, encerra: por uma deixa do roteiro, que fala antes das
+ * regras, ou por um dos lados ter caído inteiro. Sem ninguém de pé dos dois
+ * lados, o grupo perdeu.
+ */
 function concludeIfDecided(encounter: Encounter, events: TacticalEvent[]): boolean {
+  if (fireCues(encounter, events)) return true;
+
   const standing = (team: TeamId) => encounter.units.some((unit) => unit.team === team && isAlive(unit));
 
   const winner: TeamId | undefined = !standing("party") ? "enemy" : !standing("enemy") ? "party" : undefined;
@@ -184,6 +202,54 @@ function concludeIfDecided(encounter: Encounter, events: TacticalEvent[]): boole
   encounter.winner = winner;
   events.push({ type: "battleEnded", winner });
   return true;
+}
+
+// --- Roteiro ----------------------------------------------------------------
+
+/** Como a deixa encerra a luta, se encerra. A de `defeat` sempre encerra: é ela no lugar da derrota. */
+export function cueEnding(cue: { when: { kind: CueWhen["kind"] }; ends?: CueEnding }): CueEnding | undefined {
+  return cue.ends ?? (cue.when.kind === "defeat" ? "stop" : undefined);
+}
+
+/** A hora da deixa chegou? Quem (ou o quê) ela espera e não está nesta luta não chega nunca. */
+function isDue(encounter: Encounter, when: CueWhen): boolean {
+  switch (when.kind) {
+    case "round":
+      return encounter.round >= when.round;
+    case "down": {
+      const unit = findUnit(encounter, when.unit);
+      return unit !== undefined && !isAlive(unit);
+    }
+    case "broken":
+      return encounter.props.some((prop) => prop.id === when.prop && prop.hp <= 0);
+    case "defeat":
+      return !encounter.units.some((unit) => unit.team === "party" && isAlive(unit));
+  }
+}
+
+/**
+ * Dispara as deixas cuja hora chegou, na ordem em que foram declaradas, cada
+ * uma uma vez só. A primeira que encerra a luta encerra — as que vinham
+ * depois dela não disparam. Devolve se a luta acabou.
+ */
+function fireCues(encounter: Encounter, events: TacticalEvent[]): boolean {
+  for (const cue of [...encounter.cues]) {
+    if (!isDue(encounter, cue.when)) continue;
+    encounter.cues = encounter.cues.filter((other) => other !== cue);
+    events.push({ type: "cue", id: cue.id });
+
+    const ends = cueEnding(cue);
+    if (!ends) continue;
+    if (ends === "win") {
+      encounter.winner = "party";
+      events.push({ type: "battleEnded", winner: "party" });
+    } else {
+      encounter.stopped = true;
+      events.push({ type: "battleEnded" });
+    }
+    return true;
+  }
+  return false;
 }
 
 // --- Condições --------------------------------------------------------------
