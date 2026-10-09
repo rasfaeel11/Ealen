@@ -10,6 +10,22 @@ import type { CharacterClass } from "../types/characterClass";
 import type { ConsumableItem } from "../types/inventory";
 import type { LevelUpResult } from "../types/levelUp";
 import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck } from "./checks";
+import {
+  emptyMemory,
+  forgetRecent,
+  isClockCost,
+  isNoted,
+  noteEntry,
+  packStory,
+  recallEntries,
+  startClock,
+  tickClock,
+  unpackStory,
+  type ClockCost,
+  type JournalEntry,
+  type StoryClock,
+  type StoryMemory,
+} from "./memory";
 
 /**
  * A história do jogo, rodando.
@@ -18,7 +34,9 @@ import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck 
  * client/story. Uma história só, e não um arquivo por personagem, porque
  * assim o estado dela inteiro — as variáveis (as "flags" do jogo), quantas
  * vezes cada trecho já foi lido, que escolhas de uma vez só já foram gastas
- * — é uma coisa única, que se salva e se carrega de uma vez (`save`).
+ * — é uma coisa única, que se salva e se carrega de uma vez (`save`). Com
+ * ele vão o diário de pistas e o relógio (ver ./memory.ts), que também são
+ * da história.
  *
  * Como o motor de combate, isto não desenha nada: `start` e `choose`
  * devolvem o que há pra mostrar (falas, o que aconteceu, as escolhas) e a
@@ -46,9 +64,21 @@ import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck 
  *   leave_party("lish")      tira do grupo; a ficha dele fica guardada
  *   in_party("lish")         se ele está no grupo agora
  *   unlock_order("rachador") destrava uma Ordem pros próximos jogos novos
+ *   note("id", "texto")      anota uma pista no diário (de novo com o mesmo
+ *                            id, troca o texto em vez de duplicar)
+ *   noted("id")              se a pista está no diário, e legível
+ *   forget(3)                apaga as 3 anotações mais recentes; ficam em
+ *                            branco no lugar delas
+ *   recall("id")             devolve uma anotação apagada; recall_all(), todas
+ *   clock_start("Vazante", 0, 12)   põe um relógio na tela, de 0 a 12
+ *   clock_tick(2)            faz o tempo andar (negativo volta)
+ *   clock(), clock_left()    quanto já passou, e quanto falta
+ *   clock_cost("rest", 2)    quanto descansar ("rest") ou lutar ("fight")
+ *                            gasta do relógio sem o texto mandar
+ *   clock_stop()             tira o relógio da tela
  *
- * As duas últimas não interrompem o texto: viram acontecimentos (`fight`,
- * `travel`) que a cena cumpre depois da última fala — ver `aftermath`.
+ * `start_fight` e `travel` não interrompem o texto: viram acontecimentos
+ * (`fight`, `travel`) que a cena cumpre depois da última fala — ver `aftermath`.
  *
  * Uma escolha com a etiqueta `# check: len 14` é um teste anunciado: a caixa
  * mostra a chance antes, o dado rola quando ela é escolhida, e o texto
@@ -83,7 +113,15 @@ export type StoryEvent =
   | { type: "joined"; name: string }
   | { type: "left"; name: string }
   /** Uma Ordem destravada pros próximos jogos novos. Quem guarda isso é o perfil do jogador, não o save. */
-  | { type: "unlock"; order: CharacterClass };
+  | { type: "unlock"; order: CharacterClass }
+  /** Uma pista anotada no diário (ou reescrita). */
+  | { type: "noted"; entry: JournalEntry }
+  /** Anotações apagadas do diário, da mais recente pra mais antiga. */
+  | { type: "forgot"; entries: JournalEntry[] }
+  /** Anotações apagadas que voltaram. */
+  | { type: "recalled"; entries: JournalEntry[] }
+  /** O relógio mudou: como ficou, ou null se saiu da tela. Não se anuncia na caixa — a barra mostra. */
+  | { type: "clock"; clock: StoryClock | null };
 
 /** O que uma conversa deixa pra cena fazer quando a última fala passar. */
 export interface Aftermath {
@@ -144,6 +182,8 @@ export class StoryRunner {
   /** O que as funções chamadas pelo texto fizeram desde a última fala. */
   private pending: StoryEvent[] = [];
   private lastCheckPassed = false;
+  /** O diário e o relógio: o que a história guarda fora das variáveis do Ink. */
+  private memory: StoryMemory = emptyMemory();
 
   /**
    * `json` é a história compilada; `saved`, o que `save` devolveu numa
@@ -163,8 +203,10 @@ export class StoryRunner {
     this.bind();
 
     if (saved) {
+      const { ink, memory } = unpackStory(saved);
       try {
-        this.story.state.LoadJson(saved);
+        this.story.state.LoadJson(ink);
+        this.memory = memory;
       } catch {
         this.story.ResetState();
       }
@@ -189,6 +231,9 @@ export class StoryRunner {
     story.BindExternalFunction("defeated", (key: string) => host.isDefeated(key), true);
     story.BindExternalFunction("passed", () => this.lastCheckPassed, true);
     story.BindExternalFunction("in_party", (key: string) => isInParty(host.companions, String(key)), true);
+    story.BindExternalFunction("noted", (id: string) => isNoted(this.memory.journal, String(id)), true);
+    story.BindExternalFunction("clock", () => this.memory.clock?.value ?? 0, true);
+    story.BindExternalFunction("clock_left", () => (this.memory.clock ? this.memory.clock.limit - this.memory.clock.value : 0), true);
 
     // Mexem no jogo ou gastam o dado: só na hora em que o texto chega nelas.
     story.BindExternalFunction("check", check);
@@ -230,6 +275,37 @@ export class StoryRunner {
     story.BindExternalFunction("unlock_order", (order: string) => {
       if (!isOrder(order)) throw new Error(`A história destrava uma Ordem que não existe: "${String(order)}"`);
       this.pending.push({ type: "unlock", order });
+    });
+    story.BindExternalFunction("note", (id: string, text: string) => {
+      const entry = noteEntry(this.memory.journal, String(id), String(text));
+      if (entry) this.pending.push({ type: "noted", entry: { ...entry } });
+    });
+    story.BindExternalFunction("forget", (count: number) => {
+      const entries = forgetRecent(this.memory.journal, Number(count));
+      if (entries.length > 0) this.pending.push({ type: "forgot", entries: entries.map((entry) => ({ ...entry })) });
+    });
+    const recall = (id?: string) => {
+      const entries = recallEntries(this.memory.journal, id);
+      if (entries.length > 0) this.pending.push({ type: "recalled", entries: entries.map((entry) => ({ ...entry })) });
+    };
+    story.BindExternalFunction("recall", (id: string) => recall(String(id)));
+    story.BindExternalFunction("recall_all", () => recall());
+    story.BindExternalFunction("clock_start", (label: string, value: number, limit: number) => {
+      if (!(Number(limit) > 0)) throw new Error(`A história põe um relógio sem tamanho: "${String(label)}" vai até ${String(limit)}`);
+      this.memory.clock = startClock(String(label), Number(value), Number(limit));
+      this.announceClock();
+    });
+    story.BindExternalFunction("clock_stop", () => {
+      if (!this.memory.clock) return;
+      this.memory.clock = null;
+      this.announceClock();
+    });
+    story.BindExternalFunction("clock_tick", (amount: number) => {
+      if (this.memory.clock && tickClock(this.memory.clock, Number(amount))) this.announceClock();
+    });
+    story.BindExternalFunction("clock_cost", (what: string, amount: number) => {
+      if (!isClockCost(what)) throw new Error(`A história cobra do relógio uma coisa que não existe: "${String(what)}"`);
+      if (this.memory.clock) this.memory.clock.costs[what] = Math.max(0, Math.floor(Number(amount)));
     });
     story.BindExternalFunction("start_fight", (group: string) => {
       this.pending.push({ type: "fight", group: String(group) });
@@ -320,8 +396,31 @@ export class StoryRunner {
     this.story.variablesState.$(name, value);
   }
 
-  /** O estado inteiro da história, pra guardar no save. */
+  private announceClock(): void {
+    this.pending.push({ type: "clock", clock: this.memory.clock && structuredClone(this.memory.clock) });
+  }
+
+  /** O diário, na ordem em que foi escrito. As anotações apagadas vêm junto, marcadas (`lost`). */
+  journal(): readonly JournalEntry[] {
+    return this.memory.journal;
+  }
+
+  /** O relógio que está correndo, se há um. */
+  clock(): StoryClock | null {
+    return this.memory.clock;
+  }
+
+  /**
+   * O jogo avisa que aconteceu algo que gasta tempo sem o texto mandar: um
+   * descanso, uma luta. Devolve se o relógio andou.
+   */
+  spend(what: ClockCost): boolean {
+    const { clock } = this.memory;
+    return clock !== null && tickClock(clock, clock.costs[what]);
+  }
+
+  /** O estado inteiro da história — o do Ink, o diário e o relógio — pra guardar no save. */
   save(): string {
-    return this.story.state.ToJson();
+    return packStory(this.story.state.ToJson(), this.memory);
   }
 }

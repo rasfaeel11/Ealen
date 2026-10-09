@@ -50,6 +50,8 @@ export class CombatHud {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly addHud: AddHud,
+    /** Onde começa a caixa dos objetivos: mais embaixo quando o relógio da história ocupa o alto da tela. */
+    goalsTop = 20,
   ) {
     this.turnOrder = addHud(addBodyText(scene, 20, 20, "", { fontSize: "17px", lineSpacing: 4, ...BOX_STYLE }));
     this.logText = addHud(
@@ -63,7 +65,7 @@ export class CombatHud {
     );
 
     this.goals = addHud(
-      addBodyText(scene, GAME_WIDTH / 2, 20, "", {
+      addBodyText(scene, GAME_WIDTH / 2, goalsTop, "", {
         fontSize: "18px",
         lineSpacing: 4,
         align: "center",

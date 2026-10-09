@@ -25,6 +25,17 @@ EXTERNAL join_party(who)    // join_party("lish"): entra no grupo. As chaves est
 EXTERNAL leave_party(who)   // sai do grupo; a ficha dele fica guardada pra quando voltar
 EXTERNAL in_party(who)      // está no grupo agora?
 EXTERNAL unlock_order(id)   // destrava uma Ordem pra Halmira nos próximos jogos novos (fica no perfil, não no save)
+EXTERNAL note(id, text)     // note("rede", "A Companhia paga por rede vazia."): anota uma pista no diário (J abre)
+EXTERNAL noted(id)          // a pista está no diário, e legível?
+EXTERNAL forget(count)      // forget(3): apaga as 3 anotações mais recentes; ficam em branco no lugar delas
+EXTERNAL recall(id)         // devolve uma anotação apagada
+EXTERNAL recall_all()       // devolve todas
+EXTERNAL clock_start(label, value, limit)   // clock_start("Vazante", 0, 12): põe um relógio no alto da tela
+EXTERNAL clock_tick(amount) // faz o tempo andar (negativo volta); para em 0 e no limite
+EXTERNAL clock()            // quanto já passou (0 sem relógio)
+EXTERNAL clock_left()       // quanto falta
+EXTERNAL clock_cost(what, amount)   // clock_cost("rest", 2): quanto descansar ("rest") ou lutar ("fight") gasta sozinho
+EXTERNAL clock_stop()       // tira o relógio da tela
 
 // Convenções:
 //   Nome: fala        vira uma fala com o nome em cima. O resto é narração.
@@ -38,6 +49,12 @@ EXTERNAL unlock_order(id)   // destrava uma Ordem pra Halmira nos próximos jogo
 // for verdadeira (ou falsa). Pôr alguém no mapa, tirar, armar um gatilho ou
 // abrir uma saída é mudar um VAR. A condição `party:lish` pergunta pelo grupo
 // em vez de por um VAR: vale enquanto Lish anda com Halmira.
+//
+// E o relógio: `clock:8` num `if`/`unless` vale quando ele já chegou em 8. É
+// como o tempo fecha uma porta — acabar o tempo não mata ninguém, tira opções.
+//
+// O diário guarda FATOS, na ordem em que foram anotados. A conclusão é de
+// quem lê: nenhum texto de anotação diz o que o jogador devia ter entendido.
 //
 // Um trecho não precisa de npc: um `trigger` no mapa abre o dele quando se
 // pisa ali, e um inimigo com `onDefeat` abre o dele quando o grupo cai.

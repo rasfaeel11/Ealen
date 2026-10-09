@@ -55,6 +55,8 @@ export interface CombatHost {
   onCue: (id: string) => Promise<void>;
   /** Os objetivos da luta: o texto de cada deixa que tem um (`goal` no mapa), pelo id dela. */
   goals?: { cue: string; text: string }[];
+  /** A altura da tela em que a caixa dos objetivos começa, quando o alto dela já tem dono (o relógio). */
+  goalsTop?: number;
 }
 
 /** Entre o chão e tudo que fica de pé: os quadrados acesos passam por baixo de árvores e personagens. */
@@ -165,7 +167,7 @@ export class CombatController {
     private readonly onEnd: (winner: TeamId | undefined) => void,
   ) {
     const { scene } = host;
-    this.hud = new CombatHud(scene, host.addHud);
+    this.hud = new CombatHud(scene, host.addHud, host.goalsTop);
     this.ground = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH - 1));
     scene.tweens.add({ targets: this.ground, alpha: { from: 1, to: 0.6 }, duration: 650, yoyo: true, repeat: -1 });
     this.overlay = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH));

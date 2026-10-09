@@ -7,6 +7,7 @@ import {
   aftermath,
   cueEnding,
   parseTiledMap,
+  clockThreshold,
   partyCondition,
   type Character,
   type DialogueStep,
@@ -117,9 +118,9 @@ test("toda condição (`if`/`unless`) de um objeto do mapa é uma variável que 
       for (const name of [object.if, object.unless]) {
         if (name === undefined) continue;
         assert.notEqual(
-          partyCondition(name, []) ?? runner.flag(name),
+          partyCondition(name, []) ?? clockThreshold(name) ?? runner.flag(name),
           undefined,
-          `${area}: um objeto depende de "${name}", que não é variável da história (VAR) nem companheiro (party:chave)`,
+          `${area}: um objeto depende de "${name}", que não é variável da história (VAR), companheiro (party:chave) nem ponto do relógio (clock:N)`,
         );
       }
     }

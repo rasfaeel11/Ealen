@@ -23,6 +23,8 @@ import {
   markDefeated,
   npcInReach,
   parseTiledMap,
+  chargeSavedClock,
+  clockCondition,
   partyCondition,
   peopleTiles,
   pixelOfTile,
@@ -58,9 +60,11 @@ import {
   type Trail,
   type WalkBody,
 } from "@ealen/shared";
+import { CLOCK_BAR_BOTTOM, ClockBar } from "../game/ClockBar";
 import { CombatController } from "../game/combat/CombatController";
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
+import { JournalPanel } from "../game/JournalPanel";
 import { MapActor } from "../game/MapActor";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
 import { unlockOrders } from "../game/profile";
@@ -164,7 +168,9 @@ export default class WorldScene extends Phaser.Scene {
   private talking = false;
   private leaving = false;
   /** O menu de pausa, enquanto está aberto: o mundo espera. */
-  private pause?: { menu: Menu; objects: Phaser.GameObjects.GameObject[] };
+  /** O que está aberto por cima do mundo parado: o menu de pausa, ou o diário. */
+  private pause?: { destroy: () => void };
+  private clockBar!: ClockBar;
   /** Pra avisar uma vez só, e não a cada gravação, que o dispositivo não está gravando. */
   private saveFailed = false;
   private statusText!: Phaser.GameObjects.Text;
@@ -234,6 +240,8 @@ export default class WorldScene extends Phaser.Scene {
         4,
       ),
     );
+    this.clockBar = new ClockBar(this, (object) => this.addHud(object));
+    this.clockBar.set(this.story.clock());
     this.refreshStatus();
     this.refreshHint();
     this.showBanner(this.area.name);
@@ -426,7 +434,8 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   /** O que uma condição (`if`/`unless`) de um objeto do mapa pergunta: uma variável da história, ou quem está no grupo. */
-  private readonly flag = (name: string): unknown => partyCondition(name, this.save.companions) ?? this.story.flag(name);
+  private readonly flag = (name: string): unknown =>
+    partyCondition(name, this.save.companions) ?? clockCondition(name, this.story.clock()) ?? this.story.flag(name);
 
   /**
    * Acerta o mapa com a história: quem as variáveis dela dizem que está aqui
@@ -551,7 +560,8 @@ export default class WorldScene extends Phaser.Scene {
     const talker = this.talkerInReach();
     const talk = talker ? `  ·  E: ${talker.stands ? "falar com" : "examinar"} ${talker.name}` : "";
     const prey = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos));
-    this.hintText.setText(EXPLORE_HINT + talk + (prey ? "  ·  F: emboscar" : ""));
+    const journal = this.story.journal().length > 0 ? "  ·  J: diário" : "";
+    this.hintText.setText(EXPLORE_HINT + journal + talk + (prey ? "  ·  F: emboscar" : ""));
   }
 
   /** Um título no alto da tela, sumindo sozinho (nome da área, avisos). */
@@ -566,6 +576,12 @@ export default class WorldScene extends Phaser.Scene {
   private rest(): void {
     if (this.combat || this.leaving || this.talking || this.pause) return;
     restoreParty(this.character, this.save.companions);
+    // Descansar gasta o tempo do relógio, se a história disse que gasta — e o que o tempo fecha, fecha.
+    if (this.story.spend("rest")) {
+      this.save.story = this.story.save();
+      this.clockBar.set(this.story.clock());
+      this.syncPresence();
+    }
     this.persist();
     this.refreshStatus();
     this.showBanner("Você descansa.");
@@ -622,7 +638,12 @@ export default class WorldScene extends Phaser.Scene {
         // Um trecho que só mexe em flags (ou decide que não tem nada a dizer) passa sem abrir a caixa.
         if (!box && !isSilent(step)) {
           for (const text of hud) text.setVisible(false);
-          box = new DialogueBox(this, (object) => this.addHud(object));
+          box = new DialogueBox(
+            this,
+            (object) => this.addHud(object),
+            // O relógio anda na hora em que o texto chega no ponto em que ele anda.
+            (event) => event.type === "clock" && this.clockBar.set(event.clock),
+          );
         }
         const choice = box ? await box.play(step) : null;
         if (choice === null) break;
@@ -632,6 +653,8 @@ export default class WorldScene extends Phaser.Scene {
       // Um erro no texto não pode deixar o jogador preso numa conversa que não fecha.
       box?.destroy();
       for (const text of hud) text.setVisible(true);
+      // Um trecho que passou sem abrir a caixa também pode ter mexido no relógio.
+      this.clockBar.set(this.story.clock());
       this.talking = false;
     }
     return steps;
@@ -725,6 +748,7 @@ export default class WorldScene extends Phaser.Scene {
         addHud: (object) => this.addHud(object),
         onCue: (id) => this.playCue(encounter, cues.find((cue) => cue.id === id)?.dialog),
         goals: cues.flatMap((cue) => (cue.goal !== undefined ? [{ cue: cue.id, text: cue.goal }] : [])),
+        goalsTop: this.clockBar.visible ? CLOCK_BAR_BOTTOM + 8 : undefined,
       },
       encounter,
       (winner) => void this.endCombat(encounter, group, fighters, winner),
@@ -785,6 +809,8 @@ export default class WorldScene extends Phaser.Scene {
         TEXT_COLORS.danger,
       );
       restoreParty(character, this.save.companions);
+      // O que a história disse na luta não vale, mas o tempo que ela gastou, sim: tentar de novo custa.
+      this.save.story = chargeSavedClock(this.save.story, "fight");
       // O lugar gravado continua o de antes da luta; a área de destino grava o novo ao abrir.
       this.session.commit();
       this.leaving = true;
@@ -817,7 +843,9 @@ export default class WorldScene extends Phaser.Scene {
       if (fought) follower.pos = pixelOfTile(this.map, fought.pos);
     }
     this.trail = [{ ...this.pos }, ...this.followers.map((follower) => ({ ...follower.pos }))];
-    // Agora o que as deixas disseram vale: a luta não foi perdida.
+    // Agora o que as deixas disseram vale: a luta não foi perdida. E ela gastou o tempo que a história cobra.
+    this.story.spend("fight");
+    this.clockBar.set(this.story.clock());
     this.save.story = this.story.save();
     this.persist();
 
@@ -859,8 +887,16 @@ export default class WorldScene extends Phaser.Scene {
   // ------------------------------------------------------------------ pausa
 
   private onKey(event: KeyboardEvent): void {
-    if (event.code !== "Escape" || this.pause || this.combat || this.leaving || this.talking) return;
-    this.openPause();
+    if (this.pause || this.combat || this.leaving || this.talking) return;
+    if (event.code === "Escape") this.openPause();
+    else if (event.code === "KeyJ") this.openJournal();
+  }
+
+  /** `J`: o diário de pistas, por cima do mundo parado. */
+  private openJournal(): void {
+    this.halt();
+    const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), () => this.closePause());
+    this.pause = panel;
   }
 
   private openPause(): void {
@@ -886,18 +922,20 @@ export default class WorldScene extends Phaser.Scene {
       ],
       { lineHeight: 44, fontSize: 24, onCancel: () => this.closePause(), adopt: (item) => this.addHud(item) },
     );
-    this.pause = { menu, objects };
+    this.pause = {
+      destroy: () => {
+        menu.destroy();
+        for (const object of objects) object.destroy();
+      },
+    };
   }
 
   private closePause(): void {
     if (!this.pause) return;
-    const { menu, objects } = this.pause;
+    const open = this.pause;
     this.pause = undefined;
-    // No quadro seguinte: a opção clicada ainda está no meio do próprio evento.
-    this.time.delayedCall(0, () => {
-      menu.destroy();
-      for (const object of objects) object.destroy();
-    });
+    // No quadro seguinte: a opção clicada (ou a tecla) ainda está no meio do próprio evento.
+    this.time.delayedCall(0, () => open.destroy());
   }
 
   // ------------------------------------------------------------------ saída

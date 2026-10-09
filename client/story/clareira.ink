@@ -1,7 +1,8 @@
 // PROVISÓRIO. A Andarilha existe pra exercitar o sistema de diálogo — fala
 // que muda na segunda visita, na Ordem de quem ouve e no que já aconteceu no
 // mapa; teste anunciado na escolha; teste no meio do texto; item e flag;
-// uma conversa que termina levando o personagem a outra área (travel).
+// pista anotada no diário (note); uma conversa que termina levando o
+// personagem a outra área (travel).
 // Nada aqui é canônico: sai quando a história de verdade for escrita.
 
 VAR andarilha_falou_das_ruinas = false
@@ -21,6 +22,11 @@ O que zumbe ainda não deu por você. Quem chega sem ser percebido escolhe a hor
 - else:
     Andarilha: Você de novo. Ainda inteiro, pelo visto.
 }
+// O relógio que as ruínas puseram na tela (ruinas_anoitece) acaba aqui.
+{clock() > 0:
+    Andarilha: Voltou com a noite nas costas. Fica perto do fogo, que de manhã a estrada reaparece.
+    ~ clock_stop()
+}
 {defeated("clareira:fiapo") && not gratidao: -> gratidao}
 -> perguntas
 
@@ -38,8 +44,10 @@ Andarilha: Faz três noites que eu não durmo direito. Toma. Não é muito, mas 
 * [Perguntar das ruínas.]
     ~ andarilha_falou_das_ruinas = true
     Andarilha: Um salão sem teto. Tem um patamar no fundo, e quem sobe nele enxerga o salão inteiro — e acerta o salão inteiro.
+    ~ note("ruinas_patamar", "Ao norte, as ruínas: um salão sem teto, com um patamar no fundo de onde se enxerga o salão inteiro.")
     {check("ul", 12):
         Você junta o que ela diz com o que já viu de construções assim: salões desses guardavam óleo de lamparina. Se ainda houver barris, um golpe basta pra derramar fogo no chão.
+        ~ note("ruinas_oleo", "Salões assim guardavam óleo de lamparina.")
     - else:
         Ela parece saber mais do que conta, mas você não acha a pergunta certa.
     }

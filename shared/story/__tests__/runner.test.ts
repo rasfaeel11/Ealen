@@ -2,7 +2,18 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Compiler, CompilerOptions } from "inkjs/full";
 import type { Character } from "../../types/character";
-import { StoryRunner, aftermath, checkChance, rollCheck, type DialogueBeat, type StoryHost } from "../index";
+import {
+  StoryRunner,
+  aftermath,
+  chargeSavedClock,
+  checkChance,
+  clockCondition,
+  rollCheck,
+  unpackStory,
+  type DialogueBeat,
+  type StoryEvent,
+  type StoryHost,
+} from "../index";
 
 const EXTERNALS = `
 EXTERNAL attr(name)
@@ -22,6 +33,17 @@ EXTERNAL join_party(who)
 EXTERNAL leave_party(who)
 EXTERNAL in_party(who)
 EXTERNAL unlock_order(id)
+EXTERNAL note(id, text)
+EXTERNAL noted(id)
+EXTERNAL forget(count)
+EXTERNAL recall(id)
+EXTERNAL recall_all()
+EXTERNAL clock_start(label, value, limit)
+EXTERNAL clock_tick(amount)
+EXTERNAL clock()
+EXTERNAL clock_left()
+EXTERNAL clock_cost(what, amount)
+EXTERNAL clock_stop()
 `;
 
 /** Como o jogo compila (client/scripts/compileStory.ts): contando as visitas de todo trecho. */
@@ -352,4 +374,207 @@ test("unlock_order vira um pedido pra cena, e companheiro que não existe é err
   const runner = new StoryRunner(COMPANY, makeHost());
   assert.deepEqual(aftermath([runner.start("epilogo")]).unlocks, ["rachador"]);
   assert.throws(() => runner.start("erro"), /ninguem/);
+});
+
+// --- Diário e relógio -------------------------------------------------------
+
+function eventsIn(beats: DialogueBeat[]): StoryEvent[] {
+  return beats.flatMap((beat) => (beat.kind === "event" ? [beat.event] : []));
+}
+
+const NOTES = compile(`
+=== pistas ===
+~ note("rede", "A Companhia paga por rede vazia.")
+~ note("nomes", "A avó diz os nomes à mesa.")
+~ note("chao", "O chão do arquivo é redondo.")
+~ note("jarras", "As jarras estão viradas pra dentro.")
+Quatro coisas vistas.
+-> END
+
+=== de_novo ===
+~ note("rede", "A Companhia paga por rede vazia.")
+~ note("nomes", "A avó diz os nomes à mesa, na ordem em que morreram.")
+Uma delas, vista melhor.
+-> END
+
+=== coletor ===
+~ forget(2)
+{noted("rede"): A rede você ainda lembra.}
+{noted("jarras"): As jarras também. | As jarras, não.}
+-> END
+
+=== cera ===
+~ recall("jarras")
+-> END
+
+=== tudo ===
+~ recall_all()
+-> END
+
+=== mais_do_que_ha ===
+~ forget(99)
+-> END
+`);
+
+test("note escreve no diário na ordem, sem duplicar: o mesmo id troca o texto", () => {
+  const runner = new StoryRunner(NOTES, makeHost());
+  const first = runner.start("pistas");
+  assert.deepEqual(
+    eventsIn(first.beats).map((event) => event.type === "noted" && event.entry.id),
+    ["rede", "nomes", "chao", "jarras"],
+  );
+  assert.deepEqual(runner.journal().map((entry) => entry.id), ["rede", "nomes", "chao", "jarras"]);
+
+  // A mesma pista com o mesmo texto não é notícia; com texto novo, troca no lugar.
+  const again = eventsIn(runner.start("de_novo").beats);
+  assert.equal(again.length, 1);
+  assert.deepEqual(again[0], { type: "noted", entry: { id: "nomes", text: "A avó diz os nomes à mesa, na ordem em que morreram." } });
+  assert.deepEqual(runner.journal().map((entry) => entry.id), ["rede", "nomes", "chao", "jarras"]);
+});
+
+test("forget apaga só o que é recente e deixa o espaço; recall devolve uma, recall_all devolve o resto", () => {
+  const runner = new StoryRunner(NOTES, makeHost());
+  runner.start("pistas");
+
+  const taken = runner.start("coletor");
+  assert.deepEqual(eventsIn(taken.beats), [
+    {
+      type: "forgot",
+      entries: [
+        { id: "jarras", text: "As jarras estão viradas pra dentro.", lost: true },
+        { id: "chao", text: "O chão do arquivo é redondo.", lost: true },
+      ],
+    },
+  ]);
+  assert.deepEqual(lines(taken.beats), ["A rede você ainda lembra.", "As jarras, não."]);
+  // As apagadas continuam no lugar delas, em branco.
+  assert.deepEqual(runner.journal().map((entry) => [entry.id, entry.lost === true]), [
+    ["rede", false],
+    ["nomes", false],
+    ["chao", true],
+    ["jarras", true],
+  ]);
+
+  assert.deepEqual(eventsIn(runner.start("cera").beats), [
+    { type: "recalled", entries: [{ id: "jarras", text: "As jarras estão viradas pra dentro." }] },
+  ]);
+  // Devolver o que não está apagado não é notícia.
+  assert.deepEqual(eventsIn(runner.start("cera").beats), []);
+  assert.deepEqual(eventsIn(runner.start("tudo").beats), [
+    { type: "recalled", entries: [{ id: "chao", text: "O chão do arquivo é redondo." }] },
+  ]);
+  assert.ok(runner.journal().every((entry) => !entry.lost));
+
+  // Pedir mais do que há leva tudo, e só.
+  const all = eventsIn(runner.start("mais_do_que_ha").beats);
+  assert.equal(all.length === 1 && all[0].type === "forgot" && all[0].entries.length, 4);
+});
+
+const TIDE = compile(`
+VAR porta_coberta = false
+
+=== desce ===
+~ clock_start("Vazante", 0, 10)
+~ clock_cost("rest", 3)
+~ clock_cost("fight", 2)
+A água recua.
+-> END
+
+=== sala ===
+~ clock_tick(4)
+{clock() >= 8: A água já cobriu esta porta. | Faltam {clock_left()} pra água voltar.}
+-> END
+
+=== sobe ===
+~ clock_stop()
+-> END
+
+=== sem_tamanho ===
+~ clock_start("Nada", 0, 0)
+-> END
+
+=== cobra_errado ===
+~ clock_cost("sono", 1)
+-> END
+`);
+
+test("o relógio corre pelo texto, para no limite, e o texto lê quanto passou e quanto falta", () => {
+  const runner = new StoryRunner(TIDE, makeHost());
+  assert.equal(runner.clock(), null);
+
+  // Pôr o relógio na tela é a notícia; dizer o que gasta tempo, não.
+  assert.deepEqual(eventsIn(runner.start("desce").beats), [
+    { type: "clock", clock: { label: "Vazante", value: 0, limit: 10, costs: { rest: 0, fight: 0 } } },
+  ]);
+  assert.deepEqual(runner.clock(), { label: "Vazante", value: 0, limit: 10, costs: { rest: 3, fight: 2 } });
+
+  assert.deepEqual(lines(runner.start("sala").beats), ["Faltam 6 pra água voltar."]);
+  assert.deepEqual(lines(runner.start("sala").beats), ["A água já cobriu esta porta."]);
+  // Daqui não passa: 8 + 4 fica em 10.
+  const last = runner.start("sala");
+  assert.equal(runner.clock()!.value, 10);
+  assert.equal(eventsIn(last.beats).length, 1);
+  assert.equal(eventsIn(runner.start("sala").beats).length, 0, "relógio parado no limite não é notícia");
+
+  assert.deepEqual(eventsIn(runner.start("sobe").beats), [{ type: "clock", clock: null }]);
+  assert.equal(runner.clock(), null);
+  assert.throws(() => runner.start("sem_tamanho"));
+});
+
+test("descansar e lutar gastam o que a história disse que gastam — e nada, sem relógio", () => {
+  const runner = new StoryRunner(TIDE, makeHost());
+  assert.equal(runner.spend("rest"), false);
+
+  runner.start("desce");
+  assert.equal(runner.spend("rest"), true);
+  assert.equal(runner.spend("fight"), true);
+  assert.equal(runner.clock()!.value, 5);
+  runner.spend("rest");
+  runner.spend("rest");
+  assert.equal(runner.clock()!.value, 10);
+  assert.equal(runner.spend("fight"), false, "no limite o tempo não anda mais");
+  assert.throws(() => runner.start("cobra_errado"));
+});
+
+test("a condição clock:N de um objeto do mapa vale quando o relógio já chegou em N", () => {
+  const runner = new StoryRunner(TIDE, makeHost());
+  assert.equal(clockCondition("clock:4", runner.clock()), false);
+  runner.start("desce");
+  runner.start("sala");
+  assert.equal(clockCondition("clock:4", runner.clock()), true);
+  assert.equal(clockCondition("clock:5", runner.clock()), false);
+  // Não é pergunta de relógio: quem responde é outro.
+  assert.equal(clockCondition("porta_coberta", runner.clock()), undefined);
+  assert.equal(clockCondition("clock:cedo", runner.clock()), undefined);
+});
+
+test("diário e relógio vão no save junto com a história, e um save de antes deles abre com os dois vazios", () => {
+  const before = new StoryRunner(NOTES + "", makeHost());
+  before.start("pistas");
+  before.start("coletor");
+  const reopened = new StoryRunner(NOTES, makeHost(), before.save());
+  assert.deepEqual(reopened.journal(), before.journal());
+  assert.equal(reopened.visited("pistas"), true);
+
+  const tide = new StoryRunner(TIDE, makeHost());
+  tide.start("desce");
+  tide.start("sala");
+  const saved = tide.save();
+  assert.deepEqual(new StoryRunner(TIDE, makeHost(), saved).clock(), tide.clock());
+
+  // Uma luta perdida gasta o tempo no que estava gravado, sem abrir a história — e o resto do save não muda.
+  const charged = chargeSavedClock(saved, "fight")!;
+  const after = new StoryRunner(TIDE, makeHost(), charged);
+  assert.equal(after.clock()!.value, 6);
+  assert.equal(after.visited("sala"), true);
+  assert.equal(chargeSavedClock(null, "fight"), null);
+
+  // O formato antigo: só o estado do Ink. Abre igual, sem diário nem relógio.
+  const old = unpackStory(saved).ink;
+  assert.notEqual(old, saved);
+  const legacy = new StoryRunner(TIDE, makeHost(), old);
+  assert.equal(legacy.visited("sala"), true);
+  assert.deepEqual(legacy.journal(), []);
+  assert.equal(legacy.clock(), null);
+  assert.equal(chargeSavedClock(old, "fight"), old);
 });

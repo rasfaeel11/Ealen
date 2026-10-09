@@ -52,8 +52,22 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
       return { text: `${event.name} deixa o grupo.`, color: TEXT_COLORS.inkDim };
     case "unlock":
       return { text: `Ordem destravada pro próximo jogo novo: ${CLASS_INFO[event.order].name}.`, color: TEXT_COLORS.goldBright };
+    case "noted":
+      return { text: `Anotado no diário: ${event.entry.text}`, color: TEXT_COLORS.item };
+    case "forgot":
+      return {
+        text:
+          event.entries.length === 1
+            ? "Uma anotação some do diário. Fica o espaço em branco."
+            : `${event.entries.length} anotações somem do diário. Fica o espaço em branco.`,
+        color: TEXT_COLORS.danger,
+      };
+    case "recalled":
+      return { text: `De volta ao diário: ${event.entries.map((entry) => entry.text).join(" ")}`, color: TEXT_COLORS.item };
     case "fight":
     case "travel":
+    // O relógio não se anuncia: a barra no alto da tela mostra.
+    case "clock":
       return null;
   }
 }
@@ -101,6 +115,8 @@ export class DialogueBox {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly addHud: AddHud,
+    /** Avisado de cada acontecimento na hora em que a conversa chega nele, anunciado na caixa ou não. */
+    private readonly onEvent?: (event: StoryEvent) => void,
   ) {
     this.panel = addHud(addPanel(scene, BOX_X, BOX_Y, BOX_WIDTH, BOX_HEIGHT));
     this.speaker = addHud(addTitleText(scene, BOX_X + PADDING, BOX_Y + 18, "", { fontSize: "24px" }));
@@ -129,7 +145,9 @@ export class DialogueBox {
    * conversa acabou) e o jogador passou a última fala.
    */
   async play(step: DialogueStep): Promise<number | null> {
-    for (const beat of step.beats.filter(isShown)) {
+    for (const beat of step.beats) {
+      if (beat.kind === "event") this.onEvent?.(beat.event);
+      if (!isShown(beat)) continue;
       this.showBeat(beat);
       await new Promise<void>((resolve) => (this.onAdvance = resolve));
       this.onAdvance = null;

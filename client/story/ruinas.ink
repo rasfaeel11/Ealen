@@ -14,6 +14,7 @@ Há runas talhadas na parede do fundo do patamar, gastas quase até sumir.
         ~ inscricao_lida = true
         Os traços se arrumam aos poucos em notação Tirán: "aqui se guardava a luz para a noite longa".
         Um depósito de óleo, então. Faz sentido que ainda haja barris pelo salão.
+        ~ note("inscricao", "A inscrição do patamar: aqui se guardava a luz para a noite longa.")
         ~ grant_xp(15)
     - else:
         Os traços não viram palavra nenhuma. O que estava escrito aqui, a pedra não devolve mais a você.
@@ -114,11 +115,21 @@ Alguma coisa range fundo no ombro dela. O braço do escudo desce e não volta a 
 // mexer no Sino (`when` = used Sino, `ends` = win) ou aguentar até a rodada 6
 // (`ends` = stop). O gatilho em volta dele é o chefe que fala antes de lutar.
 
+//
+// Ele também é o exemplo do diário que se apaga: ao chegar, leva as duas
+// anotações mais recentes (`forget`), uma vez só. Tocar o sino devolve tudo
+// (`recall_all`); se a luta parar sozinha, o que ele levou fica levado.
+
 VAR coletor_fora = false
+VAR coletor_levou = false
 
 === coletor_chegada ===
 Entre as árvores do fundo, o ar tem o formato de alguém. Não é um corpo: é o lugar onde um corpo caberia.
 Você tenta lembrar por onde entrou nas ruínas, e a lembrança vem com um buraco no meio.
+{not coletor_levou:
+    ~ coletor_levou = true
+    ~ forget(2)
+}
 Atrás de você, num cavalete, um sino de bronze que ninguém toca há muito tempo.
 ~ start_fight("coletor")
 -> END
@@ -127,10 +138,28 @@ Atrás de você, num cavalete, um sino de bronze que ninguém toca há muito tem
 ~ coletor_fora = true
 O bronze responde com uma nota só, cheia, sem eco torto.
 O formato no ar perde a borda. O que ele tinha juntado se solta, e o mato volta a ser só mato.
+~ recall_all()
 -> END
 
 === coletor_farto ===
 ~ coletor_fora = true
 O formato no ar para, como quem confere uma conta e acha que fechou.
 Ele se desfaz sem pressa. Você fica com a certeza de ter esquecido alguma coisa, e sem ter como saber o quê.
+-> END
+
+// PROVISÓRIO: o relógio. Quem chega pela clareira (um `trigger` de uma vez só
+// no ponto de chegada) põe na tela a Luz do dia, de 0 a 6; descansar gasta 2
+// e cada luta, 1. Quando ela acaba (`clock:6`), a saída pra estrada se fecha
+// (`unless` = clock:6) e um gatilho que se repete (`if` = clock:6) diz por
+// quê. Ninguém morre de noite: o tempo só tira uma opção. A Andarilha, na
+// clareira, tira o relógio da tela.
+=== ruinas_anoitece ===
+O sol já vai baixo atrás do salão. O que houver pra fazer aqui, é com o resto do dia.
+~ clock_start("Luz do dia", 0, 6)
+~ clock_cost("rest", 2)
+~ clock_cost("fight", 1)
+-> END
+
+=== ruinas_escuro ===
+Escureceu. A estrada do leste some depois do segundo passo: não é hora de pegá-la.
 -> END
