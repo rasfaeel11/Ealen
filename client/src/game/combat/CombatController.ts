@@ -4,6 +4,8 @@ import {
   FLANK_TO_HIT,
   HEIGHT_TO_HIT,
   PROPS,
+  STATUSES,
+  STYLE_TO_HIT,
   SUPPORTS,
   SURFACES,
   abilityTargets,
@@ -21,9 +23,11 @@ import {
   tileAt,
   reachableTiles,
   samePos,
+  styleLabel,
   supportTargets,
   tileOfPixel,
   unitAt,
+  usesLeft,
   type Ability,
   type AreaMap,
   type AttackOutcome,
@@ -99,6 +103,7 @@ function describeAbility(ability: Ability): string {
   const parts: string[] = [ability.cost === "action" ? "Ação" : "Ação bônus"];
 
   if (ability.targets === "self") parts.push("em si");
+  else if (ability.targets === "foes") parts.push("todo inimigo de pé");
   else parts.push(ability.range === 1 ? "corpo a corpo" : `alcance ${ability.range}`);
   if (ability.radius !== undefined) {
     const side = ability.radius * 2 + 1;
@@ -109,16 +114,22 @@ function describeAbility(ability: Ability): string {
   for (const effect of ability.effects) {
     if (effect.kind === "damage") parts.push(effect.multiplier ? `dano x${effect.multiplier}` : "dano");
     else if (effect.kind === "heal") parts.push("cura");
-    else if (effect.kind === "status") parts.push(effect.statusId === "guarding" ? "em guarda até o próximo turno" : effect.statusId);
+    else if (effect.kind === "status") {
+      parts.push(effect.statusId === "guarding" ? "em guarda até o próximo turno" : `${STATUSES[effect.statusId].name} por ${effect.turns} turnos`);
+    }
     else parts.push(effect.distance > 0 ? `empurra ${effect.distance}` : `puxa ${-effect.distance}`);
   }
   if (ability.surface) parts.push(`deixa ${SURFACES[ability.surface.id].name} por ${ability.surface.rounds} rodadas`);
+  if (ability.limit !== undefined) parts.push(ability.limit === 1 ? "uma vez por luta" : `${ability.limit} vezes por luta`);
+  if (ability.backlash) parts.push(`cobra de você: ${STATUSES[ability.backlash.statusId].name}`);
   return parts.join(" · ");
 }
 
-/** O que a posição fez a um ataque, em palavras: "flanqueado +2", "cobertura +2 na defesa"... */
-function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 | 1 }): string[] {
+/** O que a posição e o confronto de estilos fizeram a um ataque, em palavras: "flanqueado +2", "cobertura +2 na defesa"... */
+function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 | 1; style: -1 | 0 | 1 }): string[] {
   const notes: string[] = [];
+  if (edge.style > 0) notes.push(`estilo leva vantagem +${STYLE_TO_HIT}`);
+  if (edge.style < 0) notes.push(`estilo em desvantagem -${STYLE_TO_HIT}`);
   if (edge.flanked) notes.push(`flanqueado +${FLANK_TO_HIT}`);
   if (edge.height > 0) notes.push(`de cima +${HEIGHT_TO_HIT}`);
   if (edge.height < 0) notes.push(`de baixo -${HEIGHT_TO_HIT}`);
@@ -281,8 +292,8 @@ export class CombatController {
     if (this.busy) return;
     const unit = activeUnit(this.encounter)!;
 
-    // Habilidade em si mesmo não tem o que mirar: dispara na hora.
-    if (ability?.targets === "self") {
+    // Habilidade em si mesmo, ou que pega todo inimigo, não tem o que mirar: dispara na hora.
+    if (ability?.targets === "self" || ability?.targets === "foes") {
       void this.issue({ type: "ability", unitId: unit.id, abilityId: ability.id, target: unit.pos });
       return;
     }
@@ -377,10 +388,15 @@ export class CombatController {
     const unit = activeUnit(encounter)!;
     this.hud.setTurnOrder(encounter);
 
-    const canPay = (ability: Ability) => (ability.cost === "action" ? unit.turn.action : unit.turn.bonus);
-    // O botão de mexer existe enquanto houver na luta algo em que mexer, e acende com quem está colado nele.
-    const usable = encounter.props.filter((prop) => prop.hp > 0 && !prop.used && propTemplate(prop).interact !== undefined);
+    const canPay = (ability: Ability) =>
+      (ability.cost === "action" ? unit.turn.action : unit.turn.bonus) && usesLeft(unit, ability) > 0;
+    // O botão de mexer existe enquanto esta luta espera que mexam em alguma coisa (uma deixa `used`), ou com algo
+    // de mexer ao alcance — um sino do outro lado do mapa não é assunto dela. Acende com quem está colado nele.
     const inReach = interactTargets(encounter, unit);
+    const wanted = new Set(encounter.cues.flatMap((cue) => (cue.when.kind === "used" ? cue.when.props : [])));
+    const usable = encounter.props.filter(
+      (prop) => prop.hp > 0 && !prop.used && propTemplate(prop).interact !== undefined && (wanted.has(prop.id) || inReach.includes(prop)),
+    );
     const buttons: ActionButton[] = [
       {
         label: "Mover",
@@ -426,7 +442,12 @@ export class CombatController {
     const dot = (available: boolean) => (available ? "●" : "○");
     this.hud.setActions(
       buttons,
-      `${unit.name}   ·   Movimento ${unit.turn.movement}/${unit.speed}   ·   Ação ${dot(unit.turn.action)}   ·   Bônus ${dot(unit.turn.bonus)}`,
+      [
+        `${unit.name}${unit.style ? ` (${styleLabel(unit)})` : ""}`,
+        `Movimento ${unit.turn.movement}/${unit.speed}`,
+        `Ação ${dot(unit.turn.action)}`,
+        `Bônus ${dot(unit.turn.bonus)}`,
+      ].join("   ·   "),
     );
     if (this.aim?.kind === "interact") this.options = inReach.map((prop) => prop.pos);
     else if (this.aim?.kind === "support") {
@@ -698,6 +719,19 @@ export class CombatController {
           this.hud.log(`Acertou ${target.name} (${sum}).`);
         }
         await this.wait(event.outcome === "hit" ? 40 : event.outcome === "crit" ? 120 : 220);
+        return;
+      }
+
+      case "styleTrait": {
+        // O traço do estilo de quem bate: aparece sobre ele, antes do dano que ele engrossa.
+        const text = event.trait === "wave" ? `${event.name} x${(event.hits ?? 0) + 1}` : `${event.name}!`;
+        this.floatOver(event.unit, text, TEXT_COLORS.goldBright, -22, 22);
+        this.hud.log(
+          event.trait === "wave"
+            ? `${this.unit(event.unit).name} insiste em ${this.unit(event.target).name}: ${event.name} (${(event.hits ?? 0) + 1} golpes seguidos).`
+            : `${this.unit(event.target).name} se repetiu: ${event.name} de ${this.unit(event.unit).name}.`,
+        );
+        await this.wait(140);
         return;
       }
 

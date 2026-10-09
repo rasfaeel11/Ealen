@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { activeUnit, isAlive, type Encounter } from "@ealen/shared";
+import { activeUnit, isAlive, styleLabel, type Encounter } from "@ealen/shared";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { addBodyText, addPanel, addTitleText } from "../ui";
 
@@ -104,8 +104,10 @@ export class CombatHud {
       const unit = encounter.units.find((candidate) => candidate.id === id)!;
       const marker = unit === active ? "▸ " : "   ";
       if (!isAlive(unit)) return `${marker}${unit.name}   caiu`;
+      // O estilo de cada um fica à vista: é o que diz quem leva vantagem sobre quem.
+      const style = unit.style ? `  ·  ${styleLabel(unit)}` : "";
       // Quem não tem vida pra perder não tem número pra mostrar.
-      return unit.invulnerable ? `${marker}${unit.name}   —` : `${marker}${unit.name}   ${unit.currentHp}/${unit.maxHp}`;
+      return `${marker}${unit.name}   ${unit.invulnerable ? "—" : `${unit.currentHp}/${unit.maxHp}`}${style}`;
     });
     // Quem acompanha sem lutar fica no fim, fora da ordem: mostra se o apoio dele ainda vale nesta rodada.
     const supporters = encounter.supporters.map((supporter) => `   ${supporter.name}   apoio ${supporter.ready ? "●" : "○"}`);

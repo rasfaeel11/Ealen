@@ -1,4 +1,5 @@
-import type { AiProfile } from "../tactics/types";
+import type { StyleId } from "../tactics/styles";
+import type { AiProfile, AiQuirks } from "../tactics/types";
 import type { Character } from "./character";
 import type { Principle } from "./principle";
 
@@ -27,6 +28,10 @@ export interface BestiaryEntry {
   lore: string;
   /** Como ela luta: os pesos da IA que fogem do padrão (ver AiProfile). */
   ai?: Partial<AiProfile>;
+  /** Manias de comportamento (ver AiQuirks). Em `mirrors`, "hero" é a protagonista. */
+  quirks?: AiQuirks;
+  /** O estilo de luta e o grau nele (ver ../tactics/styles.ts). */
+  style?: { id: StyleId; grade: number };
   /**
    * Não tem vida pra perder: nada a fere e ela nunca cai (ver `invulnerable`
    * em Unit). A luta com ela só acaba por uma deixa do roteiro — o teste dos

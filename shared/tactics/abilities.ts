@@ -100,6 +100,33 @@ const CLASS_TWISTS: Partial<Record<CharacterClass, Partial<Record<CombatStance, 
 };
 
 /**
+ * Habilidades que são de UMA pessoa, não de uma Ordem: o que alguém do elenco
+ * sabe fazer além do kit (`gifts` em ../party.ts). Provisórias como o resto.
+ *
+ * `tide_pull` é o repuxo de Varel: adianta a maré e abre a guarda de todo
+ * inimigo de pé. Uma vez por luta, e a magia cobra — o turno seguinte dele.
+ */
+export const GIFTS = {
+  tide_pull: {
+    id: "gift.tide_pull",
+    name: "Adiantar a Maré",
+    flavor: "A água chega antes da hora e leva o chão de quem estava firme. Quem a chamou fica sem fôlego.",
+    cost: "action",
+    range: 0,
+    targets: "foes",
+    effects: [{ kind: "status", statusId: "exposed", turns: 2 }],
+    limit: 1,
+    backlash: { statusId: "winded", turns: 1 },
+  },
+} satisfies Record<string, Ability>;
+
+export type GiftId = keyof typeof GIFTS;
+
+export function isGiftId(id: unknown): id is GiftId {
+  return typeof id === "string" && id in GIFTS;
+}
+
+/**
  * As habilidades de um combatente: as da Ordem dele, com os nomes próprios
  * da criatura por cima quando houver (um Lobo-de-Bruma dá um Bote
  * Silencioso, não uma "Lâmina Não-Vista").

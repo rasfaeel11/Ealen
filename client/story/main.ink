@@ -36,6 +36,9 @@ EXTERNAL clock()            // quanto já passou (0 sem relógio)
 EXTERNAL clock_left()       // quanto falta
 EXTERNAL clock_cost(what, amount)   // clock_cost("rest", 2): quanto descansar ("rest") ou lutar ("fight") gasta sozinho
 EXTERNAL clock_stop()       // tira o relógio da tela
+EXTERNAL afflict(who, status)   // afflict("lish", "wounded_arm"): uma condição que dura ENTRE lutas. "hero" é Halmira
+EXTERNAL cure(who, status)      // tira
+EXTERNAL afflicted(who, status) // ele a tem?
 
 // Convenções:
 //   Nome: fala        vira uma fala com o nome em cima. O resto é narração.

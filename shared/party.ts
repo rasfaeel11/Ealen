@@ -1,6 +1,8 @@
 import { createStartingAttributes, createStartingInventory, startingMaxHp } from "./characterCreation";
 import { applyXpGain, xpToNextLevel } from "./leveling";
 import { MOCK_MAP_NODES } from "./mock/seed";
+import type { GiftId } from "./tactics/abilities";
+import type { StyleId } from "./tactics/styles";
 import type { SupportId } from "./tactics/supports";
 import type { Character } from "./types/character";
 import { CLASS_INFO, type CharacterClass } from "./types/characterClass";
@@ -22,9 +24,12 @@ import type { Race } from "./types/race";
  * outros, mas numa luta não é unidade — fica de fora da grade e oferece um
  * apoio que o grupo chama (ver ./tactics/supports.ts).
  *
- * As Ordens aqui são PROVISÓRIAS: a história fala em estilos (Maré, Viés,
- * Baluarte) que o motor ainda não tem, e cada um ganhou o kit da Ordem que
- * mais se parece com o papel dele.
+ * As Ordens aqui são PROVISÓRIAS: cada um ganhou o kit da Ordem que mais se
+ * parece com o papel dele. O que a história diz de cada um está no ESTILO
+ * (`style`: Maré, Viés ou Baluarte, e o grau — ver ./tactics/styles.ts) e no
+ * que só ele sabe fazer (`gifts`, ver GIFTS em ./tactics/abilities.ts). Os
+ * dois vêm daqui a cada luta, não da ficha salva: mudar o elenco muda quem já
+ * está jogando.
  */
 
 /** Id fixo da protagonista: só precisa diferir dos ids dos companheiros e das criaturas. */
@@ -37,14 +42,24 @@ export interface CastMember {
   characterClass: CharacterClass;
   /** Acompanha sem lutar: numa luta não é unidade, e oferece este apoio. */
   support?: SupportId;
+  /** O estilo de luta e o grau nele. Sem isto, fica fora do triângulo. */
+  style?: { id: StyleId; grade: number };
+  /** O que só ele sabe fazer, além do kit da Ordem. */
+  gifts?: readonly GiftId[];
 }
 
-export const PROTAGONIST: CastMember = { name: "Halmira", race: "miraven", characterClass: "guardiao" };
+export const PROTAGONIST: CastMember = {
+  name: "Halmira",
+  race: "miraven",
+  characterClass: "guardiao",
+  style: { id: "mare", grade: 3 },
+};
 
 /** Quem pode entrar no grupo, pela chave que o texto usa (`join_party("lish")`). */
 export const COMPANIONS: Record<string, CastMember> = {
-  lish: { name: "Lish", race: "kelbar", characterClass: "sombrilico" },
-  varel: { name: "Varel", race: "miraven", characterClass: "cantor_de_ealen" },
+  lish: { name: "Lish", race: "kelbar", characterClass: "sombrilico", style: { id: "vies", grade: 3 } },
+  // Não tem estilo de luta: o que ele tem é a maré, e ela cobra.
+  varel: { name: "Varel", race: "miraven", characterClass: "cantor_de_ealen", gifts: ["tide_pull"] },
   // Não luta: anota. A Ordem é só a cara dele no mapa, por enquanto.
   gil: { name: "Gil", race: "althirim", characterClass: "luminar", support: "annotate" },
 };
@@ -60,11 +75,23 @@ export function companionId(key: string): string {
 
 const COMPANION_ID = "companion:";
 
-/** O apoio que a ficha `character` oferece numa luta, se ela é de quem acompanha sem lutar. Undefined em quem luta. */
-export function supportOf(character: Pick<Character, "id">): SupportId | undefined {
+/** Quem do elenco é o dono da ficha `character`. Undefined em quem não é do elenco (uma criatura). */
+export function castOf(character: Pick<Character, "id">): CastMember | undefined {
+  if (character.id === HERO_ID) return PROTAGONIST;
   if (!character.id.startsWith(COMPANION_ID)) return undefined;
   const key = character.id.slice(COMPANION_ID.length);
-  return isCompanionKey(key) ? COMPANIONS[key].support : undefined;
+  return isCompanionKey(key) ? COMPANIONS[key] : undefined;
+}
+
+/** O apoio que a ficha `character` oferece numa luta, se ela é de quem acompanha sem lutar. Undefined em quem luta. */
+export function supportOf(character: Pick<Character, "id">): SupportId | undefined {
+  return character.id === HERO_ID ? undefined : castOf(character)?.support;
+}
+
+/** O id, na luta e no save, de quem o texto chama de `who`: "hero" é Halmira, o resto são as chaves de COMPANIONS. Undefined se não existe. */
+export function castId(who: string): string | undefined {
+  if (who === HERO_ID) return HERO_ID;
+  return isCompanionKey(who) ? companionId(who) : undefined;
 }
 
 /** Entra na luta como unidade? Só não entra quem acompanha sem lutar. */

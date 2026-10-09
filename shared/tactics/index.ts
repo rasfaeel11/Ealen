@@ -4,6 +4,7 @@ export * from "./statuses";
 export * from "./surfaces";
 export * from "./props";
 export * from "./supports";
+export * from "./styles";
 export * from "./types";
 export * from "./abilities";
 export * from "./units";

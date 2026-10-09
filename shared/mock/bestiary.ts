@@ -44,7 +44,9 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     },
   },
 
+  // PROVISÓRIO: os estilos do lobo (Maré) e do servo (Baluarte) existem pra exercitar o triângulo.
   "encounter-lobo-de-bruma": {
+    style: { id: "mare", grade: 2 },
     glyph: "☾",
     principle: "ausencia",
     summary: "Um lobo comum que aprendeu a não estar onde se olha.",
@@ -73,6 +75,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
   },
 
   "encounter-servo-enferrujado": {
+    style: { id: "baluarte", grade: 2 },
     glyph: "⚙",
     principle: "entropia",
     summary: "Autômato taharim de mineração, abandonado tempo demais.",

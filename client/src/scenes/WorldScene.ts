@@ -743,6 +743,8 @@ export default class WorldScene extends Phaser.Scene {
         party.map((fighter) => fighter.character.id),
       ),
       onlookers.map((follower) => follower.character),
+      // O que a história pôs em alguém e que dura entre lutas entra com ele.
+      this.story.afflictions(),
     );
 
     this.statusText.setVisible(false);

@@ -27,6 +27,10 @@ function dealsDamage(ability: Ability): boolean {
 /** Todo quadrado que `unit` pode mirar com `ability` de onde está. Golpe que fere também mira um destrutível. */
 export function abilityTargets(encounter: Encounter, unit: Unit, ability: Ability): Pos[] {
   if (ability.targets === "self") return [{ ...unit.pos }];
+  // Sai de quem usa e pega todo inimigo de pé: só existe o que mirar se houver algum.
+  if (ability.targets === "foes") {
+    return encounter.units.some((other) => other.team !== unit.team && isAlive(other)) ? [{ ...unit.pos }] : [];
+  }
 
   if (ability.targets === "tile") {
     return encounter.grid.tiles
@@ -53,6 +57,10 @@ export function abilityTargets(encounter: Encounter, unit: Unit, ability: Abilit
  * protege, um aliado no meio não.
  */
 export function affectedUnits(encounter: Encounter, ability: Ability, target: Pos): Unit[] {
+  if (ability.targets === "foes") {
+    const caster = unitAt(encounter, target);
+    return caster ? encounter.units.filter((unit) => unit.team !== caster.team && isAlive(unit)) : [];
+  }
   if (ability.radius === undefined) {
     const unit = unitAt(encounter, target);
     return unit ? [unit] : [];

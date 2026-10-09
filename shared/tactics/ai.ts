@@ -3,6 +3,7 @@ import { attackOdds } from "./attack";
 import { reachableTiles } from "./movement";
 import { PROPS, type PropTemplate } from "./props";
 import { STATUSES, type StatusId, type StatusTemplate } from "./statuses";
+import { punishFactor, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
 import { abilityTargets, affectedProps, affectedUnits, canAimAt } from "./targeting";
 import type { Attributes } from "../types/attributes";
@@ -149,6 +150,11 @@ export function planTurn(encounter: Encounter): AiPlan {
   const stops = [{ pos: origin, cost: 0, hazard: 0 }, ...reachableTiles(encounter, actor)];
   let best: AiPlan | undefined;
 
+  // As manias (ver AiQuirks): quem só revida, e quem repete o tipo da última ação de alguém.
+  const provoked = (unit: Unit) => (unit.habit?.attackTurns ?? 0) >= (me.quirks?.retaliates ?? 0);
+  const copied = stanceOf(sim.units.find((unit) => unit.id === me.quirks?.mirrors)?.habit?.last);
+  const mirrors = copied !== undefined && me.abilities.some((ability) => ability.cost === "action" && stanceOf(ability.id) === copied);
+
   for (const stop of stops) {
     me.pos = { ...stop.pos };
 
@@ -156,9 +162,13 @@ export function planTurn(encounter: Encounter): AiPlan {
     let bonus: AiChoice | undefined;
     let canStrike = false;
     for (const ability of me.abilities) {
+      if (mirrors && ability.cost === "action" && stanceOf(ability.id) !== copied) continue;
       const offensive = isOffensive(ability);
       for (const target of aimPoints(sim, me, ability, foes)) {
-        if (offensive && affectedUnits(sim, ability, target).some((unit) => unit.team !== me.team)) canStrike = true;
+        const struck = offensive ? affectedUnits(sim, ability, target).filter((unit) => unit.team !== me.team) : [];
+        // Quem só revida não levanta a mão pra quem ainda não o provocou o bastante.
+        if (me.quirks?.retaliates && offensive && !struck.some(provoked)) continue;
+        if (struck.length > 0) canStrike = true;
 
         const value = abilityValue(sim, me, profile, ability, target);
         if (value < MIN_VALUE) continue;
@@ -192,6 +202,11 @@ export function planTurn(encounter: Encounter): AiPlan {
     if (!best || score > best.score) best = { tile: { ...stop.pos }, action, bonus, item, score };
   }
   return best!;
+}
+
+/** O tipo de uma habilidade de Ordem, tirado do id dela ("guardiao.defend" -> "defend"). */
+function stanceOf(abilityId: string | undefined): string | undefined {
+  return abilityId === undefined ? undefined : abilityId.slice(abilityId.lastIndexOf(".") + 1);
 }
 
 // --- Quanto vale uma habilidade ---------------------------------------------
@@ -474,8 +489,12 @@ function forecast(
       if (effect.kind !== "damage") continue;
       let amount = (attributeOf(actor, effect.attribute) + meanRoll(effect.dice)) * (effect.multiplier ?? 1);
       if (effect.bonus) amount += Math.floor(effectiveAttribute(actor, effect.bonus.attribute) / effect.bonus.divisor);
+      // O traço dos estilos, na mesma ordem do motor: Onda, crítico, Rachadura, armadura, Muralha.
+      amount += waveBonus(actor, ability, target);
       if (critical) amount *= 2;
+      amount *= punishFactor(actor, target);
       amount = Math.max(1, amount - Math.floor(targetOr / 2));
+      amount = Math.max(1, amount - styleReduction(target));
       if (guarded) amount -= Math.min(amount, targetOr + 3.5);
       total += amount;
     }

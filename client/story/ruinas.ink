@@ -145,6 +145,9 @@ O formato no ar perde a borda. O que ele tinha juntado se solta, e o mato volta 
 ~ coletor_fora = true
 O formato no ar para, como quem confere uma conta e acha que fechou.
 Ele se desfaz sem pressa. Você fica com a certeza de ter esquecido alguma coisa, e sem ter como saber o quê.
+// A condição que dura entre lutas (afflict): fica até a Andarilha cuidar.
+O braço que você ergueu contra ele demora a obedecer.
+~ afflict("hero", "wounded_arm")
 -> END
 
 // PROVISÓRIO: o relógio. Quem chega pela clareira (um `trigger` de uma vez só

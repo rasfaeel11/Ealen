@@ -44,6 +44,9 @@ EXTERNAL clock()
 EXTERNAL clock_left()
 EXTERNAL clock_cost(what, amount)
 EXTERNAL clock_stop()
+EXTERNAL afflict(who, status)
+EXTERNAL cure(who, status)
+EXTERNAL afflicted(who, status)
 `;
 
 /** Como o jogo compila (client/scripts/compileStory.ts): contando as visitas de todo trecho. */
@@ -577,4 +580,45 @@ test("diário e relógio vão no save junto com a história, e um save de antes 
   assert.deepEqual(legacy.journal(), []);
   assert.equal(legacy.clock(), null);
   assert.equal(chargeSavedClock(old, "fight"), old);
+});
+
+const ARM = compile(`
+=== queda ===
+~ afflict("lish", "wounded_arm")
+~ afflict("lish", "wounded_arm")
+{afflicted("lish", "wounded_arm"): O braço de Lish não fecha mais direito.}
+{afflicted("hero", "wounded_arm"): O seu também. | O seu, sim.}
+-> END
+
+=== cura ===
+~ cure("lish", "wounded_arm")
+~ cure("hero", "wounded_arm")
+-> END
+
+=== ninguem ===
+~ afflict("taevel", "wounded_arm")
+-> END
+
+=== nada ===
+~ afflict("hero", "azar")
+-> END
+`);
+
+test("afflict põe em alguém uma condição que dura entre lutas, vai no save, e cure tira", () => {
+  const runner = new StoryRunner(ARM, makeHost());
+  const fall = runner.start("queda");
+  // Pôr de novo o que já está não é notícia.
+  assert.deepEqual(eventsIn(fall.beats), [{ type: "afflicted", name: "lish", status: "Braço ferido" }]);
+  assert.deepEqual(lines(fall.beats), ["O braço de Lish não fecha mais direito.", "O seu, sim."]);
+  assert.deepEqual(runner.afflictions(), { "companion:lish": ["wounded_arm"] });
+
+  const reopened = new StoryRunner(ARM, makeHost(), runner.save());
+  assert.deepEqual(reopened.afflictions(), { "companion:lish": ["wounded_arm"] });
+
+  // Só o que havia pra tirar vira notícia.
+  assert.deepEqual(eventsIn(reopened.start("cura").beats), [{ type: "afflicted", name: "lish", status: "Braço ferido", cured: true }]);
+  assert.deepEqual(reopened.afflictions(), {});
+
+  assert.throws(() => runner.start("ninguem"));
+  assert.throws(() => runner.start("nada"));
 });

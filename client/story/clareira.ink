@@ -22,6 +22,11 @@ O que zumbe ainda não deu por você. Quem chega sem ser percebido escolhe a hor
 - else:
     Andarilha: Você de novo. Ainda inteiro, pelo visto.
 }
+// A condição que o Coletor deixa (coletor_farto) sai aqui.
+{afflicted("hero", "wounded_arm"):
+    Andarilha: Esse braço não é cansaço. Dá aqui.
+    ~ cure("hero", "wounded_arm")
+}
 // O relógio que as ruínas puseram na tela (ruinas_anoitece) acaba aqui.
 {clock() > 0:
     Andarilha: Voltou com a noite nas costas. Fica perto do fogo, que de manhã a estrada reaparece.

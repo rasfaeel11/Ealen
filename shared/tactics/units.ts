@@ -1,9 +1,10 @@
 import type { Attributes } from "../types/attributes";
 import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
-import { abilitiesFor } from "./abilities";
+import { GIFTS, abilitiesFor, type GiftId } from "./abilities";
+import type { StyleId } from "./styles";
 import { samePos, type Pos } from "./grid";
-import type { AiProfile, Encounter, TeamId, Unit } from "./types";
+import type { Ability, AiProfile, AiQuirks, Encounter, TeamId, Unit } from "./types";
 
 /** Quadrados de movimento por turno de quem não diz o contrário. */
 export const DEFAULT_SPEED = 6;
@@ -17,6 +18,12 @@ export interface UnitPlacement {
   ai?: Partial<AiProfile>;
   /** Não tem vida pra perder (ver `invulnerable` em Unit). */
   invulnerable?: boolean;
+  /** Manias da IA (ver AiQuirks). */
+  quirks?: AiQuirks;
+  /** O estilo de luta e o grau nele (ver ./styles.ts). */
+  style?: { id: StyleId; grade: number };
+  /** Habilidades próprias, além das da Ordem (ver GIFTS em ./abilities.ts). */
+  gifts?: readonly GiftId[];
 }
 
 /**
@@ -36,11 +43,13 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     maxHp: character.maxHp,
     pos: { ...placement.pos },
     speed: DEFAULT_SPEED,
-    abilities: abilitiesFor(character),
+    abilities: [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))],
     statuses: [],
     inventory: character.inventory ? structuredClone(character.inventory) : undefined,
     ai: placement.ai ? { ...placement.ai } : undefined,
     ...(placement.invulnerable ? { invulnerable: true } : {}),
+    ...(placement.quirks ? { quirks: { ...placement.quirks } } : {}),
+    ...(placement.style ? { style: placement.style.id, grade: placement.style.grade } : {}),
     turn: { movement: 0, action: false, bonus: false, reaction: true },
   };
 }
@@ -57,6 +66,11 @@ export function syncCharacterFromUnit(character: Character, unit: Unit): void {
  */
 export function syncUnitInventory(unit: Unit, character: Character): void {
   unit.inventory = character.inventory ? structuredClone(character.inventory) : undefined;
+}
+
+/** Quantas vezes `unit` ainda pode usar `ability` nesta luta. Infinito em quem não tem `limit`. */
+export function usesLeft(unit: Unit, ability: Ability): number {
+  return ability.limit === undefined ? Infinity : Math.max(0, ability.limit - (unit.used?.[ability.id] ?? 0));
 }
 
 export function isAlive(unit: Unit): boolean {

@@ -64,6 +64,10 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
       };
     case "recalled":
       return { text: `De volta ao diário: ${event.entries.map((entry) => entry.text).join(" ")}`, color: TEXT_COLORS.item };
+    case "afflicted":
+      return event.cured
+        ? { text: `${event.name} não tem mais: ${event.status}.`, color: TEXT_COLORS.goldBright }
+        : { text: `${event.name}: ${event.status}. Fica até alguém cuidar.`, color: TEXT_COLORS.danger };
     case "fight":
     case "travel":
     // O relógio não se anuncia: a barra no alto da tela mostra.

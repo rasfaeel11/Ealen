@@ -47,10 +47,33 @@ export interface StoryMemory {
   journal: JournalEntry[];
   /** Null = não há relógio correndo. */
   clock: StoryClock | null;
+  /**
+   * As condições que a história pôs em alguém e que duram ENTRE lutas (o
+   * braço de Lish), pelo id da ficha: quem as tem entra em toda luta com
+   * elas, até a história tirar. São ids de STATUSES (../tactics/statuses.ts).
+   */
+  afflictions: Record<string, string[]>;
 }
 
 export function emptyMemory(): StoryMemory {
-  return { journal: [], clock: null };
+  return { journal: [], clock: null, afflictions: {} };
+}
+
+/** Põe a condição `status` em quem tem a ficha `id`. Devolve se mudou. */
+export function afflict(afflictions: Record<string, string[]>, id: string, status: string): boolean {
+  const list = (afflictions[id] ??= []);
+  if (list.includes(status)) return false;
+  list.push(status);
+  return true;
+}
+
+/** Tira a condição. Devolve se havia. */
+export function cure(afflictions: Record<string, string[]>, id: string, status: string): boolean {
+  const list = afflictions[id];
+  if (!list?.includes(status)) return false;
+  afflictions[id] = list.filter((other) => other !== status);
+  if (afflictions[id].length === 0) delete afflictions[id];
+  return true;
 }
 
 // --- Diário -----------------------------------------------------------------
@@ -174,9 +197,26 @@ function readClock(raw: unknown): StoryClock | null {
   return clock;
 }
 
-/** Junta o estado do Ink (`ink`, o JSON dele) com o diário e o relógio no texto que vai pro save. */
+function readAfflictions(raw: unknown): Record<string, string[]> {
+  const afflictions: Record<string, string[]> = {};
+  if (!isObject(raw)) return afflictions;
+  for (const [id, list] of Object.entries(raw)) {
+    if (!Array.isArray(list)) continue;
+    const statuses = [...new Set(list.filter((status): status is string => typeof status === "string"))];
+    if (statuses.length > 0) afflictions[id] = statuses;
+  }
+  return afflictions;
+}
+
+/** Junta o estado do Ink (`ink`, o JSON dele) com o resto do que a história guarda no texto que vai pro save. */
 export function packStory(ink: string, memory: StoryMemory): string {
-  return JSON.stringify({ ealen: 1, ink: JSON.parse(ink) as unknown, journal: memory.journal, clock: memory.clock });
+  return JSON.stringify({
+    ealen: 1,
+    ink: JSON.parse(ink) as unknown,
+    journal: memory.journal,
+    clock: memory.clock,
+    afflictions: memory.afflictions,
+  });
 }
 
 /**
@@ -192,7 +232,14 @@ export function unpackStory(saved: string): { ink: string; memory: StoryMemory }
     return { ink: saved, memory: emptyMemory() };
   }
   if (!isObject(parsed) || !("ealen" in parsed) || !isObject(parsed.ink)) return { ink: saved, memory: emptyMemory() };
-  return { ink: JSON.stringify(parsed.ink), memory: { journal: readJournal(parsed.journal), clock: readClock(parsed.clock) } };
+  return {
+    ink: JSON.stringify(parsed.ink),
+    memory: {
+      journal: readJournal(parsed.journal),
+      clock: readClock(parsed.clock),
+      afflictions: readAfflictions(parsed.afflictions),
+    },
+  };
 }
 
 /**

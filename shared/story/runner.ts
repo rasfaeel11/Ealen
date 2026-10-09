@@ -2,7 +2,8 @@ import { Story } from "inkjs";
 import { addItemToInventory, findInventorySlot } from "../inventoryEffects";
 import { applyXpGain } from "../leveling";
 import { findItemTemplate } from "../mock/items";
-import { isInParty, isOrder, joinParty, leaveParty, presentCompanions, type PartyMember } from "../party";
+import { HERO_ID, castId, isInParty, isOrder, joinParty, leaveParty, presentCompanions, type PartyMember } from "../party";
+import { STATUSES, isStatusId, type StatusId } from "../tactics/statuses";
 import { AREAS } from "../world/areas";
 import type { RngHolder } from "../tactics/rng";
 import type { Character } from "../types/character";
@@ -11,6 +12,8 @@ import type { ConsumableItem } from "../types/inventory";
 import type { LevelUpResult } from "../types/levelUp";
 import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck } from "./checks";
 import {
+  afflict,
+  cure,
   emptyMemory,
   forgetRecent,
   isClockCost,
@@ -76,6 +79,11 @@ import {
  *   clock_cost("rest", 2)    quanto descansar ("rest") ou lutar ("fight")
  *                            gasta do relógio sem o texto mandar
  *   clock_stop()             tira o relógio da tela
+ *   afflict("lish", "wounded_arm")   põe em alguém uma condição que dura
+ *                            ENTRE lutas: ele entra em toda luta com ela.
+ *                            "hero" é Halmira; o resto, as chaves do elenco
+ *   cure("lish", "wounded_arm")      tira
+ *   afflicted("lish", "wounded_arm") se ele a tem
  *
  * `start_fight` e `travel` não interrompem o texto: viram acontecimentos
  * (`fight`, `travel`) que a cena cumpre depois da última fala — ver `aftermath`.
@@ -121,7 +129,9 @@ export type StoryEvent =
   /** Anotações apagadas que voltaram. */
   | { type: "recalled"; entries: JournalEntry[] }
   /** O relógio mudou: como ficou, ou null se saiu da tela. Não se anuncia na caixa — a barra mostra. */
-  | { type: "clock"; clock: StoryClock | null };
+  | { type: "clock"; clock: StoryClock | null }
+  /** Alguém ganhou (ou perdeu, com `cured`) uma condição que dura entre lutas. `status` é o nome dela. */
+  | { type: "afflicted"; name: string; status: string; cured?: boolean };
 
 /** O que uma conversa deixa pra cena fazer quando a última fala passar. */
 export interface Aftermath {
@@ -233,6 +243,7 @@ export class StoryRunner {
     story.BindExternalFunction("in_party", (key: string) => isInParty(host.companions, String(key)), true);
     story.BindExternalFunction("noted", (id: string) => isNoted(this.memory.journal, String(id)), true);
     story.BindExternalFunction("clock", () => this.memory.clock?.value ?? 0, true);
+    story.BindExternalFunction("afflicted", (who: string, status: string) => this.memory.afflictions[this.sheet(who).id]?.includes(String(status)) ?? false, true);
     story.BindExternalFunction("clock_left", () => (this.memory.clock ? this.memory.clock.limit - this.memory.clock.value : 0), true);
 
     // Mexem no jogo ou gastam o dado: só na hora em que o texto chega nelas.
@@ -306,6 +317,22 @@ export class StoryRunner {
     story.BindExternalFunction("clock_cost", (what: string, amount: number) => {
       if (!isClockCost(what)) throw new Error(`A história cobra do relógio uma coisa que não existe: "${String(what)}"`);
       if (this.memory.clock) this.memory.clock.costs[what] = Math.max(0, Math.floor(Number(amount)));
+    });
+    const condition = (status: string): StatusId => {
+      if (!isStatusId(status)) throw new Error(`A história fala de uma condição que não existe: "${String(status)}"`);
+      return status;
+    };
+    story.BindExternalFunction("afflict", (who: string, status: string) => {
+      const { id, name } = this.sheet(who);
+      const statusId = condition(status);
+      if (afflict(this.memory.afflictions, id, statusId)) this.pending.push({ type: "afflicted", name, status: STATUSES[statusId].name });
+    });
+    story.BindExternalFunction("cure", (who: string, status: string) => {
+      const { id, name } = this.sheet(who);
+      const statusId = condition(status);
+      if (cure(this.memory.afflictions, id, statusId)) {
+        this.pending.push({ type: "afflicted", name, status: STATUSES[statusId].name, cured: true });
+      }
     });
     story.BindExternalFunction("start_fight", (group: string) => {
       this.pending.push({ type: "fight", group: String(group) });
@@ -394,6 +421,23 @@ export class StoryRunner {
   /** Muda uma variável que a história declara (com VAR). É como o jogo conta algo a ela. */
   setFlag(name: string, value: boolean | number | string): void {
     this.story.variablesState.$(name, value);
+  }
+
+  /** De quem o texto fala em `afflict` e `cure`: o id da ficha e o nome. Quem não é do elenco é erro de quem escreveu. */
+  private sheet(who: string): { id: string; name: string } {
+    const id = castId(String(who));
+    if (id === undefined) throw new Error(`A história fala de alguém que não é do elenco: "${String(who)}"`);
+    if (id === HERO_ID) return { id, name: this.host.character.name };
+    const known = this.host.companions.find((member) => member.character.id === id);
+    // Quem ainda não andou com o grupo não tem ficha: o nome vem do elenco quando ele entrar.
+    return { id, name: known?.character.name ?? String(who) };
+  }
+
+  /** As condições que a história pôs em cada um e que duram entre lutas, pelo id da ficha — o que uma luta recebe em `lasting`. */
+  afflictions(): Record<string, StatusId[]> {
+    return Object.fromEntries(
+      Object.entries(this.memory.afflictions).map(([id, list]) => [id, list.filter(isStatusId)]),
+    );
   }
 
   private announceClock(): void {

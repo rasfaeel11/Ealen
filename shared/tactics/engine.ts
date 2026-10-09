@@ -5,7 +5,8 @@ import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { findPath } from "./movement";
 import { PROPS, fellProp, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
-import { STATUSES, type ActiveStatus, type StatusTemplate } from "./statuses";
+import { STATUSES, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
+import { STYLES, punishFactor, styleReduction, waveBonus } from "./styles";
 import {
   SURFACES,
   enterCost,
@@ -34,7 +35,7 @@ import type {
   TeamId,
   Unit,
 } from "./types";
-import { activeUnit, effectiveAttribute, findUnit, isAlive, isOver, primaryAttribute, unitAt } from "./units";
+import { activeUnit, effectiveAttribute, findUnit, isAlive, isOver, primaryAttribute, unitAt, usesLeft } from "./units";
 
 /**
  * O motor de combate tático.
@@ -67,6 +68,12 @@ export interface EncounterSetup {
   cues?: Cue[];
   /** Quem acompanha o grupo do jogador sem lutar, e o apoio que cada um oferece (ver ./supports.ts). */
   supporters?: { id: string; name: string; support: SupportId }[];
+  /**
+   * Condições com que alguém JÁ CHEGA na luta e que não passam com os turnos
+   * (um braço ferido que a história deixou), pelo id da unidade. Duram a luta
+   * inteira; quem as tira é quem as pôs.
+   */
+  lasting?: Record<string, readonly StatusId[]>;
   seed: number;
 }
 
@@ -105,6 +112,10 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
       ...(setup.surprised ? { surprised: setup.surprised } : {}),
     },
   ];
+  for (const unit of encounter.units) {
+    if (!isAlive(unit)) continue;
+    for (const statusId of setup.lasting?.[unit.id] ?? []) addStatus(unit, STATUSES[statusId], Infinity, events);
+  }
   for (const unit of encounter.units) {
     if (unit.team !== setup.surprised || !isAlive(unit)) continue;
     unit.turn.reaction = false;
@@ -147,6 +158,7 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
     case "support":
       return support(encounter, unit, command.supporterId, command.target, events);
     case "endTurn":
+      closeHabit(unit);
       events.push({ type: "turnEnded", unit: unit.id });
       return undefined;
   }
@@ -193,8 +205,24 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
     if (!skip) return;
 
     next.turn = { movement: 0, action: false, bonus: false, reaction: true };
+    closeHabit(next);
     events.push({ type: "turnSkipped", unit: next.id, name: skip.name }, { type: "turnEnded", unit: next.id });
   }
+}
+
+/**
+ * Fecha o turno de `unit` no que ele vem fazendo (ver `habit` em Unit): se a
+ * ação deste turno repetiu a do anterior, e há quantos turnos seguidos ela é
+ * um golpe. Turno sem ação (só andou, perdeu a vez) não repete nada.
+ */
+function closeHabit(unit: Unit): void {
+  const { now, last, attackTurns = 0 } = unit.habit ?? {};
+  const struck = now !== undefined && unit.abilities.some((ability) => ability.id === now && dealsDamage(ability));
+  unit.habit = { last: now, repeated: now !== undefined && now === last, attackTurns: struck ? attackTurns + 1 : 0 };
+}
+
+function dealsDamage(ability: Ability): boolean {
+  return ability.effects.some((effect) => effect.kind === "damage");
 }
 
 /**
@@ -416,18 +444,24 @@ function useAbility(
 ): CommandError | undefined {
   const ability = unit.abilities.find((candidate) => candidate.id === abilityId);
   if (!ability) return "unknown_ability";
-  if (!hasResource(unit, ability.cost)) return "resource_spent";
+  if (!hasResource(unit, ability.cost) || usesLeft(unit, ability) <= 0) return "resource_spent";
   if (!abilityTargets(encounter, unit, ability).some((pos) => samePos(pos, target))) return "invalid_target";
 
   spendResource(unit, ability.cost);
+  if (ability.limit !== undefined) unit.used = { ...unit.used, [ability.id]: (unit.used?.[ability.id] ?? 0) + 1 };
+  // O que ele fez com a ação deste turno: é o que a Rachadura e as manias da IA leem depois.
+  if (ability.cost === "action") unit.habit = { repeated: false, attackTurns: 0, ...unit.habit, now: ability.id };
   resolveAbility(encounter, unit, ability, target, affectedUnits(encounter, ability, target), false, events);
+  // A magia cobra de quem a fez, se ele ainda está de pé pra pagar.
+  if (ability.backlash && isAlive(unit)) addStatus(unit, STATUSES[ability.backlash.statusId], ability.backlash.turns, events);
   return undefined;
 }
 
 /**
  * Executa `ability` de `actor` sobre `targets`, já validada e paga. Cada
  * alvo tem a própria rolagem de ataque; quem é errado não sofre efeito
- * nenhum, e quem morre não sofre os efeitos seguintes.
+ * nenhum, e quem morre não sofre os efeitos seguintes. Um golpe de um alvo
+ * só num inimigo conta pra Onda (`streak`): pegando, soma; errando, zera.
  */
 function resolveAbility(
   encounter: Encounter,
@@ -448,16 +482,23 @@ function resolveAbility(
   });
 
   for (const target of targets) {
+    const strike = ability.radius === undefined && dealsDamage(ability) && target.team !== actor.team;
     let critical = false;
     if (ability.attack) {
       const outcome = rollAttack(encounter, actor, target, ability, targetPos, events);
-      if (outcome === "miss" || outcome === "fumble") continue;
+      if (outcome === "miss" || outcome === "fumble") {
+        if (strike) delete actor.streak;
+        continue;
+      }
       critical = outcome === "crit";
     }
 
     for (const effect of ability.effects) {
       if (!isAlive(target)) break;
-      applyEffect(encounter, actor, target, effect, critical, events);
+      applyEffect(encounter, actor, target, ability, effect, critical, events);
+    }
+    if (strike) {
+      actor.streak = { target: target.id, hits: actor.streak?.target === target.id ? actor.streak.hits + 1 : 1 };
     }
   }
 
@@ -509,6 +550,7 @@ function rollAttack(
     cover: edge.cover,
     flanked: edge.flanked,
     height: edge.height,
+    style: edge.style,
   });
 
   if (guaranteed) removeStatuses(actor, (status) => status.guaranteedCrit === true, events);
@@ -532,6 +574,7 @@ function applyEffect(
   encounter: Encounter,
   actor: Unit,
   target: Unit,
+  ability: Ability,
   effect: Effect,
   critical: boolean,
   events: TacticalEvent[],
@@ -542,11 +585,21 @@ function applyEffect(
         events.push({ type: "immune", target: target.id });
         return;
       }
-      let amount = rollDamage(encounter, actor, effect);
+      // O traço do estilo de quem bate (ver ./styles.ts): a Onda soma antes do crítico, a Rachadura multiplica depois.
+      const wave = waveBonus(actor, ability, target);
+      const crack = punishFactor(actor, target);
+      const trait = actor.style ? STYLES[actor.style].trait : "";
+      if (wave > 0) events.push({ type: "styleTrait", unit: actor.id, target: target.id, trait: "wave", name: trait, hits: actor.streak!.hits });
+      if (crack !== 1) events.push({ type: "styleTrait", unit: actor.id, target: target.id, trait: "crack", name: trait });
+
+      let amount = rollDamage(encounter, actor, effect) + wave;
       if (critical) amount *= 2;
+      amount = Math.round(amount * crack);
 
       const targetOr = effectiveAttribute(target, "or");
       amount = Math.max(1, amount - Math.floor(targetOr / 2));
+      // A Muralha de quem apanha: um tanto fixo a menos, depois da armadura.
+      amount = Math.max(1, amount - styleReduction(target));
 
       if (target.statuses.some((status) => status.guard)) {
         const blocked = Math.min(amount, targetOr + rollDie(encounter, 6));

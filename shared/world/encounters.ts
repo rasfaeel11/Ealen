@@ -5,14 +5,14 @@ import { findItemTemplate } from "../mock/items";
 import { startEncounter } from "../tactics/engine";
 import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "../tactics/grid";
 import { isPropId, standProp, type Prop } from "../tactics/props";
-import { isStatusId } from "../tactics/statuses";
+import { isStatusId, type StatusId } from "../tactics/statuses";
 import { nextRandom, type RngHolder } from "../tactics/rng";
 import type { Cue, CueStatus, Encounter, TacticalEvent, TeamId } from "../tactics/types";
 import { findUnit, syncCharacterFromUnit, unitFromCharacter } from "../tactics/units";
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
 import type { LevelUpResult } from "../types/levelUp";
-import { HERO_ID, companionId, supportOf } from "../party";
+import { HERO_ID, castOf, companionId, supportOf } from "../party";
 import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
 
 /**
@@ -212,7 +212,12 @@ export function fightCues(
  * chegar aqui. `surprised` é o lado pego de surpresa, numa emboscada (ver
  * EncounterSetup); `cues`, o roteiro da luta (de fightCues); `onlookers`, as
  * fichas de quem acompanha o grupo sem lutar — não viram unidade, viram o
- * apoio que oferecem (quem não oferece nenhum é ignorado).
+ * apoio que oferecem (quem não oferece nenhum é ignorado); `lasting`, as
+ * condições com que alguém já chega e que duram a luta toda, pelo id (o que
+ * a história pôs com `afflict`).
+ *
+ * O estilo e o que cada um do grupo sabe além do kit vêm do elenco
+ * (../party.ts); os das criaturas, do bestiário.
  */
 export function startAreaEncounter(
   map: AreaMap,
@@ -223,12 +228,16 @@ export function startAreaEncounter(
   surprised?: TeamId,
   cues: Cue[] = [],
   onlookers: readonly Character[] = [],
+  lasting: Record<string, readonly StatusId[]> = {},
 ): { encounter: Encounter; events: TacticalEvent[] } {
   const supporters = onlookers.flatMap((character) => {
     const support = supportOf(character);
     return support ? [{ id: character.id, name: character.name, support }] : [];
   });
-  const units = party.map(({ character, tile }) => unitFromCharacter(character, { team: "party", pos: tile }));
+  const units = party.map(({ character, tile }) => {
+    const cast = castOf(character);
+    return unitFromCharacter(character, { team: "party", pos: tile, style: cast?.style, gifts: cast?.gifts });
+  });
   for (const enemy of enemies) {
     const entry = findBestiaryEntry(enemy.creature);
     if (!entry) continue;
@@ -239,10 +248,13 @@ export function startAreaEncounter(
         id: enemy.id,
         ai: entry.ai,
         invulnerable: entry.invulnerable,
+        style: entry.style,
+        // No bestiário "hero" é a protagonista; na luta, o id dela.
+        quirks: entry.quirks && { ...entry.quirks, ...(entry.quirks.mirrors === CUE_HERO ? { mirrors: HERO_ID } : {}) },
       }),
     );
   }
-  return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, seed });
+  return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, lasting, seed });
 }
 
 /**

@@ -5,6 +5,7 @@ import type { Grid, Pos } from "./grid";
 import type { Prop } from "./props";
 import type { Dice } from "./rng";
 import type { ActiveStatus, StatusId } from "./statuses";
+import type { StyleId } from "./styles";
 import type { SupportId, Supporter } from "./supports";
 import type { Surface, SurfaceId } from "./surfaces";
 
@@ -53,8 +54,11 @@ export interface Ability {
   cost: AbilityCost;
   /** Alcance em quadrados. 1 = corpo a corpo; 0 = só em si mesmo. */
   range: number;
-  /** "tile" mira um quadrado qualquer à vista — é o que as áreas usam. */
-  targets: "enemy" | "ally" | "self" | "tile";
+  /**
+   * "tile" mira um quadrado qualquer à vista — é o que as áreas usam. "foes"
+   * não mira: sai de quem usa e pega TODO inimigo de pé, onde estiver.
+   */
+  targets: "enemy" | "ally" | "self" | "tile" | "foes";
   /**
    * Área: atinge TODO MUNDO a até `radius` quadrados do ponto mirado,
    * aliados inclusive. Sem isto, só quem está no quadrado mirado.
@@ -73,6 +77,10 @@ export interface Ability {
   surface?: { id: SurfaceId; rounds: number };
   /** Pode ser usada como ataque de oportunidade, gastando a reação. */
   opportunity?: boolean;
+  /** Quantas vezes dá pra usar numa luta. Sem isto, quantas o turno pagar. */
+  limit?: number;
+  /** O que ela cobra de quem usa, depois de feita: uma condição sobre ele mesmo (o fôlego que a magia leva). */
+  backlash?: { statusId: StatusId; turns: number };
 }
 
 /** O que um combatente ainda pode gastar no turno atual. */
@@ -100,6 +108,21 @@ export interface AiProfile {
   support: number;
   /** Quanto pesa o dano que pode levar: pôr-se em guarda, sair da linha de tiro, não dar as costas a quem pune. */
   caution: number;
+}
+
+/**
+ * Manias de quem a IA comanda: não são pesos, são regras de comportamento
+ * (ver ./ai.ts). Vêm de `quirks` na entrada do bestiário.
+ */
+export interface AiQuirks {
+  /**
+   * Só bate em quem vem atacando há pelo menos este número de turnos
+   * seguidos (ver `habit.attackTurns`): o guarda que não revida ao primeiro
+   * empurrão. Enquanto ninguém chega lá, anda e se defende.
+   */
+  retaliates?: number;
+  /** O id de uma unidade: na ação do turno, repete o TIPO da última ação dela (golpe, golpe pesado, guarda...) quando tem um igual pra usar. */
+  mirrors?: string;
 }
 
 /**
@@ -170,6 +193,22 @@ export interface Unit {
   inventory?: Inventory<ConsumableItem>;
   /** Pesos da IA, quando fogem do padrão. Ignorado em quem o jogador comanda. */
   ai?: Partial<AiProfile>;
+  /** Manias da IA (ver AiQuirks). Ignorado em quem o jogador comanda. */
+  quirks?: AiQuirks;
+  /** O estilo de luta e o grau nele (ver ./styles.ts). Sem estilo, não entra no triângulo nem tem traço. */
+  style?: StyleId;
+  grade?: number;
+  /** A Onda: em quem ele vem acertando em seguida, e quantos golpes já pegaram. */
+  streak?: { target: string; hits: number };
+  /**
+   * O que ele vem fazendo com a AÇÃO do turno: `now` é a habilidade usada
+   * neste turno, `last` a do turno que passou, e `repeated` diz se o último
+   * turno inteiro repetiu o anterior. `attackTurns` conta há quantos turnos
+   * seguidos a ação dele foi um golpe. Fechado ao fim de cada turno dele.
+   */
+  habit?: { now?: string; last?: string; repeated: boolean; attackTurns: number };
+  /** Quantas vezes já usou, nesta luta, cada habilidade que tem `limit`. */
+  used?: Record<string, number>;
   /**
    * Não tem vida pra perder: golpe e chão que fere não lhe tiram nada (evento
    * `immune`), e ele nunca cai. Condição e empurrão pegam normalmente. A luta
@@ -249,8 +288,16 @@ export type TacticalEvent =
       cover: boolean;
       flanked: boolean;
       height: -1 | 0 | 1;
+      /** O confronto de estilos: 1 = quem ataca leva vantagem, -1 = desvantagem (ver ./styles.ts). */
+      style: -1 | 0 | 1;
     }
   | { type: "blocked"; unit: string; amount: number }
+  /**
+   * O traço do estilo de `unit` pesou no golpe em `target`: `wave` é a Onda
+   * (com `hits` golpes seguidos somando no dano), `crack` a Rachadura (o alvo
+   * se repetiu e o dano dobrou). O `damage` vem logo depois.
+   */
+  | { type: "styleTrait"; unit: string; target: string; trait: "wave" | "crack"; name: string; hits?: number }
   | { type: "damage"; target: string; amount: number; remainingHp: number }
   /** O golpe pegou em quem não tem vida pra perder (`invulnerable`): nada acontece. */
   | { type: "immune"; target: string }

@@ -212,3 +212,34 @@ test("quem acompanha sem lutar entra na luta como apoio, não como unidade", () 
   const rewards = grantEncounterRewards(hero, group.map((enemy) => enemy.creature), { rngState: 1 }, [], [lish, gil]);
   assert.ok(rewards.xpGained > 0);
 });
+
+test("o estilo e o que cada um sabe além do kit vêm do elenco e do bestiário, a cada luta", () => {
+  const { map, props } = loadArea("ruinas");
+  const hero = createProtagonist("rachador");
+  const members: PartyMember[] = [];
+  joinParty(members, "lish", 1);
+  joinParty(members, "varel", 1);
+  const [lish, varel] = presentCompanions(members);
+
+  const group = map.enemies.filter((enemy) => enemy.group === "salao");
+  const servant = group.find((enemy) => enemy.creature === "encounter-servo-enferrujado")!;
+  const heroTile = { x: 17, y: 20 };
+  const party = placeParty(map, hero, heroTile, [lish, varel].map((character) => ({ character, at: pixelOfTile(map, heroTile) })));
+  const { encounter, events } = startAreaEncounter(map, party, group, 9, props, undefined, [], [], {
+    [lish.id]: ["wounded_arm"],
+  });
+
+  // Halmira é Maré III com qualquer Ordem: o estilo é dela, não do kit.
+  const unit = (id: string) => findUnit(encounter, id)!;
+  assert.deepEqual([unit(hero.id).style, unit(hero.id).grade], ["mare", 3]);
+  assert.equal(unit(hero.id).characterClass, "rachador");
+  assert.deepEqual([unit(lish.id).style, unit(lish.id).grade], ["vies", 3]);
+  assert.equal(unit(varel.id).style, undefined);
+  assert.ok(unit(varel.id).abilities.some((ability) => ability.id === "gift.tide_pull"));
+  assert.ok(!unit(lish.id).abilities.some((ability) => ability.id === "gift.tide_pull"));
+  assert.deepEqual([unit(servant.id).style, unit(servant.id).grade], ["baluarte", 2]);
+
+  // O que a história pôs em Lish entra com ele, e fica.
+  assert.ok(events.some((event) => event.type === "statusApplied" && event.target === lish.id && event.statusId === "wounded_arm"));
+  assert.deepEqual(unit(lish.id).statuses.map((status) => status.id), ["wounded_arm"]);
+});

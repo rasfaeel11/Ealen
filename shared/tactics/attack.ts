@@ -1,9 +1,11 @@
 import { distance, tileAt, tilesBetween, type Pos } from "./grid";
+import { STYLE_TO_HIT, styleMatchup } from "./styles";
 import type { Ability, Encounter, Unit } from "./types";
 import { effectiveAttribute, isAlive, primaryAttribute } from "./units";
 
 /**
- * O que a POSIÇÃO faz a um ataque: cobertura, flanco e altura. É uma conta
+ * O que a POSIÇÃO faz a um ataque — cobertura, flanco e altura — e o que o
+ * CONFRONTO DE ESTILOS faz (ver ./styles.ts). É uma conta
  * só pro motor (que rola o dado), pra IA (que trabalha com a média) e pra
  * interface (que mostra a chance antes do clique).
  *
@@ -14,6 +16,9 @@ import { effectiveAttribute, isAlive, primaryAttribute } from "./units";
  *   (qualquer um dos três quadrados opostos a quem bate). Soma no ataque.
  * - ALTURA: quem ataca de um chão mais alto soma no ataque; de um mais
  *   baixo, perde o mesmo tanto.
+ *
+ * - ESTILO: quem ataca um estilo que o dele vence soma no ataque; quem ataca
+ *   o estilo que vence o dele perde o mesmo tanto. Só entre lados opostos.
  *
  * Numa área, a cobertura é medida a partir do ponto de impacto, não de quem
  * a lançou, e não existe flanco.
@@ -31,6 +36,8 @@ export interface AttackEdge {
   flanked: boolean;
   /** 1 = quem ataca está acima do alvo; -1 = abaixo; 0 = no mesmo nível. */
   height: -1 | 0 | 1;
+  /** 1 = o estilo de quem ataca vence o do alvo; -1 = perde pra ele; 0 = neutro. */
+  style: -1 | 0 | 1;
   /** O que tudo isso soma na rolagem de ataque. */
   toHit: number;
   /** O que tudo isso soma na defesa do alvo. */
@@ -72,20 +79,24 @@ export function attackEdge(
   const flanked = !area && actor.team !== target.team && isFlanked(encounter, actor, target);
   const rise = (tileAt(encounter.grid, actor.pos)?.elevation ?? 0) - (tileAt(encounter.grid, target.pos)?.elevation ?? 0);
   const height = Math.sign(rise) as -1 | 0 | 1;
+  const style = actor.team !== target.team ? styleMatchup(actor.style, target.style) : 0;
 
   return {
     cover,
     flanked,
     height,
-    toHit: (flanked ? FLANK_TO_HIT : 0) + height * HEIGHT_TO_HIT,
+    style,
+    toHit: (flanked ? FLANK_TO_HIT : 0) + height * HEIGHT_TO_HIT + style * STYLE_TO_HIT,
     defense: cover ? COVER_DEFENSE : 0,
   };
 }
 
 /** O total que `actor` soma ao d20 e a defesa que ele precisa alcançar em `target`. */
 export function attackTotals(actor: Unit, ability: Ability, target: Unit, edge: AttackEdge): { bonus: number; defense: number } {
+  // O que as condições de quem ataca somam ou tiram da mão dele (um braço ferido).
+  const condition = actor.statuses.reduce((sum, status) => sum + (status.toHit ?? 0), 0);
   return {
-    bonus: effectiveAttribute(actor, primaryAttribute(actor)) + (ability.attack?.toHit ?? 0) + edge.toHit,
+    bonus: effectiveAttribute(actor, primaryAttribute(actor)) + (ability.attack?.toHit ?? 0) + edge.toHit + condition,
     defense: 10 + effectiveAttribute(target, "or") + edge.defense,
   };
 }

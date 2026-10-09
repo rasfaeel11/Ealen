@@ -17,6 +17,8 @@ export interface StatusTemplate {
   guaranteedCrit?: boolean;
   /** Ao cair sobre alguém, derruba a guarda que ele tivesse (as condições com `guard`). */
   breaksGuard?: boolean;
+  /** Somado à rolagem de ataque do portador (negativo = penalidade). */
+  toHit?: number;
   /** O portador perde o turno em que ela está ativa: a vez começa, a condição conta e a vez passa. */
   skipsTurn?: boolean;
 }
@@ -36,6 +38,10 @@ export const STATUSES = {
   /** A guarda aberta à força: a que estava de pé cai, e a armadura vale menos. */
   exposed: { id: "exposed", name: "Sem guarda", attributeBonus: { or: -3 }, breaksGuard: true },
   focused: { id: "focused", name: "Foco", guaranteedCrit: true },
+  /** O preço de uma magia: o próximo turno de quem a fez. */
+  winded: { id: "winded", name: "Sem fôlego", skipsTurn: true },
+  /** Um braço que não fecha mais direito. Das que a história põe e que duram entre lutas (ver afflict em ../story/runner.ts). */
+  wounded_arm: { id: "wounded_arm", name: "Braço ferido", toHit: -2 },
   /** Quem foi pego de surpresa (ver `surprised` em EncounterSetup): perde o primeiro turno. */
   surprised: { id: "surprised", name: "Surpreso", skipsTurn: true },
 } satisfies Record<string, StatusTemplate>;
