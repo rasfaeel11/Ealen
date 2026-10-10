@@ -22,11 +22,17 @@ export interface JournalEntry {
   lost?: boolean;
 }
 
-/** O que gasta o tempo do relógio sem o texto mandar: descansar, e uma luta (vencida, parada ou perdida). */
-export type ClockCost = "rest" | "fight";
+/**
+ * O que gasta o tempo do relógio sem o texto mandar: descansar, uma luta
+ * (vencida, parada ou perdida) e cada rodada que VIRA dentro de uma — a
+ * primeira não conta, é a luta começando.
+ */
+export type ClockCost = "rest" | "fight" | "round";
+
+const CLOCK_COSTS: readonly ClockCost[] = ["rest", "fight", "round"];
 
 export function isClockCost(what: unknown): what is ClockCost {
-  return what === "rest" || what === "fight";
+  return CLOCK_COSTS.includes(what as ClockCost);
 }
 
 /**
@@ -128,11 +134,16 @@ export function recallEntries(journal: JournalEntry[], id?: string): JournalEntr
 
 export function startClock(label: string, value: number, limit: number): StoryClock {
   const top = Math.max(0, Math.floor(limit));
-  return { label, value: clamp(Math.floor(value), top), limit: top, costs: { rest: 0, fight: 0 } };
+  return { label, value: clamp(Math.floor(value), top), limit: top, costs: { rest: 0, fight: 0, round: 0 } };
 }
 
 function clamp(value: number, limit: number): number {
   return Math.max(0, Math.min(limit, value));
+}
+
+/** Cobra do relógio o que `what` custa, `times` vezes. Devolve se o tempo andou. */
+export function chargeClock(clock: StoryClock, what: ClockCost, times = 1): boolean {
+  return tickClock(clock, clock.costs[what] * Math.max(0, Math.floor(times)));
 }
 
 /** Faz o tempo andar `amount` (negativo volta), sem passar de `limit` nem de zero. Devolve se mudou. */
@@ -190,7 +201,7 @@ function readClock(raw: unknown): StoryClock | null {
 
   const clock = startClock(raw.label, raw.value, raw.limit);
   const costs = isObject(raw.costs) ? raw.costs : {};
-  for (const what of ["rest", "fight"] as const) {
+  for (const what of CLOCK_COSTS) {
     const cost = costs[what];
     if (typeof cost === "number" && Number.isFinite(cost) && cost > 0) clock.costs[what] = Math.floor(cost);
   }
@@ -243,13 +254,14 @@ export function unpackStory(saved: string): { ink: string; memory: StoryMemory }
 }
 
 /**
- * Cobra do relógio de uma história JÁ GUARDADA o que `what` custa, sem abrir
- * a história: é como uma luta perdida gasta tempo, se o resto do que ela
- * disse não vale. Sem relógio (ou sem custo), devolve o texto como veio.
+ * Cobra do relógio de uma história JÁ GUARDADA o que `what` custa (`times`
+ * vezes), sem abrir a história: é como uma luta perdida gasta tempo, se o
+ * resto do que ela disse não vale. Sem relógio (ou sem custo), devolve o
+ * texto como veio.
  */
-export function chargeSavedClock(saved: string | null, what: ClockCost): string | null {
+export function chargeSavedClock(saved: string | null, what: ClockCost, times = 1): string | null {
   if (saved === null) return null;
   const { ink, memory } = unpackStory(saved);
-  if (!memory.clock || !tickClock(memory.clock, memory.clock.costs[what])) return saved;
+  if (!memory.clock || !chargeClock(memory.clock, what, times)) return saved;
   return packStory(ink, memory);
 }

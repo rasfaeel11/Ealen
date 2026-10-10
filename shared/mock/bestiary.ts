@@ -232,6 +232,101 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
       },
     },
   },
+
+  // --- As pessoas do capítulo -------------------------------------------------
+  // Não são efeito colateral de Princípio nenhum: são gente, com estilo de luta
+  // e uma mania cada (ver AiQuirks). Moram aqui porque é daqui que o mapa tira
+  // quem luta. Ordens, números e Princípio são PROVISÓRIOS como os kits.
+
+  "encounter-fiscal-da-companhia": {
+    style: { id: "baluarte", grade: 3 },
+    glyph: "▤",
+    principle: "harmonia",
+    summary: "Soldado da Companhia das Licenças: gambeson azul, escudo de aro de ferro, pés bem abertos.",
+    lore: "Não veio brigar, veio ficar no caminho. Aguenta o primeiro empurrão e o segundo sem levantar a espada; quem insiste uma terceira vez descobre que ele estava contando.",
+    // Um cais: fica onde está, se guarda, e só responde a quem insiste.
+    ai: { aggression: 0.8, finisher: 0.3, caution: 1.4 },
+    quirks: { retaliates: 3 },
+    drops: [{ itemId: "item-pao-de-cinza", chance: 0.4 }],
+    template: {
+      id: "enemy-fiscal-da-companhia",
+      name: "Fiscal da Companhia",
+      race: "althirim",
+      characterClass: "guardiao",
+      level: 2,
+      xp: 0,
+      attributes: { dain: 5, eir: 1, nath: 7, il: 3, or: 7, len: 3, ul: 2 },
+      currentHp: 34,
+      maxHp: 34,
+      currentNodeId: "node-clareira-do-eco",
+      arts: {
+        quick_attack: "Borda do Escudo",
+        attack: "Espada Curta",
+        heavy_attack: "Carga de Escudo",
+        defend: "Pés Plantados",
+      },
+    },
+  },
+
+  "encounter-mergulhador-rival": {
+    style: { id: "mare", grade: 2 },
+    glyph: "≈",
+    principle: "ealen",
+    summary: "Mergulhador de outra família: faca curva numa mão, gancho de ferro na outra, molhado e rápido.",
+    lore: "Aprendeu a mesma coisa que Halmira, na mesma água: não dar tempo. Bate todo turno, em quem estiver mais perto de cair, e não tem padrão que se leia.",
+    // Pressão: bate sempre, não se guarda, vai em quem está pra cair.
+    ai: { aggression: 1.4, finisher: 1.5, caution: 0.2 },
+    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.3 }],
+    template: {
+      id: "enemy-mergulhador-rival",
+      name: "Mergulhador Rival",
+      race: "miraven",
+      characterClass: "sombrilico",
+      level: 2,
+      xp: 0,
+      attributes: { dain: 5, eir: 1, nath: 4, il: 6, or: 3, len: 2, ul: 2 },
+      currentHp: 22,
+      maxHp: 22,
+      currentNodeId: "node-clareira-do-eco",
+      arts: {
+        quick_attack: "Gancho",
+        attack: "Faca Curva",
+        heavy_attack: "Puxão de Fundo",
+        defend: "Recuar com a Onda",
+      },
+    },
+  },
+
+  "encounter-taevel": {
+    style: { id: "mare", grade: 3 },
+    glyph: "♒",
+    principle: "ealen",
+    summary: "Taevel de Selmir, o primo. A mesma escola de Halmira, os mesmos ombros, o mesmo queixo.",
+    lore: "Luta como ela porque aprendeu com quem ela aprendeu. Devolve o que recebe: golpe por golpe, guarda por guarda. Maré contra Maré não tem vantagem — os dois se anulam.",
+    // O espelho: a Ordem é a de Halmira pra ter um igual a cada coisa que ela faz.
+    ai: { aggression: 1.1, caution: 0.6 },
+    quirks: { mirrors: "hero" },
+    carries: ["item-lagrima-de-eir"],
+    drops: [],
+    template: {
+      id: "enemy-taevel",
+      name: "Taevel",
+      race: "miraven",
+      characterClass: "guardiao",
+      level: 3,
+      xp: 0,
+      attributes: { dain: 7, eir: 2, nath: 6, il: 6, or: 5, len: 4, ul: 3 },
+      currentHp: 36,
+      maxHp: 36,
+      currentNodeId: "node-clareira-do-eco",
+      arts: {
+        quick_attack: "Gancho de Ferro",
+        attack: "Faca de Mergulho",
+        heavy_attack: "Repuxo",
+        defend: "Deixar Passar",
+      },
+    },
+  },
 };
 
 /**

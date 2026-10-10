@@ -492,6 +492,10 @@ A água recua.
 ~ clock_stop()
 -> END
 
+=== aperta ===
+~ clock_cost("round", 1)
+-> END
+
 === sem_tamanho ===
 ~ clock_start("Nada", 0, 0)
 -> END
@@ -507,9 +511,9 @@ test("o relógio corre pelo texto, para no limite, e o texto lê quanto passou e
 
   // Pôr o relógio na tela é a notícia; dizer o que gasta tempo, não.
   assert.deepEqual(eventsIn(runner.start("desce").beats), [
-    { type: "clock", clock: { label: "Vazante", value: 0, limit: 10, costs: { rest: 0, fight: 0 } } },
+    { type: "clock", clock: { label: "Vazante", value: 0, limit: 10, costs: { rest: 0, fight: 0, round: 0 } } },
   ]);
-  assert.deepEqual(runner.clock(), { label: "Vazante", value: 0, limit: 10, costs: { rest: 3, fight: 2 } });
+  assert.deepEqual(runner.clock(), { label: "Vazante", value: 0, limit: 10, costs: { rest: 3, fight: 2, round: 0 } });
 
   assert.deepEqual(lines(runner.start("sala").beats), ["Faltam 6 pra água voltar."]);
   assert.deepEqual(lines(runner.start("sala").beats), ["A água já cobriu esta porta."]);
@@ -537,6 +541,24 @@ test("descansar e lutar gastam o que a história disse que gastam — e nada, se
   assert.equal(runner.clock()!.value, 10);
   assert.equal(runner.spend("fight"), false, "no limite o tempo não anda mais");
   assert.throws(() => runner.start("cobra_errado"));
+});
+
+test("cada rodada que vira numa luta gasta o que a história cobra, e a luta perdida cobra as dela no que estava gravado", () => {
+  const runner = new StoryRunner(TIDE, makeHost());
+  runner.start("desce");
+  assert.equal(runner.spend("round"), false, "sem a história dizer, rodada não gasta nada");
+
+  runner.start("aperta");
+  const saved = runner.save();
+  assert.equal(runner.spend("round"), true);
+  assert.equal(runner.spend("round", 3), true);
+  assert.equal(runner.clock()!.value, 4);
+  assert.equal(runner.spend("round", 0), false);
+
+  // A luta foi perdida na rodada 4: três rodadas viraram, mais a luta em si.
+  const charged = chargeSavedClock(chargeSavedClock(saved, "round", 3), "fight")!;
+  assert.equal(new StoryRunner(TIDE, makeHost(), charged).clock()!.value, 5);
+  assert.deepEqual(new StoryRunner(TIDE, makeHost(), charged).clock()!.costs, { rest: 3, fight: 2, round: 1 });
 });
 
 test("a condição clock:N de um objeto do mapa vale quando o relógio já chegou em N", () => {

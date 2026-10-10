@@ -168,8 +168,7 @@ function cueStatus(
  * O roteiro de uma luta, na língua do motor: as deixas de `cues` (as do
  * grupo que vai lutar e que valem agora — quem filtra é quem chama) com os
  * nomes do mapa trocados por ids. `enemies` são os que entram na luta e
- * `party`, os ids de quem luta do lado do jogador (só importa pra condição
- * que cai sobre o grupo inteiro). Uma deixa que espera a queda de quem não
+ * `party`, os ids de quem luta do lado do jogador. Uma deixa que espera a queda de quem não
  * está nela, ou um objeto que a área não tem, fica de fora: não dispararia
  * nunca.
  */
@@ -190,7 +189,9 @@ export function fightCues(
         return cue(when);
       case "down": {
         const unit = cueUnit(when.who, enemies);
-        return unit !== undefined ? cue({ kind: "down", unit }) : [];
+        // Um companheiro que não está nesta luta (saiu do grupo, ou só acompanha) não cai nela.
+        const fighting = unit !== undefined && (party.includes(unit) || enemies.some((enemy) => enemy.id === unit));
+        return fighting ? cue({ kind: "down", unit }) : [];
       }
       case "broken": {
         const prop = map.props.find((candidate) => candidate.name === when.prop);

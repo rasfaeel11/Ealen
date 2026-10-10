@@ -119,8 +119,13 @@ export class DialogueBox {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly addHud: AddHud,
-    /** Avisado de cada acontecimento na hora em que a conversa chega nele, anunciado na caixa ou não. */
-    private readonly onEvent?: (event: StoryEvent) => void,
+    /**
+     * Avisado de cada acontecimento na hora em que a conversa chega nele,
+     * anunciado na caixa ou não. Se devolver uma função, ela é chamada quando
+     * o jogador passa adiante: é como algo fica na tela só enquanto a caixa
+     * fala daquilo (o diário se apagando).
+     */
+    private readonly onEvent?: (event: StoryEvent) => (() => void) | void,
   ) {
     this.panel = addHud(addPanel(scene, BOX_X, BOX_Y, BOX_WIDTH, BOX_HEIGHT));
     this.speaker = addHud(addTitleText(scene, BOX_X + PADDING, BOX_Y + 18, "", { fontSize: "24px" }));
@@ -150,11 +155,13 @@ export class DialogueBox {
    */
   async play(step: DialogueStep): Promise<number | null> {
     for (const beat of step.beats) {
-      if (beat.kind === "event") this.onEvent?.(beat.event);
-      if (!isShown(beat)) continue;
-      this.showBeat(beat);
-      await new Promise<void>((resolve) => (this.onAdvance = resolve));
-      this.onAdvance = null;
+      const done = beat.kind === "event" ? this.onEvent?.(beat.event) : undefined;
+      if (isShown(beat)) {
+        this.showBeat(beat);
+        await new Promise<void>((resolve) => (this.onAdvance = resolve));
+        this.onAdvance = null;
+      }
+      done?.();
     }
     if (step.choices.length === 0) return null;
 

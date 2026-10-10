@@ -151,16 +151,18 @@ O braço que você ergueu contra ele demora a obedecer.
 -> END
 
 // PROVISÓRIO: o relógio. Quem chega pela clareira (um `trigger` de uma vez só
-// no ponto de chegada) põe na tela a Luz do dia, de 0 a 6; descansar gasta 2
-// e cada luta, 1. Quando ela acaba (`clock:6`), a saída pra estrada se fecha
-// (`unless` = clock:6) e um gatilho que se repete (`if` = clock:6) diz por
-// quê. Ninguém morre de noite: o tempo só tira uma opção. A Andarilha, na
+// no ponto de chegada) põe na tela a Luz do dia, de 0 a 12; descansar gasta
+// 4, cada luta 2 e, dentro de uma luta, cada rodada que vira gasta 1 — o
+// tempo corre enquanto se briga. Quando ela acaba (`clock:12`), a saída pra
+// estrada se fecha (`unless` = clock:12) e um gatilho que se repete (`if` =
+// clock:12) diz por quê. Ninguém morre de noite: o tempo só tira uma opção. A Andarilha, na
 // clareira, tira o relógio da tela.
 === ruinas_anoitece ===
 O sol já vai baixo atrás do salão. O que houver pra fazer aqui, é com o resto do dia.
-~ clock_start("Luz do dia", 0, 6)
-~ clock_cost("rest", 2)
-~ clock_cost("fight", 1)
+~ clock_start("Luz do dia", 0, 12)
+~ clock_cost("rest", 4)
+~ clock_cost("fight", 2)
+~ clock_cost("round", 1)
 -> END
 
 === ruinas_escuro ===

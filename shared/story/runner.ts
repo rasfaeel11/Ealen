@@ -19,6 +19,7 @@ import {
   isClockCost,
   isNoted,
   noteEntry,
+  chargeClock,
   packStory,
   recallEntries,
   startClock,
@@ -76,8 +77,9 @@ import {
  *   clock_start("Vazante", 0, 12)   põe um relógio na tela, de 0 a 12
  *   clock_tick(2)            faz o tempo andar (negativo volta)
  *   clock(), clock_left()    quanto já passou, e quanto falta
- *   clock_cost("rest", 2)    quanto descansar ("rest") ou lutar ("fight")
- *                            gasta do relógio sem o texto mandar
+ *   clock_cost("rest", 2)    quanto descansar ("rest"), lutar ("fight") ou
+ *                            cada rodada que vira numa luta ("round") gasta
+ *                            do relógio sem o texto mandar
  *   clock_stop()             tira o relógio da tela
  *   afflict("lish", "wounded_arm")   põe em alguém uma condição que dura
  *                            ENTRE lutas: ele entra em toda luta com ela.
@@ -456,11 +458,11 @@ export class StoryRunner {
 
   /**
    * O jogo avisa que aconteceu algo que gasta tempo sem o texto mandar: um
-   * descanso, uma luta. Devolve se o relógio andou.
+   * descanso, uma luta, uma rodada que virou. Devolve se o relógio andou.
    */
-  spend(what: ClockCost): boolean {
+  spend(what: ClockCost, times = 1): boolean {
     const { clock } = this.memory;
-    return clock !== null && tickClock(clock, clock.costs[what]);
+    return clock !== null && chargeClock(clock, what, times);
   }
 
   /** O estado inteiro da história — o do Ink, o diário e o relógio — pra guardar no save. */

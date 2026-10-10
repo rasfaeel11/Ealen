@@ -84,3 +84,46 @@ export function applyImmediateHeal(
       : `Purifica corrupções recentes${healed > 0 ? ` e restaura ${healed} HP.` : "."}`;
   return { healed, description };
 }
+
+/** Por que um item não pode ser usado fora de uma luta. */
+export type FieldUseRefusal = "item_unavailable" | "only_in_combat" | "no_effect";
+
+/**
+ * O que usar o item `itemId` da mochila de `owner` em `target`, FORA de uma
+ * luta, faria — sem fazer. Só cura se usa assim: o que dá atributo ou crítico
+ * dura turnos, e fora de luta não há turno. E não se gasta item em quem está
+ * inteiro. Undefined = pode usar. A mesma pergunta pra interface e pra
+ * `useItemInField`: ela só oferece o que a regra aceitaria.
+ */
+export function fieldUseRefusal(
+  owner: Pick<Character, "inventory">,
+  itemId: string,
+  target: Pick<Character, "currentHp" | "maxHp">,
+): FieldUseRefusal | undefined {
+  const slot = findInventorySlot(owner, itemId);
+  if (!slot || slot.quantity <= 0) return "item_unavailable";
+  const { kind } = slot.item.data.effect;
+  if (kind !== "heal_hp" && kind !== "cure_status") return "only_in_combat";
+  return target.currentHp >= target.maxHp ? "no_effect" : undefined;
+}
+
+/**
+ * Usa um item da mochila de `owner` em `target` fora de uma luta: gasta uma
+ * carga e cura. A mochila é uma só (a da protagonista), mas o alvo pode ser
+ * qualquer um do grupo. Recusado, não muda nada.
+ */
+export function useItemInField(
+  owner: Pick<Character, "inventory">,
+  itemId: string,
+  target: Pick<Character, "currentHp" | "maxHp">,
+): { ok: true; healed: number } | { ok: false; reason: FieldUseRefusal } {
+  const reason = fieldUseRefusal(owner, itemId, target);
+  if (reason) return { ok: false, reason };
+
+  const slot = findInventorySlot(owner, itemId)!;
+  const { effect } = slot.item.data;
+  // fieldUseRefusal já deixou passar só os dois efeitos de cura.
+  const { healed } = applyImmediateHeal(target, effect as Parameters<typeof applyImmediateHeal>[1]);
+  consumeInventoryCharge(owner, slot);
+  return { ok: true, healed };
+}

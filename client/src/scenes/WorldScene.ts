@@ -57,6 +57,7 @@ import {
   type GameSave,
   type PixelPos,
   type Prop,
+  type StoryEvent,
   type TeamId,
   type Trail,
   type WalkBody,
@@ -65,9 +66,10 @@ import { CLOCK_BAR_BOTTOM, ClockBar } from "../game/ClockBar";
 import { CombatController } from "../game/combat/CombatController";
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
-import { JournalPanel } from "../game/JournalPanel";
+import { JournalGlimpse, JournalPanel } from "../game/JournalPanel";
 import { MapActor } from "../game/MapActor";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
+import { PartyPanel } from "../game/PartyPanel";
 import { unlockOrders } from "../game/profile";
 import type { GameSession } from "../game/session";
 import { Menu, addBodyText, addPanel, addTitleText } from "../game/ui";
@@ -98,7 +100,7 @@ const SORTED_LAYER_PREFIX = "sorted";
 /** Camadas cujo nome começa com isto são desenhadas POR CIMA de tudo (pontes altas, telhados). */
 const ABOVE_LAYER_PREFIX = "above";
 
-const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar  ·  Esc: pausa";
+const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar  ·  C: grupo  ·  Esc: pausa";
 /** O que a história rola nos testes dela. Um dado por sessão de jogo basta. */
 const STORY_RNG = { rngState: Math.floor(Math.random() * 0xffffffff) };
 
@@ -168,8 +170,7 @@ export default class WorldScene extends Phaser.Scene {
   /** Verdadeiro enquanto uma conversa está na tela: o mundo espera. */
   private talking = false;
   private leaving = false;
-  /** O menu de pausa, enquanto está aberto: o mundo espera. */
-  /** O que está aberto por cima do mundo parado: o menu de pausa, ou o diário. */
+  /** O que está aberto por cima do mundo parado: o menu de pausa, o diário ou a ficha do grupo. */
   private pause?: { destroy: () => void };
   private clockBar!: ClockBar;
   /** Pra avisar uma vez só, e não a cada gravação, que o dispositivo não está gravando. */
@@ -642,12 +643,7 @@ export default class WorldScene extends Phaser.Scene {
         // Um trecho que só mexe em flags (ou decide que não tem nada a dizer) passa sem abrir a caixa.
         if (!box && !isSilent(step)) {
           for (const text of hud) text.setVisible(false);
-          box = new DialogueBox(
-            this,
-            (object) => this.addHud(object),
-            // O relógio anda na hora em que o texto chega no ponto em que ele anda.
-            (event) => event.type === "clock" && this.clockBar.set(event.clock),
-          );
+          box = new DialogueBox(this, (object) => this.addHud(object), (event) => this.onStoryEvent(event));
         }
         const choice = box ? await box.play(step) : null;
         if (choice === null) break;
@@ -662,6 +658,28 @@ export default class WorldScene extends Phaser.Scene {
       this.talking = false;
     }
     return steps;
+  }
+
+  /**
+   * O que a tela faz na hora em que a conversa chega num acontecimento, além
+   * do que a caixa anuncia: o relógio anda, e o diário se apaga (ou se refaz)
+   * À VISTA — a página fica aberta enquanto a caixa fala disso, e o que ela
+   * devolve aqui é como fechá-la.
+   */
+  private onStoryEvent(event: StoryEvent): (() => void) | void {
+    if (event.type === "clock") {
+      this.clockBar.set(event.clock);
+    } else if (event.type === "forgot" || event.type === "recalled") {
+      const glimpse = new JournalGlimpse(
+        this,
+        (object) => this.addHud(object),
+        this.story.journal(),
+        event.entries,
+        event.type,
+        this.clockBar.visible ? CLOCK_BAR_BOTTOM + 8 : 24,
+      );
+      return () => glimpse.destroy();
+    }
   }
 
   /** Cumpre o que o texto deixou pra depois da última fala: o que destravou, uma luta, uma viagem. */
@@ -758,6 +776,11 @@ export default class WorldScene extends Phaser.Scene {
         addWorld: (object) => this.addWorld(object),
         addHud: (object) => this.addHud(object),
         onCue: (id) => this.playCue(encounter, cues.find((cue) => cue.id === id)?.dialog),
+        // O tempo corre dentro da luta também, se a história disse que corre. Vale como o resto do que ela diz
+        // no meio da luta: só se a luta não for perdida (a perdida cobra as rodadas dela em `endCombat`).
+        onRound: () => {
+          if (this.story.spend("round")) this.clockBar.set(this.story.clock());
+        },
         goals: cues.flatMap((cue) => (cue.goal !== undefined ? [{ cue: cue.id, text: cue.goal }] : [])),
         goalsTop: this.clockBar.visible ? CLOCK_BAR_BOTTOM + 8 : undefined,
       },
@@ -821,7 +844,7 @@ export default class WorldScene extends Phaser.Scene {
       );
       restoreParty(character, this.save.companions);
       // O que a história disse na luta não vale, mas o tempo que ela gastou, sim: tentar de novo custa.
-      this.save.story = chargeSavedClock(this.save.story, "fight");
+      this.save.story = chargeSavedClock(chargeSavedClock(this.save.story, "round", encounter.round - 1), "fight");
       // O lugar gravado continua o de antes da luta; a área de destino grava o novo ao abrir.
       this.session.commit();
       this.leaving = true;
@@ -901,6 +924,23 @@ export default class WorldScene extends Phaser.Scene {
     if (this.pause || this.combat || this.leaving || this.talking) return;
     if (event.code === "Escape") this.openPause();
     else if (event.code === "KeyJ") this.openJournal();
+    else if (event.code === "KeyC") this.openParty();
+  }
+
+  /** `C`: a ficha de cada um do grupo e a mochila, por cima do mundo parado. Usar um item ali já grava. */
+  private openParty(): void {
+    this.halt();
+    this.pause = new PartyPanel(
+      this,
+      (object) => this.addHud(object),
+      [this.character, ...this.followers.map((follower) => follower.character)],
+      this.story.afflictions(),
+      () => {
+        this.persist();
+        this.refreshStatus();
+      },
+      () => this.closePause(),
+    );
   }
 
   /** `J`: o diário de pistas, por cima do mundo parado. */

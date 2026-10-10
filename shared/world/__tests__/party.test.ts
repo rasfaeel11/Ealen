@@ -12,12 +12,15 @@ import {
   supportOf,
   type PartyMember,
 } from "../../party";
-import { applyCommand, chooseCommand, findUnit } from "../../tactics";
+import { addItemToInventory, fieldUseRefusal, findInventorySlot, useItemInField } from "../../inventoryEffects";
+import { findItemTemplate } from "../../mock/items";
+import { activeUnit, applyCommand, chooseCommand, findUnit, planTurn, type Encounter } from "../../tactics";
 import { samePos, tileAt } from "../../tactics/grid";
 import {
   AREAS,
   FOLLOW_GAP,
   extendTrail,
+  fightCues,
   grantEncounterRewards,
   parseTiledMap,
   pixelOfTile,
@@ -242,4 +245,97 @@ test("o estilo e o que cada um sabe além do kit vêm do elenco e do bestiário,
   // O que a história pôs em Lish entra com ele, e fica.
   assert.ok(events.some((event) => event.type === "statusApplied" && event.target === lish.id && event.statusId === "wounded_arm"));
   assert.deepEqual(unit(lish.id).statuses.map((status) => status.id), ["wounded_arm"]);
+});
+
+/** Passa a vez de todo mundo até chegar a de `id`. */
+function waitFor(encounter: Encounter, id: string): void {
+  for (let turns = 0; activeUnit(encounter)!.id !== id; turns++) {
+    assert.ok(turns < 20, `a vez de ${id} não chegou`);
+    applyCommand(encounter, { type: "endTurn", unitId: activeUnit(encounter)!.id });
+  }
+}
+
+const strikes = (encounter: Encounter) => {
+  const plan = planTurn(encounter);
+  return [plan.action, plan.bonus].some((choice) => choice?.ability.effects.some((effect) => effect.kind === "damage"));
+};
+
+test("o fiscal da Companhia é Baluarte e só levanta a espada pra quem insiste três turnos seguidos", () => {
+  const { map, props } = loadArea("estrada");
+  const hero = createProtagonist();
+  const group = map.enemies.filter((enemy) => enemy.group === "fiscais");
+  assert.equal(group.length, 2);
+  const [fiscal] = group;
+  const tile = tileOfPixel(map, fiscal);
+  const { encounter } = startAreaEncounter(map, [{ character: hero, tile: { x: tile.x + 1, y: tile.y } }], group, 4, props);
+
+  const unit = findUnit(encounter, fiscal.id)!;
+  assert.deepEqual([unit.style, unit.grade, unit.quirks], ["baluarte", 3, { retaliates: 3 }]);
+
+  waitFor(encounter, fiscal.id);
+  assert.equal(strikes(encounter), false, "ao primeiro empurrão ele não revida");
+  findUnit(encounter, hero.id)!.habit = { repeated: true, attackTurns: 3 };
+  assert.equal(strikes(encounter), true);
+});
+
+test("Taevel é Maré como Halmira e devolve o tipo da última coisa que ela fez", () => {
+  const { map, props } = loadArea("estrada");
+  const hero = createProtagonist();
+  const group = map.enemies.filter((enemy) => enemy.group === "primos");
+  const taevel = group.find((enemy) => enemy.creature === "encounter-taevel")!;
+  const tile = tileOfPixel(map, taevel);
+  const { encounter } = startAreaEncounter(map, [{ character: hero, tile: { x: tile.x + 1, y: tile.y } }], group, 4, props);
+
+  const unit = findUnit(encounter, taevel.id)!;
+  // No bestiário ele copia "hero"; na luta, o id dela.
+  assert.deepEqual([unit.style, unit.grade, unit.quirks], ["mare", 3, { mirrors: hero.id }]);
+  assert.equal(findUnit(encounter, hero.id)!.style, "mare");
+
+  waitFor(encounter, taevel.id);
+  const heroUnit = findUnit(encounter, hero.id)!;
+  heroUnit.habit = { last: `${hero.characterClass}.defend`, repeated: false, attackTurns: 0 };
+  assert.equal(planTurn(encounter).action?.ability.id, "guardiao.defend");
+  heroUnit.habit = { last: `${hero.characterClass}.heavy_attack`, repeated: false, attackTurns: 1 };
+  assert.equal(planTurn(encounter).action?.ability.id, "guardiao.heavy_attack");
+
+  // A luta com ele para sozinha; a deixa da queda de Lish só entra com Lish na luta.
+  const cues = map.cues.filter((cue) => cue.group === "primos");
+  assert.equal(fightCues(map, cues, group, [hero.id]).length, 1);
+  const members: PartyMember[] = [];
+  const lish = joinParty(members, "lish", 1)!;
+  const withLish = fightCues(map, cues, group, [hero.id, lish.id]);
+  assert.equal(withLish.length, 2);
+  assert.ok(withLish.every((cue) => cue.ends === "stop"));
+});
+
+test("fora de luta, um item da mochila de Halmira cura qualquer um do grupo — e só o que cura se usa assim", () => {
+  const hero = createProtagonist();
+  const members: PartyMember[] = [];
+  const lish = joinParty(members, "lish", 1)!;
+  addItemToInventory(hero, findItemTemplate("item-brasa-de-forjardente")!);
+  addItemToInventory(hero, findItemTemplate("item-pao-de-cinza")!);
+  const tears = findInventorySlot(hero, "item-lagrima-de-eir")!.quantity;
+
+  // Em quem está inteiro não se gasta nada.
+  assert.equal(fieldUseRefusal(hero, "item-lagrima-de-eir", lish), "no_effect");
+  assert.deepEqual(useItemInField(hero, "item-lagrima-de-eir", lish), { ok: false, reason: "no_effect" });
+  assert.equal(findInventorySlot(hero, "item-lagrima-de-eir")!.quantity, tears);
+
+  lish.currentHp = 1;
+  assert.deepEqual(useItemInField(hero, "item-lagrima-de-eir", lish), { ok: true, healed: 15 });
+  assert.equal(lish.currentHp, 16);
+  assert.equal(findInventorySlot(hero, "item-lagrima-de-eir")?.quantity ?? 0, tears - 1);
+
+  // O que dá atributo dura turnos: fora de luta não há turno.
+  hero.currentHp = 1;
+  assert.deepEqual(useItemInField(hero, "item-brasa-de-forjardente", hero), { ok: false, reason: "only_in_combat" });
+  assert.equal(findInventorySlot(hero, "item-brasa-de-forjardente")!.quantity, 1);
+  assert.deepEqual(useItemInField(hero, "item-nao-existe", hero), { ok: false, reason: "item_unavailable" });
+
+  // Um item com cargas gasta uma por vez, e a cura não passa do máximo.
+  assert.deepEqual(useItemInField(hero, "item-pao-de-cinza", hero), { ok: true, healed: 8 });
+  assert.equal(findInventorySlot(hero, "item-pao-de-cinza")!.item.data.usesRemaining, 1);
+  hero.currentHp = hero.maxHp - 3;
+  assert.deepEqual(useItemInField(hero, "item-pao-de-cinza", hero), { ok: true, healed: 3 });
+  assert.equal(findInventorySlot(hero, "item-pao-de-cinza"), undefined);
 });

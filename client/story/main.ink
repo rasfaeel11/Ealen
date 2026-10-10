@@ -34,7 +34,7 @@ EXTERNAL clock_start(label, value, limit)   // clock_start("Vazante", 0, 12): p�
 EXTERNAL clock_tick(amount) // faz o tempo andar (negativo volta); para em 0 e no limite
 EXTERNAL clock()            // quanto já passou (0 sem relógio)
 EXTERNAL clock_left()       // quanto falta
-EXTERNAL clock_cost(what, amount)   // clock_cost("rest", 2): quanto descansar ("rest") ou lutar ("fight") gasta sozinho
+EXTERNAL clock_cost(what, amount)   // clock_cost("rest", 2): quanto descansar ("rest"), lutar ("fight") ou cada rodada de luta ("round") gasta sozinho
 EXTERNAL clock_stop()       // tira o relógio da tela
 EXTERNAL afflict(who, status)   // afflict("lish", "wounded_arm"): uma condição que dura ENTRE lutas. "hero" é Halmira
 EXTERNAL cure(who, status)      // tira
@@ -71,4 +71,5 @@ EXTERNAL afflicted(who, status) // ele a tem?
 // história volta ao que era antes dela, e o que ele tivesse dado, não.
 
 INCLUDE clareira.ink
+INCLUDE estrada.ink
 INCLUDE ruinas.ink
