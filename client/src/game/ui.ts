@@ -28,7 +28,12 @@ export function addTitleText(scene: Phaser.Scene, x: number, y: number, text: st
 
 /** Moldura do códice: painel escuro com borda dourada dupla e cantos retos. */
 export function addPanel(scene: Phaser.Scene, x: number, y: number, width: number, height: number, dim = false): Phaser.GameObjects.Graphics {
-  const g = scene.add.graphics();
+  return drawPanel(scene.add.graphics(), x, y, width, height, dim);
+}
+
+/** Desenha a moldura em `g`, no lugar do que houvesse nele: é como um painel muda de tamanho sem sair da ordem de desenho. */
+export function drawPanel(g: Phaser.GameObjects.Graphics, x: number, y: number, width: number, height: number, dim = false): Phaser.GameObjects.Graphics {
+  g.clear();
   g.fillStyle(COLORS.panel, 1);
   g.fillRect(x, y, width, height);
   g.lineStyle(2, dim ? COLORS.border : COLORS.gold, 1);
@@ -110,6 +115,11 @@ export class Menu {
 
     const firstEnabled = options.findIndex((option) => !option.disabled);
     this.focus(firstEnabled === -1 ? 0 : firstEnabled);
+  }
+
+  /** Põe o cursor na opção `index`, se ela existe e pode ser escolhida. */
+  focusOn(index: number): void {
+    if (this.options[index] && !this.options[index].disabled) this.focus(index);
   }
 
   /** Menu inativo continua na tela (apagado), mas não responde. */

@@ -52,6 +52,8 @@ import {
   trailPoint,
   unusedItems,
   useItemOutside,
+  equip,
+  unequip,
   walk,
   type Ability,
   type Aftermath,
@@ -911,8 +913,9 @@ export default class WorldScene extends Phaser.Scene {
     // Numa luta que parou, o resultado é o que a história acabou de dizer: não há painel.
     if (rewards) {
       const lines = [`+${rewards.xpGained} de XP`];
-      if (rewards.levelUp.leveledUp) lines.push(`Subiu para o nível ${rewards.levelUp.newLevel}!`);
-      for (const { name, level } of rewards.companionLevels) lines.push(`${name} subiu para o nível ${level}!`);
+      const learnt = (learned: { name: string }[] = []) => (learned.length > 0 ? ` Aprendeu ${learned.map((ability) => ability.name).join(" e ")}.` : "");
+      if (rewards.levelUp.leveledUp) lines.push(`Subiu para o nível ${rewards.levelUp.newLevel}!${learnt(rewards.levelUp.learned)}`);
+      for (const { name, level, learned } of rewards.companionLevels) lines.push(`${name} subiu para o nível ${level}!${learnt(learned)}`);
       lines.push(
         rewards.loot.length > 0
           ? `Encontrou: ${rewards.loot.map((item) => item.name).join(", ")}`
@@ -974,7 +977,18 @@ export default class WorldScene extends Phaser.Scene {
   private openSheet(): void {
     this.halt();
     this.pause = new SheetPanel(this, (object) => this.addHud(object), {
+      owner: this.character,
       members: this.company(),
+      // Vestir e tirar valem na hora e ficam gravados, como usar um item.
+      onEquip: (wearer, itemId) => {
+        const result = equip(this.character, wearer, itemId);
+        if (result.ok) this.persist();
+        return result;
+      },
+      onUnequip: (wearer, slot) => {
+        unequip(this.character, wearer, slot);
+        this.persist();
+      },
       afflictions: this.story.afflictions(),
       onMend: (caster, ability, target) => this.mendOutside(caster, ability, target),
       onOpening: (ability) => {

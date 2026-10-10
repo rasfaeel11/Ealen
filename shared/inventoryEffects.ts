@@ -1,5 +1,8 @@
+import { addGear, gearCount, removeGear } from "./equipment";
+import { findEquipment } from "./mock/equipment";
+import { findItemTemplate } from "./mock/items";
 import type { Character } from "./types/character";
-import type { ConsumableItem, Inventory, InventorySlot } from "./types/inventory";
+import type { ConsumableItem, EquipmentItem, Inventory, InventorySlot } from "./types/inventory";
 
 /**
  * Helpers puros de inventário, compartilhados entre o motor de combate
@@ -83,4 +86,43 @@ export function applyImmediateHeal(
       ? `Restaura ${healed} HP.`
       : `Purifica corrupções recentes${healed > 0 ? ` e restaura ${healed} HP.` : "."}`;
   return { healed, description };
+}
+
+/** Qualquer coisa que se guarda: o que se gasta (a mochila) e o que se veste (o guardado). */
+export type GameItem = ConsumableItem | EquipmentItem;
+
+/** O molde do item `itemId`, consumível ou equipamento. Undefined se não existe. */
+export function findItem(itemId: string): GameItem | undefined {
+  return findItemTemplate(itemId) ?? findEquipment(itemId);
+}
+
+/**
+ * Entrega `item` a `owner`, a dona da mochila: o consumível vai pra mochila
+ * (e pode não caber — aí volta false e o item se perde), a peça de
+ * equipamento vai pro guardado, que não tem limite.
+ */
+export function giveItem(owner: Character, item: GameItem): boolean {
+  if (item.category === "consumable") return addItemToInventory(owner, item);
+  addGear(owner, item.id);
+  return true;
+}
+
+/** Quantas unidades de `itemId` `owner` tem pra dar: na mochila ou, se é equipamento, GUARDADAS (o que está vestido não conta). */
+export function itemCount(owner: Pick<Character, "inventory" | "gear">, itemId: string): number {
+  return (findInventorySlot(owner, itemId)?.quantity ?? 0) + gearCount(owner, itemId);
+}
+
+/**
+ * Tira de `owner` UMA unidade inteira de `itemId` — não uma carga: o item
+ * muda de mão. Diz se havia o que tirar.
+ */
+export function takeItem(owner: Character, itemId: string): boolean {
+  const { inventory } = owner;
+  const slot = findInventorySlot(owner, itemId);
+  if (!inventory || !slot || slot.quantity <= 0) return removeGear(owner, itemId);
+
+  slot.quantity -= 1;
+  if (slot.quantity <= 0) inventory.slots = inventory.slots.filter((other) => other !== slot);
+  else slot.item.data.usesRemaining = slot.item.data.maxUses;
+  return true;
 }

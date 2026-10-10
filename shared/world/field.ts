@@ -1,4 +1,5 @@
 import { breathOf } from "../breath";
+import { gearedAttributes } from "../equipment";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { castOf } from "../party";
@@ -35,7 +36,7 @@ import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
  */
 
 /** Tudo que uma ficha sabe fazer: o kit da Ordem e o que só ela sabe (`gifts` no elenco). */
-export function sheetAbilities(character: Pick<Character, "id" | "characterClass" | "arts">): Ability[] {
+export function sheetAbilities(character: Pick<Character, "id" | "characterClass" | "level" | "equipment" | "arts">): Ability[] {
   const gifts = castOf(character)?.gifts ?? [];
   return [...abilitiesFor(character), ...gifts.map((gift): Ability => ({ ...GIFTS[gift] }))];
 }
@@ -73,7 +74,7 @@ export function mend(caster: Character, ability: Ability, target: Character, rng
   for (const effect of ability.effects) {
     if (effect.kind !== "heal") continue;
     const attribute = effect.attribute === "primary" ? CLASS_INFO[caster.characterClass].primaryAttributes[0] : effect.attribute;
-    const amount = (attribute ? caster.attributes[attribute] : 0) + rollDice(rng, effect.dice);
+    const amount = (attribute ? gearedAttributes(caster)[attribute] : 0) + rollDice(rng, effect.dice);
     const gained = Math.min(target.maxHp - target.currentHp, amount);
     target.currentHp += gained;
     healed += gained;

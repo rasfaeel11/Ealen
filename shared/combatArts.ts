@@ -8,7 +8,11 @@ import type { CharacterClass } from "./types/characterClass";
  * Rachador procura a falha do padrão — chamar tudo isso de "ataque pesado"
  * joga fora justamente o que diferencia as classes. Aqui ficam só o nome e
  * o que a Arte é no mundo; o que cada uma FAZ em combate (alcance, custo,
- * efeitos) é montado em shared/tactics/abilities.ts.
+ * efeitos) é o kit da Ordem, em shared/tactics/abilities.ts — e lá cada
+ * postura já faz uma coisa diferente em cada Ordem.
+ *
+ * Além das Artes, cada Ordem tem Técnicas (CLASS_TECHNIQUES): o que se
+ * aprende subindo de nível.
  */
 
 /** As cinco posturas que toda Ordem tem (menos as que o Princípio dela nega). */
@@ -19,6 +23,15 @@ export interface CombatArt {
   name: string;
   /** O que a Arte é, no mundo — não o que ela faz em números. */
   flavor: string;
+}
+
+/**
+ * Uma Técnica: o que uma Ordem ensina além das cinco Artes, e só a quem já
+ * chegou no nível `level`. Como nas Artes, aqui ficam o nome e o que ela é no
+ * mundo; o que FAZ está em shared/tactics/abilities.ts, pela mesma chave.
+ */
+export interface Technique extends CombatArt {
+  level: number;
 }
 
 /** Ordem de exibição das posturas, da mais segura à mais arriscada. */
@@ -157,6 +170,91 @@ export const CLASS_COMBAT_ARTS: Record<CharacterClass, Record<CombatStance, Comb
       flavor: "Fica torto de propósito. Quem treinou pra acertar o certo erra o torto.",
     },
     heal: null,
+  },
+};
+
+/**
+ * As Técnicas de cada Ordem, pela chave que o kit usa. Duas por Ordem: a
+ * primeira chega cedo e diz o que a Ordem É além de bater e se guardar; a
+ * segunda é o que ela faz que ninguém mais faz.
+ */
+export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>> = {
+  luminar: {
+    muralha_de_prumo: {
+      name: "Muralha de Prumo",
+      flavor: "Fixa no ar um plano perfeitamente reto, na frente de quem precisa. O que é simétrico demais não se dobra.",
+      level: 2,
+    },
+    antifona_de_aurora: {
+      name: "Antífona de Aurora",
+      flavor: "Responde ao próprio golpe com o golpe simétrico: o que a lâmina tirou de um lado volta do outro.",
+      level: 4,
+    },
+  },
+
+  entropista: {
+    marca_de_decaimento: {
+      name: "Marca de Decaimento",
+      flavor: "Grava no alvo o selo do fim dele. A armadura passa a envelhecer sozinha.",
+      level: 2,
+    },
+    lei_irreversivel: {
+      name: "Lei Irreversível",
+      flavor: "Trava o alvo no estado em que ele está. Enquanto a lei durar, nada nele se cura nem se restaura.",
+      level: 5,
+    },
+  },
+
+  cantor_de_ealen: {
+    refrao_do_silencio: {
+      name: "Refrão do Silêncio",
+      flavor: "Sobrepõe à voz do alvo a onda invertida dela. O que ele tentar em seguida sai abafado.",
+      level: 2,
+    },
+    coro_de_uma_voz_so: {
+      name: "Coro de Uma Voz Só",
+      flavor: "Multiplica a própria frequência até soar como muitos. Por algumas respirações, cada Arte ressoa em dobro.",
+      level: 5,
+    },
+  },
+
+  guardiao: {
+    puxao_de_mare: {
+      name: "Puxão de Maré",
+      flavor: "Dobra por um instante a gravidade sob os pés do alvo. Ele cai, e o chão não o larga logo.",
+      level: 2,
+    },
+    ancora_da_singularidade: {
+      name: "Âncora da Singularidade",
+      flavor: "Prende o próprio corpo às constantes do lugar. Enquanto durar, nada o move e tudo chega mais leve.",
+      level: 5,
+    },
+  },
+
+  sombrilico: {
+    deixar_de_ser_notado: {
+      name: "Deixar de Ser Notado",
+      flavor: "Sai do campo do observável. Quem não é visto escolhe com calma onde o próximo corte entra.",
+      level: 3,
+    },
+    corte_do_nao_dito: {
+      name: "Corte do Não-Dito",
+      flavor: "Acerta a parte do alvo que ninguém estava olhando — inclusive ele. Não há guarda pro que não se viu.",
+      level: 6,
+    },
+  },
+
+  rachador: {
+    falha_no_padrao: {
+      name: "Falha no Padrão",
+      flavor: "Um golpe calculado contra a imperfeição que toda defesa previsível cria. A armadura não está onde ele entra.",
+      level: 2,
+    },
+    simetria_quebrada: {
+      name: "Simetria Quebrada",
+      flavor: "Quebra o padrão do alvo de vez: cada golpe seguinte contra ele encontra uma abertura nova.",
+      level: 4,
+    },
   },
 };
 

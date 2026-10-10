@@ -5,7 +5,7 @@ import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { findPath } from "./movement";
 import { PROPS, fellProp, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
-import { STATUSES, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
+import { STATUSES, isHarmful, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
 import { STYLES, punishFactor, styleReduction, waveBonus } from "./styles";
 import {
   SURFACES,
@@ -34,7 +34,18 @@ import type {
   TeamId,
   Unit,
 } from "./types";
-import { activeUnit, effectiveAttribute, findUnit, isAlive, isOver, primaryAttribute, readiness, unitAt } from "./units";
+import {
+  activeUnit,
+  damageTakenOf,
+  effectiveAttribute,
+  findUnit,
+  isAlive,
+  isOver,
+  movementOf,
+  primaryAttribute,
+  readiness,
+  unitAt,
+} from "./units";
 
 /**
  * O motor de combate tático.
@@ -156,7 +167,7 @@ function strikeFirst(encounter: Encounter, opening: Opening, events: TacticalEve
 
   if (opening.from && !samePos(opening.from, unit.pos)) {
     // A investida anda com o movimento de um turno, e não o tira do primeiro turno de verdade.
-    unit.turn.movement = unit.speed;
+    unit.turn.movement = movementOf(unit);
     const stuck = move(encounter, unit, opening.from, events);
     unit.turn.movement = 0;
     if (stuck || !isAlive(unit)) return;
@@ -231,12 +242,20 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
       next = activeUnit(encounter);
     } while (!next || !isAlive(next));
 
-    // Lida antes de contar: a condição que dura "até o próximo turno" cai neste, e é ele que se perde.
+    // Lidas antes de contar: a condição que dura "até o próximo turno" cai neste, e é nele que ela ainda vale —
+    // o turno que se perde, o passo que fica preso, o que ela fere.
     const skip = next.statuses.find((status) => status.skipsTurn);
+    const movement = movementOf(next);
+    const harms = next.statuses.filter((status) => status.harm);
     tickStatuses(next, events);
-    next.turn = { movement: next.speed, action: true, bonus: true, reaction: true };
+    next.turn = { movement, action: true, bonus: true, reaction: true };
     events.push({ type: "turnStarted", unit: next.id });
 
+    for (const status of harms) {
+      if (!isAlive(next) || next.invulnerable) break;
+      events.push({ type: "statusTriggered", unit: next.id, statusId: status.id, name: status.name });
+      dealDamage(next, rollDice(encounter, status.harm!), events);
+    }
     touchSurface(encounter, next, events);
     if (!isAlive(next)) {
       if (concludeIfDecided(encounter, events)) return;
@@ -658,8 +677,10 @@ function applyEffect(
       if (critical) amount *= 2;
       amount = Math.round(amount * crack);
 
+      // O que as condições de quem apanha somam ou tiram do golpe (Trincado, Ancorado), e depois a armadura —
+      // que um golpe `piercing` não encontra.
       const targetOr = effectiveAttribute(target, "or");
-      amount = Math.max(1, amount - Math.floor(targetOr / 2));
+      amount = Math.max(1, amount + damageTakenOf(target) - (effect.piercing ? 0 : Math.floor(targetOr / 2)));
       // A Muralha de quem apanha: um tanto fixo a menos, depois da armadura.
       amount = Math.max(1, amount - styleReduction(target));
 
@@ -668,10 +689,19 @@ function applyEffect(
         amount -= blocked;
         events.push({ type: "blocked", unit: target.id, amount: blocked });
       }
-      if (amount > 0) dealDamage(target, amount, events);
+      if (amount <= 0) return;
+      const taken = Math.min(amount, target.currentHp);
+      dealDamage(target, amount, events);
+      // O golpe que devolve: parte do que entrou volta como vida pra quem bateu.
+      if (effect.leech && isAlive(actor)) restore(actor, Math.floor(taken * effect.leech), events);
       return;
     }
     case "heal": {
+      const denied = target.statuses.find((status) => status.noHeal);
+      if (denied) {
+        events.push({ type: "healDenied", target: target.id, name: denied.name });
+        return;
+      }
       const amount = Math.min(
         target.maxHp - target.currentHp,
         attributeOf(actor, effect.attribute) + rollDice(encounter, effect.dice),
@@ -684,6 +714,13 @@ function applyEffect(
       addStatus(target, STATUSES[effect.statusId], effect.turns, events);
       return;
     case "breath": {
+      if (effect.amount < 0) {
+        const drained = Math.min(target.breath, -effect.amount);
+        if (drained <= 0) return;
+        target.breath -= drained;
+        events.push({ type: "breathDrained", unit: target.id, amount: drained, remaining: target.breath });
+        return;
+      }
       const amount = Math.min(target.maxBreath - target.breath, effect.amount);
       if (amount <= 0) return;
       target.breath += amount;
@@ -694,6 +731,15 @@ function applyEffect(
       push(encounter, actor, target, effect.distance, events);
       return;
   }
+}
+
+/** Devolve até `amount` de vida a `unit`, se alguma cura pega nele (ver `noHeal`) e se falta alguma. */
+function restore(unit: Unit, amount: number, events: TacticalEvent[]): void {
+  if (unit.statuses.some((status) => status.noHeal)) return;
+  const healed = Math.min(unit.maxHp - unit.currentHp, amount);
+  if (healed <= 0) return;
+  unit.currentHp += healed;
+  events.push({ type: "heal", target: unit.id, amount: healed, remainingHp: unit.currentHp });
 }
 
 function dealDamage(target: Unit, amount: number, events: TacticalEvent[]): void {
@@ -710,8 +756,10 @@ function dealDamage(target: Unit, amount: number, events: TacticalEvent[]): void
  * distância negativa), um quadrado por vez, até acabar a distância ou
  * bater em parede, borda ou corpo. Movimento forçado não provoca ataque de
  * oportunidade, mas a superfície de onde o alvo vai parar age sobre ele.
+ * Quem carrega uma condição `immovable` não sai do lugar.
  */
 function push(encounter: Encounter, actor: Unit, target: Unit, pushDistance: number, events: TacticalEvent[]): void {
+  if (target.statuses.some((status) => status.immovable)) return;
   const direction = Math.sign(pushDistance);
   const dx = Math.sign(target.pos.x - actor.pos.x) * direction;
   const dy = Math.sign(target.pos.y - actor.pos.y) * direction;
@@ -857,13 +905,20 @@ function useItem(unit: Unit, itemId: string, events: TacticalEvent[]): CommandEr
   switch (effect.kind) {
     case "heal_hp":
     case "cure_status": {
+      // Purificar tira do corpo toda condição que esteja atrapalhando — antes de curar: a que trava a cura sai junto.
+      const cured: TacticalEvent[] = [];
+      if (effect.kind === "cure_status") removeStatuses(unit, isHarmful, cured);
+      const denied = unit.statuses.find((status) => status.noHeal);
+      if (denied) {
+        // O item se gasta do mesmo jeito: a condição avisa na cara de quem a carrega.
+        announce("Nada se restaura.");
+        events.push({ type: "healDenied", target: unit.id, name: denied.name });
+        return undefined;
+      }
       const { healed, description } = applyImmediateHeal(unit, effect);
       announce(description);
       if (healed > 0) events.push({ type: "heal", target: unit.id, amount: healed, remainingHp: unit.currentHp });
-      // Purificar tira do corpo toda condição que esteja atrapalhando.
-      if (effect.kind === "cure_status") {
-        removeStatuses(unit, (status) => Object.values(status.attributeBonus ?? {}).some((bonus) => bonus < 0), events);
-      }
+      events.push(...cured);
       return undefined;
     }
     case "buff_stat": {

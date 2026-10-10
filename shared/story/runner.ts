@@ -1,14 +1,13 @@
 import { Story } from "inkjs";
-import { addItemToInventory, findInventorySlot } from "../inventoryEffects";
+import { gearedAttributes } from "../equipment";
+import { findItem, giveItem, itemCount, takeItem, type GameItem } from "../inventoryEffects";
 import { applyXpGain } from "../leveling";
-import { findItemTemplate } from "../mock/items";
 import { HERO_ID, castId, isInParty, isOrder, joinParty, leaveParty, presentCompanions, type PartyMember } from "../party";
 import { STATUSES, isStatusId, type StatusId } from "../tactics/statuses";
 import { AREAS } from "../world/areas";
 import type { RngHolder } from "../tactics/rng";
 import type { Character } from "../types/character";
 import type { CharacterClass } from "../types/characterClass";
-import type { ConsumableItem } from "../types/inventory";
 import type { LevelUpResult } from "../types/levelUp";
 import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck } from "./checks";
 import {
@@ -112,8 +111,8 @@ export interface StoryHost {
 export type StoryEvent =
   | ({ type: "check" } & CheckResult)
   /** `kept` falso = a mochila estava cheia e o item se perdeu. */
-  | { type: "item"; item: ConsumableItem; kept: boolean }
-  | { type: "itemTaken"; item: ConsumableItem }
+  | { type: "item"; item: GameItem; kept: boolean }
+  | { type: "itemTaken"; item: GameItem }
   | { type: "xp"; amount: number; levelUp: LevelUpResult }
   /** A conversa termina em luta com este grupo de inimigos da área atual. */
   | { type: "fight"; group: string }
@@ -234,11 +233,11 @@ export class StoryRunner {
     };
 
     // Só leitura: o Ink pode chamar adiantado, enquanto monta a linha.
-    story.BindExternalFunction("attr", (name: unknown) => (isAttribute(name) ? host.character.attributes[name] : 0), true);
+    story.BindExternalFunction("attr", (name: unknown) => (isAttribute(name) ? gearedAttributes(host.character)[name] : 0), true);
     story.BindExternalFunction("order", () => host.character.characterClass, true);
     story.BindExternalFunction("people", () => host.character.race, true);
     story.BindExternalFunction("level", () => host.character.level, true);
-    story.BindExternalFunction("has_item", (id: string) => (findInventorySlot(host.character, id)?.quantity ?? 0) > 0, true);
+    story.BindExternalFunction("has_item", (id: string) => itemCount(host.character, id) > 0, true);
     story.BindExternalFunction("defeated", (key: string) => host.isDefeated(key), true);
     story.BindExternalFunction("passed", () => this.lastCheckPassed, true);
     story.BindExternalFunction("in_party", (key: string) => isInParty(host.companions, String(key)), true);
@@ -250,24 +249,15 @@ export class StoryRunner {
     // Mexem no jogo ou gastam o dado: só na hora em que o texto chega nelas.
     story.BindExternalFunction("check", check);
     story.BindExternalFunction("give_item", (id: string) => {
-      const item = findItemTemplate(id);
+      const item = findItem(id);
       if (!item) throw new Error(`A história dá um item que não existe: "${id}"`);
-      this.pending.push({ type: "item", item, kept: addItemToInventory(host.character, item) });
+      this.pending.push({ type: "item", item, kept: giveItem(host.character, item) });
     });
     story.BindExternalFunction("take_item", (id: string) => {
-      const item = findItemTemplate(id);
+      const item = findItem(id);
       if (!item) throw new Error(`A história pede um item que não existe: "${id}"`);
-      const { inventory } = host.character;
-      const slot = findInventorySlot(host.character, id);
-      if (!inventory || !slot || slot.quantity <= 0) return false;
-
-      // Uma unidade inteira da pilha, não uma carga: o item muda de mão.
-      slot.quantity -= 1;
-      if (slot.quantity <= 0) {
-        inventory.slots = inventory.slots.filter((other) => other !== slot);
-      } else {
-        slot.item.data.usesRemaining = slot.item.data.maxUses;
-      }
+      // Uma unidade inteira, não uma carga. Equipamento só sai do guardado: o que alguém veste a história não tira.
+      if (!takeItem(host.character, id)) return false;
       this.pending.push({ type: "itemTaken", item });
       return true;
     });

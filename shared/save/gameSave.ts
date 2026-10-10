@@ -2,7 +2,7 @@ import { ATTRIBUTE_KEYS } from "../types/attributes";
 import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
 import { RACE_INFO } from "../types/principle";
-import type { PartyMember } from "../party";
+import { STARTING_STASH, fights, startingLoadout, type PartyMember } from "../party";
 import { AREAS } from "../world/areas";
 
 /**
@@ -15,7 +15,7 @@ import { AREAS } from "../world/areas";
  * Campo novo no save: acrescentar em `GameSave`, subir `SAVE_VERSION` e
  * escrever em `MIGRATIONS` como um save da versão anterior ganha esse campo.
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** Onde o personagem está: a área e o ponto do mapa dela, em pixels. */
 export interface SaveLocation {
@@ -72,7 +72,28 @@ const MIGRATIONS: Record<number, (old: Json) => Json> = {
   }),
   // A versão 2 não tinha companheiros.
   2: (old) => ({ ...old, version: 3, companions: [] }),
+  // A versão 3 não tinha equipamento: cada ficha ganha aquilo com que começaria (ver startingLoadout), e nada guardado.
+  3: (old) => ({
+    ...old,
+    version: 4,
+    character: stash(outfit(old.character)),
+    companions: Array.isArray(old.companions)
+      ? old.companions.map((member) => (isObject(member) ? { ...member, character: outfit(member.character) } : member))
+      : old.companions,
+  }),
 };
+
+/** A dona da mochila ganha o que um jogo novo traz guardado, se ainda não guarda nada. */
+function stash(value: unknown): unknown {
+  return isCharacter(value) && value.gear === undefined ? { ...value, gear: [...STARTING_STASH] } : value;
+}
+
+/** A ficha `value` com o equipamento de começo, se ainda não tem nenhum. O que não parece uma ficha passa como veio: quem recusa é a validação. */
+function outfit(value: unknown): unknown {
+  if (!isCharacter(value) || value.equipment !== undefined) return value;
+  // Quem só acompanha não veste nada pra luta.
+  return fights(value) ? { ...value, equipment: startingLoadout(value) } : value;
+}
 
 export function newGame(character: Character): GameSave {
   return {
@@ -216,6 +237,9 @@ function isCharacter(value: unknown): value is Character {
     (value.breath === undefined || isNumber(value.breath)) &&
     isObject(attributes) &&
     ATTRIBUTE_KEYS.every((key) => isNumber(attributes[key])) &&
+    // Id de peça que o catálogo não tem mais não estraga nada: vale como lugar vazio (ver ../equipment.ts).
+    (value.equipment === undefined || isObject(value.equipment)) &&
+    (value.gear === undefined || (Array.isArray(value.gear) && value.gear.every((id) => typeof id === "string"))) &&
     (inventory === undefined || (isObject(inventory) && Array.isArray(inventory.slots)))
   );
 }

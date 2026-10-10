@@ -1,7 +1,7 @@
-import type { Character, MapNode, UnlockableAbility } from "../types";
+import type { Character, MapNode } from "../types";
 
 /**
- * Conteúdo de Talys: o mapa da jornada, as habilidades das Ordens e alguns
+ * Conteúdo de Talys: o mapa da jornada e alguns
  * personagens de exemplo. Ainda em memória — quando virar tabela no
  * Supabase, o formato continua o mesmo.
  *
@@ -138,121 +138,5 @@ export const MOCK_CHARACTERS: Character[] = [
     currentHp: 58,
     maxHp: 64,
     currentNodeId: "node-fenda-de-prumo",
-  },
-];
-
-/**
- * Habilidades desbloqueadas por nível. Diferente das Artes (ver
- * shared/combatArts.ts), que toda Ordem tem desde o nível 1, estas são
- * técnicas específicas conquistadas ao longo da progressão.
- */
-export const MOCK_ABILITIES: UnlockableAbility[] = [
-  {
-    id: "ability-escudo-de-luz",
-    name: "Muralha de Prumo",
-    characterClass: "luminar",
-    scalingAttribute: "or",
-    description:
-      "Fixa no ar um plano perfeitamente reto e o mantém assim. Absorve dano proporcional à Densidade (Or) — o que é simétrico demais não se dobra.",
-    unlockLevel: 1,
-  },
-  {
-    id: "ability-antifona-de-aurora",
-    name: "Antífona de Aurora",
-    characterClass: "luminar",
-    scalingAttribute: "eir",
-    description:
-      "Responde ao próprio golpe com o golpe simétrico. Cura o Luminar pela mesma medida que ele feriu, escalando por Ressonância (Eir).",
-    unlockLevel: 4,
-  },
-  {
-    id: "ability-marca-entropica",
-    name: "Marca de Decaimento",
-    characterClass: "entropista",
-    scalingAttribute: "ul",
-    description:
-      "Grava no alvo o selo do fim dele. A armadura passa a envelhecer sozinha, perdendo defesa proporcional ao Mistério (Ul) do Entropista.",
-    unlockLevel: 2,
-  },
-  {
-    id: "ability-lei-irreversivel",
-    name: "Lei Irreversível",
-    characterClass: "entropista",
-    scalingAttribute: "eir",
-    description:
-      "Trava o alvo no estado em que ele está: nada nele pode ser curado ou restaurado enquanto a lei durar, com duração escalando por Eir.",
-    unlockLevel: 5,
-  },
-  {
-    id: "ability-refrao-do-silencio",
-    name: "Refrão do Silêncio",
-    characterClass: "cantor_de_ealen",
-    scalingAttribute: "len",
-    description:
-      "Sobrepõe à voz do alvo a onda invertida dela. A ação seguinte dele sai enfraquecida, na medida da Voz (Len) do Cantor.",
-    unlockLevel: 2,
-  },
-  {
-    id: "ability-coro-de-uma-voz-so",
-    name: "Coro de Uma Voz Só",
-    characterClass: "cantor_de_ealen",
-    scalingAttribute: "eir",
-    description:
-      "Multiplica a própria frequência até soar como muitos. Por alguns turnos, cada Arte ressoa duas vezes, escalando por Eir.",
-    unlockLevel: 5,
-  },
-  {
-    id: "ability-golpe-sismico",
-    name: "Puxão de Maré",
-    characterClass: "guardiao",
-    scalingAttribute: "dain",
-    description:
-      "Aumenta por um instante a gravidade sob os pés do alvo. Ele cai, e cai com a Força (Dain) do Guardião somada ao próprio peso.",
-    unlockLevel: 2,
-  },
-  {
-    id: "ability-ancora-da-singularidade",
-    name: "Âncora da Singularidade",
-    characterClass: "guardiao",
-    scalingAttribute: "or",
-    description:
-      "Prende o próprio corpo às constantes do lugar. Enquanto durar, nada o move, nada o empurra e o dano recebido cai pela Densidade (Or).",
-    unlockLevel: 5,
-  },
-  {
-    id: "ability-veu-sombrio",
-    name: "Deixar de Ser Notado",
-    characterClass: "sombrilico",
-    scalingAttribute: "il",
-    description:
-      "Sai do campo do observável. Aumenta drasticamente a esquiva e revela as frequências que o alvo tentava esconder, pela Percepção (Il).",
-    unlockLevel: 3,
-  },
-  {
-    id: "ability-corte-do-nao-dito",
-    name: "Corte do Não-Dito",
-    characterClass: "sombrilico",
-    scalingAttribute: "il",
-    description:
-      "Acerta a parte do alvo que ninguém estava olhando — inclusive ele. Ignora defesa por completo, com dano pela Percepção (Il).",
-    unlockLevel: 6,
-  },
-  {
-    id: "ability-tiro-perfurante",
-    name: "Falha no Padrão",
-    characterClass: "rachador",
-    scalingAttribute: "il",
-    description:
-      "Um disparo calculado contra a imperfeição que toda defesa previsível cria. Ignora parte da armadura, com precisão pela Percepção (Il).",
-    unlockLevel: 1,
-  },
-  {
-    id: "ability-simetria-quebrada",
-    name: "Simetria Quebrada",
-    characterClass: "rachador",
-    scalingAttribute: "dain",
-    description:
-      "Quebra o padrão do alvo de vez: cada golpe seguinte contra ele encontra uma abertura nova, escalando por Força (Dain).",
-    unlockLevel: 4,
   },
 ];

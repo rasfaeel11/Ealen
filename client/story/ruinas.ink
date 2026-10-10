@@ -75,6 +75,8 @@ Um servo de metal fosco, de pé num canto onde não sobrou nada pra guardar. A c
 ~ sentinela_fora = true
 Entre as peças no chão, uma coisa que não é ferrugem.
 ~ give_item("item-estilhaco-de-prumo")
+E, presa ao que foi um pulso, uma esfera de ferro ainda morna.
+~ give_item("gear-conta-de-forja")
 -> END
 
 // PROVISÓRIO: as lutas com roteiro. Uma deixa (`cue`) no mapa abre um trecho

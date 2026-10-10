@@ -88,7 +88,8 @@ test("fora de luta, golpe abre luta, cura remenda o grupo e guarda não serve pr
   const gift = sheetAbilities(varel).find((candidate) => candidate.id === "gift.tide_pull");
   assert.ok(gift);
   assert.equal(fieldUse(gift), "opening");
-  assert.equal(sheetAbilities(guardian).some((candidate) => candidate.id.startsWith("gift.")), false);
+  assert.ok(sheetAbilities(guardian).some((candidate) => candidate.id === "gift.net_cast"));
+  assert.equal(sheetAbilities(sheet("ninguem", "guardiao")).some((candidate) => candidate.id.startsWith("gift.")), false);
 });
 
 test("a cura fora de luta usa a conta do motor, não passa da vida cheia e não rola o dado à toa", () => {

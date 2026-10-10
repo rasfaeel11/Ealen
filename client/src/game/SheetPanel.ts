@@ -2,21 +2,32 @@ import * as Phaser from "phaser";
 import {
   ATTRIBUTE_KEYS,
   CLASS_INFO,
+  EQUIPMENT_SLOTS,
   RACE_INFO,
   STATUSES,
   STYLES,
   breathOf,
   canAfford,
   castOf,
+  equipRefusal,
   fieldUse,
   fights,
+  gearBonus,
+  gearedAttributes,
+  kitOf,
   maxBreath,
   sheetAbilities,
+  storedGear,
   styleLabel,
+  wornItem,
   xpToNextLevel,
   type Ability,
   type Attributes,
   type Character,
+  type EquipError,
+  type EquipmentItem,
+  type EquipmentSlot,
+  type EquipResult,
   type StatusId,
 } from "@ealen/shared";
 import { describeAbility } from "./combat/CombatController";
@@ -27,19 +38,20 @@ import { Menu, addBodyText, addPanel, addTitleText, type MenuOption } from "./ui
 /** Põe um objeto na cena de modo que só a câmera da interface o desenhe. */
 type AddHud = <T extends Phaser.GameObjects.GameObject>(object: T) => T;
 
-const WIDTH = 1040;
-const HEIGHT = 610;
+const WIDTH = 1200;
+const HEIGHT = 660;
 const X = (GAME_WIDTH - WIDTH) / 2;
 const Y = (GAME_HEIGHT - HEIGHT) / 2;
 const TOP = Y + 92;
 /** As três colunas: quem é, os atributos, o que sabe fazer. */
 const WHO_X = X + 36;
 const PORTRAIT = 190;
-const STATS_X = X + 290;
-const STATS_WIDTH = 230;
-const SKILLS_X = X + 580;
+const STATS_X = X + 340;
+const STATS_WIDTH = 250;
+const SKILLS_X = X + 640;
 const SKILLS_WIDTH = WIDTH - (SKILLS_X - X) - 36;
-const SKILL_LINE = 32;
+const SKILL_LINE = 28;
+const STAT_LINE = 30;
 /** A tecla que abriu a ficha não pode ser a mesma que a fecha. */
 const INPUT_GRACE_MS = 200;
 
@@ -61,7 +73,34 @@ const TRAIT_TEXT: Record<keyof typeof STYLES, string> = {
   baluarte: "tira um tanto fixo de cada golpe que recebe",
 };
 
+const SLOT_LABEL: Record<EquipmentSlot, string> = { weapon: "Arma", armor: "Armadura", accessory: "Acessório" };
+
+const EQUIP_REFUSAL: Record<EquipError, string> = {
+  not_owned: "Essa peça não está mais guardada.",
+  wrong_order: "A Ordem dele não sabe usar isso.",
+};
+
+/** O que uma peça faz, em números. `brief` é a linha curta da ficha: sem dizer quem pode usar. */
+export function describeEquipment(item: EquipmentItem, brief = false): string {
+  const { data } = item;
+  const signed = (value: number) => `${value > 0 ? "+" : ""}${value}`;
+  if (data.slot === "weapon") {
+    return [
+      `dano ${data.dice.count}d${data.dice.sides}`,
+      data.range === 1 ? (brief ? "de perto" : "corpo a corpo") : `alcance ${data.range}`,
+      ...(data.toHit ? [`acerto ${signed(data.toHit)}`] : []),
+      ...(data.orders && !brief ? [`só ${data.orders.map((order) => CLASS_INFO[order].name).join(", ")}`] : []),
+    ].join(" · ");
+  }
+  if (data.slot === "armor") return [`defesa ${signed(data.defense)}`, ...(data.speed ? [`movimento ${signed(data.speed)}`] : [])].join(" · ");
+  return Object.entries(data.attributes)
+    .map(([stat, bonus]) => `${ATTRIBUTE_LABEL[stat as keyof Attributes][0]} ${signed(bonus)}`)
+    .join(" · ");
+}
+
 export interface SheetHost {
+  /** A dona da mochila: é com ela que fica guardado o equipamento que ninguém veste. */
+  owner: Character;
   /** As fichas a mostrar: a protagonista primeiro, depois quem anda com ela. */
   members: Character[];
   /** As condições que a história pôs em cada um e que duram entre lutas, pelo id da ficha. */
@@ -70,6 +109,10 @@ export interface SheetHost {
   onMend: (caster: Character, ability: Ability, target: Character) => number | undefined;
   /** A protagonista quer abrir uma luta com `ability`. Falso se não há em quem: a ficha continua aberta. */
   onOpening: (ability: Ability) => boolean;
+  /** `wearer` veste a peça guardada `itemId` (ver equip em shared/equipment.ts). */
+  onEquip: (wearer: Character, itemId: string) => EquipResult;
+  /** `wearer` tira o que tem em `slot`, que volta pro guardado. */
+  onUnequip: (wearer: Character, slot: EquipmentSlot) => void;
   onBag: () => void;
   onClose: () => void;
 }
@@ -77,24 +120,28 @@ export interface SheetHost {
 /**
  * A ficha de quem está no grupo, aberta por cima do mundo parado: o retrato
  * (o mesmo boneco do mapa, ampliado e andando no lugar), quem é, os
- * atributos, o estilo, as condições que carrega e o que sabe fazer.
+ * atributos, o que veste, o estilo, as condições que carrega e o que sabe
+ * fazer — e, apagado, o que a Ordem ainda vai ensinar.
  *
  * É daqui que se usa uma habilidade FORA de luta: uma cura, em alguém do
- * grupo; um golpe, pra abrir uma luta (ver shared/world/field.ts). A regra é
- * de lá — a ficha só mostra e pergunta.
+ * grupo; um golpe, pra abrir uma luta (ver shared/world/field.ts). E é daqui
+ * que se EQUIPA (`E`): a lista de habilidades vira a dos três lugares, e cada
+ * lugar abre o que há guardado pra ele (ver shared/equipment.ts). As regras
+ * são de lá — a ficha só mostra e pergunta.
  *
- * ←/→ (ou A/D) trocam de personagem; ↑/↓ escolhem a habilidade; Enter usa;
+ * ←/→ (ou A/D) trocam de personagem; ↑/↓ escolhem; Enter usa; E equipa;
  * I vai pra mochila; Esc ou C fecham.
  */
 export class SheetPanel {
   private readonly frame: Phaser.GameObjects.GameObject[] = [];
   private page: Phaser.GameObjects.GameObject[] = [];
   private menu?: Menu;
+  private readonly heading: Phaser.GameObjects.Text;
   private readonly detail: Phaser.GameObjects.Text;
   private readonly notice: Phaser.GameObjects.Text;
   private readonly footer: Phaser.GameObjects.Text;
   private index = 0;
-  /** Escolhendo em quem usar uma cura: a lista de habilidades virou a lista do grupo. */
+  /** Escolhendo em quem usar uma cura, ou o que vestir: a lista de habilidades virou outra, e ←/→ não trocam de personagem. */
   private targeting = false;
   private readonly openedAt: number;
 
@@ -109,10 +156,11 @@ export class SheetPanel {
       addHud(addTitleText(scene, GAME_WIDTH / 2, Y + 46, "FICHA", { fontSize: "32px" }).setOrigin(0.5)),
       addHud(addPanel(scene, WHO_X, TOP, PORTRAIT, PORTRAIT, true)),
       addHud(addTitleText(scene, STATS_X, TOP, "ATRIBUTOS", { fontSize: "18px" })),
-      addHud(addTitleText(scene, SKILLS_X, TOP, "HABILIDADES", { fontSize: "18px" })),
     );
+    this.heading = addHud(addTitleText(scene, SKILLS_X, TOP, "HABILIDADES", { fontSize: "18px" }));
+    this.frame.push(this.heading);
     this.detail = addHud(
-      addBodyText(scene, SKILLS_X, 0, "", { fontSize: "17px", lineSpacing: 4, wordWrap: { width: SKILLS_WIDTH } }),
+      addBodyText(scene, SKILLS_X, 0, "", { fontSize: "16px", lineSpacing: 4, wordWrap: { width: SKILLS_WIDTH } }),
     );
     this.notice = addHud(
       addBodyText(scene, GAME_WIDTH / 2, Y + HEIGHT - 66, "", { fontSize: "18px", color: TEXT_COLORS.goldBright }).setOrigin(0.5),
@@ -176,7 +224,7 @@ export class SheetPanel {
     y += this.add(addBodyText(scene, WHO_X, y, lines.join("\n"), { fontSize: "17px", lineSpacing: 5 })).height + 8;
     if (cast?.style) {
       const trait = `${STYLES[cast.style.id].trait}: ${TRAIT_TEXT[cast.style.id]}.`;
-      const style = { fontSize: "15px", color: TEXT_COLORS.inkDim, wordWrap: { width: 236 } };
+      const style = { fontSize: "15px", color: TEXT_COLORS.inkDim, wordWrap: { width: 280 } };
       y += this.add(addBodyText(scene, WHO_X, y, trait, style)).height + 8;
     }
     const afflictions = (this.host.afflictions[character.id] ?? []).map((id) => STATUSES[id].name);
@@ -184,35 +232,53 @@ export class SheetPanel {
       this.add(addBodyText(scene, WHO_X, y, `Carrega: ${afflictions.join(", ")}`, { fontSize: "17px", color: TEXT_COLORS.danger }));
     }
 
+    // Os atributos já com o que ele veste; o que o acessório soma fica ao lado, entre parênteses. Em dourado, o que a Ordem escala.
     const primary = info.primaryAttributes;
+    const geared = gearedAttributes(character);
+    const bonus = gearBonus(character);
     ATTRIBUTE_KEYS.forEach((key, row) => {
       const [rune, meaning] = ATTRIBUTE_LABEL[key];
       const color = primary.includes(key) ? TEXT_COLORS.goldBright : TEXT_COLORS.ink;
-      const lineY = TOP + 40 + row * 34;
+      const lineY = TOP + 36 + row * STAT_LINE;
+      const extra = bonus[key] ? ` (${bonus[key]! > 0 ? "+" : ""}${bonus[key]})` : "";
       this.add(addBodyText(scene, STATS_X, lineY, rune, { fontSize: "20px", color }));
       this.add(addBodyText(scene, STATS_X + 56, lineY + 3, meaning, { fontSize: "16px", color: TEXT_COLORS.inkDim }));
-      this.add(addBodyText(scene, STATS_X + STATS_WIDTH, lineY, String(character.attributes[key]), { fontSize: "20px", color })).setOrigin(1, 0);
+      this.add(addBodyText(scene, STATS_X + STATS_WIDTH, lineY, `${geared[key]}${extra}`, { fontSize: "20px", color })).setOrigin(1, 0);
     });
-    this.add(
-      addBodyText(scene, STATS_X, TOP + 40 + ATTRIBUTE_KEYS.length * 34 + 10, `Em dourado, o que a Ordem dela escala.\n\n"${info.creed}"`, {
-        fontSize: "15px",
-        fontStyle: "italic",
-        color: TEXT_COLORS.inkDim,
-        wordWrap: { width: STATS_WIDTH },
-      }),
-    );
+
+    // O que veste, um lugar por linha. Quem só acompanha não veste nada pra luta.
+    let gearY = TOP + 36 + ATTRIBUTE_KEYS.length * STAT_LINE + 16;
+    gearY += this.add(addTitleText(scene, STATS_X, gearY, "EQUIPAMENTO", { fontSize: "18px" })).height + 8;
+    if (!fights(character)) {
+      this.add(addBodyText(scene, STATS_X, gearY, "Não veste nada pra luta.", { fontSize: "16px", color: TEXT_COLORS.inkDim }));
+    } else {
+      for (const slot of EQUIPMENT_SLOTS) {
+        const item = wornItem(character, slot);
+        const style = { fontSize: "15px", color: TEXT_COLORS.inkDim, wordWrap: { width: STATS_WIDTH } };
+        gearY += this.add(addBodyText(scene, STATS_X, gearY, `${SLOT_LABEL[slot]}: ${item?.name ?? "—"}`, { fontSize: "17px" })).height;
+        gearY += this.add(addBodyText(scene, STATS_X, gearY, item ? describeEquipment(item, true) : this.bareText(slot), style)).height + 8;
+      }
+    }
 
     this.listAbilities();
-    const many = this.host.members.length > 1;
-    this.footer.setText(`${many ? "←/→: trocar de personagem  ·  " : ""}↑/↓: habilidade  ·  Enter: usar  ·  I: mochila  ·  Esc: fechar`);
+  }
+
+  /** O que vale num lugar vazio. */
+  private bareText(slot: EquipmentSlot): string {
+    return slot === "weapon" ? "mãos vazias: 1d6, o natural da Ordem" : "nada";
+  }
+
+  private setFooter(text: string): void {
+    const many = !this.targeting && this.host.members.length > 1;
+    this.footer.setText(`${many ? "←/→: trocar de personagem  ·  " : ""}${text}`);
   }
 
   private setMenu(options: MenuOption[], onCancel: () => void): void {
     this.menu?.destroy();
-    this.detail.setY(TOP + 40 + options.length * SKILL_LINE + 14);
-    this.menu = new Menu(this.scene, SKILLS_X, TOP + 40, options, {
+    this.detail.setY(TOP + 36 + options.length * SKILL_LINE + 12);
+    this.menu = new Menu(this.scene, SKILLS_X, TOP + 36, options, {
       lineHeight: SKILL_LINE,
-      fontSize: 20,
+      fontSize: 19,
       onCancel,
       adopt: (item) => this.addHud(item),
     });
@@ -241,18 +307,114 @@ export class SheetPanel {
 
   private listAbilities(): void {
     this.targeting = false;
-    const abilities = sheetAbilities(this.character);
+    this.heading.setText("HABILIDADES");
+    const { character } = this;
+    const abilities = sheetAbilities(character);
+    // O que a Ordem ainda vai ensinar: à vista, apagado, com o nível em que chega.
+    const ahead = fights(character) && !character.arts ? kitOf(character).filter((entry) => entry.level > character.level) : [];
     this.setMenu(
-      abilities.map((ability) => {
-        const { tag, text } = this.usage(ability);
-        return {
-          label: `${ability.name}${tag}`,
-          onFocus: () => this.detail.setText(`${ability.flavor}\n\n${describeAbility(ability)}\n\n${text}`),
-          onSelect: () => this.use(ability),
-        };
-      }),
+      [
+        ...abilities.map((ability) => {
+          const { tag, text } = this.usage(ability);
+          return {
+            label: `${ability.name}${tag}`,
+            onFocus: () => this.detail.setText(`${ability.flavor}\n\n${describeAbility(ability)}\n\n${text}`),
+            onSelect: () => this.use(ability),
+          };
+        }),
+        ...ahead.map((entry) => ({ label: `${entry.ability.name}  ·  no nível ${entry.level}`, disabled: true, onSelect: () => undefined })),
+      ],
       () => this.host.onClose(),
     );
+    this.setFooter("↑/↓: habilidade  ·  Enter: usar  ·  E: equipar  ·  I: mochila  ·  Esc: fechar");
+  }
+
+  /** `E`: a lista de habilidades vira a dos três lugares do corpo. */
+  private listSlots(focus?: EquipmentSlot): void {
+    const { character } = this;
+    if (!fights(character)) {
+      this.say(`${character.name} acompanha sem lutar: não veste nada pra luta.`);
+      return;
+    }
+    this.targeting = true;
+    this.heading.setText("EQUIPAR");
+    this.setMenu(
+      [
+        ...EQUIPMENT_SLOTS.map((slot) => {
+          const item = wornItem(character, slot);
+          const spare = storedGear(this.host.owner, slot).length;
+          return {
+            label: `${SLOT_LABEL[slot]}: ${item?.name ?? "—"}${spare > 0 ? `  ·  ${spare} guardada${spare > 1 ? "s" : ""}` : ""}`,
+            onFocus: () =>
+              this.detail.setText(
+                item
+                  ? `${item.description}\n\n${describeEquipment(item)}\n\nEnter: trocar ou tirar.`
+                  : `Lugar vazio — ${this.bareText(slot)}.\n\n${spare > 0 ? "Enter: vestir uma das peças guardadas." : "Nada guardado serve aqui."}`,
+              ),
+            onSelect: () => this.listGear(slot),
+          };
+        }),
+        { label: "Voltar", onSelect: () => this.listAbilities() },
+      ],
+      () => this.listAbilities(),
+    );
+    if (focus) this.menu?.focusOn(EQUIPMENT_SLOTS.indexOf(focus));
+    this.setFooter("↑/↓: lugar  ·  Enter: trocar  ·  Esc: voltar");
+  }
+
+  /** O que há guardado pra `slot`: vestir uma peça, ou tirar a que está. */
+  private listGear(slot: EquipmentSlot): void {
+    const wearer = this.character;
+    const worn = wornItem(wearer, slot);
+    // Peças iguais aparecem uma vez, com a conta.
+    const stored = storedGear(this.host.owner, slot);
+    const kinds = [...new Map(stored.map((item) => [item.id, item])).values()];
+    const done = (text: string) => {
+      // A página se redesenha (os números mudaram) e volta pros lugares, com o cursor onde estava.
+      this.show();
+      this.listSlots(slot);
+      this.say(text);
+    };
+
+    this.heading.setText(`EQUIPAR  ·  ${SLOT_LABEL[slot].toUpperCase()}`);
+    this.detail.setText(kinds.length === 0 && !worn ? "Nada guardado serve aqui." : "");
+    this.setMenu(
+      [
+        ...kinds.map((item) => {
+          const refusal = equipRefusal(wearer, item);
+          const count = stored.filter((other) => other.id === item.id).length;
+          return {
+            label: `${item.name}${count > 1 ? `  x${count}` : ""}${refusal ? "  ·  outra Ordem" : ""}`,
+            onFocus: () =>
+              this.detail.setText(
+                `${item.description}\n\n${describeEquipment(item)}\n\n${
+                  refusal ? EQUIP_REFUSAL[refusal] : worn ? `Enter: vestir no lugar de ${worn.name}.` : "Enter: vestir."
+                }`,
+              ),
+            onSelect: () => {
+              const result = this.host.onEquip(wearer, item.id);
+              if (!result.ok) this.say(EQUIP_REFUSAL[result.reason]);
+              else done(`${wearer.name} veste ${item.name}.${result.replaced ? ` ${result.replaced.name} volta pro guardado.` : ""}`);
+            },
+          };
+        }),
+        ...(worn
+          ? [
+              {
+                label: `Tirar ${worn.name}`,
+                onFocus: () => this.detail.setText(`${worn.name} volta pro guardado. O lugar fica vazio — ${this.bareText(slot)}.`),
+                onSelect: () => {
+                  this.host.onUnequip(wearer, slot);
+                  done(`${wearer.name} guarda ${worn.name}.`);
+                },
+              },
+            ]
+          : []),
+        { label: "Voltar", onSelect: () => this.listSlots(slot) },
+      ],
+      () => this.listSlots(slot),
+    );
+    this.setFooter("↑/↓: peça  ·  Enter: vestir  ·  Esc: voltar");
   }
 
   private use(ability: Ability): void {
@@ -269,6 +431,7 @@ export class SheetPanel {
     const caster = this.character;
     const targets = ability.targets === "self" ? [caster] : this.host.members.filter(fights);
     this.targeting = true;
+    this.setFooter("↑/↓: em quem  ·  Enter: usar  ·  Esc: voltar");
     this.detail.setText(`${ability.name}: em quem?`);
     this.setMenu(
       [
@@ -297,6 +460,7 @@ export class SheetPanel {
     if (this.scene.time.now - this.openedAt < INPUT_GRACE_MS) return;
     if (event.code === "KeyC") this.host.onClose();
     else if (event.code === "KeyI") this.host.onBag();
+    else if (event.code === "KeyE" && !this.targeting) this.listSlots();
     else if (!this.targeting && this.host.members.length > 1) {
       const step = event.code === "ArrowLeft" || event.code === "KeyA" ? -1 : event.code === "ArrowRight" || event.code === "KeyD" ? 1 : 0;
       if (step === 0) return;

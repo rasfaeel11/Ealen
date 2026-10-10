@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import { activeUnit, isAlive, styleLabel, type Encounter } from "@ealen/shared";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
-import { addBodyText, addPanel, addTitleText } from "../ui";
+import { addBodyText, addPanel, drawPanel, addTitleText } from "../ui";
 
 /** Uma opção da barra de ações: mover, uma habilidade, um item ou encerrar o turno. */
 export interface ActionButton {
@@ -16,11 +16,16 @@ export interface ActionButton {
 /** Põe um objeto na cena de modo que só a câmera da interface o desenhe. */
 export type AddHud = <T extends Phaser.GameObjects.GameObject>(object: T) => T;
 
-const BAR_HEIGHT = 132;
 const BAR_X = 20;
-const BAR_Y = GAME_HEIGHT - BAR_HEIGHT - 16;
 const BAR_PADDING = 20;
 const BUTTON_LINE_HEIGHT = 28;
+/** A barra cresce com as linhas de botões que o kit de quem está na vez pede; nunca fica menor que duas. */
+const MIN_BUTTON_ROWS = 2;
+/** O que a barra tem além dos botões: a linha de recursos em cima e a de dica embaixo. */
+const BAR_HEADER = 40;
+const BAR_FOOTER = 36;
+const BAR_BOTTOM = 16;
+const barHeight = (rows: number) => BAR_HEADER + Math.max(rows, MIN_BUTTON_ROWS) * BUTTON_LINE_HEIGHT + BAR_FOOTER;
 const BUTTON_GAP = 26;
 const LOG_LINES = 7;
 const BOX_STYLE = { backgroundColor: "rgba(20, 17, 16, 0.82)", padding: { x: 12, y: 10 } };
@@ -78,23 +83,33 @@ export class CombatHud {
         .setVisible(false),
     );
 
-    this.bar = addHud(addPanel(scene, BAR_X, BAR_Y, GAME_WIDTH - BAR_X * 2, BAR_HEIGHT, true));
-    this.resources = addHud(
-      addBodyText(scene, BAR_X + BAR_PADDING, BAR_Y + 12, "", { fontSize: "17px", color: TEXT_COLORS.gold }),
-    );
+    this.bar = addHud(scene.add.graphics());
+    this.resources = addHud(addBodyText(scene, BAR_X + BAR_PADDING, 0, "", { fontSize: "17px", color: TEXT_COLORS.gold }));
     this.detail = addHud(
-      addBodyText(scene, BAR_X + BAR_PADDING, BAR_Y + BAR_HEIGHT - 32, "", {
+      addBodyText(scene, BAR_X + BAR_PADDING, 0, "", {
         fontSize: "16px",
         fontStyle: "italic",
         color: TEXT_COLORS.inkDim,
       }),
     );
     this.warning = addHud(
-      addBodyText(scene, GAME_WIDTH / 2, BAR_Y - 30, "", { fontSize: "20px", color: TEXT_COLORS.danger })
+      addBodyText(scene, GAME_WIDTH / 2, 0, "", { fontSize: "20px", color: TEXT_COLORS.danger })
         .setOrigin(0.5)
         .setShadow(0, 2, "#000000", 4)
         .setAlpha(0),
     );
+    this.layoutBar(MIN_BUTTON_ROWS);
+  }
+
+  /** Põe a barra no pé da tela com altura pra `rows` linhas de botões. Devolve o Y do alto dela. */
+  private layoutBar(rows: number): number {
+    const height = barHeight(rows);
+    const top = GAME_HEIGHT - height - BAR_BOTTOM;
+    drawPanel(this.bar, BAR_X, top, GAME_WIDTH - BAR_X * 2, height, true);
+    this.resources.setY(top + 12);
+    this.detail.setY(top + height - 30);
+    this.warning.setY(top - 30);
+    return top;
   }
 
   /** Lista de quem luta, na ordem de iniciativa, com a vez marcada. */
@@ -106,8 +121,10 @@ export class CombatHud {
       if (!isAlive(unit)) return `${marker}${unit.name}   caiu`;
       // O estilo de cada um fica à vista: é o que diz quem leva vantagem sobre quem.
       const style = unit.style ? `  ·  ${styleLabel(unit)}` : "";
+      // As condições que ele carrega, pelo nome: é o que diz em quem vale bater agora.
+      const statuses = unit.statuses.length > 0 ? `\n      ${unit.statuses.map((status) => status.name).join(", ")}` : "";
       // Quem não tem vida pra perder não tem número pra mostrar.
-      return `${marker}${unit.name}   ${unit.invulnerable ? "—" : `${unit.currentHp}/${unit.maxHp}`}${style}`;
+      return `${marker}${unit.name}   ${unit.invulnerable ? "—" : `${unit.currentHp}/${unit.maxHp}`}${style}${statuses}`;
     });
     // Quem acompanha sem lutar fica no fim, fora da ordem: mostra se o apoio dele ainda vale nesta rodada.
     const supporters = encounter.supporters.map((supporter) => `   ${supporter.name}   apoio ${supporter.ready ? "●" : "○"}`);
@@ -129,7 +146,8 @@ export class CombatHud {
     const left = BAR_X + BAR_PADDING;
     const right = GAME_WIDTH - BAR_X - BAR_PADDING;
     let x = left;
-    let y = BAR_Y + 40;
+    let row = 0;
+    const places: { x: number; row: number }[] = [];
 
     this.buttonTexts = buttons.map((button, index) => {
       const hotkey = index < 9 ? `[${index + 1}] ` : "";
@@ -144,9 +162,9 @@ export class CombatHud {
 
       if (x + text.width > right && x > left) {
         x = left;
-        y += BUTTON_LINE_HEIGHT;
+        row += 1;
       }
-      text.setPosition(x, y);
+      places.push({ x, row });
       x += text.width + BUTTON_GAP;
 
       if (button.enabled) {
@@ -155,6 +173,10 @@ export class CombatHud {
       }
       return text;
     });
+
+    // Só agora se sabe quantas linhas os botões pedem: a barra toma essa altura e eles vão pro lugar.
+    const top = this.layoutBar(row + 1);
+    this.buttonTexts.forEach((text, index) => text.setPosition(places[index].x, top + BAR_HEADER + places[index].row * BUTTON_LINE_HEIGHT));
   }
 
   /** Aciona a opção de número `index` (0 = a primeira), como se tivesse sido clicada. */

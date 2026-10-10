@@ -2,14 +2,14 @@ import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileIndex
 import { attackOdds } from "./attack";
 import { reachableTiles } from "./movement";
 import { PROPS, type PropTemplate } from "./props";
-import { STATUSES, type StatusId, type StatusTemplate } from "./statuses";
+import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
 import { punishFactor, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
 import { abilityTargets, affectedProps, affectedUnits, canAimAt } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
-import { activeUnit, effectiveAttribute, isAlive, primaryAttribute, readiness, unitAt } from "./units";
+import { activeUnit, damageTakenOf, effectiveAttribute, isAlive, movementOf, primaryAttribute, readiness, unitAt } from "./units";
 
 /**
  * A IA de inimigo, por utilidade.
@@ -55,6 +55,16 @@ const THREAT_DISCOUNT = 0.5;
 const APPROACH_VALUE = 2;
 /** Quanto vale, por turno, cada ponto de atributo que uma condição dá ou tira. */
 const ATTRIBUTE_POINT_VALUE = 0.5;
+/** Quanto vale, por turno, cada ponto que uma condição soma ou tira da rolagem de ataque de alguém. */
+const TO_HIT_VALUE = 0.75;
+/** Quantos golpes por turno se espera que aproveitem uma condição que faz o alvo sofrer mais. */
+const VULNERABLE_HITS = 0.75;
+/** Por até quantos turnos conta o dano que uma condição de proteção poupa: mais longe que isso a luta já é outra. */
+const PROTECTION_TURNS = 2;
+/** Quanto vale, por turno, impedir que alguém se cure. */
+const NO_HEAL_VALUE = 0.5;
+/** Quanto vale derrubar a guarda de quem estava em guarda. */
+const BROKEN_GUARD_VALUE = 3;
 /** Quanto vale garantir um crítico. */
 const GUARANTEED_CRIT_VALUE = 4;
 /** Quanto vale cada ponto de Fôlego recuperado: é o que paga o próximo golpe pesado. */
@@ -63,6 +73,8 @@ const BREATH_VALUE = 1.5;
 const PUSH_VALUE = 0.25;
 /** Quanto vale pôr sob os pés de alguém uma superfície que atrapalha o passo. */
 const SLOW_VALUE = 1;
+/** Quanto vale tirar do corpo uma condição que atrapalha sem mexer em atributo (um passo preso, um golpe abafado). */
+const HARMFUL_STATUS_VALUE = 2;
 /** Desempate: entre jogadas iguais, a que anda menos. */
 const STEP_COST = 0.01;
 /** Abaixo disto uma habilidade não vale o gesto. */
@@ -131,7 +143,7 @@ export function foresee(encounter: Encounter, unitId: string): AiPlan {
   if (!unit || turnIndex < 0 || !isAlive(unit)) throw new Error(`"${unitId}" não está de pé nesta luta.`);
 
   sim.turnIndex = turnIndex;
-  unit.turn = { movement: unit.speed, action: true, bonus: true, reaction: unit.turn.reaction };
+  unit.turn = { movement: movementOf(unit), action: true, bonus: true, reaction: unit.turn.reaction };
   return planTurn(sim);
 }
 
@@ -187,7 +199,7 @@ export function planTurn(encounter: Encounter): AiPlan {
     }
 
     // Quem já se pôs em guarda neste turno está exposto a menos: sem isto, guardava e saía de perto.
-    const exposure = threatAt(sim, me, isGuarding(me));
+    const exposure = threatAt(sim, me);
     let item: AiItemChoice | undefined;
     if (me.turn.bonus) {
       const fight = { engaged: canStrike || exposure > 0, striking: canStrike && action !== undefined };
@@ -253,15 +265,18 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
 
   for (const victim of affectedUnits(encounter, ability, target)) {
     const ally = victim.team === actor.team;
-    const outlook = forecast(encounter, actor, ability, victim, isGuarding(victim), target);
+    const outlook = forecast(encounter, actor, ability, victim, target);
     // O que é bom pro alvo: bom se ele é do nosso lado, ruim se não é.
     let favor = 0;
+    // Tirar alguém do lugar só desempata entre golpes que já valem: sozinho não é motivo pra gastar o gesto.
+    let shove = 0;
 
     for (const effect of ability.effects) {
       switch (effect.kind) {
         case "damage":
           break; // já está em `outlook`, somado abaixo
         case "heal": {
+          if (victim.statuses.some((status) => status.noHeal)) break;
           const missing = victim.maxHp - victim.currentHp;
           const amount = Math.min(missing, attributeOf(actor, effect.attribute) + meanRoll(effect.dice));
           // Curar quem está por um fio vale o dobro de curar um arranhão.
@@ -272,15 +287,26 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
           favor += outlook.lands * statusFavor(encounter, victim, effect.statusId, effect.turns, profile);
           break;
         case "breath":
-          favor += outlook.lands * BREATH_VALUE * Math.min(effect.amount, victim.maxBreath - victim.breath);
+          // Devolver Fôlego ajuda quem o recebe; tirar (negativo) atrapalha, até o que ele tem.
+          favor +=
+            outlook.lands *
+            BREATH_VALUE *
+            (effect.amount < 0 ? -Math.min(-effect.amount, victim.breath) : Math.min(effect.amount, victim.maxBreath - victim.breath));
           break;
         case "push":
-          favor -= outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
+          if (!victim.statuses.some((status) => status.immovable)) shove += outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
           break;
       }
     }
 
     const harm = Math.min(outlook.damage, victim.currentHp);
+    if (harm > 0) favor -= shove;
+    // O golpe que devolve vida a quem bate: vale como a cura que é, pelo que falta a ele.
+    const leech = ability.effects.reduce((sum, effect) => sum + (effect.kind === "damage" ? (effect.leech ?? 0) : 0), 0);
+    if (leech > 0 && !ally && !actor.statuses.some((status) => status.noHeal)) {
+      const missing = actor.maxHp - actor.currentHp;
+      value += profile.support * Math.min(missing, harm * leech) * (1 + missing / actor.maxHp);
+    }
     if (ally) {
       value += profile.support * favor - FRIENDLY_FIRE * (harm + KILL_VALUE * outlook.kill);
     } else {
@@ -354,9 +380,8 @@ function overkill(encounter: Encounter, actor: Unit, profile: AiProfile, first: 
   for (const victim of affectedUnits(encounter, first.ability, first.target)) {
     if (victim.team === actor.team || !alsoHit.includes(victim)) continue;
 
-    const guarded = isGuarding(victim);
-    const a = forecast(encounter, actor, first.ability, victim, guarded, first.target);
-    const b = forecast(encounter, actor, second.ability, victim, guarded, second.target);
+    const a = forecast(encounter, actor, first.ability, victim, first.target);
+    const b = forecast(encounter, actor, second.ability, victim, second.target);
     const harm = Math.min(a.damage, victim.currentHp) + Math.min(b.damage, victim.currentHp);
     excess += profile.aggression * Math.max(0, harm - victim.currentHp);
     excess += profile.finisher * KILL_VALUE * a.kill * b.kill;
@@ -378,13 +403,21 @@ function statusFavor(
   const status: StatusTemplate = STATUSES[statusId];
 
   let favor = 0;
-  if (status.guard) {
-    // A guarda vale o dano que ela deve segurar — nada, se ninguém alcança.
-    const spared = threatAt(encounter, victim, false) - threatAt(encounter, victim, true);
-    favor += profile.caution * THREAT_DISCOUNT * spared;
+  if (status.guard || (status.evasion ?? 0) > 0 || (status.damageTaken ?? 0) < 0) {
+    // O que protege (guarda, esquiva, golpe que chega mais leve) vale o dano que deve poupar — nada, se ninguém alcança.
+    const shielded: Unit = { ...victim, statuses: [...victim.statuses, { ...status, attributeBonus: undefined, turnsLeft: turns }] };
+    const spared = threatAt(encounter, victim) - threatAt(encounter, shielded);
+    favor += profile.caution * THREAT_DISCOUNT * spared * Math.min(turns, PROTECTION_TURNS);
   }
   if (status.guaranteedCrit) favor += GUARANTEED_CRIT_VALUE;
   for (const points of Object.values(status.attributeBonus ?? {})) favor += ATTRIBUTE_POINT_VALUE * points * turns;
+  favor += TO_HIT_VALUE * (status.toHit ?? 0) * turns;
+  // O que atrapalha quem a recebe, na moeda de sempre: pontos de vida.
+  if ((status.damageTaken ?? 0) > 0) favor -= VULNERABLE_HITS * status.damageTaken! * turns;
+  if (status.harm) favor -= Math.min(meanRoll(status.harm) * turns, victim.currentHp);
+  if (status.speed) favor += SLOW_VALUE * Math.sign(status.speed) * turns;
+  if (status.noHeal) favor -= NO_HEAL_VALUE * turns;
+  if (status.breaksGuard && isGuarding(victim)) favor -= BROKEN_GUARD_VALUE;
   return favor;
 }
 
@@ -417,14 +450,17 @@ function itemValue(unit: Unit, profile: AiProfile, item: ConsumableItem, fight: 
 
   switch (effect.kind) {
     case "heal_hp":
+      if (unit.statuses.some((status) => status.noHeal)) return 0;
       return missing >= effect.amount * MIN_HEAL_USE ? profile.support * healWorth(effect.amount) : 0;
     case "cure_status": {
-      // Vale pelo que tira do corpo: cada ponto de atributo que as condições ruins ainda iam custar.
+      // Vale pelo que tira do corpo: cada ponto de atributo que as condições ruins ainda iam custar,
+      // e um tanto fixo por condição que atrapalha de outro jeito.
       let burden = 0;
       for (const status of unit.statuses) {
-        for (const points of Object.values(status.attributeBonus ?? {})) {
-          if (points < 0) burden -= ATTRIBUTE_POINT_VALUE * points * status.turnsLeft;
-        }
+        if (!isHarmful(status)) continue;
+        let points = 0;
+        for (const bonus of Object.values(status.attributeBonus ?? {})) points -= Math.min(0, bonus);
+        burden += points > 0 ? ATTRIBUTE_POINT_VALUE * points * status.turnsLeft : HARMFUL_STATUS_VALUE;
       }
       return burden > 0 ? profile.support * (burden + healWorth(5)) : 0;
     }
@@ -480,16 +516,10 @@ function attributeOf(actor: Unit, ref: AttributeRef | undefined): number {
  * a conta de dano espelha o efeito "damage" de ./engine.ts — se a regra de
  * lá mudar, esta muda junto.
  */
-function forecast(
-  encounter: Encounter,
-  actor: Unit,
-  ability: Ability,
-  target: Unit,
-  guarded: boolean,
-  aim?: Pos,
-): Forecast {
+function forecast(encounter: Encounter, actor: Unit, ability: Ability, target: Unit, aim?: Pos): Forecast {
   const { hit, crit } = attackOdds(encounter, actor, ability, target, aim);
 
+  const guarded = isGuarding(target);
   const targetOr = effectiveAttribute(target, "or");
   const damageOn = (critical: boolean) => {
     // Quem não tem vida pra perder não sofre dano nenhum.
@@ -499,11 +529,11 @@ function forecast(
       if (effect.kind !== "damage") continue;
       let amount = (attributeOf(actor, effect.attribute) + meanRoll(effect.dice)) * (effect.multiplier ?? 1);
       if (effect.bonus) amount += Math.floor(effectiveAttribute(actor, effect.bonus.attribute) / effect.bonus.divisor);
-      // O traço dos estilos, na mesma ordem do motor: Onda, crítico, Rachadura, armadura, Muralha.
+      // Na mesma ordem do motor: Onda, crítico, Rachadura, o que as condições do alvo somam, armadura (se o golpe não a fura), Muralha.
       amount += waveBonus(actor, ability, target);
       if (critical) amount *= 2;
       amount *= punishFactor(actor, target);
-      amount = Math.max(1, amount - Math.floor(targetOr / 2));
+      amount = Math.max(1, amount + damageTakenOf(target) - (effect.piercing ? 0 : Math.floor(targetOr / 2)));
       amount = Math.max(1, amount - styleReduction(target));
       if (guarded) amount -= Math.min(amount, targetOr + 3.5);
       total += amount;
@@ -526,9 +556,10 @@ function forecast(
  * O dano médio a que `victim` fica exposto onde está: o melhor golpe de cada
  * inimigo que já o alcança DE ONDE ESTÁ. Quem ainda precisa andar não conta
  * — é o que deixa sair da linha de tiro (ou pra trás de uma pedra) valer
- * alguma coisa.
+ * alguma coisa. `victim` pode ser uma cópia com uma condição a mais: é como
+ * se pergunta quanto uma guarda pouparia.
  */
-function threatAt(encounter: Encounter, victim: Unit, guarded: boolean): number {
+function threatAt(encounter: Encounter, victim: Unit): number {
   const { pos } = victim;
   let total = 0;
   for (const foe of encounter.units) {
@@ -539,7 +570,7 @@ function threatAt(encounter: Encounter, victim: Unit, guarded: boolean): number 
       if (!isOffensive(ability) || readiness(foe, ability, true) !== "ready") continue;
       if (distance(foe.pos, pos) > ability.range + (ability.radius ?? 0)) continue;
       if (!hasLineOfSight(encounter.grid, foe.pos, pos)) continue;
-      worst = Math.max(worst, forecast(encounter, foe, ability, victim, guarded).damage);
+      worst = Math.max(worst, forecast(encounter, foe, ability, victim).damage);
     }
     total += Math.min(worst, victim.currentHp);
   }
@@ -558,7 +589,7 @@ function opportunityDamage(encounter: Encounter, mover: Unit, from: Pos, to: Pos
     const ability = foe.abilities.find((candidate) => candidate.opportunity && readiness(foe, candidate, true) === "ready");
     if (!ability) continue;
     if (distance(foe.pos, from) <= ability.range && distance(foe.pos, to) > ability.range) {
-      total += forecast(encounter, foe, ability, mover, isGuarding(mover)).damage;
+      total += forecast(encounter, foe, ability, mover).damage;
     }
   }
   mover.pos = stop;

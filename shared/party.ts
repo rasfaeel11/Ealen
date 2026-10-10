@@ -1,11 +1,13 @@
 import { createStartingAttributes, createStartingInventory, startingMaxHp } from "./characterCreation";
 import { restoreBreath } from "./breath";
+import { startingEquipment } from "./equipment";
 import { applyXpGain, xpToNextLevel } from "./leveling";
 import { MOCK_MAP_NODES } from "./mock/seed";
 import type { GiftId } from "./tactics/abilities";
 import type { StyleId } from "./tactics/styles";
 import type { SupportId } from "./tactics/supports";
 import type { Character } from "./types/character";
+import type { Equipment } from "./types/inventory";
 import { CLASS_INFO, type CharacterClass } from "./types/characterClass";
 import type { Race } from "./types/race";
 
@@ -27,10 +29,12 @@ import type { Race } from "./types/race";
  *
  * As Ordens aqui são PROVISÓRIAS: cada um ganhou o kit da Ordem que mais se
  * parece com o papel dele. O que a história diz de cada um está no ESTILO
- * (`style`: Maré, Viés ou Baluarte, e o grau — ver ./tactics/styles.ts) e no
- * que só ele sabe fazer (`gifts`, ver GIFTS em ./tactics/abilities.ts). Os
- * dois vêm daqui a cada luta, não da ficha salva: mudar o elenco muda quem já
- * está jogando.
+ * (`style`: Maré, Viés ou Baluarte, e o grau — ver ./tactics/styles.ts), no
+ * que só ele sabe fazer (`gifts`, ver GIFTS em ./tactics/abilities.ts) e no
+ * que ele traz no corpo (`gear`, ver ./equipment.ts). Estilo e habilidade
+ * própria vêm daqui a cada luta, não da ficha salva: mudar o elenco muda quem
+ * já está jogando. O equipamento é só o de COMEÇO — depois é da ficha, e o
+ * jogador troca.
  */
 
 /** Id fixo da protagonista: só precisa diferir dos ids dos companheiros e das criaturas. */
@@ -47,6 +51,8 @@ export interface CastMember {
   style?: { id: StyleId; grade: number };
   /** O que só ele sabe fazer, além do kit da Ordem. */
   gifts?: readonly GiftId[];
+  /** Com o que ele chega: os ids das peças (ver ./mock/equipment.ts). Sem isto, o que a Ordem dele dá. */
+  gear?: Equipment;
 }
 
 export const PROTAGONIST: CastMember = {
@@ -54,13 +60,30 @@ export const PROTAGONIST: CastMember = {
   race: "miraven",
   characterClass: "guardiao",
   style: { id: "mare", grade: 3 },
+  // Mergulhadora: a lâmina de cortar corda, a túnica e a rede no ombro — que ela também sabe abrir em cima de alguém.
+  gifts: ["net_cast"],
+  gear: { weapon: "gear-lamina-de-mergulho", armor: "gear-tunica-de-linho", accessory: "gear-rede-de-coleta" },
 };
 
 /** Quem pode entrar no grupo, pela chave que o texto usa (`join_party("lish")`). */
 export const COMPANIONS: Record<string, CastMember> = {
-  lish: { name: "Lish", race: "kelbar", characterClass: "sombrilico", style: { id: "vies", grade: 3 } },
+  lish: {
+    name: "Lish",
+    race: "kelbar",
+    characterClass: "sombrilico",
+    style: { id: "vies", grade: 3 },
+    // A faca de lado na cintura, e o corpo fora de prumo de propósito.
+    gifts: ["crooked_step"],
+    gear: { weapon: "gear-faca-larga", armor: "gear-manto-de-viagem" },
+  },
   // Não tem estilo de luta: o que ele tem é a maré, e ela cobra.
-  varel: { name: "Varel", race: "miraven", characterClass: "cantor_de_ealen", gifts: ["tide_pull"] },
+  varel: {
+    name: "Varel",
+    race: "miraven",
+    characterClass: "cantor_de_ealen",
+    gifts: ["tide_pull"],
+    gear: { weapon: "gear-corda-de-nos", armor: "gear-tunica-de-linho" },
+  },
   // Não luta: anota. A Ordem é só a cara dele no mapa, por enquanto.
   gil: { name: "Gil", race: "althirim", characterClass: "luminar", support: "annotate" },
 };
@@ -104,6 +127,20 @@ export function isOrder(value: unknown): value is CharacterClass {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(CLASS_INFO, value);
 }
 
+/**
+ * Com o que a ficha `character` começa: o que o elenco diz dela, se ela está
+ * na Ordem em que o elenco a conhece; senão, a arma e a armadura da Ordem que
+ * tem (a lâmina de mergulho não serve a quem virou Cantora), com o acessório
+ * que é dela. Quem não é do elenco começa com o que a Ordem dá.
+ */
+export function startingLoadout(character: Pick<Character, "id" | "characterClass">): Equipment {
+  const member = castOf(character);
+  const fromOrder = startingEquipment(character.characterClass);
+  if (!member?.gear) return fromOrder;
+  if (member.characterClass === character.characterClass) return { ...member.gear };
+  return member.gear.accessory ? { ...fromOrder, accessory: member.gear.accessory } : fromOrder;
+}
+
 function createSheet(id: string, member: CastMember, characterClass: CharacterClass): Character {
   const attributes = createStartingAttributes(member.race, characterClass);
   const maxHp = startingMaxHp(attributes);
@@ -118,13 +155,18 @@ function createSheet(id: string, member: CastMember, characterClass: CharacterCl
     currentHp: maxHp,
     maxHp,
     currentNodeId: MOCK_MAP_NODES[0].id,
+    // Quem só acompanha não veste nada pra luta.
+    ...(member.support ? {} : { equipment: startingLoadout({ id, characterClass }) }),
   };
 }
 
-/** Halmira no nível 1, com a mochila inicial. `order` só difere da dela num jogo novo com Ordem destravada. */
+/** Halmira no nível 1, com a mochila inicial e o que ela veste. `order` só difere da dela num jogo novo com Ordem destravada. */
 export function createProtagonist(order: CharacterClass = PROTAGONIST.characterClass): Character {
-  return { ...createSheet(HERO_ID, PROTAGONIST, order), inventory: createStartingInventory() };
+  return { ...createSheet(HERO_ID, PROTAGONIST, order), inventory: createStartingInventory(), gear: [...STARTING_STASH] };
 }
+
+/** O que a protagonista leva guardado ao começar: o gancho de coleta, que todo mergulhador tem e que é outra arma pra quem quiser. */
+export const STARTING_STASH: readonly string[] = ["gear-gancho-de-coleta"];
 
 /** Sobe a ficha até `level`, com a vida cheia. Não desce ninguém. */
 export function raiseToLevel(character: Character, level: number): void {

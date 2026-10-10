@@ -3,7 +3,7 @@ import type { AiProfile, AiQuirks } from "../tactics/types";
 import type { Character } from "./character";
 import type { Principle } from "./principle";
 
-/** Chance de drop de um item ao vencer a criatura (0 a 1). */
+/** Chance de drop de um item ao vencer a criatura (0 a 1). `itemId` é um consumível (../mock/items.ts) ou uma peça de equipamento (../mock/equipment.ts). */
 export interface LootDrop {
   itemId: string;
   chance: number;
@@ -12,8 +12,9 @@ export interface LootDrop {
 /**
  * Uma entrada do bestiário: a ficha de combate da criatura mais o que o
  * códice conta sobre ela. Criaturas reaproveitam o shape de `Character` —
- * têm atributos Tirán, Ordem e HP como qualquer um — e sobrescrevem os
- * nomes das próprias ações em `template.arts`.
+ * têm atributos Tirán, Ordem e HP como qualquer um —, dizem em
+ * `template.arts` o que sabem do kit da Ordem e com que nome, e podem vestir
+ * (`template.equipment`).
  */
 export interface BestiaryEntry {
   /** Ficha base, clonada a cada encontro (nunca use a referência direta). */

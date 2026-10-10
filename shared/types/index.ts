@@ -4,7 +4,6 @@ export * from "./characterClass";
 export * from "./principle";
 export * from "./character";
 export * from "./mapNode";
-export * from "./ability";
 export * from "./levelUp";
 export * from "./inventory";
 export * from "./bestiary";

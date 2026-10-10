@@ -223,16 +223,18 @@ test("ninguém se põe em guarda longe de qualquer ameaça", () => {
 
 test("a cautela decide se vale largar um inimigo pra derrubar outro", () => {
   const scene = () =>
-    setup(["AE...", ".....", ".....", ".....", "W...."], (at) => [
+    setup(["AE...", ".....", ".....", ".....", ".....", ".....", ".....", "W...."], (at) => [
       makeUnit("A", "enemy", at("A"), { attributes: { il: FIRST } }),
       makeUnit("E", "party", at("E")),
       makeUnit("W", "party", at("W"), { currentHp: 2 }),
     ]).encounter;
 
-  // O bruto dá as costas, leva o ataque de oportunidade e vai buscar o ferido.
+  // O bruto dá as costas, leva o ataque de oportunidade e vai buscar o ferido — até onde o puxão dele alcança.
   const reckless = scene();
   withProfile(reckless, "A", { caution: 0 });
-  assert.equal(distance(planTurn(reckless).tile, findUnit(reckless, "W")!.pos), 1);
+  const chase = planTurn(reckless).tile;
+  assert.ok(distance(chase, findUnit(reckless, "W")!.pos) <= 3);
+  assert.ok(distance(chase, findUnit(reckless, "E")!.pos) > 1);
   const rush = playTurn(reckless);
   assert.ok(eventsOf(rush, "attackRoll").some((roll) => roll.actor === "E"));
   assert.ok(eventsOf(rush, "attackRoll").some((roll) => roll.actor === "A" && roll.target === "W"));

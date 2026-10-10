@@ -14,6 +14,11 @@ import { findItemTemplate } from "./items";
  * Por isso cada uma tem um `principle` e nomes próprios de ação: um
  * Lobo-de-Bruma é modelado como sombrílico, mas dá um Bote Silencioso, não
  * uma "Fome do Vazio".
+ *
+ * `template.arts` é também O KIT da criatura: do kit da Ordem dela, ela sabe
+ * só o que nomeia ali (ver abilitiesFor em ../tactics/abilities.ts). Dar uma
+ * Técnica a uma criatura é dar um nome a ela. Quem é gente (`person`) ainda
+ * veste: `template.equipment` é a arma e a armadura com que luta.
  */
 export const BESTIARY: Record<string, BestiaryEntry> = {
   "encounter-fiapo-de-ruido": {
@@ -52,9 +57,13 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "ausencia",
     summary: "Um lobo comum que aprendeu a não estar onde se olha.",
     lore: "Passou tempo demais numa região que ninguém observava e pegou o vício do lugar. Caça exatamente como caçava antes — só que agora erra muito menos, porque é difícil desviar do que não se viu chegar.",
-    // Caçador: escolhe a presa ferida e não se expõe à toa.
+    // Caçador: escolhe a presa ferida e não se expõe à toa. Fica só com as Artes: é o primeiro bicho que se encontra,
+    // e com Deixar de Ser Notado (sumir e voltar com um crítico) passava a derrubar metade dos que começam.
     ai: { finisher: 2, caution: 0.8 },
-    drops: [{ itemId: "item-pao-de-cinza", chance: 0.6 }],
+    drops: [
+      { itemId: "item-pao-de-cinza", chance: 0.6 },
+      { itemId: "gear-presa-de-bruma", chance: 0.3 },
+    ],
     template: {
       id: "enemy-lobo-de-bruma",
       name: "Lobo-de-Bruma",
@@ -84,7 +93,10 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     // Sobrou o gesto de bater: não se guarda, não recua, não escolhe alvo.
     ai: { aggression: 1.3, finisher: 0, caution: 0 },
     carries: ["item-balsamo-de-pedra-de-taharim"],
-    drops: [{ itemId: "item-balsamo-de-pedra-de-taharim", chance: 0.5 }],
+    drops: [
+      { itemId: "item-balsamo-de-pedra-de-taharim", chance: 0.5 },
+      { itemId: "gear-placa-de-servo", chance: 0.25 },
+    ],
     template: {
       id: "enemy-servo-enferrujado",
       name: "Servo Enferrujado",
@@ -136,6 +148,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
         heavy_attack: "Extração Profunda",
         defend: "Casulo de Memória",
         heal: "Recomposição",
+        marca_de_decaimento: "Apagar o Contorno",
       },
     },
   },
@@ -148,7 +161,10 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     // Uma ordem de não deixar passar: guarda-se antes de ferir.
     ai: { aggression: 0.9, caution: 1.5 },
     carries: ["item-semente-de-horizonte"],
-    drops: [{ itemId: "item-estilhaco-de-prumo", chance: 0.55 }],
+    drops: [
+      { itemId: "item-estilhaco-de-prumo", chance: 0.55 },
+      { itemId: "gear-cota-de-escamas", chance: 0.4 },
+    ],
     template: {
       id: "enemy-vigia-do-umbral",
       name: "Vigia do Umbral",
@@ -165,6 +181,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
         attack: "Interdito",
         heavy_attack: "Ninguém Passa",
         defend: "Posto Fechado",
+        deixar_de_ser_notado: "Posto Vazio",
+        corte_do_nao_dito: "Ordem Sem Recurso",
       },
     },
   },
@@ -180,6 +198,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     drops: [
       { itemId: "item-brasa-de-forjardente", chance: 0.5 },
       { itemId: "item-calice-de-aguas-lentas", chance: 0.3 },
+      { itemId: "gear-conta-de-forja", chance: 0.4 },
     ],
     template: {
       id: "enemy-cisma-errante",
@@ -197,6 +216,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
         attack: "Desencontro",
         heavy_attack: "Rachadura Total",
         defend: "Lado Torto",
+        falha_no_padrao: "Ângulo Errado",
+        simetria_quebrada: "Contágio de Fratura",
       },
     },
   },
@@ -212,6 +233,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     drops: [
       { itemId: "item-diapasao-de-bolso", chance: 0.8 },
       { itemId: "item-semente-de-horizonte", chance: 0.4 },
+      { itemId: "gear-tabua-de-mare", chance: 0.5 },
     ],
     template: {
       id: "enemy-coro-mudo",
@@ -230,6 +252,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
         heavy_attack: "Silêncio Absoluto",
         defend: "Pausa",
         heal: "Sustentar a Nota",
+        refrao_do_silencio: "Compasso Vazio",
+        coro_de_uma_voz_so: "Uníssono",
       },
     },
   },
@@ -248,7 +272,10 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     // Fica no caminho e se guarda; só bate em quem já o atacou três turnos seguidos.
     ai: { aggression: 0.8, caution: 1.2 },
     quirks: { retaliates: 3 },
-    drops: [{ itemId: "item-pao-de-cinza", chance: 0.5 }],
+    drops: [
+      { itemId: "item-pao-de-cinza", chance: 0.5 },
+      { itemId: "gear-sinete-da-companhia", chance: 0.25 },
+    ],
     template: {
       id: "enemy-fiscal",
       name: "Fiscal",
@@ -260,6 +287,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
       currentHp: 30,
       maxHp: 30,
       currentNodeId: "node-vau-de-bruma",
+      equipment: { weapon: "gear-bastao-de-aferir", armor: "gear-gibao-da-companhia" },
       arts: {
         quick_attack: "Ponta do Bastão",
         attack: "Bastão de Aferir",
@@ -290,6 +318,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
       currentHp: 24,
       maxHp: 24,
       currentNodeId: "node-vau-de-bruma",
+      equipment: { weapon: "gear-arpao-de-fundo", armor: "gear-tunica-de-linho" },
       arts: {
         quick_attack: "Arpão Curto",
         attack: "Arpoar",
@@ -320,11 +349,15 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
       currentHp: 60,
       maxHp: 60,
       currentNodeId: "node-vau-de-bruma",
+      // A lâmina numa mão; o gancho de coleta é o puxão dele.
+      equipment: { weapon: "gear-lamina-de-mergulho", armor: "gear-tunica-de-linho" },
       arts: {
-        quick_attack: "Resposta Curta",
+        quick_attack: "Gancho de Coleta",
         attack: "O Mesmo Golpe",
         heavy_attack: "Devolver com Peso",
         defend: "A Mesma Guarda",
+        puxao_de_mare: "O Mesmo Puxão",
+        ancora_da_singularidade: "O Mesmo Chão",
       },
     },
   },

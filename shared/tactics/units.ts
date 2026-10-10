@@ -1,4 +1,5 @@
 import { breathOf, maxBreath } from "../breath";
+import { gearDefense, gearSpeed, gearedAttributes } from "../equipment";
 import type { Attributes } from "../types/attributes";
 import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
@@ -39,11 +40,13 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     team: placement.team,
     characterClass: character.characterClass,
     level: character.level,
-    attributes: { ...character.attributes },
+    // O que ele veste entra aqui (ver ../equipment.ts): o acessório nos atributos, a armadura na defesa e no passo.
+    attributes: gearedAttributes(character),
     currentHp: character.currentHp,
     maxHp: character.maxHp,
     pos: { ...placement.pos },
-    speed: DEFAULT_SPEED,
+    speed: Math.max(1, DEFAULT_SPEED + gearSpeed(character)),
+    ...(gearDefense(character) ? { defense: gearDefense(character) } : {}),
     abilities: [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))],
     statuses: [],
     breath: breathOf(character),
@@ -128,6 +131,21 @@ export function unitAt(encounter: Encounter, pos: Pos): Unit | undefined {
 
 export function primaryAttribute(unit: Pick<Unit, "characterClass">): keyof Attributes {
   return CLASS_INFO[unit.characterClass].primaryAttributes[0];
+}
+
+/** Os quadrados de movimento que `unit` tem num turno, com as condições que prendem (ou soltam) o passo. Nunca abaixo de zero. */
+export function movementOf(unit: Unit): number {
+  return Math.max(0, unit.speed + unit.statuses.reduce((sum, status) => sum + (status.speed ?? 0), 0));
+}
+
+/** O que as condições de `unit` somam (ou tiram) de cada golpe que ele recebe, antes da armadura. */
+export function damageTakenOf(unit: Unit): number {
+  return unit.statuses.reduce((sum, status) => sum + (status.damageTaken ?? 0), 0);
+}
+
+/** A defesa de `unit` além do Or: o que a armadura dá e o que as condições de esquiva somam. */
+export function defenseBonus(unit: Unit): number {
+  return (unit.defense ?? 0) + unit.statuses.reduce((sum, status) => sum + (status.evasion ?? 0), 0);
 }
 
 /** Atributo já com as condições ativas somadas. Nunca fica negativo. */

@@ -1,8 +1,8 @@
 import type { Character } from "./types/character";
-import type { LevelUpResult } from "./types/levelUp";
+import type { LearnedAbility, LevelUpResult } from "./types/levelUp";
 import { ATTRIBUTE_KEYS } from "./types/attributes";
 import { CLASS_INFO } from "./types/characterClass";
-import { MOCK_ABILITIES } from "./mock/seed";
+import { learnedAt } from "./tactics/abilities";
 
 /** XP concedido por vencer um inimigo, baseado no nível dele. */
 export function xpForEnemy(enemy: Pick<Character, "level">): number {
@@ -23,15 +23,15 @@ export function xpToNextLevel(level: number): number {
  *
  * O atributo primário da classe sobe mais que os demais a cada nível; Nath
  * (Vitalidade) também aumenta o HP máximo, já que é o atributo que o
- * governa. Se o novo nível bater com o unlockLevel de alguma Ability da
- * classe, ela é retornada como habilidade recém-desbloqueada (a última,
- * se o personagem subir mais de um nível de uma vez).
+ * governa. As Técnicas que a Ordem dá em cada nível alcançado (ver
+ * `learnedAt` em ./tactics/abilities.ts) voltam em `learned`: a ficha já as
+ * tem — o kit se monta pelo nível —, isto é só o que há pra anunciar.
  */
 export function applyXpGain(character: Character, xpGained: number): LevelUpResult {
   character.xp += xpGained;
 
   let leveledUp = false;
-  let newAbility: LevelUpResult["newAbility"];
+  const learned: LearnedAbility[] = [];
   const primaryAttributes = CLASS_INFO[character.characterClass].primaryAttributes;
 
   while (character.xp >= xpToNextLevel(character.level)) {
@@ -49,11 +49,8 @@ export function applyXpGain(character: Character, xpGained: number): LevelUpResu
       }
     }
 
-    const unlocked = MOCK_ABILITIES.find(
-      (ability) => ability.characterClass === character.characterClass && ability.unlockLevel === character.level,
-    );
-    if (unlocked) newAbility = unlocked;
+    for (const { id, name, flavor } of learnedAt(character.characterClass, character.level)) learned.push({ id, name, flavor });
   }
 
-  return leveledUp ? { leveledUp: true, newLevel: character.level, newAbility } : { leveledUp: false };
+  return leveledUp ? { leveledUp: true, newLevel: character.level, learned } : { leveledUp: false };
 }

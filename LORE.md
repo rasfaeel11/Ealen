@@ -191,10 +191,26 @@ nomeia uma grandeza que o mundo realmente trata como física.
 ## 7. As Artes de combate
 
 Cada Ordem nomeia suas ações de combate de acordo com o Princípio que
-manipula. Mecanicamente são as mesmas cinco escolhas; narrativamente, um
-Guardião e um Sombrílico fazem coisas irreconhecíveis entre si.
+manipula. São os mesmos cinco papéis em toda Ordem — e, desde que os kits
+deixaram de ser provisórios, cada Ordem faz com eles o que o Princípio dela
+faz: o golpe rápido do Guardião puxa, o do Entropista enferruja, o do
+Rachador abre uma trinca; a guarda do Sombrílico é não estar lá. O que cada
+Arte faz em números está em `shared/tactics/abilities.ts`.
 
-| Ordem | Rápido (+3 acerto, 60% dano) | Padrão | Pesado (-4 acerto, 180% dano) | Guarda | Cura |
+Além das Artes, cada Ordem ensina duas **Técnicas**, que chegam com o nível:
+
+| Ordem | Primeira | Segunda |
+|---|---|---|
+| **Luminar** | Muralha de Prumo | Antífona de Aurora |
+| **Entropista** | Marca de Decaimento | Lei Irreversível |
+| **Cantor de Eälen** | Refrão do Silêncio | Coro de Uma Voz Só |
+| **Guardião** | Puxão de Maré | Âncora da Singularidade |
+| **Sombrílico** | Deixar de Ser Notado | Corte do Não-Dito |
+| **Rachador** | Falha no Padrão | Simetria Quebrada |
+
+E as Artes, pelo papel de cada uma:
+
+| Ordem | Rápido (ação bônus) | Padrão | Pesado (custa Fôlego) | Guarda | Cura |
 |---|---|---|---|---|---|
 | **Luminar** | Cadência Justa | Lâmina de Aurora | Sentença de Simetria | Círculo Inquebrável | Restituição |
 | **Entropista** | Sopro de Ferrugem | Toque de Decaimento | Décadas num Instante | Manto de Cinzas | Cicatriz Acelerada |

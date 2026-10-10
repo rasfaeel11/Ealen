@@ -159,10 +159,14 @@ test("o grupo luta junto até o fim; quem cai numa vitória se levanta com 1 de 
   );
   assert.equal(rewards.xpGained, 140);
   assert.equal(rewards.levelUp.leveledUp, true);
-  assert.deepEqual(rewards.companionLevels, [
-    { name: "Lish", level: 2 },
-    { name: "Varel", level: 2 },
-  ]);
+  // O Sombrílico só aprende Técnica no nível 3; o Cantor já ganha uma no 2.
+  assert.deepEqual(
+    rewards.companionLevels.map(({ name, level, learned }) => ({ name, level, learned: learned.map((ability) => ability.name) })),
+    [
+      { name: "Lish", level: 2, learned: [] },
+      { name: "Varel", level: 2, learned: ["Refrão do Silêncio"] },
+    ],
+  );
   assert.equal(company[0].inventory, undefined);
 
   // Numa derrota a ficha fica como a luta deixou, e o descanso levanta todo mundo.

@@ -3,15 +3,16 @@
  * nível 1, sozinha contra cada criatura do bestiário, numa arena aberta.
  *
  *     npm run balance:matrix --workspace=server
+ *     npm run balance:matrix --workspace=server -- 100 lobo     (menos lutas, só uma criatura)
  *
  * Os dois lados são jogados pela IA do jogo (chooseCommand) — a criatura
- * com os pesos, o estilo, as manias e a mochila dela no bestiário, o herói com os pesos padrão
- * e sem item. Um jogador de verdade joga melhor que a IA: os números não medem
+ * com os pesos, o estilo, as manias, a mochila e o que ela veste no bestiário, o herói com os
+ * pesos padrão, o equipamento de começo da Ordem e sem item. Um jogador de verdade joga melhor que a IA: os números não medem
  * dificuldade, servem pra comparar ANTES e DEPOIS de mexer em atributos,
  * habilidades, no bestiário ou na própria IA.
  *
  * Cada célula é "vitórias do herói / rodadas em média". Luta que não acaba
- * conta como derrota e aparece no total do rodapé: se esse número não for
+ * conta como derrota, aparece na célula como "!n" e no total do rodapé: se esse número não for
  * zero, alguma combinação empata pra sempre (dois lados que se curam mais do
  * que se ferem, por exemplo) e isso é defeito a consertar.
  *
@@ -28,13 +29,17 @@ import {
   gridFromAscii,
   spawnCreature,
   startEncounter,
+  startingEquipment,
   startingMaxHp,
   unitFromCharacter,
   type Character,
   type CharacterClass,
 } from "@ealen/shared";
 
-const N = 300;
+// `npm run balance:matrix --workspace=server -- 100 lobo` roda 100 lutas por célula, só contra as criaturas
+// cujo id tem "lobo": é o jeito rápido de conferir uma mudança num lugar só.
+const [countArg, filterArg] = process.argv.slice(2);
+const N = Number(countArg) > 0 ? Math.floor(Number(countArg)) : 300;
 /** Uma luta que passe disto não vai acabar: é contada como derrota e como empate eterno. */
 const MAX_COMMANDS = 2000;
 
@@ -54,6 +59,8 @@ function makePlayer(characterClass: CharacterClass): Character {
     currentHp: maxHp,
     maxHp,
     currentNodeId: "n",
+    // Vestido como quem começa naquela Ordem: é com a arma e a armadura dela que o kit foi pensado.
+    equipment: startingEquipment(characterClass),
   };
 }
 
@@ -87,7 +94,7 @@ function fight(characterClass: CharacterClass, creatureId: string, seed: number)
   return { won: encounter.winner === "party", rounds: encounter.round, endless: !encounter.winner };
 }
 
-const creatures = Object.keys(BESTIARY);
+const creatures = Object.keys(BESTIARY).filter((id) => !filterArg || id.includes(filterArg));
 const classes = Object.keys(CLASS_INFO) as CharacterClass[];
 
 const header = ["Ordem".padEnd(28), ...creatures.map((id) => BESTIARY[id].template.name.slice(0, 14).padEnd(15))].join("");
@@ -97,13 +104,16 @@ for (const characterClass of classes) {
   const cells = creatures.map((creatureId) => {
     let wins = 0;
     let rounds = 0;
+    let stuck = 0;
     for (let seed = 1; seed <= N; seed++) {
       const result = fight(characterClass, creatureId, seed);
       if (result.won) wins++;
-      if (result.endless) endless++;
+      if (result.endless) stuck++;
       rounds += result.rounds;
     }
-    return `${Math.round((wins / N) * 100)}% / ${(rounds / N).toFixed(1)}r`.padEnd(15);
+    endless += stuck;
+    // Um "!n" na célula diz ONDE estão as lutas que não acabaram.
+    return `${Math.round((wins / N) * 100)}% / ${(rounds / N).toFixed(1)}r${stuck > 0 ? ` !${stuck}` : ""}`.padEnd(15);
   });
   console.log([CLASS_INFO[characterClass].name.padEnd(28), ...cells].join(""));
 }

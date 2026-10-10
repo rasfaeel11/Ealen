@@ -1,4 +1,4 @@
-import { addItemToInventory } from "../inventoryEffects";
+import { addItemToInventory, findItem, giveItem, type GameItem } from "../inventoryEffects";
 import { applyXpGain, xpForEnemy } from "../leveling";
 import { creatureQuirks, findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { findItemTemplate } from "../mock/items";
@@ -11,7 +11,7 @@ import type { Cue, CueStatus, Encounter, TacticalEvent, TeamId } from "../tactic
 import { findUnit, syncCharacterFromUnit, unitFromCharacter } from "../tactics/units";
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
-import type { LevelUpResult } from "../types/levelUp";
+import type { LearnedAbility, LevelUpResult } from "../types/levelUp";
 import { HERO_ID, castOf, companionId, supportOf } from "../party";
 import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
 
@@ -290,10 +290,10 @@ export function unusedItems(encounter: Encounter, team: TeamId): ConsumableItem[
 export interface EncounterRewards {
   xpGained: number;
   levelUp: LevelUpResult;
-  /** Itens deixados pelas criaturas, já somados à mochila de `character`. */
-  loot: ConsumableItem[];
-  /** Os companheiros que subiram de nível, e pra qual. */
-  companionLevels: { name: string; level: number }[];
+  /** O que as criaturas deixaram, já com `character`: consumível na mochila, equipamento no guardado. */
+  loot: GameItem[];
+  /** Os companheiros que subiram de nível, pra qual, e as Técnicas que aprenderam nisso. */
+  companionLevels: { name: string; level: number; learned: LearnedAbility[] }[];
 }
 
 /**
@@ -312,7 +312,7 @@ export function grantEncounterRewards(
   companions: Character[] = [],
 ): EncounterRewards {
   let xpGained = 0;
-  const loot: ConsumableItem[] = [];
+  const loot: GameItem[] = [];
 
   for (const item of carried) {
     // O molde, não o item da luta: a mochila guarda itens inteiros.
@@ -327,14 +327,15 @@ export function grantEncounterRewards(
 
     for (const drop of entry.drops) {
       if (nextRandom(rng) > drop.chance) continue;
-      const item = findItemTemplate(drop.itemId);
-      if (item && addItemToInventory(character, item)) loot.push(item);
+      const item = findItem(drop.itemId);
+      if (item && giveItem(character, item)) loot.push(item);
     }
   }
 
   const companionLevels: EncounterRewards["companionLevels"] = [];
   for (const companion of companions) {
-    if (applyXpGain(companion, xpGained).leveledUp) companionLevels.push({ name: companion.name, level: companion.level });
+    const levelUp = applyXpGain(companion, xpGained);
+    if (levelUp.leveledUp) companionLevels.push({ name: companion.name, level: companion.level, learned: levelUp.learned ?? [] });
   }
   return { xpGained, levelUp: applyXpGain(character, xpGained), loot, companionLevels };
 }

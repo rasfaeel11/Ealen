@@ -1,7 +1,7 @@
 import { distance, tileAt, tilesBetween, type Pos } from "./grid";
 import { STYLE_TO_HIT, styleMatchup } from "./styles";
 import type { Ability, Encounter, Unit } from "./types";
-import { effectiveAttribute, isAlive, primaryAttribute } from "./units";
+import { defenseBonus, effectiveAttribute, isAlive, primaryAttribute } from "./units";
 
 /**
  * O que a POSIÇÃO faz a um ataque — cobertura, flanco e altura — e o que o
@@ -97,7 +97,8 @@ export function attackTotals(actor: Unit, ability: Ability, target: Unit, edge: 
   const condition = actor.statuses.reduce((sum, status) => sum + (status.toHit ?? 0), 0);
   return {
     bonus: effectiveAttribute(actor, primaryAttribute(actor)) + (ability.attack?.toHit ?? 0) + edge.toHit + condition,
-    defense: 10 + effectiveAttribute(target, "or") + edge.defense,
+    // A armadura e a esquiva só dificultam o acerto; quem tira dano do golpe que pega é o Or.
+    defense: 10 + effectiveAttribute(target, "or") + defenseBonus(target) + edge.defense,
   };
 }
 

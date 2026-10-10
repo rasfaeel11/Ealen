@@ -30,11 +30,18 @@ export type Effect =
       multiplier?: number;
       /** Soma fixa de `attribute / divisor`, arredondada pra baixo. */
       bonus?: { attribute: keyof Attributes; divisor: number };
+      /** Fura a armadura: o Or do alvo não tira nada deste dano (a guarda e a Muralha ainda seguram). */
+      piercing?: boolean;
+      /** Devolve a quem bate esta fração do dano que de fato entrou, como vida (arredondada pra baixo). */
+      leech?: number;
     }
   /** Cura: atributo + dados, limitada ao HP que falta. */
   | { kind: "heal"; dice: Dice; attribute?: AttributeRef }
   | { kind: "status"; statusId: StatusId; turns: number }
-  /** Devolve Fôlego ao alvo (ver ../breath.ts), até o que ele tem descansado. */
+  /**
+   * Devolve Fôlego ao alvo (ver ../breath.ts), até o que ele tem descansado.
+   * Negativo, TIRA: o alvo perde até esse tanto do Fôlego que tem.
+   */
   | { kind: "breath"; amount: number }
   /**
    * Empurra o alvo pra longe de quem usou, até `distance` quadrados
@@ -195,8 +202,10 @@ export interface Unit {
   currentHp: number;
   maxHp: number;
   pos: Pos;
-  /** Quadrados de movimento por turno. */
+  /** Quadrados de movimento por turno, já com o peso do que veste. As condições entram por cima (ver movementOf em ./units.ts). */
   speed: number;
+  /** O que a armadura soma na defesa dele: o número que a rolagem de quem o ataca precisa alcançar (ver ../equipment.ts). */
+  defense?: number;
   abilities: Ability[];
   statuses: ActiveStatus[];
   inventory?: Inventory<ConsumableItem>;
@@ -295,6 +304,8 @@ export type TacticalEvent =
   | { type: "breathSpent"; unit: string; amount: number; remaining: number }
   /** `unit` recuperou Fôlego (o efeito `breath`). */
   | { type: "breathRecovered"; unit: string; amount: number; remaining: number }
+  /** `unit` PERDEU Fôlego pelo golpe de outro (o efeito `breath` negativo). */
+  | { type: "breathDrained"; unit: string; amount: number; remaining: number }
   | { type: "abilityUsed"; unit: string; abilityId: string; name: string; target: Pos; reaction: boolean }
   | {
       type: "attackRoll";
@@ -323,6 +334,10 @@ export type TacticalEvent =
   /** O golpe pegou em quem não tem vida pra perder (`invulnerable`): nada acontece. */
   | { type: "immune"; target: string }
   | { type: "heal"; target: string; amount: number; remainingHp: number }
+  /** Uma cura ia pegar em `target` e não pegou, por causa da condição `name` (ver `noHeal`). */
+  | { type: "healDenied"; target: string; name: string }
+  /** A condição `name` feriu `unit` no começo do turno dele (ver `harm`). O `damage` vem logo depois. */
+  | { type: "statusTriggered"; unit: string; statusId: string; name: string }
   | { type: "pushed"; unit: string; from: Pos; to: Pos }
   | { type: "statusApplied"; target: string; statusId: string; name: string; turns: number }
   | { type: "statusExpired"; target: string; statusId: string; name: string }

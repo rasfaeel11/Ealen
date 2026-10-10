@@ -40,7 +40,9 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
     case "xp":
       return {
         text: event.levelUp.leveledUp
-          ? `+${event.amount} de XP. Subiu para o nível ${event.levelUp.newLevel}!`
+          ? `+${event.amount} de XP. Subiu para o nível ${event.levelUp.newLevel}!${
+              event.levelUp.learned?.length ? ` Aprendeu ${event.levelUp.learned.map((ability) => ability.name).join(" e ")}.` : ""
+            }`
           : `+${event.amount} de XP.`,
         color: TEXT_COLORS.goldBright,
       };

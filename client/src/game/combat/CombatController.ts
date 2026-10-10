@@ -38,6 +38,7 @@ import {
   type Encounter,
   type PixelPos,
   type Pos,
+  type StatusTemplate,
   type Supporter,
   type SurfaceId,
   type TacticalEvent,
@@ -103,6 +104,26 @@ const ERROR_TEXT: Record<CommandError, string> = {
   item_unavailable: "Esse item não está na mochila.",
 };
 
+/** O que uma condição faz a quem a carrega, pelas marcas dela: "Or -3", "esquiva +4", "1d4 de dano por turno"... */
+export function describeStatus(status: StatusTemplate): string {
+  const notes: string[] = [];
+  for (const [stat, points] of Object.entries(status.attributeBonus ?? {})) {
+    notes.push(`${stat.charAt(0).toUpperCase()}${stat.slice(1)} ${points > 0 ? "+" : ""}${points}`);
+  }
+  if (status.guard) notes.push("bloqueia parte de cada golpe");
+  if (status.evasion) notes.push(`esquiva +${status.evasion}`);
+  if (status.toHit) notes.push(`acerto ${status.toHit > 0 ? "+" : ""}${status.toHit}`);
+  if (status.damageTaken) notes.push(status.damageTaken > 0 ? `sofre +${status.damageTaken} por golpe` : `sofre ${status.damageTaken} por golpe`);
+  if (status.harm) notes.push(`${status.harm.count}d${status.harm.sides} de dano por turno`);
+  if (status.speed) notes.push(`movimento ${status.speed > 0 ? "+" : ""}${status.speed}`);
+  if (status.immovable) notes.push("nada o tira do lugar");
+  if (status.noHeal) notes.push("não pode ser curado");
+  if (status.guaranteedCrit) notes.push("o próximo golpe é crítico");
+  if (status.breaksGuard) notes.push("derruba a guarda");
+  if (status.skipsTurn) notes.push("perde a vez");
+  return notes.join(", ");
+}
+
 /** O que uma habilidade faz, em uma linha — pra quem vai decidir se usa. */
 export function describeAbility(ability: Ability): string {
   const parts: string[] = [ability.cost === "action" ? "Ação" : "Ação bônus"];
@@ -117,12 +138,19 @@ export function describeAbility(ability: Ability): string {
   if (ability.attack) parts.push(`acerto ${ability.attack.toHit >= 0 ? "+" : ""}${ability.attack.toHit}`);
 
   for (const effect of ability.effects) {
-    if (effect.kind === "damage") parts.push(effect.multiplier ? `dano x${effect.multiplier}` : "dano");
-    else if (effect.kind === "heal") parts.push("cura");
+    if (effect.kind === "damage") {
+      const dice = `${effect.dice.count}d${effect.dice.sides}`;
+      parts.push(effect.multiplier ? `dano ${dice} x${effect.multiplier}` : `dano ${dice}`);
+      if (effect.piercing) parts.push("fura a armadura");
+      if (effect.leech) parts.push(effect.leech === 1 ? "devolve como vida o que tirar" : `devolve ${Math.round(effect.leech * 100)}% como vida`);
+    } else if (effect.kind === "heal") parts.push(`cura ${effect.dice.count}d${effect.dice.sides}`);
     else if (effect.kind === "status") {
-      parts.push(effect.statusId === "guarding" ? "em guarda até o próximo turno" : `${STATUSES[effect.statusId].name} por ${effect.turns} turnos`);
+      const status = STATUSES[effect.statusId];
+      const what = describeStatus(status);
+      const span = effect.turns === 1 ? "até o próximo turno" : `por ${effect.turns} turnos`;
+      parts.push(effect.statusId === "guarding" ? "em guarda até o próximo turno" : `${status.name} ${span}${what ? ` (${what})` : ""}`);
     }
-    else if (effect.kind === "breath") parts.push(`devolve ${effect.amount} de Fôlego`);
+    else if (effect.kind === "breath") parts.push(effect.amount < 0 ? `tira ${-effect.amount} de Fôlego do alvo` : `devolve ${effect.amount} de Fôlego`);
     else parts.push(effect.distance > 0 ? `empurra ${effect.distance}` : `puxa ${-effect.distance}`);
   }
   if (ability.surface) parts.push(`deixa ${SURFACES[ability.surface.id].name} por ${ability.surface.rounds} rodadas`);
@@ -723,6 +751,27 @@ export class CombatController {
         this.hud.log(`${this.unit(event.unit).name} toma fôlego (+${event.amount}).`);
         return;
 
+      case "breathDrained":
+        this.floatOver(event.unit, `-${event.amount} fôlego`, TEXT_COLORS.inkDim, -22, 20);
+        this.hud.log(`${this.unit(event.unit).name} perde ${event.amount} de Fôlego.`);
+        return;
+
+      case "healDenied":
+        this.floatOver(event.target, "Nada se restaura", TEXT_COLORS.inkDim, -22, 20);
+        this.hud.log(`${this.unit(event.target).name} está ${event.name.toLowerCase()}: a cura não pega.`);
+        await this.wait(220);
+        return;
+
+      case "statusTriggered": {
+        const actor = this.actor(event.unit);
+        // O dano que vem agora é da condição: ninguém bateu, ninguém recua de ninguém.
+        this.blow = {};
+        this.hud.log(`${this.unit(event.unit).name} sofre por estar ${event.name.toLowerCase()}.`);
+        this.floatOver(event.unit, event.name, TEXT_COLORS.danger, -22, 20);
+        if (actor) this.ring(actor.pos, COLORS.guard);
+        return;
+      }
+
       case "attackRoll": {
         const target = this.unit(event.target);
         const edge = describeEdge(event);
@@ -816,7 +865,7 @@ export class CombatController {
 
       case "pushed": {
         const actor = this.actor(event.unit);
-        this.hud.log(`${this.unit(event.unit).name} é arremessado.`);
+        this.hud.log(`${this.unit(event.unit).name} é tirado do lugar.`);
         if (actor) await this.glide(actor, pixelOfTile(this.host.map, event.to), 160, false);
         return;
       }
@@ -826,11 +875,13 @@ export class CombatController {
         if (actor) this.ring(actor.pos, COLORS.guard);
         this.floatOver(event.target, event.name, TEXT_COLORS.guard, -22);
         this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
+        this.hud.setTurnOrder(this.encounter);
         await this.wait(200);
         return;
       }
 
       case "statusExpired":
+        this.hud.setTurnOrder(this.encounter);
         return;
 
       case "surfaceCreated":

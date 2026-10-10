@@ -325,10 +325,12 @@ for (const [areaId, map] of Object.entries(maps)) {
     );
 
     assert.equal(rewards.xpGained, 30 + 30 + 40);
-    assert.deepEqual(rewards.levelUp, { leveledUp: true, newLevel: 2, newAbility: rewards.levelUp.newAbility });
+    assert.equal(rewards.levelUp.leveledUp && rewards.levelUp.newLevel, 2);
+    assert.deepEqual(rewards.levelUp.learned?.map((ability) => ability.name), ["Puxão de Maré"]);
     assert.equal(character.level, 2);
+    // O que se gasta foi pra mochila; o que se veste, pro guardado.
     const carried = (character.inventory?.slots ?? []).reduce((sum, slot) => sum + slot.quantity, 0);
-    assert.equal(carried, rewards.loot.length);
+    assert.equal(carried + (character.gear?.length ?? 0), rewards.loot.length);
   });
 }
 
