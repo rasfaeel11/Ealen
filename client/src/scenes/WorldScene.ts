@@ -76,14 +76,17 @@ import {
   type Trail,
   type WalkBody,
 } from "@ealen/shared";
+import { areaMusic, playMusic, sfx } from "../game/audio";
 import { BagPanel } from "../game/BagPanel";
 import { CLOCK_BAR_BOTTOM, ClockBar } from "../game/ClockBar";
 import { CombatController } from "../game/combat/CombatController";
+import { drawArea, drawBrackets, drawReach, drawStop } from "../game/combat/marks";
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { JournalGlimpse, JournalPanel } from "../game/JournalPanel";
 import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
+import { SoundPanel } from "../game/SoundPanel";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
 import { unlockOrders } from "../game/profile";
 import type { GameSession } from "../game/session";
@@ -99,6 +102,8 @@ const FOLLOW_SPEED = WALK_SPEED * 1.6;
 /** A caixa dos pés: mais estreita que um quadrado, pra passar em corredor de um de largura. */
 const BODY: WalkBody = { halfWidth: 5, height: 6 };
 const FADE_MS = 220;
+/** De quantos em quantos pixels andados se ouve um passo. */
+const FOOTSTEP_PX = 15;
 /** Um quadro mais longo que isto (aba em segundo plano) não vira um salto pelo mapa. */
 const MAX_FRAME_MS = 50;
 
@@ -117,7 +122,7 @@ const ABOVE_LAYER_PREFIX = "above";
 
 const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar  ·  C: ficha  ·  I: mochila  ·  Esc: pausa";
 const AIM_HINT = "←/→: trocar de alvo  ·  Enter ou clique: atacar  ·  Esc: desistir";
-/** Os quadrados acesos de quem mira um golpe de abertura: por cima do chão, por baixo de quem está de pé. */
+/** As marcas de quem mira um golpe de abertura: por cima do chão, por baixo de quem está de pé. */
 const AIM_DEPTH = -1;
 const AIM_TARGET_COLOR = 0xe0566c;
 const AIM_STEP_COLOR = 0x6fa8dc;
@@ -160,6 +165,8 @@ export default class WorldScene extends Phaser.Scene {
   /** Quem anda com o personagem agora, em fila atrás dele, e o rastro que a fila segue (ver shared/world/follow.ts). */
   private followers: Follower[] = [];
   private trail: Trail = [];
+  /** Quanto o personagem andou desde o último passo que se ouviu. */
+  private strode = 0;
   /**
    * Quem está no mapa AGORA, pelo que a história diz (ver `syncPresence`):
    * os inimigos ainda de pé, quem dá pra encontrar e as saídas abertas.
@@ -278,6 +285,7 @@ export default class WorldScene extends Phaser.Scene {
     this.refreshStatus();
     this.refreshHint();
     this.showBanner(this.area.name);
+    playMusic(areaMusic(this.area.id));
 
     const camera = this.cameras.main;
     camera.setZoom(ZOOM);
@@ -343,8 +351,15 @@ export default class WorldScene extends Phaser.Scene {
 
     // Na diagonal o passo é dividido entre os eixos: não se anda mais rápido de lado.
     const step = (WALK_SPEED * Math.min(delta, MAX_FRAME_MS)) / 1000 / Math.hypot(dx, dy);
+    const from = this.pos;
     this.pos = walk(this.map, this.pos, dx * step, dy * step, BODY);
     this.player.place(this.pos);
+    // Quem empurra uma parede não anda, e não faz barulho de passo.
+    this.strode += Math.hypot(this.pos.x - from.x, this.pos.y - from.y);
+    if (this.strode >= FOOTSTEP_PX) {
+      this.strode = 0;
+      sfx("step");
+    }
 
     const facing: Facing = dx !== 0 ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
     this.player.face(facing);
@@ -623,6 +638,7 @@ export default class WorldScene extends Phaser.Scene {
   private rest(): void {
     if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
     restoreParty(this.character, this.save.companions);
+    sfx("rest");
     // Descansar gasta o tempo do relógio, se a história disse que gasta — e o que o tempo fecha, fecha.
     if (this.story.spend("rest")) {
       this.save.story = this.story.save();
@@ -812,6 +828,8 @@ export default class WorldScene extends Phaser.Scene {
 
     this.statusText.setVisible(false);
     this.hintText.setVisible(false);
+    playMusic("battle");
+    sfx(surprised === "enemy" ? "ambush" : "fightStart");
     this.combat = new CombatController(
       {
         scene: this,
@@ -882,6 +900,8 @@ export default class WorldScene extends Phaser.Scene {
     this.travelAfterFight = undefined;
 
     if (winner === "enemy") {
+      playMusic(null);
+      sfx("defeat");
       await combat.showResult(
         "DERROTA",
         [company.length > 0 ? "O grupo cai." : `${character.name} cai.`, "Você desperta inteiro, na entrada da área."],
@@ -939,8 +959,11 @@ export default class WorldScene extends Phaser.Scene {
           ? `Encontrou: ${rewards.loot.map((item) => item.name).join(", ")}`
           : "Nada ficou pra trás.",
       );
+      playMusic(null);
+      sfx("victory");
       await combat.showResult("VITÓRIA", lines, TEXT_COLORS.goldBright);
     }
+    playMusic(areaMusic(this.area.id));
 
     combat.destroy();
     this.combat = undefined;
@@ -994,6 +1017,7 @@ export default class WorldScene extends Phaser.Scene {
   /** `C`: a ficha do grupo, por cima do mundo parado. É dela que se usa uma habilidade fora de luta. */
   private openSheet(): void {
     this.halt();
+    sfx("uiOpen");
     this.pause = new SheetPanel(this, (object) => this.addHud(object), {
       owner: this.character,
       members: this.company(),
@@ -1015,7 +1039,7 @@ export default class WorldScene extends Phaser.Scene {
         return true;
       },
       onBag: () => {
-        this.closePause();
+        this.closePause(true);
         this.openBag();
       },
       onClose: () => this.closePause(),
@@ -1025,6 +1049,7 @@ export default class WorldScene extends Phaser.Scene {
   /** `I`: a mochila do grupo. O que cura se usa ali mesmo; o resto fica pra luta. */
   private openBag(): void {
     this.halt();
+    sfx("uiOpen");
     this.pause = new BagPanel(this, (object) => this.addHud(object), {
       owner: this.character,
       members: this.company(),
@@ -1037,7 +1062,7 @@ export default class WorldScene extends Phaser.Scene {
         return result;
       },
       onSheet: () => {
-        this.closePause();
+        this.closePause(true);
         this.openSheet();
       },
       onClose: () => this.closePause(),
@@ -1072,6 +1097,7 @@ export default class WorldScene extends Phaser.Scene {
     const strikes = openingStrikes(this.map, this.character, tileOfPixel(this.map, this.pos), ability, this.enemies, this.props);
     if (strikes.length === 0) return false;
     this.halt();
+    sfx("uiOpen");
     const marks = this.addWorld(this.add.graphics().setDepth(AIM_DEPTH));
     this.aiming = { ability, strikes, index: 0, marks, since: this.time.now };
     this.cameras.main.stopFollow();
@@ -1079,16 +1105,12 @@ export default class WorldScene extends Phaser.Scene {
     return true;
   }
 
-  /** Acende os alvos possíveis, o escolhido e o quadrado até onde o personagem corre pra bater. */
+  /** Marca os alvos possíveis (quatro cantos), o escolhido (cheio) e até onde o personagem corre pra bater. */
   private drawAim(): void {
     if (!this.aiming) return;
     const { ability, strikes, index, marks } = this.aiming;
     const size = this.map.tileSize;
     const strike = strikes[index];
-    const square = (tile: { x: number; y: number }, color: number, alpha: number) => {
-      marks.fillStyle(color, alpha).fillRect(tile.x * size, tile.y * size, size, size);
-      marks.lineStyle(1, color, 0.9).strokeRect(tile.x * size + 0.5, tile.y * size + 0.5, size - 1, size - 1);
-    };
 
     marks.clear();
     // O que não mira pega o grupo inteiro; o resto, um alvo por vez.
@@ -1096,11 +1118,12 @@ export default class WorldScene extends Phaser.Scene {
     for (const enemy of this.enemies) {
       const tile = tileOfPixel(this.map, enemy);
       const chosen = whole ? enemy.group === strike.enemy.group : enemy === strike.enemy;
-      if (chosen) square(tile, AIM_TARGET_COLOR, 0.45);
-      else if (strikes.some((other) => other.enemy === enemy)) square(tile, AIM_TARGET_COLOR, 0.12);
+      if (chosen) drawArea(marks, [tile], size, AIM_TARGET_COLOR, 0.3);
+      else if (strikes.some((other) => other.enemy === enemy)) drawBrackets(marks, tile, size, AIM_TARGET_COLOR, 0.6);
     }
     const here = tileOfPixel(this.map, this.pos);
-    if (!samePos(strike.from, here)) square(strike.from, AIM_STEP_COLOR, 0.35);
+    if (!samePos(strike.from, here)) drawStop(marks, strike.from, size, AIM_STEP_COLOR);
+    drawReach(marks, strike.from, strike.target, size, AIM_TARGET_COLOR);
 
     this.player.faceToward(strike.enemy);
     // A câmera fica entre quem bate e quem apanha: o alvo pode estar fora da tela.
@@ -1115,6 +1138,7 @@ export default class WorldScene extends Phaser.Scene {
     switch (event.code) {
       case "Escape":
       case "Backspace":
+        sfx("uiCancel");
         this.stopAiming();
         this.cameras.main.startFollow(this.player.followTarget, true, 0.2, 0.2);
         this.refreshHint();
@@ -1142,6 +1166,7 @@ export default class WorldScene extends Phaser.Scene {
       default:
         return;
     }
+    if (count > 1) sfx("uiMove");
     this.drawAim();
   }
 
@@ -1182,14 +1207,21 @@ export default class WorldScene extends Phaser.Scene {
   /** `J`: o diário de pistas, por cima do mundo parado. */
   private openJournal(): void {
     this.halt();
+    sfx("uiOpen");
     const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), () => this.closePause());
     this.pause = panel;
   }
 
+  /** Os volumes, a partir da pausa. */
+  private openSound(): void {
+    this.pause = new SoundPanel(this, (object) => this.addHud(object), () => this.closePause());
+  }
+
   private openPause(): void {
     this.halt();
+    sfx("uiOpen");
     const width = 420;
-    const height = 350;
+    const height = 394;
     const x = (GAME_WIDTH - width) / 2;
     const y = (GAME_HEIGHT - height) / 2;
     const objects = [
@@ -1207,6 +1239,7 @@ export default class WorldScene extends Phaser.Scene {
         { label: "Ficha", onSelect: () => this.swapPause(() => this.openSheet()) },
         { label: "Mochila", onSelect: () => this.swapPause(() => this.openBag()) },
         { label: "Diário", onSelect: () => this.swapPause(() => this.openJournal()) },
+        { label: "Som", onSelect: () => this.swapPause(() => this.openSound()) },
         // Ao fechar, a cena grava o jogo (SHUTDOWN chama persist).
         { label: "Salvar e sair pro título", onSelect: () => this.scene.start(SCENES.title) },
       ],
@@ -1222,12 +1255,14 @@ export default class WorldScene extends Phaser.Scene {
 
   /** Fecha o que está aberto por cima do mundo e abre outra coisa no lugar. */
   private swapPause(open: () => void): void {
-    this.closePause();
+    this.closePause(true);
     open();
   }
 
-  private closePause(): void {
+  /** `quiet`: outra coisa abre no lugar, e o som é o dela. */
+  private closePause(quiet = false): void {
     if (!this.pause) return;
+    if (!quiet) sfx("uiCancel");
     const open = this.pause;
     this.pause = undefined;
     // No quadro seguinte: a opção clicada (ou a tecla) ainda está no meio do próprio evento.
@@ -1240,6 +1275,7 @@ export default class WorldScene extends Phaser.Scene {
   private leave(exit: { area: string; spawn: string }): void {
     this.leaving = true;
     this.halt();
+    sfx("travel");
     this.cameras.main.fadeOut(FADE_MS);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.restart({ areaId: exit.area, spawn: exit.spawn } satisfies WorldSceneData);

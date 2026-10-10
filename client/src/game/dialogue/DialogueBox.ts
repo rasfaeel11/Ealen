@@ -1,4 +1,5 @@
 import * as Phaser from "phaser";
+import { sfx } from "../audio";
 import { CLASS_INFO, type DialogueBeat, type DialogueChoice, type DialogueStep, type StoryEvent } from "@ealen/shared";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { addBodyText, addPanel, addTitleText } from "../ui";
@@ -193,6 +194,7 @@ export class DialogueBox {
       return;
     }
     const { text, color } = describeEvent(beat.event) ?? { text: "", color: TEXT_COLORS.ink };
+    sfx("notice");
     this.speaker.setText("");
     this.body.setText(text).setFontStyle("normal").setColor(color);
   }
@@ -255,7 +257,9 @@ export class DialogueBox {
 
   private pick(position: number): void {
     const choice = this.choices[position];
-    if (choice && this.ready()) this.onChoose?.(choice.index);
+    if (!choice || !this.ready() || !this.onChoose) return;
+    sfx("uiSelect");
+    this.onChoose(choice.index);
   }
 
   private ready(): boolean {
@@ -267,20 +271,33 @@ export class DialogueBox {
     const confirm = event.code === "Space" || event.code === "Enter" || event.code === "NumpadEnter" || event.code === "KeyE";
 
     if (this.onAdvance) {
-      if (confirm) this.onAdvance();
+      if (confirm) this.advance();
       return;
     }
     if (!this.onChoose) return;
 
     const count = this.choices.length;
-    if (event.code === "ArrowUp" || event.code === "KeyW") this.focus((this.focused + count - 1) % count);
-    else if (event.code === "ArrowDown" || event.code === "KeyS") this.focus((this.focused + 1) % count);
+    if (event.code === "ArrowUp" || event.code === "KeyW") this.step(count - 1);
+    else if (event.code === "ArrowDown" || event.code === "KeyS") this.step(1);
     else if (confirm) this.pick(this.focused);
     else if (event.code.startsWith("Digit")) this.pick(Number(event.code.slice(5)) - 1);
   }
 
+  /** O cursor das escolhas anda `by` posições, dando a volta. */
+  private step(by: number): void {
+    const count = this.choices.length;
+    if (count > 1) sfx("uiMove");
+    this.focus((this.focused + by) % count);
+  }
+
+  private advance(): void {
+    if (!this.onAdvance) return;
+    sfx("advance");
+    this.onAdvance();
+  }
+
   private onPointerDown(): void {
     // Clique em qualquer lugar passa a fala. Escolha se faz clicando NELA (ver showChoices).
-    if (this.ready()) this.onAdvance?.();
+    if (this.ready()) this.advance();
   }
 }

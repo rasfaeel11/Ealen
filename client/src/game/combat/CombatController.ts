@@ -45,9 +45,11 @@ import {
   type TeamId,
   type Unit,
 } from "@ealen/shared";
+import { sfx } from "../audio";
 import { COLORS, TEXT_COLORS } from "../config";
 import type { MapActor } from "../MapActor";
 import { CombatHud, type ActionButton, type AddHud } from "./CombatHud";
+import { drawArea, drawBrackets, drawReach, drawStop, drawTrail } from "./marks";
 
 /** O que a cena do mundo empresta ao combate. */
 export interface CombatHost {
@@ -70,7 +72,7 @@ export interface CombatHost {
   goalsTop?: number;
 }
 
-/** Entre o chão e tudo que fica de pé: os quadrados acesos passam por baixo de árvores e personagens. */
+/** Entre o chão e tudo que fica de pé: as marcas no chão passam por baixo de árvores e personagens. */
 const OVERLAY_DEPTH = 0;
 /** Faíscas e anéis ficam por cima de quem está de pé, abaixo das barras de vida. */
 const FX_DEPTH = 1_500_000;
@@ -78,7 +80,7 @@ const STEP_MS = 110;
 const ENEMY_THINK_MS = 380;
 /** Quanto dura na tela a vez de quem a perdeu (surpreso). */
 const SKIPPED_TURN_MS = 420;
-/** Quanto tempo os quadrados que um inimigo vai atingir ficam acesos antes do golpe. */
+/** Quanto tempo o que um inimigo vai atingir fica marcado antes do golpe. */
 const ENEMY_TELEGRAPH_MS = 300;
 /** A pausa de um golpe que pega, e a de um que pega forte (crítico ou fatal). */
 const HIT_STOP_MS = 55;
@@ -209,7 +211,7 @@ export class CombatController {
   /** A rodada e os objetos usados como os eventos os mostraram até agora — é o que os objetivos contam. */
   private shownRound = 1;
   private readonly usedProps = new Set<string>();
-  /** Os quadrados clicáveis no modo atual. */
+  /** Os quadrados clicáveis no modo atual. Não se desenham todos: ver `drawOptions`. */
   private options: Pos[] = [];
   private hover: Pos | null = null;
 
@@ -283,6 +285,7 @@ export class CombatController {
 
     const result = applyCommand(this.encounter, command);
     if (!result.ok) {
+      sfx("deny");
       this.hud.warn(ERROR_TEXT[result.reason]);
       return;
     }
@@ -333,6 +336,7 @@ export class CombatController {
       void this.issue({ type: "ability", unitId: unit.id, abilityId: ability.id, target: unit.pos });
       return;
     }
+    sfx(ability ? "uiSelect" : "uiCancel");
     this.selected = ability;
     this.aim = null;
     this.refresh();
@@ -341,6 +345,7 @@ export class CombatController {
   /** O botão de um apoio: escolhe-se depois em quem (um inimigo de pé). */
   private chooseSupport(supporter: Supporter): void {
     if (this.busy) return;
+    sfx("uiSelect");
     this.selected = null;
     this.aim = { kind: "support", supporter };
     this.refresh();
@@ -355,6 +360,7 @@ export class CombatController {
       void this.issue({ type: "interact", unitId: unit.id, target: targets[0].pos });
       return;
     }
+    sfx("uiSelect");
     this.selected = null;
     this.aim = { kind: "interact" };
     this.refresh();
@@ -396,7 +402,10 @@ export class CombatController {
     const unit = activeUnit(this.encounter)!;
     const tile = this.tileUnder(pointer);
     if (!this.options.some((option) => samePos(option, tile))) {
-      if (this.selected || this.aim) this.hud.warn(ERROR_TEXT.invalid_target);
+      if (this.selected || this.aim) {
+        sfx("deny");
+        this.hud.warn(ERROR_TEXT.invalid_target);
+      }
       return;
     }
 
@@ -418,7 +427,7 @@ export class CombatController {
     }
   }
 
-  /** Vez do jogador: recalcula o que dá pra fazer e redesenha a barra e os quadrados acesos. */
+  /** Vez do jogador: recalcula o que dá pra fazer e redesenha a barra e as marcas no chão. */
   private refresh(): void {
     const { encounter } = this;
     const unit = activeUnit(encounter)!;
@@ -510,8 +519,9 @@ export class CombatController {
     if (!unit || !ability || ability.targets === "self") return;
 
     this.actor(unit.id)?.faceToward(pixelOfTile(this.host.map, target));
-    this.intent.fillStyle(ability.targets === "ally" ? COLOR_ALLY : COLOR_TARGET, 0.5);
-    for (const tile of this.areaTiles(target, ability.radius ?? 0)) this.fillTile(this.intent, tile);
+    const color = ability.targets === "ally" ? COLOR_ALLY : COLOR_TARGET;
+    drawReach(this.intent, unit.pos, target, this.host.map.tileSize, color);
+    drawArea(this.intent, this.areaTiles(target, ability.radius ?? 0), this.host.map.tileSize, color, 0.3);
     await this.wait(ENEMY_TELEGRAPH_MS);
     this.intent.clear();
   }
@@ -535,16 +545,12 @@ export class CombatController {
     this.refreshHud();
   }
 
-  private fillTile(graphics: Phaser.GameObjects.Graphics, tile: Pos): void {
-    const size = this.host.map.tileSize;
-    graphics.fillRect(tile.x * size + 0.5, tile.y * size + 0.5, size - 1, size - 1);
-  }
-
+  /** O que está no chão é uma mancha por superfície, não um quadrado por quadrado. */
   private drawSurfaces(): void {
     this.ground.clear();
-    for (const surface of this.surfaces.values()) {
-      this.ground.fillStyle(SURFACE_COLOR[surface.id], 0.5);
-      this.fillTile(this.ground, surface.pos);
+    for (const id of Object.keys(SURFACE_COLOR) as SurfaceId[]) {
+      const tiles = [...this.surfaces.values()].filter((surface) => surface.id === id).map((surface) => surface.pos);
+      drawArea(this.ground, tiles, this.host.map.tileSize, SURFACE_COLOR[id], 0.4, 0.7);
     }
   }
 
@@ -554,12 +560,16 @@ export class CombatController {
     return this.selected.targets === "ally" ? COLOR_ALLY : COLOR_TARGET;
   }
 
-  /** Acende os quadrados clicáveis: pra onde andar, ou quem dá pra mirar. */
+  /**
+   * Marca QUEM dá pra mirar (quatro cantos em volta de cada alvo). Pra onde
+   * dá pra andar não se marca: o chão fica limpo, e o caminho aparece sob o
+   * cursor (`drawCursor`). Mirar "qualquer quadrado à vista" também não —
+   * seria a grade inteira; só a área sob o cursor aparece.
+   */
   private drawOptions(): void {
     this.overlay.clear();
-    // Mirar "qualquer quadrado à vista" acende muita coisa: mais fraco, pra não tapar o mapa.
-    this.overlay.fillStyle(this.optionColor(), this.selected?.targets === "tile" ? 0.16 : 0.3);
-    for (const tile of this.options) this.fillTile(this.overlay, tile);
+    if (!this.aim && (!this.selected || this.selected.targets === "tile")) return;
+    for (const tile of this.options) drawBrackets(this.overlay, tile, this.host.map.tileSize, this.optionColor(), 0.75);
   }
 
   /**
@@ -589,7 +599,9 @@ export class CombatController {
       if (hover && level(hover) > level(unit.pos)) {
         return `Chão alto: +${HEIGHT_TO_HIT} pra acertar quem está embaixo, e quem está embaixo acerta menos.`;
       }
-      return "Clique num quadrado azul pra andar. Esc ou botão direito volta pra cá.";
+      const cost = hover ? findPath(encounter, unit, hover)?.cost : undefined;
+      if (cost !== undefined) return `Andar até aqui gasta ${cost} de ${unit.turn.movement} de movimento.`;
+      return "Aponte pra onde ir: a linha mostra o caminho, até onde o movimento deste turno alcança.";
     }
 
     const prop = hover && selected.radius === undefined ? propAt(encounter, hover) : undefined;
@@ -614,30 +626,28 @@ export class CombatController {
     this.hud.setDetail(this.detailFor(unit, hover));
     if (!hover) return;
 
-    this.cursor.fillStyle(this.optionColor(), 0.45);
+    const size = this.host.map.tileSize;
+    const color = this.optionColor();
     if (this.aim) {
-      this.fillTile(this.cursor, hover);
+      drawArea(this.cursor, [hover], size, color, 0.3);
       return;
     }
     if (!this.selected) {
-      for (const step of findPath(this.encounter, unit, hover)?.path ?? []) this.fillTile(this.cursor, step);
+      drawTrail(this.cursor, unit.pos, findPath(this.encounter, unit, hover)?.path ?? [], size, color);
       return;
     }
 
-    for (const tile of this.areaTiles(hover, this.selected.radius ?? 0)) this.fillTile(this.cursor, tile);
+    drawReach(this.cursor, unit.pos, hover, size, color);
+    drawArea(this.cursor, this.areaTiles(hover, this.selected.radius ?? 0), size, color, 0.3);
   }
 
-  /** O que os inimigos anotados pretendem: o quadrado em que cada um vai parar (contorno) e o que vai atingir de lá (cheio). */
+  /** O que os inimigos anotados pretendem: onde cada um vai parar (o losango) e o que vai atingir de lá (a mancha). */
   private drawForeseen(): void {
     const size = this.host.map.tileSize;
     this.foresight.clear();
     for (const { tile, areas } of this.foreseen.values()) {
-      this.foresight.lineStyle(1, COLOR_USE, 0.95);
-      this.foresight.strokeRect(tile.x * size + 1, tile.y * size + 1, size - 2, size - 2);
-      this.foresight.fillStyle(COLOR_TARGET, 0.3);
-      for (const { target, radius } of areas) {
-        for (const hit of this.areaTiles(target, radius)) this.fillTile(this.foresight, hit);
-      }
+      drawStop(this.foresight, tile, size, COLOR_USE);
+      for (const { target, radius } of areas) drawArea(this.foresight, this.areaTiles(target, radius), size, COLOR_TARGET, 0.22);
     }
   }
 
@@ -685,6 +695,7 @@ export class CombatController {
 
       case "roundStarted":
         if (event.round > 1) {
+          sfx("round");
           this.hud.log(`— Rodada ${event.round} —`);
           this.host.onRound?.(event.round);
         }
@@ -697,6 +708,7 @@ export class CombatController {
         for (const other of this.host.actors.values()) other.setTurn(false);
         actor?.setTurn(true, this.unit(event.unit).team === "party" ? COLORS.goldBright : COLORS.hpLow);
         if (actor) this.host.scene.cameras.main.startFollow(actor.followTarget, true, 0.12, 0.12);
+        if (this.unit(event.unit).team === "party") sfx("turn");
         this.refreshHud();
         await this.wait(180);
         return;
@@ -707,6 +719,7 @@ export class CombatController {
         return;
 
       case "turnSkipped":
+        sfx("skipped");
         this.floatOver(event.unit, "Perde a vez", TEXT_COLORS.inkDim, -22, 20);
         this.hud.log(`${this.unit(event.unit).name} está ${event.name.toLowerCase()} e perde a vez.`);
         await this.wait(SKIPPED_TURN_MS);
@@ -716,7 +729,10 @@ export class CombatController {
         const actor = this.actor(event.unit);
         if (!actor) return;
         actor.setWalking(true);
-        for (const step of event.path) await this.glide(actor, pixelOfTile(this.host.map, step), STEP_MS, true);
+        for (const step of event.path) {
+          sfx("step");
+          await this.glide(actor, pixelOfTile(this.host.map, step), STEP_MS, true);
+        }
         actor.setWalking(false);
         return;
       }
@@ -735,6 +751,7 @@ export class CombatController {
           return;
         }
         // Um bote curto na direção do alvo, e de volta.
+        sfx("swing");
         actor.faceToward(target);
         const reach = Math.min(1, 6 / Math.hypot(target.x - home.x, target.y - home.y));
         const lunge = { x: home.x + (target.x - home.x) * reach, y: home.y + (target.y - home.y) * reach };
@@ -752,11 +769,13 @@ export class CombatController {
         return;
 
       case "breathDrained":
+        sfx("sting");
         this.floatOver(event.unit, `-${event.amount} fôlego`, TEXT_COLORS.inkDim, -22, 20);
         this.hud.log(`${this.unit(event.unit).name} perde ${event.amount} de Fôlego.`);
         return;
 
       case "healDenied":
+        sfx("deny");
         this.floatOver(event.target, "Nada se restaura", TEXT_COLORS.inkDim, -22, 20);
         this.hud.log(`${this.unit(event.target).name} está ${event.name.toLowerCase()}: a cura não pega.`);
         await this.wait(220);
@@ -766,6 +785,7 @@ export class CombatController {
         const actor = this.actor(event.unit);
         // O dano que vem agora é da condição: ninguém bateu, ninguém recua de ninguém.
         this.blow = {};
+        sfx("sting");
         this.hud.log(`${this.unit(event.unit).name} sofre por estar ${event.name.toLowerCase()}.`);
         this.floatOver(event.unit, event.name, TEXT_COLORS.danger, -22, 20);
         if (actor) this.ring(actor.pos, COLORS.guard);
@@ -777,6 +797,8 @@ export class CombatController {
         const edge = describeEdge(event);
         const sum = [`${event.total} contra ${event.defense}`, ...edge].join(", ");
         this.blow = { actor: event.actor, target: event.target, outcome: event.outcome };
+        if (event.outcome === "crit") sfx("crit");
+        else if (event.outcome !== "hit") sfx("miss");
         if (event.outcome === "crit") {
           this.floatOver(event.target, "Crítico!", TEXT_COLORS.goldBright, -30, 32);
           this.hud.log(`Acerto crítico em ${target.name}!`);
@@ -814,6 +836,7 @@ export class CombatController {
 
       case "blocked": {
         const actor = this.actor(event.unit);
+        sfx("block");
         this.floatOver(event.unit, `Bloqueou ${event.amount}`, TEXT_COLORS.guard, -22);
         if (actor) this.spark(this.center(actor), COLORS.guard, 7);
         return;
@@ -827,6 +850,7 @@ export class CombatController {
         const critical = this.blow.outcome === "crit" && this.blow.target === event.target;
         const heavy = critical || event.remainingHp === 0;
 
+        sfx(heavy ? "heavyHit" : "hit");
         actor?.flash(0xffffff, heavy ? 170 : 110);
         actor?.setHp(event.remainingHp, unit.maxHp);
         this.floatOver(event.target, `-${event.amount}`, TEXT_COLORS.danger, 0, 24 + Math.round(18 * weight) + (critical ? 8 : 0));
@@ -843,6 +867,7 @@ export class CombatController {
 
       case "immune": {
         const actor = this.actor(event.target);
+        sfx("immune");
         this.floatOver(event.target, "Nada o fere", TEXT_COLORS.inkDim, -22, 22);
         if (actor) this.ring(actor.pos, COLORS.guard);
         this.hud.log(`O golpe atravessa ${this.unit(event.target).name} sem tirar nada.`);
@@ -853,6 +878,7 @@ export class CombatController {
       case "heal": {
         const unit = this.unit(event.target);
         const actor = this.actor(event.target);
+        sfx("heal");
         actor?.flash(0x7fb069);
         if (actor) this.ring(actor.pos, COLORS.hp);
         actor?.setHp(event.remainingHp, unit.maxHp);
@@ -865,6 +891,7 @@ export class CombatController {
 
       case "pushed": {
         const actor = this.actor(event.unit);
+        sfx("push");
         this.hud.log(`${this.unit(event.unit).name} é tirado do lugar.`);
         if (actor) await this.glide(actor, pixelOfTile(this.host.map, event.to), 160, false);
         return;
@@ -873,6 +900,7 @@ export class CombatController {
       case "statusApplied": {
         const actor = this.actor(event.target);
         if (actor) this.ring(actor.pos, COLORS.guard);
+        sfx("status");
         this.floatOver(event.target, event.name, TEXT_COLORS.guard, -22);
         this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
         this.hud.setTurnOrder(this.encounter);
@@ -887,6 +915,7 @@ export class CombatController {
       case "surfaceCreated":
         for (const pos of event.tiles) this.surfaces.set(`${pos.x},${pos.y}`, { pos, id: event.surfaceId });
         this.drawSurfaces();
+        sfx("surface");
         this.hud.log(`${event.name} no chão por ${event.rounds} rodadas.`);
         await this.wait(220);
         return;
@@ -901,6 +930,7 @@ export class CombatController {
         const actor = this.actor(event.unit);
         // O dano que vem agora é do chão: ninguém bateu, ninguém recua de ninguém.
         this.blow = {};
+        sfx("sting");
         this.hud.log(`${this.unit(event.unit).name} é pego por ${event.name}.`);
         this.floatOver(event.unit, event.name, TEXT_COLORS.danger, -22, 20);
         if (actor) this.ring(actor.pos, SURFACE_COLOR[event.surfaceId]);
@@ -911,6 +941,7 @@ export class CombatController {
         const image = this.host.props.get(event.prop);
         const at = this.tileCenter(event.pos);
         this.floatAt(at, `-${event.amount}`, TEXT_COLORS.inkDim, 0, 22);
+        sfx("propHit");
         this.spark(at, 0xd9c7a0, 7);
         this.hud.log(`${event.name} leva ${event.amount} de dano.`);
         if (image) {
@@ -932,6 +963,7 @@ export class CombatController {
         const at = this.tileCenter(event.pos);
         this.host.props.get(event.prop)?.destroy();
         this.host.props.delete(event.prop);
+        sfx("propBreak");
         this.spark(at, 0xd9c7a0, 14);
         this.host.scene.cameras.main.shake(140, 0.004);
         this.hud.log(`${event.name} se despedaça.`);
@@ -944,6 +976,7 @@ export class CombatController {
         const image = this.host.props.get(event.prop);
         this.actor(event.unit)?.faceToward(at);
         this.usedProps.add(event.prop);
+        sfx("bell");
         this.refreshGoals();
         this.floatAt(at, event.verb, TEXT_COLORS.goldBright, -10, 24);
         this.ring({ x: at.x, y: at.y + this.host.map.tileSize / 2 }, COLORS.gold);
@@ -958,6 +991,7 @@ export class CombatController {
       case "itemUsed": {
         const actor = this.actor(event.unit);
         this.hud.log(`${this.unit(event.unit).name} usa ${event.itemName}: ${event.description}`);
+        sfx("item");
         this.floatOver(event.unit, event.itemName, TEXT_COLORS.gold, -22, 20);
         if (actor) this.ring(actor.pos, COLORS.gold);
         await this.wait(380);
@@ -967,6 +1001,7 @@ export class CombatController {
       case "supportUsed": {
         const actor = this.actor(event.supporter);
         this.hud.log(`${event.supporterName}: ${event.name.toLowerCase()}.`);
+        sfx("support");
         this.floatOver(event.supporter, event.name, TEXT_COLORS.gold, -22, 20);
         if (actor) this.ring(actor.pos, COLORS.gold);
         await this.wait(260);
@@ -1002,6 +1037,7 @@ export class CombatController {
 
       case "death":
         this.forgetForeseen(event.unit);
+        sfx("death");
         this.hud.log(`${this.unit(event.unit).name} cai.`);
         await this.actor(event.unit)?.collapse(420);
         return;
@@ -1009,6 +1045,7 @@ export class CombatController {
       case "cue":
         // A história fala no meio da luta: a interface do combate sai da frente da caixa.
         this.hud.setVisible(false);
+        sfx("cue");
         await this.host.onCue(event.id);
         this.hud.setVisible(true);
         // O objetivo que ela era está cumprido (ou perdido): sai da lista.

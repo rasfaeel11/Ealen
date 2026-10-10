@@ -2,6 +2,8 @@ import * as Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { firstEmptySlot, lastPlayedSlot, readSlots } from "../game/save";
 import { GameSession } from "../game/session";
+import { playMusic } from "../game/audio";
+import { SoundPanel } from "../game/SoundPanel";
 import { Menu, addBodyText, addTitleText } from "../game/ui";
 import type { SaveSlotsData } from "./SaveSlotsScene";
 
@@ -25,7 +27,9 @@ export default class TitleScene extends Phaser.Scene {
     const last = lastSlot === null ? null : slots[lastSlot];
     const save = last?.status === "ok" ? last.save : null;
 
-    new Menu(
+    playMusic("title");
+    let sound: SoundPanel | undefined;
+    const menu: Menu = new Menu(
       this,
       centerX - 110,
       420,
@@ -56,6 +60,18 @@ export default class TitleScene extends Phaser.Scene {
         {
           label: "Jogos salvos",
           onSelect: () => this.scene.start(SCENES.saves),
+        },
+        {
+          label: "Som",
+          onSelect: () => {
+            // Com o painel aberto, o menu de baixo espera.
+            menu.setActive(false);
+            sound = new SoundPanel(this, (object) => object, () => {
+              sound?.destroy();
+              sound = undefined;
+              menu.setActive(true);
+            });
+          },
         },
       ],
       { lineHeight: 44, fontSize: 28 },

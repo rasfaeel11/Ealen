@@ -36,6 +36,8 @@ void waitForFonts().then(() => {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
+    // O som do jogo é sintetizado em `game/audio.ts`, com o contexto de áudio dele: o do Phaser não é usado.
+    audio: { noAudio: true },
     scene: [BootScene, TitleScene, SaveSlotsScene, PrologueScene, ClassSelectScene, WorldScene],
   });
 });

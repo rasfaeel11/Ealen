@@ -1,4 +1,5 @@
 import * as Phaser from "phaser";
+import { sfx } from "./audio";
 import { COLORS, FONT_BODY, FONT_TITLE, TEXT_COLORS } from "./config";
 
 type TextStyle = Phaser.Types.GameObjects.Text.TextStyle;
@@ -160,6 +161,7 @@ export class Menu {
     for (let i = 1; i <= count; i++) {
       const next = (this.index + step * i + count * i) % count;
       if (!this.options[next].disabled) {
+        if (next !== this.index) sfx("uiMove");
         this.focus(next);
         return;
       }
@@ -168,7 +170,9 @@ export class Menu {
 
   private choose(): void {
     const option = this.options[this.index];
-    if (option && !option.disabled) option.onSelect();
+    if (!option || option.disabled) return;
+    sfx("uiSelect");
+    option.onSelect();
   }
 
   private onKey(event: KeyboardEvent): void {
@@ -190,6 +194,7 @@ export class Menu {
         break;
       case "Escape":
       case "Backspace":
+        if (this.config.onCancel) sfx("uiCancel");
         this.config.onCancel?.();
         break;
     }
