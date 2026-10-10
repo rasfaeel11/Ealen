@@ -71,6 +71,7 @@ import {
   type OpeningStrike,
   type PixelPos,
   type Prop,
+  type StoryEvent,
   type TeamId,
   type Trail,
   type WalkBody,
@@ -80,7 +81,7 @@ import { CLOCK_BAR_BOTTOM, ClockBar } from "../game/ClockBar";
 import { CombatController } from "../game/combat/CombatController";
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
-import { JournalPanel } from "../game/JournalPanel";
+import { JournalGlimpse, JournalPanel } from "../game/JournalPanel";
 import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
@@ -684,12 +685,7 @@ export default class WorldScene extends Phaser.Scene {
         // Um trecho que só mexe em flags (ou decide que não tem nada a dizer) passa sem abrir a caixa.
         if (!box && !isSilent(step)) {
           for (const text of hud) text.setVisible(false);
-          box = new DialogueBox(
-            this,
-            (object) => this.addHud(object),
-            // O relógio anda na hora em que o texto chega no ponto em que ele anda.
-            (event) => event.type === "clock" && this.clockBar.set(event.clock),
-          );
+          box = new DialogueBox(this, (object) => this.addHud(object), (event) => this.onStoryEvent(event));
         }
         const choice = box ? await box.play(step) : null;
         if (choice === null) break;
@@ -704,6 +700,28 @@ export default class WorldScene extends Phaser.Scene {
       this.talking = false;
     }
     return steps;
+  }
+
+  /**
+   * O que a tela faz na hora em que a conversa chega num acontecimento, além
+   * do que a caixa anuncia: o relógio anda, e o diário se apaga (ou se refaz)
+   * À VISTA — a página fica aberta enquanto a caixa fala disso, e o que ela
+   * devolve aqui é como fechá-la.
+   */
+  private onStoryEvent(event: StoryEvent): (() => void) | void {
+    if (event.type === "clock") {
+      this.clockBar.set(event.clock);
+    } else if (event.type === "forgot" || event.type === "recalled") {
+      const glimpse = new JournalGlimpse(
+        this,
+        (object) => this.addHud(object),
+        this.story.journal(),
+        event.entries,
+        event.type,
+        this.clockBar.visible ? CLOCK_BAR_BOTTOM + 8 : 24,
+      );
+      return () => glimpse.destroy();
+    }
   }
 
   /** Cumpre o que o texto deixou pra depois da última fala: o que destravou, uma luta, uma viagem. */

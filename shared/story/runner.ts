@@ -18,6 +18,7 @@ import {
   isClockCost,
   isNoted,
   noteEntry,
+  chargeClock,
   packStory,
   recallEntries,
   startClock,
@@ -449,9 +450,9 @@ export class StoryRunner {
    * O jogo avisa que aconteceu algo que gasta tempo sem o texto mandar: um
    * descanso, uma luta, uma rodada que virou. Devolve se o relógio andou.
    */
-  spend(what: ClockCost): boolean {
+  spend(what: ClockCost, times = 1): boolean {
     const { clock } = this.memory;
-    return clock !== null && tickClock(clock, clock.costs[what]);
+    return clock !== null && chargeClock(clock, what, times);
   }
 
   /** O estado inteiro da história — o do Ink, o diário e o relógio — pra guardar no save. */

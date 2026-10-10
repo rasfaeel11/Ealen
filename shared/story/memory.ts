@@ -141,6 +141,11 @@ function clamp(value: number, limit: number): number {
   return Math.max(0, Math.min(limit, value));
 }
 
+/** Cobra do relógio o que `what` custa, `times` vezes. Devolve se o tempo andou. */
+export function chargeClock(clock: StoryClock, what: ClockCost, times = 1): boolean {
+  return tickClock(clock, clock.costs[what] * Math.max(0, Math.floor(times)));
+}
+
 /** Faz o tempo andar `amount` (negativo volta), sem passar de `limit` nem de zero. Devolve se mudou. */
 export function tickClock(clock: StoryClock, amount: number): boolean {
   const next = clamp(clock.value + Math.floor(amount), clock.limit);
@@ -257,7 +262,6 @@ export function unpackStory(saved: string): { ink: string; memory: StoryMemory }
 export function chargeSavedClock(saved: string | null, what: ClockCost, times = 1): string | null {
   if (saved === null) return null;
   const { ink, memory } = unpackStory(saved);
-  const cost = memory.clock ? memory.clock.costs[what] * Math.max(0, Math.floor(times)) : 0;
-  if (!memory.clock || !tickClock(memory.clock, cost)) return saved;
+  if (!memory.clock || !chargeClock(memory.clock, what, times)) return saved;
   return packStory(ink, memory);
 }
