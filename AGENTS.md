@@ -263,7 +263,6 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P0 — a conversão (o jogo não existe sem isto)
 | # | Task | O que é |
 |---|---|---|
-| 5 | **Recitada e Gravada** | Recitada com tempo (declara, sai no turno seguinte, pode quebrar). Gravada preparada no descanso, num número limitado de objetos e círculos, ativada sem tempo. O círculo no chão como golpe de abertura. |
 | 6 | **Cura que cobra o paciente** | A cura tira do alvo (Fôlego, fome) o que acelera. |
 | 7 | **O elenco** | Endyru, Jarupã, Xanduí e Oryndu no lugar de Halmira, Lish, Varel e Gil. Ordens destraváveis e `ClassSelect` saem. |
 | 8 | **O Ykuruã** | Cura na água, Muralha que muda na terra, deixa `when: burst` (alguém passou do limite de mana), puxar aos poucos funcionando contra ele. Unidade grande, se couber. |
@@ -299,6 +298,12 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   Passou dele, o motor solta `manaBurst` (a deixa `when: burst` do Ykuruã vai ler isto) e põe a marca do conceito:
   atração e repulsão dá Sangue e tremor, -2 no acerto. A marca sai da luta com ele, vai pra história como `afflict`
   e sai no descanso (ou na derrota, que acorda inteiro). Ninguém do elenco conjura ainda: Endyru entra na task 7.
+- **5. Recitada e Gravada.** Magia é recitada: o comando só a declara (gasta a ação), e ela sai no começo do próximo
+  turno de quem a leu, seguindo o alvo, pagando a mana ali. Apanhar no meio pode quebrar (d20 + Ul contra 10 mais
+  metade do golpe); alvo que some ou vez perdida também. Uma recitação de cada vez. A gravada é escrita no descanso
+  (o `R` abre o painel de gravar), uma por gravação até o nível de mago, num objeto ou círculo: na luta sai na hora,
+  serve uma vez, e é a única magia que abre luta — o círculo preparado antes. O círculo não tem lugar no mapa: é o
+  texto pronto, não um quadrado marcado.
 
 ## 9. O que precisa virar cânone na história
 

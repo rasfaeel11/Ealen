@@ -18,6 +18,12 @@ export interface Character {
   breath?: number;
   /** A mana que resta, em quem conjura (ver ../mana.ts). Ausente = cheia. */
   mana?: number;
+  /**
+   * As magias que ele gravou no descanso, num objeto ou num círculo no chão
+   * (ver ../world/field.ts): os ids delas, uma por gravação. Cada uma serve
+   * uma vez, numa luta, sem o tempo de recitar; a usada sai daqui.
+   */
+  engraved?: string[];
   /** Ausente = personagem ainda não tem mochila inicializada. */
   inventory?: Inventory<ConsumableItem>;
   /** O que veste: arma, armadura e acessório (ver ../equipment.ts). Lugar ausente = vazio. */

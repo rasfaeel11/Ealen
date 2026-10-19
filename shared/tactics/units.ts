@@ -4,7 +4,7 @@ import { gearDefense, gearSpeed, gearedAttributes } from "../equipment";
 import type { Attributes } from "../types/attributes";
 import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
-import { GIFTS, abilitiesFor, type GiftId } from "./abilities";
+import { GIFTS, abilitiesFor, engravedAbilities, engravedId, type GiftId } from "./abilities";
 import { proficiency, type StyleId } from "./styles";
 import { samePos, type Pos } from "./grid";
 import type { Ability, AiProfile, AiQuirks, Encounter, TeamId, Unit } from "./types";
@@ -39,6 +39,7 @@ export interface UnitPlacement {
  * mexe em `character` até alguém chamar syncCharacterFromUnit.
  */
 export function unitFromCharacter(character: Character, placement: UnitPlacement): Unit {
+  const own = [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))];
   return {
     id: placement.id ?? character.id,
     name: character.name,
@@ -52,7 +53,8 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     pos: { ...placement.pos },
     speed: Math.max(1, DEFAULT_SPEED + gearSpeed(character)),
     ...(gearDefense(character) ? { defense: gearDefense(character) } : {}),
-    abilities: [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))],
+    // O que ele sabe, e as magias que deixou gravadas no descanso (ver engravedAbilities em ./abilities.ts).
+    abilities: [...own, ...engravedAbilities(own, character.engraved)],
     statuses: [],
     breath: breathOf(character),
     maxBreath: maxBreath(character),
@@ -74,11 +76,17 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
   };
 }
 
-/** Devolve à ficha o que a luta gastou: HP, Fôlego, mana e mochila. */
+/** Devolve à ficha o que a luta gastou: HP, Fôlego, mana, as gravações ativadas e a mochila. */
 export function syncCharacterFromUnit(character: Character, unit: Unit): void {
   character.currentHp = unit.currentHp;
   character.breath = unit.breath;
   if (unit.mana !== undefined) character.mana = unit.mana;
+  if (character.engraved) {
+    // Cada gravação serve uma vez: a que a luta ativou sai da ficha.
+    const left = character.engraved.filter((abilityId, index) => !unit.used?.[engravedId(abilityId, index)]);
+    if (left.length > 0) character.engraved = left;
+    else delete character.engraved;
+  }
   if (unit.inventory) character.inventory = structuredClone(unit.inventory);
 }
 
@@ -103,10 +111,16 @@ export function cooldownLeft(unit: Unit, ability: Ability): number {
 /**
  * Por que `unit` não pode usar `ability` agora — ou `ready`, se pode: `spent`
  * é a ação (ou a bônus) do turno já gasta, `limit` os usos da luta,
- * `recharging` a recarga, `breath` o Fôlego que falta e `mana` a mana que
- * falta (quem não conjura não tem nenhuma). Não olha alvo.
+ * `recharging` a recarga, `breath` o Fôlego que falta, `mana` a mana que
+ * falta (quem não conjura não tem nenhuma) e `reciting` uma magia recitada
+ * pedida por quem já está recitando outra. Não olha alvo.
  */
-export type Readiness = "ready" | "spent" | "limit" | "recharging" | "breath" | "mana";
+export type Readiness = "ready" | "spent" | "limit" | "recharging" | "breath" | "mana" | "reciting";
+
+/** Magia que se recita: leva tempo (sai no turno seguinte) e pode quebrar. A gravada, não. */
+export function isRecited(ability: Ability): boolean {
+  return (ability.mana ?? 0) > 0 && !ability.engraved;
+}
 
 /**
  * `unit` pode usar `ability` agora? É a mesma pergunta pro motor, pra IA e
@@ -119,6 +133,7 @@ export function readiness(unit: Unit, ability: Ability, outOfTurn = false): Read
   if ((unit.cooldowns?.[ability.id] ?? 0) > 0) return "recharging";
   if (unit.breath < (ability.breath ?? 0)) return "breath";
   if ((ability.mana ?? 0) > 0 && (unit.mana ?? 0) < ability.mana!) return "mana";
+  if (isRecited(ability) && unit.reciting) return "reciting";
   return "ready";
 }
 

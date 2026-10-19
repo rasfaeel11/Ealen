@@ -50,6 +50,7 @@ import {
   findUnit,
   isAlive,
   isOver,
+  isRecited,
   movementOf,
   primaryAttribute,
   readiness,
@@ -107,7 +108,9 @@ export interface EncounterSetup {
  *
  * Um golpe de abertura que não vale (habilidade que ele não tem ou não pode
  * pagar, alvo fora de alcance, quadrado aonde não chega) simplesmente não acontece: a luta começa
- * sem ele. Quem é da Ipojy nunca dá um: é o voto (ver ./styles.ts).
+ * sem ele. Quem é da Ipojy nunca dá um: é o voto (ver ./styles.ts). Magia
+ * recitada também não: leva tempo. A gravada, sim — é a emboscada do mago, o
+ * círculo preparado antes no chão.
  */
 export interface Opening {
   unitId: string;
@@ -173,7 +176,7 @@ function strikeFirst(encounter: Encounter, opening: Opening, events: TacticalEve
   const unit = findUnit(encounter, opening.unitId);
   const ability = unit?.abilities.find((candidate) => candidate.id === opening.abilityId);
   if (!unit || !ability || !isAlive(unit) || readiness(unit, ability, true) !== "ready") return;
-  if (isSworn(unit.style)) return;
+  if (isSworn(unit.style) || isRecited(ability)) return;
 
   if (opening.from && !samePos(opening.from, unit.pos)) {
     // A investida anda com o movimento de um turno, e não o tira do primeiro turno de verdade.
@@ -231,8 +234,10 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
  * Passa a vez pro próximo que ainda está de pé, abrindo uma rodada nova
  * quando a ordem dá a volta. Quem começa o turno em cima de uma superfície
  * que fere leva o dano dela — e, se cair ali, a vez passa adiante (ou a luta
- * acaba, se era o último do lado dele). Quem começa o turno com uma condição
- * que o faz perder a vez (`skipsTurn`) recebe o turno e o perde na hora.
+ * acaba, se era o último do lado dele). Quem vinha recitando solta a magia
+ * agora (ver `release`), antes de fazer qualquer outra coisa. Quem começa o
+ * turno com uma condição que o faz perder a vez (`skipsTurn`) recebe o turno
+ * e o perde na hora — e a recitação dele se perde junto.
  */
 function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
   for (;;) {
@@ -266,12 +271,20 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
     for (const status of harms) {
       if (!isAlive(next) || next.invulnerable) break;
       events.push({ type: "statusTriggered", unit: next.id, statusId: status.id, name: status.name });
-      dealDamage(next, rollDice(encounter, status.harm!), events);
+      dealDamage(encounter, next, rollDice(encounter, status.harm!), events);
     }
     touchSurface(encounter, next, events);
     if (!isAlive(next)) {
       if (concludeIfDecided(encounter, events)) return;
       continue;
+    }
+    if (next.reciting) {
+      if (skip) breakRecitation(next, "skipped", events);
+      else {
+        release(encounter, next, events);
+        if (concludeIfDecided(encounter, events)) return;
+        if (!isAlive(next)) continue;
+      }
     }
     if (!skip) return;
 
@@ -443,7 +456,7 @@ function touchSurface(encounter: Encounter, unit: Unit, events: TacticalEvent[])
   if (!surface || !damage || !isAlive(unit) || unit.invulnerable) return;
 
   events.push({ type: "surfaceTriggered", unit: unit.id, surfaceId: surface.id, name: SURFACES[surface.id].name });
-  dealDamage(unit, rollDice(encounter, damage), events);
+  dealDamage(encounter, unit, rollDice(encounter, damage), events);
 }
 
 // --- Movimento --------------------------------------------------------------
@@ -562,19 +575,68 @@ function useAbility(
   const state = readiness(unit, ability);
   if (state === "breath") return "no_breath";
   if (state === "mana") return "no_mana";
+  if (state === "reciting") return "reciting";
   if (state === "recharging") return "recharging";
   if (state !== "ready") return "resource_spent";
   if (!abilityTargets(encounter, unit, ability).some((pos) => samePos(pos, target))) return "invalid_target";
 
   if (ability.cost === "action") unit.turn.action = false;
   else unit.turn.bonus = false;
-  charge(unit, ability, true, events);
   // O que ele fez com a ação deste turno: é o que a Rachadura e as manias da IA leem depois.
   if (ability.cost === "action") unit.habit = { repeated: false, attackTurns: 0, ...unit.habit, now: ability.id };
+  if (isRecited(ability)) {
+    // Recitar é só começar a ler: o preço e o efeito ficam pra quando a magia sair (ver `release`).
+    const aimed = ability.targets === "enemy" || ability.targets === "ally" ? unitAt(encounter, target) : undefined;
+    unit.reciting = { abilityId: ability.id, target: { ...target }, ...(aimed ? { unit: aimed.id } : {}) };
+    events.push({ type: "recitationStarted", unit: unit.id, abilityId: ability.id, name: ability.name, target: { ...target } });
+    return undefined;
+  }
+  charge(unit, ability, true, events);
   resolveAbility(encounter, unit, ability, target, affectedUnits(encounter, ability, target), false, events);
   // A magia cobra de quem a fez, se ele ainda está de pé pra pagar.
   if (ability.backlash && isAlive(unit)) addStatus(unit, STATUSES[ability.backlash.statusId], ability.backlash.turns, events);
   return undefined;
+}
+
+// --- Recitação --------------------------------------------------------------
+
+/** O teste de quem apanha recitando: d20 + Ul contra isto mais metade do golpe. Provisório, como os kits. */
+const RECITE_FOCUS = 10;
+
+/**
+ * Solta a magia que `unit` vinha recitando, no começo do turno dele: pagando
+ * agora o que ela custa (é aqui que a mana pesa no limite do turno) e saindo
+ * de onde ele está, no alvo que ele mirou — se mirou alguém, onde esse alguém
+ * estiver. Alvo que caiu, saiu do alcance ou da vista: a recitação se perde.
+ */
+function release(encounter: Encounter, unit: Unit, events: TacticalEvent[]): void {
+  const { abilityId, target, unit: aimedId } = unit.reciting!;
+  delete unit.reciting;
+  const ability = unit.abilities.find((candidate) => candidate.id === abilityId);
+  if (!ability) return;
+  const aimed = aimedId === undefined ? undefined : findUnit(encounter, aimedId);
+  const pos = ability.targets === "self" || ability.targets === "foes" ? unit.pos : (aimed?.pos ?? target);
+  const reaches = (aimed === undefined || isAlive(aimed)) && abilityTargets(encounter, unit, ability).some((spot) => samePos(spot, pos));
+  if (!reaches) {
+    events.push({ type: "recitationBroken", unit: unit.id, abilityId, name: ability.name, reason: "lost" });
+    return;
+  }
+  if (readiness(unit, ability, true) !== "ready") {
+    events.push({ type: "recitationBroken", unit: unit.id, abilityId, name: ability.name, reason: "spent" });
+    return;
+  }
+
+  charge(unit, ability, true, events);
+  resolveAbility(encounter, unit, ability, pos, affectedUnits(encounter, ability, pos), false, events);
+  if (ability.backlash && isAlive(unit)) addStatus(unit, STATUSES[ability.backlash.statusId], ability.backlash.turns, events);
+}
+
+/** A recitação de `unit` acabou sem sair. */
+function breakRecitation(unit: Unit, reason: "hit" | "lost" | "skipped" | "spent", events: TacticalEvent[]): void {
+  const { abilityId } = unit.reciting!;
+  delete unit.reciting;
+  const name = unit.abilities.find((candidate) => candidate.id === abilityId)?.name ?? abilityId;
+  events.push({ type: "recitationBroken", unit: unit.id, abilityId, name, reason });
 }
 
 /**
@@ -761,7 +823,7 @@ function applyEffect(
       }
       if (amount <= 0) return;
       const taken = Math.min(amount, target.currentHp);
-      dealDamage(target, amount, events);
+      dealDamage(encounter, target, amount, events);
       // O golpe que devolve: parte do que entrou volta como vida pra quem bateu.
       if (effect.leech && isAlive(actor)) restore(actor, Math.floor(taken * effect.leech), events);
       return;
@@ -812,12 +874,23 @@ function restore(unit: Unit, amount: number, events: TacticalEvent[]): void {
   events.push({ type: "heal", target: unit.id, amount: healed, remainingHp: unit.currentHp });
 }
 
-function dealDamage(target: Unit, amount: number, events: TacticalEvent[]): void {
+/**
+ * Tira `amount` de vida de `target`. Quem cai perde as condições (e o que
+ * recitava). Quem apanha recitando e fica de pé testa se o texto aguenta: d20
+ * + Ul contra RECITE_FOCUS mais metade do golpe; falhando, ele se perde.
+ */
+function dealDamage(encounter: Encounter, target: Unit, amount: number, events: TacticalEvent[]): void {
   target.currentHp = Math.max(0, target.currentHp - amount);
   events.push({ type: "damage", target: target.id, amount, remainingHp: target.currentHp });
-  if (target.currentHp > 0) return;
+  if (target.currentHp > 0) {
+    if (target.reciting && rollDie(encounter, 20) + effectiveAttribute(target, "ul") < RECITE_FOCUS + Math.floor(amount / 2)) {
+      breakRecitation(target, "hit", events);
+    }
+    return;
+  }
 
   target.statuses = [];
+  delete target.reciting;
   events.push({ type: "death", unit: target.id });
 }
 

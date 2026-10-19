@@ -11,11 +11,14 @@ import {
   breathOf,
   canAfford,
   castOf,
+  engravingSlots,
   equipRefusal,
   fieldUse,
   fights,
   gearBonus,
   gearedAttributes,
+  isBlow,
+  isRecited,
   kitOf,
   magicOf,
   mageLevelName,
@@ -231,6 +234,7 @@ export class SheetPanel {
     if (magic) {
       lines.push(`${CONCEPTS[magic.concept].name}, ${mageLevelName(magic.level)}`);
       lines.push(`Mana ${manaOf(character, magic)}/${maxMana(character, magic)}  ·  limite ${manaLimit(magic)} por turno`);
+      lines.push(`Gravadas ${character.engraved?.length ?? 0}/${engravingSlots(character)}  ·  grava-se no descanso`);
     }
     if (cast?.style) {
       const grade = proficiency(cast.style.grade, cast.aura);
@@ -326,6 +330,9 @@ export class SheetPanel {
       };
     }
     if (use === "opening") return { tag: "", text: `Fora de luta, quem dá o primeiro golpe é ${this.host.members[0].name}.` };
+    if (isRecited(ability) && isBlow(ability)) {
+      return { tag: "", text: "Recitada: leva tempo, então não abre luta. Gravada no descanso, sai na hora — e abre." };
+    }
     return { tag: "", text: "Só serve dentro de uma luta." };
   }
 

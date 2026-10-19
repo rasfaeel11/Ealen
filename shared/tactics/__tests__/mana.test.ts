@@ -30,7 +30,10 @@ import { FIRST, eventsOf, makeCharacter, makeUnit, run } from "./helpers";
 /** Página: limite de 3 por turno. Com Eir 5, a mana cheia é 2 x 3 + 2 = 8. */
 const PAGE: Magic = { concept: "atracao_repulsao", level: 3 };
 
-/** Duas magias de teste: um puxão pequeno (ação) e um empurrão (bônus), cada um de 2 de mana. */
+/**
+ * Duas magias de teste: um puxão pequeno (ação) e um empurrão (bônus), cada um de 2 de mana. Gravadas, pra sair
+ * na hora: o tempo de recitar é de ./recitation.test.ts.
+ */
 const PULL: Ability = {
   id: "test.pull",
   name: "Puxão",
@@ -40,6 +43,7 @@ const PULL: Ability = {
   targets: "enemy",
   effects: [{ kind: "push", distance: -1 }],
   mana: 2,
+  engraved: true,
 };
 const SHOVE: Ability = { ...PULL, id: "test.shove", name: "Empurrão", cost: "bonus", effects: [{ kind: "push", distance: 1 }] };
 

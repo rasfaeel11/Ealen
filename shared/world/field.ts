@@ -4,14 +4,14 @@ import { gearedAttributes } from "../equipment";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { castOf, keepsVow } from "../party";
-import { GIFTS, abilitiesFor } from "../tactics/abilities";
+import { GIFTS, abilitiesFor, engravedAbilities } from "../tactics/abilities";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
 import { reachableTiles } from "../tactics/movement";
 import type { Prop } from "../tactics/props";
 import type { StatusId } from "../tactics/statuses";
 import { rollDice, type RngHolder } from "../tactics/rng";
 import type { Ability, Encounter } from "../tactics/types";
-import { unitFromCharacter } from "../tactics/units";
+import { isRecited, unitFromCharacter } from "../tactics/units";
 import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
 import type { ConsumableItem } from "../types/inventory";
@@ -29,7 +29,11 @@ import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
  * - Uma habilidade que se mira num inimigo ABRE a luta: quem ainda não
  *   percebeu o personagem leva o golpe antes de a luta começar e entra nela
  *   surpreso (ver Opening em ../tactics/engine.ts). Quem luta de perto corre
- *   até o alvo antes — a investida.
+ *   até o alvo antes — a investida. Magia recitada não abre luta (leva
+ *   tempo); a GRAVADA, sim: é a emboscada do mago, o círculo preparado antes.
+ * - No descanso, quem conjura GRAVA magias (`engrave`): o texto escrito antes
+ *   num objeto ou num círculo no chão, uma por gravação, até o nível de mago
+ *   dele (`engravingSlots`). Na luta, cada uma sai na hora e serve uma vez.
  *
  * Fora de luta uma habilidade custa o mesmo Fôlego e a mesma mana que dentro
  * (ver ../breath.ts e ../mana.ts) — a cura na hora, o golpe de abertura pelo
@@ -39,21 +43,51 @@ import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
  * chama). TUDO PROVISÓRIO, como os kits.
  */
 
-/** Tudo que uma ficha sabe fazer: o kit da Ordem e o que só ela sabe (`gifts` no elenco). */
-export function sheetAbilities(character: Pick<Character, "id" | "characterClass" | "level" | "equipment" | "arts">): Ability[] {
+type Knower = Pick<Character, "id" | "characterClass" | "level" | "equipment" | "arts" | "engraved">;
+
+/** Tudo que uma ficha sabe fazer: o kit da Ordem, o que só ela sabe (`gifts` no elenco) e o que deixou gravado. */
+export function sheetAbilities(character: Knower): Ability[] {
   const gifts = castOf(character)?.gifts ?? [];
-  return [...abilitiesFor(character), ...gifts.map((gift): Ability => ({ ...GIFTS[gift] }))];
+  const own = [...abilitiesFor(character), ...gifts.map((gift): Ability => ({ ...GIFTS[gift] }))];
+  return [...own, ...engravedAbilities(own, character.engraved)];
 }
 
 /** Pra que uma habilidade serve fora de luta: `mend` cura alguém do grupo, `opening` abre uma luta. */
 export type FieldUse = "mend" | "opening";
 
-/** O uso de `ability` fora de luta. Undefined em quem só faz sentido dentro dela (pôr-se em guarda). */
+/**
+ * O uso de `ability` fora de luta. Undefined em quem só faz sentido dentro
+ * dela (pôr-se em guarda), na magia recitada que se mira em alguém (recitar
+ * leva tempo: não abre luta) e na cura gravada (fora de luta, recitar não
+ * custa nada; a gravação fica pra luta).
+ */
 export function fieldUse(ability: Ability): FieldUse | undefined {
   if (ability.targets === "ally" || ability.targets === "self") {
-    return ability.effects.some((effect) => effect.kind === "heal") ? "mend" : undefined;
+    return !ability.engraved && ability.effects.some((effect) => effect.kind === "heal") ? "mend" : undefined;
   }
-  return "opening";
+  return isRecited(ability) ? undefined : "opening";
+}
+
+/** Quantas gravações cabem nele ao mesmo tempo: o nível de mago. Quem não conjura não grava nada. */
+export function engravingSlots(character: Pick<Character, "id">): number {
+  return castOf(character)?.magic?.level ?? 0;
+}
+
+/** As magias de `character` que dá pra gravar: as que custam mana, do kit e as que só ele sabe. */
+export function engravable(character: Knower): Ability[] {
+  return sheetAbilities(character).filter((ability) => (ability.mana ?? 0) > 0 && !ability.engraved);
+}
+
+/**
+ * Grava a magia `abilityId` num objeto ou num círculo: é coisa do descanso, e
+ * quem chama é ele. Recusa (e não muda nada) se não cabe mais nenhuma ou se
+ * não é uma magia dele. Devolve se gravou.
+ */
+export function engrave(character: Character, abilityId: string): boolean {
+  if ((character.engraved?.length ?? 0) >= engravingSlots(character)) return false;
+  if (!engravable(character).some((ability) => ability.id === abilityId)) return false;
+  character.engraved = [...(character.engraved ?? []), abilityId];
+  return true;
 }
 
 type Payer = Pick<Character, "id" | "level" | "attributes" | "breath" | "mana">;

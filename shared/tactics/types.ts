@@ -96,8 +96,19 @@ export interface Ability {
   /**
    * Quanta mana custa (ver ../mana.ts): é magia, e só quem conjura a usa. O
    * que passa do limite do turno de quem a usa cobra do corpo dele.
+   *
+   * Magia é RECITADA (`magia` §2.5): o texto lido em voz alta leva tempo. O
+   * comando só a declara; ela sai no começo do turno seguinte de quem a leu, e
+   * apanhar no meio pode quebrá-la (ver `Unit.reciting`). A que foi GRAVADA
+   * antes (`engraved`) não tem esse tempo.
    */
   mana?: number;
+  /**
+   * Gravada: o texto foi escrito antes, no descanso, num objeto ou num
+   * círculo no chão (ver ../engraving.ts). Na luta só se ativa — sai na hora,
+   * paga a mana na ativação — e cada gravação serve uma vez.
+   */
+  engraved?: boolean;
   /**
    * Recarga: por quantos turnos de quem a usou ela fica sem poder ser usada
    * de novo. Com 1, não sai em dois turnos seguidos. Sem isto, volta na hora.
@@ -254,6 +265,12 @@ export interface Unit {
   manaSpent?: number;
   concept?: ConceptId;
   /**
+   * O que ele está recitando (ver `mana` em Ability): a magia declarada, onde
+   * foi mirada e, se mirou alguém, quem — ela segue o alvo. Sai no começo do
+   * próximo turno dele; apanhar até lá pode quebrá-la.
+   */
+  reciting?: { abilityId: string; target: Pos; unit?: string };
+  /**
    * As marcas que o corpo levou nesta luta e que saem com ele dela (as de
    * `untilRest`, ver ./statuses.ts): o mundo as passa pra história no fim.
    * Ficam aqui mesmo que ele caia, quando as condições se apagam.
@@ -351,6 +368,14 @@ export type TacticalEvent =
    */
   | { type: "manaBurst"; unit: string; spent: number; limit: number }
   | { type: "abilityUsed"; unit: string; abilityId: string; name: string; target: Pos; reaction: boolean }
+  /** `unit` começou a recitar a magia `abilityId`, mirada em `target`: ela sai no começo do próximo turno dele. */
+  | { type: "recitationStarted"; unit: string; abilityId: string; name: string; target: Pos }
+  /**
+   * A recitação de `unit` não saiu: `hit` é o golpe que a quebrou no meio,
+   * `lost` o alvo que sumiu (caiu, saiu do alcance ou da vista), `skipped` a
+   * vez que ele perdeu, e `spent` o que faltou pra pagar na hora (a mana).
+   */
+  | { type: "recitationBroken"; unit: string; abilityId: string; name: string; reason: "hit" | "lost" | "skipped" | "spent" }
   | {
       type: "attackRoll";
       actor: string;
@@ -428,6 +453,8 @@ export type CommandError =
   | "no_breath"
   /** Falta mana pra magia (ou quem a pediu não conjura). */
   | "no_mana"
+  /** Já está recitando outra magia: uma de cada vez. */
+  | "reciting"
   /** A habilidade ainda está em recarga. */
   | "recharging"
   | "invalid_target"

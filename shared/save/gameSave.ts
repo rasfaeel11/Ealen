@@ -235,6 +235,9 @@ function isCharacter(value: unknown): value is Character {
     isNumber(value.maxHp) &&
     // De antes de o Fôlego existir, a ficha não o tem: vale cheio (ver ../breath.ts), sem migração.
     (value.breath === undefined || isNumber(value.breath)) &&
+    // A mana e as gravações também: quem não conjura não tem nenhuma das duas (ver ../mana.ts e ../world/field.ts).
+    (value.mana === undefined || isNumber(value.mana)) &&
+    (value.engraved === undefined || (Array.isArray(value.engraved) && value.engraved.every((id) => typeof id === "string"))) &&
     isObject(attributes) &&
     ATTRIBUTE_KEYS.every((key) => isNumber(attributes[key])) &&
     // Id de peça que o catálogo não tem mais não estraga nada: vale como lugar vazio (ver ../equipment.ts).

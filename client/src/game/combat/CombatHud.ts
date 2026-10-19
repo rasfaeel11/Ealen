@@ -121,8 +121,12 @@ export class CombatHud {
       if (!isAlive(unit)) return `${marker}${unit.name}   caiu`;
       // A escola de cada um fica à vista: é o que diz quem leva vantagem sobre quem.
       const style = unit.style ? `  ·  ${styleLabel(unit)}` : "";
-      // As condições que ele carrega, pelo nome: é o que diz em quem vale bater agora.
-      const statuses = unit.statuses.length > 0 ? `\n      ${unit.statuses.map((status) => status.name).join(", ")}` : "";
+      // As condições que ele carrega, pelo nome, e o que está recitando: é o que diz em quem vale bater agora.
+      const reciting = unit.reciting
+        ? [`recitando ${unit.abilities.find((ability) => ability.id === unit.reciting!.abilityId)?.name ?? ""}`]
+        : [];
+      const marks = [...unit.statuses.map((status) => status.name), ...reciting];
+      const statuses = marks.length > 0 ? `\n      ${marks.join(", ")}` : "";
       // Quem não tem vida pra perder não tem número pra mostrar.
       return `${marker}${unit.name}   ${unit.invulnerable ? "—" : `${unit.currentHp}/${unit.maxHp}`}${style}${statuses}`;
     });

@@ -404,6 +404,26 @@ export function isGiftId(id: unknown): id is GiftId {
   return typeof id === "string" && id in GIFTS;
 }
 
+/** O id de uma gravação na luta: a magia e a posição dela entre as gravações da ficha (`guardiao.x#gravada1`). */
+export function engravedId(abilityId: string, index: number): string {
+  return `${abilityId}#gravada${index + 1}`;
+}
+
+/**
+ * As gravações de uma ficha (`Character.engraved`, ver ../world/field.ts) como
+ * habilidades de luta: cada uma é a magia de `own` que ela guarda, com id
+ * próprio, sem o tempo de recitar (`engraved`) e de um uso só (`limit`). A
+ * mana se paga na ativação, como na recitada. Gravação de magia que ele não
+ * tem (mais) não vira nada.
+ */
+export function engravedAbilities(own: readonly Ability[], engraved: readonly string[] | undefined): Ability[] {
+  return (engraved ?? []).flatMap((abilityId, index) => {
+    const spell = own.find((ability) => ability.id === abilityId && (ability.mana ?? 0) > 0);
+    if (!spell) return [];
+    return [{ ...spell, id: engravedId(abilityId, index), name: `${spell.name} (gravada)`, engraved: true, limit: 1 }];
+  });
+}
+
 /** Uma habilidade do kit de uma Ordem, com o nível em que se aprende. */
 export interface KitAbility {
   /** A chave dela no kit: o fim do id (`guardiao.puxao_de_mare`). */

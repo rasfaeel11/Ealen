@@ -18,6 +18,7 @@ import {
   interactTargets,
   isBlow,
   isOver,
+  isRecited,
   pixelOfTile,
   propAt,
   propTemplate,
@@ -104,6 +105,7 @@ const ERROR_TEXT: Record<CommandError, string> = {
   resource_spent: "Você já gastou isso neste turno.",
   no_breath: "Falta Fôlego pra isso.",
   no_mana: "Falta mana pra isso.",
+  reciting: "Já está recitando: uma magia de cada vez.",
   recharging: "Ainda está em recarga.",
   invalid_target: "Alvo fora de alcance ou fora de vista.",
   item_unavailable: "Esse item não está na mochila.",
@@ -162,6 +164,8 @@ export function describeAbility(ability: Ability): string {
   if (ability.limit !== undefined) parts.push(ability.limit === 1 ? "uma vez por luta" : `${ability.limit} vezes por luta`);
   if (ability.breath) parts.push(`custa ${ability.breath} de Fôlego`);
   if (ability.mana) parts.push(`custa ${ability.mana} de mana`);
+  if (ability.engraved) parts.push("gravada: sai na hora, uma vez");
+  else if (isRecited(ability)) parts.push("recitada: sai no começo do seu próximo turno, e apanhar no meio pode quebrar");
   if (ability.cooldown) parts.push(ability.cooldown === 1 ? "não sai em dois turnos seguidos" : `recarga de ${ability.cooldown} turnos`);
   if (ability.backlash) parts.push(`cobra de você: ${STATUSES[ability.backlash.statusId].name}`);
   return parts.join(" · ");
@@ -446,6 +450,7 @@ export class CombatController {
         ability.cost === "action" ? "Ação" : "Bônus",
         ...(ability.breath ? [`${ability.breath} fôlego`] : []),
         ...(ability.mana ? [`${ability.mana} mana`] : []),
+        ...(isRecited(ability) ? ["recita"] : []),
         ...(wait > 0 ? [`volta em ${wait}`] : []),
         ...(isBlow(ability) && vowForbids(encounter, unit) ? ["o voto: não bate primeiro"] : []),
       ].join(" · ");
@@ -773,6 +778,26 @@ export class CombatController {
       case "manaSpent":
         // Quem age pelo jogador vê o Fôlego e a mana na barra; o golpe que ele pagou vem logo depois.
         return;
+
+      case "recitationStarted": {
+        // Começou a ler: a magia sai no próximo turno dele, e até lá o texto está à vista de quem quiser quebrá-lo.
+        sfx("uiOpen");
+        this.floatOver(event.unit, "Recitando...", TEXT_COLORS.goldBright, -30, 20);
+        this.hud.log(`${this.unit(event.unit).name} começa a recitar ${event.name}.`);
+        this.hud.setTurnOrder(this.encounter);
+        await this.wait(200);
+        return;
+      }
+
+      case "recitationBroken": {
+        sfx("deny");
+        const why = { hit: "o golpe quebrou o texto", lost: "o alvo sumiu", skipped: "perdeu a vez", spent: "faltou com que pagar" }[event.reason];
+        this.floatOver(event.unit, "Recitação perdida", TEXT_COLORS.inkDim, -30, 20);
+        this.hud.log(`${this.unit(event.unit).name} perde ${event.name}: ${why}.`);
+        this.hud.setTurnOrder(this.encounter);
+        await this.wait(220);
+        return;
+      }
 
       case "manaBurst":
         // Mana demais de uma vez: o corpo cobra na hora. A marca vem logo depois, como condição.

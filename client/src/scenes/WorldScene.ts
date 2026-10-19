@@ -15,6 +15,9 @@ import {
   breathOf,
   burstMark,
   canAfford,
+  engrave,
+  engravable,
+  engravingSlots,
   fieldUse,
   maxBreath,
   maxMana,
@@ -87,6 +90,7 @@ import {
 } from "@ealen/shared";
 import { areaMusic, playMusic, sfx } from "../game/audio";
 import { BagPanel } from "../game/BagPanel";
+import { EngravePanel } from "../game/EngravePanel";
 import { CLOCK_BAR_BOTTOM, ClockBar } from "../game/ClockBar";
 import { CombatController } from "../game/combat/CombatController";
 import { drawArea, drawBrackets, drawReach, drawStop } from "../game/combat/marks";
@@ -665,6 +669,23 @@ export default class WorldScene extends Phaser.Scene {
     this.persist();
     this.refreshStatus();
     this.showBanner("Você descansa.");
+    this.openEngrave();
+  }
+
+  /** O descanso de quem conjura: gravar, num objeto ou num círculo, o que na luta vai sair sem o tempo de recitar. */
+  private openEngrave(): void {
+    const casters = this.company().filter((member) => engravingSlots(member) > 0 && engravable(member).length > 0);
+    if (casters.length === 0) return;
+    this.halt();
+    this.pause = new EngravePanel(this, (object) => this.addHud(object), {
+      casters,
+      onEngrave: (caster, abilityId) => {
+        const done = engrave(caster, abilityId);
+        if (done) this.persist();
+        return done;
+      },
+      onClose: () => this.closePause(),
+    });
   }
 
   // ----------------------------------------------------------------- conversa
@@ -881,7 +902,7 @@ export default class WorldScene extends Phaser.Scene {
     if (knot === undefined || !unit) return;
 
     // A ficha só fica com a cara da luta enquanto a história fala: quem fecha o jogo no meio da luta a tem como era antes.
-    const { currentHp, breath, inventory } = character;
+    const { currentHp, breath, mana, engraved, inventory } = character;
     syncCharacterFromUnit(character, unit);
     try {
       this.fightSteps.push(...(await this.read(knot)));
@@ -889,6 +910,8 @@ export default class WorldScene extends Phaser.Scene {
       syncUnitInventory(unit, character);
       character.currentHp = currentHp;
       character.breath = breath;
+      character.mana = mana;
+      character.engraved = engraved;
       character.inventory = inventory;
     }
   }
