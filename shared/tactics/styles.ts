@@ -21,6 +21,12 @@ import type { Ability, Unit } from "./types";
  *       outro. Quem ataca um da Espera e erra leva o golpe de volta, na
  *       reação dele (ver `counterStrike`).
  *
+ * O VOTO da Ipojy (`vow`): quem é da Espera nunca dá o primeiro golpe. Não
+ * abre a luta (nada hostil sai dele antes de alguém, de qualquer lado, dar o
+ * primeiro golpe — `Encounter.opened`), não embosca (não mira quem ainda está
+ * Surpreso) e não dá golpe de abertura. A regra mora em ./targeting.ts
+ * (`vowAllows`), que é a mesma pro motor, pra IA e pra interface.
+ *
  * Fora do triângulo há o BALUARTE, que não é escola: é o couro de criatura
  * grande, com a MURALHA (`damageReduction`), um tanto fixo a menos em cada
  * golpe que recebe, depois da armadura.
@@ -48,11 +54,13 @@ export interface StyleTemplate {
   punishRepeat?: number;
   /** Devolve o golpe a quem o ataca e erra (ver `counterStrike`). */
   counter?: boolean;
+  /** O voto de nunca dar o primeiro golpe (ver `isSworn`). */
+  vow?: boolean;
   damageReduction?: number;
 }
 
 export const STYLES = {
-  ipojy: { id: "ipojy", name: "Ipojy", alias: "a Espera", school: true, beats: "gryskar", trait: "Contragolpe", counter: true },
+  ipojy: { id: "ipojy", name: "Ipojy", alias: "a Espera", school: true, beats: "gryskar", trait: "Contragolpe", counter: true, vow: true },
   gryskar: { id: "gryskar", name: "Gryskar", alias: "o Bate-Primeiro", school: true, beats: "tsvirana", trait: "Onda", momentum: 1 },
   tsvirana: { id: "tsvirana", name: "Tsvirana", alias: "a Correnteza", school: true, beats: "ipojy", trait: "Rachadura", punishRepeat: 2 },
   baluarte: { id: "baluarte", name: "Baluarte", trait: "Muralha", damageReduction: 2 },
@@ -123,6 +131,11 @@ export function waveBonus(actor: Unit, ability: Ability, target: Unit): number {
 export function punishFactor(actor: Unit, target: Unit): number {
   const factor = template(actor.style)?.punishRepeat;
   return factor && target.habit?.repeated ? factor : 1;
+}
+
+/** VOTO: quem luta na escola `style` jurou nunca dar o primeiro golpe? Vale pra unidade e pra ficha do elenco. */
+export function isSworn(style: StyleId | undefined): boolean {
+  return template(style)?.vow === true;
 }
 
 /** CONTRAGOLPE: `unit` devolve o golpe de quem o ataca e erra? */

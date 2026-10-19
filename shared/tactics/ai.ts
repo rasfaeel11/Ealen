@@ -5,7 +5,7 @@ import { PROPS, type PropTemplate } from "./props";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
 import { punishFactor, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
-import { abilityTargets, affectedProps, affectedUnits, canAimAt } from "./targeting";
+import { abilityTargets, affectedProps, affectedUnits, canAimAt, isBlow, vowAllows, vowForbids } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
@@ -245,6 +245,7 @@ function isOffensive(ability: Ability): boolean {
  */
 function aimPoints(encounter: Encounter, unit: Unit, ability: Ability, foes: Unit[]): Pos[] {
   if (ability.targets !== "tile") return abilityTargets(encounter, unit, ability);
+  if (vowForbids(encounter, unit) && isBlow(ability)) return [];
 
   const radius = ability.radius ?? 0;
   const seen = new Set<number>();
@@ -253,7 +254,7 @@ function aimPoints(encounter: Encounter, unit: Unit, ability: Ability, foes: Uni
     for (let y = foe.pos.y - radius; y <= foe.pos.y + radius; y++) {
       for (let x = foe.pos.x - radius; x <= foe.pos.x + radius; x++) {
         const pos = { x, y };
-        if (!canAimAt(encounter, unit, ability, pos)) continue;
+        if (!canAimAt(encounter, unit, ability, pos) || !vowAllows(encounter, unit, ability, pos)) continue;
         const index = tileIndex(encounter.grid, pos);
         if (!seen.has(index)) points.push(pos);
         seen.add(index);
@@ -567,7 +568,8 @@ function threatAt(encounter: Encounter, victim: Unit): number {
   const { pos } = victim;
   let total = 0;
   for (const foe of encounter.units) {
-    if (foe.team === victim.team || !isAlive(foe)) continue;
+    // Quem é da Ipojy não bate antes de a luta abrir: até lá, não ameaça ninguém.
+    if (foe.team === victim.team || !isAlive(foe) || vowForbids(encounter, foe)) continue;
 
     let worst = 0;
     for (const ability of foe.abilities) {
@@ -588,7 +590,7 @@ function opportunityDamage(encounter: Encounter, mover: Unit, from: Pos, to: Pos
   mover.pos = from;
   let total = 0;
   for (const foe of encounter.units) {
-    if (foe.team === mover.team || !isAlive(foe) || !foe.turn.reaction) continue;
+    if (foe.team === mover.team || !isAlive(foe) || !foe.turn.reaction || vowForbids(encounter, foe)) continue;
 
     const ability = foe.abilities.find((candidate) => candidate.opportunity && readiness(foe, candidate, true) === "ready");
     if (!ability) continue;

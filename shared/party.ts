@@ -4,7 +4,7 @@ import { startingEquipment } from "./equipment";
 import { applyXpGain, xpToNextLevel } from "./leveling";
 import { MOCK_MAP_NODES } from "./mock/seed";
 import type { GiftId } from "./tactics/abilities";
-import type { StyleId } from "./tactics/styles";
+import { isSworn, type StyleId } from "./tactics/styles";
 import type { SupportId } from "./tactics/supports";
 import type { Character } from "./types/character";
 import type { Equipment } from "./types/inventory";
@@ -121,6 +121,15 @@ export function supportOf(character: Pick<Character, "id">): SupportId | undefin
 export function castId(who: string): string | undefined {
   if (who === HERO_ID) return HERO_ID;
   return isCompanionKey(who) ? companionId(who) : undefined;
+}
+
+/**
+ * Quem é do elenco e da Ipojy jurou nunca dar o primeiro golpe: não embosca
+ * nem dá golpe de abertura (ver o voto em ./tactics/styles.ts). Dentro da
+ * luta, quem guarda o voto é o motor, pela escola da unidade.
+ */
+export function keepsVow(character: Pick<Character, "id">): boolean {
+  return isSworn(castOf(character)?.style?.id);
 }
 
 /** Entra na luta como unidade? Só não entra quem acompanha sem lutar. */

@@ -1,5 +1,6 @@
 import { distance, hasLineOfSight, posOfIndex, tileAt, type Pos } from "./grid";
 import { isBreakable, propAt, propTemplate, type Prop } from "./props";
+import { isSworn } from "./styles";
 import type { Supporter } from "./supports";
 import type { Ability, Encounter, Unit } from "./types";
 import { isAlive, unitAt } from "./units";
@@ -24,8 +25,42 @@ function dealsDamage(ability: Ability): boolean {
   return ability.effects.some((effect) => effect.kind === "damage");
 }
 
+/** Um golpe: o que se mira no outro lado (um inimigo, um quadrado, todos eles). Usar um abre a luta (`Encounter.opened`). */
+export function isBlow(ability: Ability): boolean {
+  return ability.targets !== "self" && ability.targets !== "ally";
+}
+
+/**
+ * O VOTO da Ipojy proíbe `unit` de levantar a mão AGORA, seja qual for o
+ * alvo: ele é da Espera e ninguém deu o primeiro golpe da luta ainda. Vale
+ * pros golpes e pro ataque de oportunidade; o Contragolpe já vem depois de um
+ * golpe. É o que a interface diz quando o botão apaga por causa do voto.
+ */
+export function vowForbids(encounter: Encounter, unit: Unit): boolean {
+  return isSworn(unit.style) && !encounter.opened;
+}
+
+/**
+ * O voto deixa `unit` usar `ability` mirada em `pos`? Quem não é da Ipojy, ou
+ * o que não é golpe, sempre. Da Espera: só depois do primeiro golpe da luta,
+ * e nunca pegando quem ainda está Surpreso — emboscar é bater em quem não
+ * esperava.
+ */
+export function vowAllows(encounter: Encounter, unit: Unit, ability: Ability, pos: Pos): boolean {
+  if (!isSworn(unit.style) || !isBlow(ability)) return true;
+  if (!encounter.opened) return false;
+  return !affectedUnits(encounter, ability, ability.targets === "foes" ? unit.pos : pos).some(
+    (other) => other.team !== unit.team && other.statuses.some((status) => status.id === "surprised"),
+  );
+}
+
 /** Todo quadrado que `unit` pode mirar com `ability` de onde está. Golpe que fere também mira um destrutível. */
 export function abilityTargets(encounter: Encounter, unit: Unit, ability: Ability): Pos[] {
+  if (vowForbids(encounter, unit) && isBlow(ability)) return [];
+  return reachTargets(encounter, unit, ability).filter((pos) => vowAllows(encounter, unit, ability, pos));
+}
+
+function reachTargets(encounter: Encounter, unit: Unit, ability: Ability): Pos[] {
   if (ability.targets === "self") return [{ ...unit.pos }];
   // Sai de quem usa e pega todo inimigo de pé: só existe o que mirar se houver algum.
   if (ability.targets === "foes") {

@@ -12,7 +12,7 @@ import { findUnit, syncCharacterFromUnit, unitFromCharacter } from "../tactics/u
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
 import type { LearnedAbility, LevelUpResult } from "../types/levelUp";
-import { HERO_ID, castOf, companionId, supportOf } from "../party";
+import { HERO_ID, castOf, companionId, keepsVow, supportOf } from "../party";
 import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
 
 /**
@@ -75,8 +75,16 @@ export const AMBUSH_RANGE = 9;
  * inimigo mais próximo dentro de AMBUSH_RANGE. Não precisa enxergá-lo — quem
  * está ali ainda não percebeu ninguém (se tivesse, aggroedGroup já teria
  * começado a luta). Grupo `passive` não entra: essa luta é da história.
+ * Quem embosca é `ambusher`; se ele é da Ipojy, não há emboscada nenhuma — o
+ * voto (ver ../tactics/styles.ts).
  */
-export function ambushableGroup(map: AreaMap, enemies: AreaEnemy[], playerTile: Pos): string | undefined {
+export function ambushableGroup(
+  map: AreaMap,
+  enemies: AreaEnemy[],
+  playerTile: Pos,
+  ambusher?: Pick<Character, "id">,
+): string | undefined {
+  if (ambusher && keepsVow(ambusher)) return undefined;
   let nearest: AreaEnemy | undefined;
   let best = AMBUSH_RANGE;
   for (const enemy of enemies) {

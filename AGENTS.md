@@ -263,7 +263,6 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P0 — a conversão (o jogo não existe sem isto)
 | # | Task | O que é |
 |---|---|---|
-| 3 | **Voto da Ipojy** | Quem é da Espera não abre luta, não embosca, não dá golpe de abertura. |
 | 4 | **Mana e custo no corpo** | Recurso Mana pra quem conjura; limite por turno; passou do limite, a marca do conceito como `afflict`. |
 | 5 | **Recitada e Gravada** | Recitada com tempo (declara, sai no turno seguinte, pode quebrar). Gravada preparada no descanso, num número limitado de objetos e círculos, ativada sem tempo. O círculo no chão como golpe de abertura. |
 | 6 | **Cura que cobra o paciente** | A cura tira do alvo (Fôlego, fome) o que acelera. |
@@ -291,6 +290,11 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   na luta cortada pelo nível de aura (Punho a Divindade). O Baluarte, com a Muralha, ficou só pra criatura grande,
   fora do triângulo. Na gente provisória do Eälen: o fiscal é Ipojy, os mergulhadores Gryskar, Taevel Tsvirana;
   Halmira e Lish viraram Gryskar e Tsvirana até a task 7 trocar o elenco. Detalhe em `docs/motor.md`.
+- **3. O voto da Ipojy.** A luta sabe se alguém já deu o primeiro golpe (`Encounter.opened`). Até lá, quem é da
+  Espera não tem alvo pra golpe nenhum, nem dá ataque de oportunidade; depois, ainda não bate em quem está Surpreso.
+  Não dá golpe de abertura e não embosca (`keepsVow` no elenco). A IA espelha a regra: antes de a luta abrir, quem é
+  da Ipojy não ameaça ninguém. A mania `retaliates` do fiscal ficou junto, porque o texto provisório da estrada
+  fala dela; sai quando o castelo de pedágio entrar no lugar.
 
 ## 9. O que precisa virar cânone na história
 

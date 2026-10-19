@@ -272,6 +272,12 @@ export interface Encounter {
   cues: Cue[];
   /** Quem acompanha o grupo do jogador sem lutar, e o apoio de cada um (ver ./supports.ts). */
   supporters: Supporter[];
+  /**
+   * Alguém, de qualquer lado, já deu o primeiro golpe: usou uma habilidade
+   * hostil (ver `isBlow` em ./targeting.ts), acertando ou não. Até lá, quem é
+   * da Ipojy não levanta a mão (o voto, ver ./styles.ts).
+   */
+  opened?: boolean;
   rngState: number;
   /** Preenchido quando um dos lados acaba, ou quando uma deixa dá a vitória. Depois disso nenhum comando é aceito. */
   winner?: TeamId;

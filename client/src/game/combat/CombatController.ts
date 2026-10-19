@@ -16,6 +16,7 @@ import {
   findPath,
   findUnit,
   interactTargets,
+  isBlow,
   isOver,
   pixelOfTile,
   propAt,
@@ -28,6 +29,7 @@ import {
   supportTargets,
   tileOfPixel,
   unitAt,
+  vowForbids,
   cooldownLeft,
   type Ability,
   type AreaMap,
@@ -434,13 +436,15 @@ export class CombatController {
     this.hud.setTurnOrder(encounter);
 
     const canPay = (ability: Ability) => readiness(unit, ability) === "ready";
-    // O que ela custa, à vista no botão: a ação, o Fôlego e, em recarga, em quantos turnos volta.
+    // O que ela custa, à vista no botão: a ação, o Fôlego e, em recarga, em quantos turnos volta. O golpe que o voto
+    // da Ipojy segura diz por que está apagado.
     const price = (ability: Ability) => {
       const wait = cooldownLeft(unit, ability);
       return [
         ability.cost === "action" ? "Ação" : "Bônus",
         ...(ability.breath ? [`${ability.breath} fôlego`] : []),
         ...(wait > 0 ? [`volta em ${wait}`] : []),
+        ...(isBlow(ability) && vowForbids(encounter, unit) ? ["o voto: não bate primeiro"] : []),
       ].join(" · ");
     };
     // O botão de mexer existe enquanto esta luta espera que mexam em alguma coisa (uma deixa `used`), ou com algo

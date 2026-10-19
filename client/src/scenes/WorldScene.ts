@@ -21,6 +21,7 @@ import {
   firedTrigger,
   grantEncounterRewards,
   isActive,
+  keepsVow,
   isBlocked,
   isDefeated,
   markBroken,
@@ -612,7 +613,7 @@ export default class WorldScene extends Phaser.Scene {
   private refreshHint(): void {
     const talker = this.talkerInReach();
     const talk = talker ? `  ·  E: ${talker.stands ? "falar com" : "examinar"} ${talker.name}` : "";
-    const prey = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos));
+    const prey = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos), this.character);
     const journal = this.story.journal().length > 0 ? "  ·  J: diário" : "";
     // A segunda linha: o que Halmira sabe fazer daqui, sem estar em luta.
     const skills = this.fieldAbilities().map((ability, index) => `${index + 1}: ${ability.name}`);
@@ -759,7 +760,7 @@ export default class WorldScene extends Phaser.Scene {
   /** `F`: ataca primeiro o grupo mais próximo que ainda não percebeu o personagem. Ele entra na luta surpreso. */
   private ambush(): void {
     if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
-    const group = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos));
+    const group = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos), this.character);
     if (group !== undefined) this.startCombat(group, "enemy");
   }
 
@@ -1005,6 +1006,7 @@ export default class WorldScene extends Phaser.Scene {
       if (!ability) return;
       if (fieldUse(ability) === "mend") this.openSheet();
       else if (!canAfford(this.character, ability)) this.showBanner("Falta Fôlego pra isso.");
+      else if (keepsVow(this.character)) this.showBanner("Quem é da Espera não dá o primeiro golpe.");
       else if (!this.aimOpening(ability)) this.showBanner("Ninguém ao alcance que ainda não tenha te percebido.");
     }
   }

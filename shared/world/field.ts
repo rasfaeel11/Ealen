@@ -2,7 +2,7 @@ import { breathOf } from "../breath";
 import { gearedAttributes } from "../equipment";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
-import { castOf } from "../party";
+import { castOf, keepsVow } from "../party";
 import { GIFTS, abilitiesFor } from "../tactics/abilities";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
 import { reachableTiles } from "../tactics/movement";
@@ -137,6 +137,8 @@ export function openingStrikes(
   props: Prop[] = [],
 ): OpeningStrike[] {
   if (fieldUse(ability) !== "opening" || !canAfford(hero, ability)) return [];
+  // Quem é da Ipojy não dá golpe de abertura: é o voto.
+  if (keepsVow(hero)) return [];
   const hostile = enemies.filter((enemy) => !enemy.passive && findBestiaryEntry(enemy.creature));
   const gap = (enemy: AreaEnemy) => distance(tileOfPixel(map, enemy), heroTile);
   const near = hostile.filter((enemy) => gap(enemy) <= AMBUSH_RANGE).sort((a, b) => gap(a) - gap(b));

@@ -6,7 +6,7 @@ import { findPath } from "./movement";
 import { PROPS, fellProp, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
 import { STATUSES, isHarmful, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
-import { STYLES, counters, punishFactor, styleReduction, waveBonus } from "./styles";
+import { STYLES, counters, isSworn, punishFactor, styleReduction, waveBonus } from "./styles";
 import {
   SURFACES,
   enterCost,
@@ -17,7 +17,15 @@ import {
   type SurfaceTemplate,
 } from "./surfaces";
 import { SUPPORTS, type SupportId, type SupportTemplate } from "./supports";
-import { abilityTargets, affectedProps, affectedUnits, interactTargets, supportTargets } from "./targeting";
+import {
+  abilityTargets,
+  affectedProps,
+  affectedUnits,
+  interactTargets,
+  isBlow,
+  supportTargets,
+  vowForbids,
+} from "./targeting";
 import type {
   Ability,
   AttackOutcome,
@@ -98,7 +106,7 @@ export interface EncounterSetup {
  *
  * Um golpe de abertura que não vale (habilidade que ele não tem ou não pode
  * pagar, alvo fora de alcance, quadrado aonde não chega) simplesmente não acontece: a luta começa
- * sem ele.
+ * sem ele. Quem é da Ipojy nunca dá um: é o voto (ver ./styles.ts).
  */
 export interface Opening {
   unitId: string;
@@ -164,6 +172,7 @@ function strikeFirst(encounter: Encounter, opening: Opening, events: TacticalEve
   const unit = findUnit(encounter, opening.unitId);
   const ability = unit?.abilities.find((candidate) => candidate.id === opening.abilityId);
   if (!unit || !ability || !isAlive(unit) || readiness(unit, ability, true) !== "ready") return;
+  if (isSworn(unit.style)) return;
 
   if (opening.from && !samePos(opening.from, unit.pos)) {
     // A investida anda com o movimento de um turno, e não o tira do primeiro turno de verdade.
@@ -483,6 +492,8 @@ function opportunityThreats(encounter: Encounter, mover: Unit, next: Pos): { att
   const threats: { attacker: Unit; ability: Ability }[] = [];
   for (const attacker of encounter.units) {
     if (attacker.team === mover.team || !isAlive(attacker) || !attacker.turn.reaction) continue;
+    // Quem é da Ipojy não pune ninguém antes de a luta abrir: seria dar o primeiro golpe.
+    if (vowForbids(encounter, attacker)) continue;
 
     // A reação paga como qualquer uso: sem Fôlego, ou em recarga, o golpe não sai.
     const ability = attacker.abilities.find(
@@ -543,6 +554,7 @@ function useAbility(
  * alvo tem a própria rolagem de ataque; quem é errado não sofre efeito
  * nenhum, e quem morre não sofre os efeitos seguintes. Um golpe de um alvo
  * só num inimigo conta pra Onda (`streak`): pegando, soma; errando, zera.
+ * Um golpe (`isBlow`), acerte ou erre, abre a luta (`Encounter.opened`).
  */
 function resolveAbility(
   encounter: Encounter,
@@ -561,6 +573,7 @@ function resolveAbility(
     target: { ...targetPos },
     reaction,
   });
+  if (isBlow(ability)) encounter.opened = true;
 
   // Quem é da Ipojy e foi atacado em vão devolve o golpe — depois que este acabar de acontecer.
   const countering: Unit[] = [];

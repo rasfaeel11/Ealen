@@ -92,9 +92,9 @@ test("a proficiência vai de 1 a 7 e nunca passa do nível de aura", () => {
 
 test("a vantagem de escola entra na rolagem de ataque, pros dois lados, e só entre inimigos", () => {
   const { encounter } = stage(["AE.B"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), "ipojy"),
-    styled(makeUnit("E", "enemy", at("E"), TOUGH), "gryskar"),
-    styled(makeUnit("B", "party", at("B")), "gryskar"),
+    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), "tsvirana"),
+    styled(makeUnit("E", "enemy", at("E"), TOUGH), "ipojy"),
+    styled(makeUnit("B", "party", at("B")), "ipojy"),
   ]);
   const [lish, guard, ally] = encounter.units;
   const strike = lish.abilities.find((ability) => ability.id === "guardiao.attack")!;
@@ -288,6 +288,93 @@ test("Contragolpe da Ipojy: não alcança quem errou de longe, e não vem de que
   // Colado, mas noutra escola: errar não custa nada.
   const near = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: findUnit(encounter, "F")!.pos });
   assert.deepEqual(eventsOf(near, "styleTrait"), []);
+});
+
+test("Voto da Ipojy: quem é da Espera não abre a luta — só bate depois que alguém bateu", () => {
+  const { encounter } = stage(["IE"], (at) => [
+    styled(makeUnit("I", "party", at("I"), { ...TOUGH, attributes: { il: FIRST } }), "ipojy"),
+    makeUnit("E", "enemy", at("E"), TOUGH),
+  ]);
+  const xandui = findUnit(encounter, "I")!;
+  const enemy = findUnit(encounter, "E")!;
+  const strike = xandui.abilities.find((ability) => ability.id === "guardiao.attack")!;
+  const guard = xandui.abilities.find((ability) => ability.id === "guardiao.defend")!;
+
+  // Ninguém bateu ainda: golpe nenhum tem alvo, e o motor recusa. Guardar-se não é golpe.
+  assert.equal(encounter.opened, undefined);
+  assert.deepEqual(abilityTargets(encounter, xandui, strike), []);
+  assert.deepEqual(applyCommand(encounter, { type: "ability", unitId: "I", abilityId: strike.id, target: enemy.pos }), {
+    ok: false,
+    reason: "invalid_target",
+  });
+  assert.deepEqual(abilityTargets(encounter, xandui, guard), [xandui.pos]);
+  pass(encounter);
+
+  // O outro lado bate (acerte ou erre): a luta abriu, e agora ela responde.
+  run(encounter, { type: "ability", unitId: "E", abilityId: "guardiao.attack", target: xandui.pos });
+  assert.equal(encounter.opened, true);
+  pass(encounter);
+  assert.deepEqual(abilityTargets(encounter, xandui, strike), [enemy.pos]);
+  run(encounter, { type: "ability", unitId: "I", abilityId: strike.id, target: enemy.pos });
+});
+
+test("Voto da Ipojy: não embosca — quem ainda está Surpreso não é alvo dela, nem depois do primeiro golpe", () => {
+  const { encounter } = stage(
+    ["AE", "I."],
+    (at) => [
+      makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { il: FIRST } }),
+      styled(makeUnit("I", "party", at("I"), { ...TOUGH, attributes: { il: 90 } }), "ipojy"),
+      makeUnit("E", "enemy", at("E"), TOUGH),
+    ],
+    { surprised: "enemy" },
+  );
+  const xandui = findUnit(encounter, "I")!;
+  const enemy = findUnit(encounter, "E")!;
+  const strike = xandui.abilities.find((ability) => ability.id === "guardiao.attack")!;
+
+  // Jarupã abre a luta; o inimigo ainda está pego de surpresa, e ela não bate em quem não esperava.
+  run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: enemy.pos });
+  assert.equal(encounter.opened, true);
+  pass(encounter);
+  assert.equal(activeUnit(encounter)!.id, "I");
+  assert.deepEqual(abilityTargets(encounter, xandui, strike), []);
+  pass(encounter);
+
+  // Passada a vez perdida do inimigo, ele já sabe que está numa luta.
+  assert.equal(activeUnit(encounter)!.id, "A");
+  assert.ok(!enemy.statuses.some((status) => status.id === "surprised"));
+  pass(encounter);
+  assert.equal(activeUnit(encounter)!.id, "I");
+  assert.deepEqual(abilityTargets(encounter, xandui, strike), [enemy.pos]);
+});
+
+test("Voto da Ipojy: antes de a luta abrir, quem passa por ela não leva ataque de oportunidade", () => {
+  const { encounter } = stage(["IA..."], (at) => [
+    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { il: FIRST } }),
+    styled(makeUnit("I", "enemy", at("I"), TOUGH), "ipojy"),
+  ]);
+  const away = run(encounter, { type: "move", unitId: "A", to: { x: 3, y: 0 } });
+  assert.deepEqual(eventsOf(away, "attackRoll"), []);
+  // Aberta a luta, o mesmo passo custa o golpe.
+  encounter.opened = true;
+  run(encounter, { type: "move", unitId: "A", to: { x: 1, y: 0 } });
+  const again = run(encounter, { type: "move", unitId: "A", to: { x: 3, y: 0 } });
+  assert.deepEqual(eventsOf(again, "attackRoll").map((event) => event.actor), ["I"]);
+});
+
+test("Voto da Ipojy: quem é da Espera não dá golpe de abertura — a luta começa sem ele", () => {
+  const { encounter, events } = stage(
+    ["I.E"],
+    (at) => [
+      styled(makeUnit("I", "party", at("I"), { attributes: { il: FIRST } }), "ipojy"),
+      makeUnit("E", "enemy", at("E"), TOUGH),
+    ],
+    { surprised: "enemy", opening: { unitId: "I", abilityId: "guardiao.attack", target: { x: 2, y: 0 }, from: { x: 1, y: 0 } } },
+  );
+  assert.deepEqual(eventsOf(events, "abilityUsed"), []);
+  assert.deepEqual(eventsOf(events, "moved"), []);
+  assert.equal(encounter.opened, undefined);
+  assert.deepEqual(findUnit(encounter, "I")!.pos, { x: 0, y: 0 });
 });
 
 test("Adiantar a Maré pega todo inimigo de pé, vale uma vez por luta e cobra o turno seguinte de quem a fez", () => {
