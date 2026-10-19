@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { summarizeSave, type GameSave } from "@ealen/shared";
 import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
+import { beginNewGame } from "../game/newGame";
 import { deleteSlot, exportSlot, pickSaveFile, readSlots, writeSlot, type SlotState } from "../game/save";
 import { GameSession } from "../game/session";
 import { Menu, addBodyText, addTitleText, type MenuOption } from "../game/ui";
@@ -15,7 +16,7 @@ const MENU_Y = 250;
 const DEFAULT_NOTICE = "Cada espaço guarda um jogo inteiro. O jogo grava sozinho no espaço em que se joga.";
 
 const PROBLEM_TEXT = {
-  invalid: "Esse arquivo não é um save do Eälen, ou está estragado.",
+  invalid: "Esse arquivo não é um save deste jogo, ou está estragado.",
   newer: "Esse save é de uma versão mais nova do jogo.",
 } as const;
 
@@ -74,7 +75,7 @@ export default class SaveSlotsScene extends Phaser.Scene {
 
     const startNew = () => {
       this.registry.set(REGISTRY_NEW_GAME_SLOT, slot);
-      this.scene.start(SCENES.prologue);
+      beginNewGame(this);
     };
     const erase: MenuOption = {
       label: "Apagar",

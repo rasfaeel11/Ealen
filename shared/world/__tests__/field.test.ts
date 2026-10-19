@@ -5,16 +5,18 @@ import { breathOf, maxBreath } from "../../breath";
 import { addItemToInventory, findInventorySlot } from "../../inventoryEffects";
 import { findItemTemplate } from "../../mock/items";
 import { HERO_ID, createProtagonist, joinParty } from "../../party";
-import { activeUnit, findUnit } from "../../tactics";
+import { activeUnit, findUnit, kitOf } from "../../tactics";
 import { distance, tileAt } from "../../tactics/grid";
 import type { Character } from "../../types/character";
 import {
   AMBUSH_RANGE,
   AREAS,
   aggroedGroup,
+  burstMark,
   canAfford,
   fieldUse,
   mend,
+  missing,
   openingStrikes,
   parseTiledMap,
   sheetAbilities,
@@ -83,13 +85,32 @@ test("fora de luta, golpe abre luta, cura remenda o grupo e guarda não serve pr
   assert.equal(fieldUse(ability(guardian, "defend")), undefined);
   assert.equal(fieldUse(ability(sheet("l", "luminar"), "heal")), "mend");
 
-  // A ficha mostra o kit da Ordem e o que só aquela pessoa sabe.
-  const varel = joinParty([], "varel", 1)!;
-  const gift = sheetAbilities(varel).find((candidate) => candidate.id === "gift.tide_pull");
-  assert.ok(gift);
-  assert.equal(fieldUse(gift), "opening");
-  assert.ok(sheetAbilities(guardian).some((candidate) => candidate.id === "gift.net_cast"));
+  // A ficha mostra o kit e o que ficou gravado no descanso: a magia recitada não abre luta, a gravada abre.
+  const endyru = createProtagonist();
+  assert.equal(fieldUse(ability(endyru, "attack")), "opening");
+  assert.equal(fieldUse(ability(endyru, "quick_attack")), undefined);
+  assert.equal(fieldUse(ability(endyru, "heal")), "mend");
+  endyru.engraved = ["atracao_repulsao.quick_attack"];
+  const circle = sheetAbilities(endyru).find((candidate) => candidate.engraved)!;
+  assert.equal(circle.name, "Puxão (gravada)");
+  assert.equal(fieldUse(circle), "opening");
   assert.equal(sheetAbilities(sheet("ninguem", "guardiao")).some((candidate) => candidate.id.startsWith("gift.")), false);
+});
+
+test("fora de luta a magia custa mana; quem não conjura não paga nenhuma, e o que passa do limite de uma vez marca", () => {
+  const endyru = createProtagonist();
+  const pull = ability(endyru, "quick_attack");
+  assert.equal(missing(endyru, pull), undefined);
+  endyru.mana = 0;
+  assert.equal(missing(endyru, pull), "mana");
+  assert.equal(canAfford(endyru, pull), false);
+  // Quem não conjura não tem mana pra pagar magia nenhuma.
+  assert.equal(missing(joinParty([], "jarupa", 1)!, pull), "mana");
+
+  const throwing = kitOf({ characterClass: "atracao_repulsao" }).find((entry) => entry.slug === "arremesso")!.ability;
+  assert.equal(burstMark(endyru, throwing), "bloodied");
+  assert.equal(burstMark(endyru, pull), undefined);
+  assert.equal(burstMark(joinParty([], "jarupa", 1)!, throwing), undefined);
 });
 
 test("a cura fora de luta usa a conta do motor, não passa da vida cheia e não rola o dado à toa", () => {
@@ -151,13 +172,13 @@ test("item que cura se usa em qualquer um do grupo; o que é de luta fica pra lu
   assert.equal(usableOutside(tear), true);
   assert.equal(usableOutside(balm), false);
 
-  const lish = joinParty([], "lish", 1)!;
-  lish.currentHp = 3;
-  const used = useItemOutside(hero, tear.id, lish);
-  assert.equal(used.ok && used.healed, Math.min(15, lish.maxHp - 3));
+  const jarupa = joinParty([], "jarupa", 1)!;
+  jarupa.currentHp = 3;
+  const used = useItemOutside(hero, tear.id, jarupa);
+  assert.equal(used.ok && used.healed, Math.min(15, jarupa.maxHp - 3));
   assert.equal(findInventorySlot(hero, tear.id)!.quantity, 1);
 
-  // Halmira está inteira: a segunda Lágrima fica na mochila.
+  // Endyru está inteiro: a segunda Lágrima fica na mochila.
   assert.deepEqual(useItemOutside(hero, tear.id, hero), { ok: false, reason: "no_effect" });
   assert.equal(findInventorySlot(hero, tear.id)!.quantity, 1);
 

@@ -34,7 +34,6 @@ EXTERNAL travel(area, spawn)
 EXTERNAL join_party(who)
 EXTERNAL leave_party(who)
 EXTERNAL in_party(who)
-EXTERNAL unlock_order(id)
 EXTERNAL note(id, text)
 EXTERNAL noted(id)
 EXTERNAL forget(count)
@@ -270,14 +269,14 @@ Chefe: Ninguém passa.
 `);
   const runner = new StoryRunner(json, makeHost());
   const first = runner.start("chefe");
-  assert.deepEqual(aftermath([first]), { fight: "guardas", unlocks: [] });
+  assert.deepEqual(aftermath([first]), { fight: "guardas" });
   // O pedido não tira a fala nem as escolhas de onde estavam.
   assert.deepEqual(lines(first.beats), ["Chefe> Ninguém passa."]);
   assert.equal(first.choices.length, 2);
 
   const retreat = runner.choose(first.choices[0].index);
-  assert.deepEqual(aftermath([first, retreat]), { fight: "guardas", travel: { area: "clareira", spawn: "default" }, unlocks: [] });
-  assert.deepEqual(aftermath([]), { unlocks: [] });
+  assert.deepEqual(aftermath([first, retreat]), { fight: "guardas", travel: { area: "clareira", spawn: "default" } });
+  assert.deepEqual(aftermath([]), {});
 
   assert.throws(() => new StoryRunner(compile(`
 === x ===
@@ -309,20 +308,16 @@ Outra cena.
 
 const COMPANY = compile(`
 === encontro ===
-{in_party("lish"): Lish: Ainda estou aqui. | Lish: Eu vou com você.}
-~ join_party("lish")
-~ join_party("lish")
+{in_party("jarupa"): Jarupã: Ainda estou aqui. | Jarupã: Eu vou com você.}
+~ join_party("jarupa")
+~ join_party("jarupa")
 ~ grant_xp(120)
 -> END
 
 === despedida ===
-~ leave_party("lish")
-~ leave_party("lish")
-{in_party("lish"): Ele fica. | Ele vai embora.}
--> END
-
-=== epilogo ===
-~ unlock_order("rachador")
+~ leave_party("jarupa")
+~ leave_party("jarupa")
+{in_party("jarupa"): Ele fica. | Ele vai embora.}
 -> END
 
 === erro ===
@@ -336,22 +331,22 @@ test("join_party põe o companheiro no grupo, no nível do personagem; o XP da h
   const runner = new StoryRunner(COMPANY, host);
 
   const step = runner.start("encontro");
-  assert.deepEqual(lines(step.beats), ["Lish> Eu vou com você."]);
+  assert.deepEqual(lines(step.beats), ["Jarupã> Eu vou com você."]);
   // Chamado duas vezes, entra uma só.
   assert.deepEqual(
     step.beats.flatMap((beat) => (beat.kind === "event" ? [beat.event.type] : [])),
     ["joined", "xp"],
   );
-  const [lish] = host.companions;
+  const [jarupa] = host.companions;
   assert.equal(host.companions.length, 1);
-  assert.equal(lish.present, true);
-  assert.equal(lish.character.name, "Lish");
-  assert.equal(lish.character.inventory, undefined);
+  assert.equal(jarupa.present, true);
+  assert.equal(jarupa.character.name, "Jarupã");
+  assert.equal(jarupa.character.inventory, undefined);
   // Entrou no nível 3 e os 120 de XP são dele também.
-  assert.equal(lish.character.level, 3);
-  assert.equal(lish.character.xp, 120);
+  assert.equal(jarupa.character.level, 3);
+  assert.equal(jarupa.character.xp, 120);
   assert.equal(host.character.xp, 120);
-  assert.deepEqual(lines(runner.start("encontro").beats), ["Lish> Ainda estou aqui."]);
+  assert.deepEqual(lines(runner.start("encontro").beats), ["Jarupã> Ainda estou aqui."]);
 });
 
 test("leave_party tira do grupo e guarda a ficha: quem volta, volta como era", () => {
@@ -365,7 +360,7 @@ test("leave_party tira do grupo e guarda a ficha: quem volta, volta como era", (
   assert.deepEqual(lines(step.beats), ["Ele vai embora."]);
   assert.deepEqual(
     step.beats.flatMap((beat) => (beat.kind === "event" ? [beat.event] : [])),
-    [{ type: "left", name: "Lish" }],
+    [{ type: "left", name: "Jarupã" }],
   );
   assert.equal(host.companions[0].present, false);
 
@@ -375,9 +370,8 @@ test("leave_party tira do grupo e guarda a ficha: quem volta, volta como era", (
   assert.equal(host.companions[0].present, true);
 });
 
-test("unlock_order vira um pedido pra cena, e companheiro que não existe é erro de quem escreveu", () => {
+test("companheiro que não existe é erro de quem escreveu", () => {
   const runner = new StoryRunner(COMPANY, makeHost());
-  assert.deepEqual(aftermath([runner.start("epilogo")]).unlocks, ["rachador"]);
   assert.throws(() => runner.start("erro"), /ninguem/);
 });
 
@@ -608,14 +602,14 @@ test("diário e relógio vão no save junto com a história, e um save de antes 
 
 const ARM = compile(`
 === queda ===
-~ afflict("lish", "wounded_arm")
-~ afflict("lish", "wounded_arm")
-{afflicted("lish", "wounded_arm"): O braço de Lish não fecha mais direito.}
+~ afflict("jarupa", "wounded_arm")
+~ afflict("jarupa", "wounded_arm")
+{afflicted("jarupa", "wounded_arm"): O braço de Jarupã não fecha mais direito.}
 {afflicted("hero", "wounded_arm"): O seu também. | O seu, sim.}
 -> END
 
 === cura ===
-~ cure("lish", "wounded_arm")
+~ cure("jarupa", "wounded_arm")
 ~ cure("hero", "wounded_arm")
 -> END
 
@@ -632,15 +626,15 @@ test("afflict põe em alguém uma condição que dura entre lutas, vai no save, 
   const runner = new StoryRunner(ARM, makeHost());
   const fall = runner.start("queda");
   // Pôr de novo o que já está não é notícia.
-  assert.deepEqual(eventsIn(fall.beats), [{ type: "afflicted", name: "lish", status: "Braço ferido" }]);
-  assert.deepEqual(lines(fall.beats), ["O braço de Lish não fecha mais direito.", "O seu, sim."]);
-  assert.deepEqual(runner.afflictions(), { "companion:lish": ["wounded_arm"] });
+  assert.deepEqual(eventsIn(fall.beats), [{ type: "afflicted", name: "jarupa", status: "Braço ferido" }]);
+  assert.deepEqual(lines(fall.beats), ["O braço de Jarupã não fecha mais direito.", "O seu, sim."]);
+  assert.deepEqual(runner.afflictions(), { "companion:jarupa": ["wounded_arm"] });
 
   const reopened = new StoryRunner(ARM, makeHost(), runner.save());
-  assert.deepEqual(reopened.afflictions(), { "companion:lish": ["wounded_arm"] });
+  assert.deepEqual(reopened.afflictions(), { "companion:jarupa": ["wounded_arm"] });
 
   // Só o que havia pra tirar vira notícia.
-  assert.deepEqual(eventsIn(reopened.start("cura").beats), [{ type: "afflicted", name: "lish", status: "Braço ferido", cured: true }]);
+  assert.deepEqual(eventsIn(reopened.start("cura").beats), [{ type: "afflicted", name: "jarupa", status: "Braço ferido", cured: true }]);
   assert.deepEqual(reopened.afflictions(), {});
 
   assert.throws(() => runner.start("ninguem"));
@@ -652,16 +646,16 @@ test("a marca da mana que vem de uma luta fica entre lutas, o texto a lê, e o d
   runner.start("queda");
   assert.equal(runner.mark("hero", "bloodied"), true);
   assert.equal(runner.mark("hero", "bloodied"), false);
-  assert.deepEqual(runner.afflictions(), { "companion:lish": ["wounded_arm"], hero: ["bloodied"] });
+  assert.deepEqual(runner.afflictions(), { "companion:jarupa": ["wounded_arm"], hero: ["bloodied"] });
 
-  // A derrota acorda inteiro: a marca sai do que está guardado, o braço de Lish (que é da história) fica.
+  // A derrota acorda inteiro: a marca sai do que está guardado, o braço de Jarupã (que é da história) fica.
   const saved = runner.save();
   const woke = restSavedStory(saved, passesWithRest);
-  assert.deepEqual(new StoryRunner(ARM, makeHost(), woke).afflictions(), { "companion:lish": ["wounded_arm"] });
+  assert.deepEqual(new StoryRunner(ARM, makeHost(), woke).afflictions(), { "companion:jarupa": ["wounded_arm"] });
   assert.equal(restSavedStory(woke, passesWithRest), woke);
 
   // O descanso também.
   assert.equal(runner.rest(), true);
   assert.equal(runner.rest(), false);
-  assert.deepEqual(runner.afflictions(), { "companion:lish": ["wounded_arm"] });
+  assert.deepEqual(runner.afflictions(), { "companion:jarupa": ["wounded_arm"] });
 });

@@ -12,6 +12,7 @@ import {
   abilitiesFor,
   attackOdds,
   findUnit,
+  isRecited,
   isStatusId,
   kitOf,
   learnedAt,
@@ -58,14 +59,17 @@ function seedWhere<T>(scene: (seed: number) => T, check: (result: T) => boolean)
   throw new Error("nenhuma seed serviu");
 }
 
-test("cada Ordem tem o kit dela: as Artes no nível 1, e as Técnicas chegam com o nível", () => {
+/** Quantas Técnicas cada classe ensina: duas por Ordem do Eälen e pro mago; o espadachim, nenhuma (o golpe-selo é por iniciação). */
+const TECHNIQUES = (order: CharacterClass) => (order === "espadachim" ? 0 : 2);
+
+test("cada classe tem o kit dela: as Artes no nível 1, e as Técnicas chegam com o nível", () => {
   for (const order of ORDERS) {
     const arts = STANCE_ORDER.filter((stance) => CLASS_COMBAT_ARTS[order][stance] !== null);
     const novice = abilitiesFor(makeCharacter("x", { characterClass: order, level: 1 }));
     assert.deepEqual(novice.map((ability) => ability.id).sort(), arts.map((stance) => `${order}.${stance}`).sort(), order);
 
     const techniques = Object.entries(CLASS_TECHNIQUES[order]);
-    assert.equal(techniques.length, 2, `${order} tem duas Técnicas`);
+    assert.equal(techniques.length, TECHNIQUES(order), `${order} tem ${TECHNIQUES(order)} Técnicas`);
     for (const [slug, technique] of techniques) {
       assert.ok(technique.level > 1, `${order}.${slug} não é do nível 1`);
       const has = (level: number) =>
@@ -77,7 +81,7 @@ test("cada Ordem tem o kit dela: as Artes no nível 1, e as Técnicas chegam com
 
     // O kit inteiro: toda chave tem nome e flavor, e toda condição que ele põe existe.
     const kit = kitOf({ characterClass: order });
-    assert.equal(kit.length, arts.length + 2, `${order}: toda Técnica nomeada tem o que fazer, e vice-versa`);
+    assert.equal(kit.length, arts.length + TECHNIQUES(order), `${order}: toda Técnica nomeada tem o que fazer, e vice-versa`);
     assert.equal(new Set(kit.map((entry) => entry.ability.id)).size, kit.length);
     for (const { ability } of kit) {
       assert.ok(ability.name && ability.flavor, ability.id);
@@ -86,6 +90,31 @@ test("cada Ordem tem o kit dela: as Artes no nível 1, e as Técnicas chegam com
       }
     }
   }
+});
+
+test("o mago de atração e repulsão paga a magia em mana e a recita; o bordão e a guarda são de graça", () => {
+  const kit = Object.fromEntries(kitOf({ characterClass: "atracao_repulsao" }).map((entry) => [entry.slug, entry]));
+  // Puxão, Empurrão, Cura, Desarmar e Arremesso: magia — custa mana, não Fôlego, e é recitada.
+  for (const slug of ["quick_attack", "heavy_attack", "heal", "desarmar", "arremesso"]) {
+    const { ability } = kit[slug];
+    assert.ok((ability.mana ?? 0) > 0, `${slug} custa mana`);
+    assert.equal(ability.breath, undefined, `${slug} não custa Fôlego`);
+    assert.equal(isRecited(ability), true, `${slug} é recitada`);
+  }
+  for (const slug of ["attack", "defend"]) assert.equal(kit[slug].ability.mana, undefined, `${slug} é de graça`);
+  assert.ok(kit.quick_attack.ability.effects.some((effect) => effect.kind === "push" && effect.distance < 0));
+  assert.ok(kit.heavy_attack.ability.effects.some((effect) => effect.kind === "push" && effect.distance > 0));
+  assert.ok(kit.arremesso.ability.effects.some((effect) => effect.kind === "push" && effect.distance >= 3));
+  assert.deepEqual(kit.desarmar.ability.effects.map((effect) => (effect.kind === "status" ? effect.statusId : effect.kind)), ["disarmed"]);
+  // O Círculo custa mais do que uma Página aguenta num turno (o limite de Endyru é 3).
+  assert.ok(kit.arremesso.ability.mana! > 3);
+  assert.deepEqual([kit.desarmar.level, kit.arremesso.level], [2, 3]);
+
+  // O espadachim: a lâmina, e o que pesa custa Fôlego.
+  const blade = Object.fromEntries(kitOf({ characterClass: "espadachim" }).map((entry) => [entry.slug, entry.ability]));
+  assert.deepEqual(Object.keys(blade).sort(), ["attack", "defend", "heavy_attack", "quick_attack"]);
+  assert.ok(Object.values(blade).every((ability) => ability.mana === undefined));
+  assert.equal(blade.heavy_attack.breath, 2);
 });
 
 test("as posturas não são mais as mesmas em toda Ordem: cada kit faz o que o Princípio dele faz", () => {
@@ -241,7 +270,7 @@ test("quem não tem vida pra perder não decai", () => {
   assert.equal(unit(encounter, "E").currentHp, unit(encounter, "E").maxHp);
 });
 
-test("a rede de Halmira prende o passo de quem pega, pelos turnos que dura", () => {
+test("a rede prende o passo de quem pega, pelos turnos que dura", () => {
   const cast = seedWhere(
     (seed) => {
       const { encounter } = setup(

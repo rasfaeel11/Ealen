@@ -303,7 +303,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     aura: 2,
     glyph: "⚓",
     principle: "ausencia",
-    summary: "Mergulhador de arpão, do mesmo ofício de Halmira e de outra rede.",
+    summary: "Mergulhador de arpão, de outra rede.",
     lore: "Aprendeu a acertar o que se mexe no escuro, de longe e sem pressa. Em terra faz igual: escolhe um, e não troca de alvo enquanto ele estiver de pé.",
     // De longe, e sempre no mesmo: é a Onda do Gryskar que rende.
     ai: { finisher: 1.3, caution: 1 },
@@ -337,7 +337,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "fratura",
     summary: "Taevel. Luta devolvendo o gesto de quem está na frente dele.",
     lore: "Não escolhe o golpe: espera o seu e responde com o mesmo. Quem varia, enfrenta um espelho. Quem se repete, enfrenta alguém que já sabia.",
-    // Repete o tipo da última ação de Halmira; a Rachadura da Tsvirana pune quem se repetiu.
+    // Repete o tipo da última ação da protagonista; a Rachadura da Tsvirana pune quem se repetiu.
     quirks: { mirrors: "hero" },
     drops: [],
     template: {

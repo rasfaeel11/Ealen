@@ -68,7 +68,7 @@ test("o catálogo não repete id nem pisa nos consumíveis, e todo mundo que ves
   for (const id of ids) assert.equal(MOCK_ITEMS.some((item) => item.id === id), false, `${id} também é consumível`);
 
   for (const order of ORDERS) assertWearable(`a Ordem ${order}`, order, startingEquipment(order));
-  assertWearable("Halmira", PROTAGONIST.characterClass, PROTAGONIST.gear ?? {});
+  assertWearable("Endyru", PROTAGONIST.characterClass, PROTAGONIST.gear ?? {});
   for (const [key, member] of Object.entries(COMPANIONS)) assertWearable(key, member.characterClass, member.gear ?? {});
   for (const id of STARTING_STASH) assert.ok(findEquipment(id), `o guardado de começo tem ${id}, que não existe`);
 
@@ -109,35 +109,36 @@ test("vestir tira do guardado e devolve o que estava no lugar; recusado, não mu
   assert.deepEqual(owner.equipment, PROTAGONIST.gear);
   assert.deepEqual(owner.gear, [...STARTING_STASH]);
 
+  addGear(owner, "gear-gancho-de-coleta");
   const swapped = equip(owner, owner, "gear-gancho-de-coleta");
   assert.ok(swapped.ok);
-  assert.equal(swapped.replaced?.id, "gear-lamina-de-mergulho");
+  assert.equal(swapped.replaced?.id, "gear-bordao");
   assert.equal(wornItem(owner, "weapon")?.id, "gear-gancho-de-coleta");
-  assert.deepEqual(owner.gear, ["gear-lamina-de-mergulho"]);
+  assert.deepEqual(owner.gear, ["gear-bordao"]);
 
   // O que não está guardado não se veste — nem o que já está no corpo.
   assert.deepEqual(equip(owner, owner, "gear-gancho-de-coleta"), { ok: false, reason: "not_owned" });
   assert.deepEqual(equip(owner, owner, "gear-nao-existe"), { ok: false, reason: "not_owned" });
 
-  // Arma de outra Ordem: a peça continua guardada.
-  addGear(owner, "gear-arco-torto");
+  // Arma de espadachim no mago: a peça continua guardada.
+  addGear(owner, "gear-espada-reta");
   const before = structuredClone(owner);
-  assert.deepEqual(equip(owner, owner, "gear-arco-torto"), { ok: false, reason: "wrong_order" });
+  assert.deepEqual(equip(owner, owner, "gear-espada-reta"), { ok: false, reason: "wrong_order" });
   assert.deepEqual(owner, before);
 
-  // O guardado é do grupo: um companheiro veste o que está com ela.
+  // O guardado é do grupo: um companheiro veste o que está com ele.
   const members: Parameters<typeof joinParty>[0] = [];
-  const lish = joinParty(members, "lish", 1)!;
-  assert.deepEqual(lish.equipment, COMPANIONS.lish.gear);
-  assert.ok(equip(owner, lish, "gear-arco-torto").ok);
-  assert.equal(wornItem(lish, "weapon")?.id, "gear-arco-torto");
-  assert.equal(gearCount(owner, "gear-faca-larga"), 1);
+  const jarupa = joinParty(members, "jarupa", 1)!;
+  assert.deepEqual(jarupa.equipment, COMPANIONS.jarupa.gear);
+  assert.ok(equip(owner, jarupa, "gear-espada-reta").ok);
+  assert.equal(wornItem(jarupa, "weapon")?.id, "gear-espada-reta");
+  assert.equal(gearCount(owner, "gear-espada-pesada"), 1);
 
   // Tirar esvazia o lugar e guarda a peça; lugar vazio não devolve nada.
-  assert.equal(unequip(owner, lish, "weapon")?.id, "gear-arco-torto");
-  assert.equal(wornItem(lish, "weapon"), undefined);
-  assert.equal(unequip(owner, lish, "weapon"), undefined);
-  assert.deepEqual(storedGear(owner, "weapon").map((item) => item.id).sort(), ["gear-arco-torto", "gear-faca-larga", "gear-lamina-de-mergulho"]);
+  assert.equal(unequip(owner, jarupa, "weapon")?.id, "gear-espada-reta");
+  assert.equal(wornItem(jarupa, "weapon"), undefined);
+  assert.equal(unequip(owner, jarupa, "weapon"), undefined);
+  assert.deepEqual(storedGear(owner, "weapon").map((item) => item.id).sort(), ["gear-bordao", "gear-espada-pesada", "gear-espada-reta"]);
   assert.equal(storedGear(owner, "armor").length, 0);
 });
 
@@ -184,8 +185,8 @@ test("equipamento é item como os outros pra história e pro espólio: entra no 
   assert.equal(owner.inventory?.slots.some((slot) => slot.item.id === plate.id), false);
 
   // O que está vestido não conta nem sai: a história não tira a roupa de ninguém.
-  assert.equal(itemCount(owner, "gear-lamina-de-mergulho"), 0);
-  assert.equal(takeItem(owner, "gear-lamina-de-mergulho"), false);
+  assert.equal(itemCount(owner, "gear-bordao"), 0);
+  assert.equal(takeItem(owner, "gear-bordao"), false);
   assert.equal(takeItem(owner, plate.id), true);
   assert.equal(takeItem(owner, plate.id), false);
 
@@ -206,18 +207,18 @@ test("equipamento é item como os outros pra história e pro espólio: entra no 
   assert.fail("em 200 lutas o lobo nunca deixou a presa");
 });
 
-test("quem começa em outra Ordem começa com a arma dela, e fica com o que é seu", () => {
-  const singer = createProtagonist("cantor_de_ealen");
-  assert.deepEqual(singer.equipment, { ...startingEquipment("cantor_de_ealen"), accessory: "gear-rede-de-coleta" });
+test("cada um do elenco começa com o que é dele; quem não é do elenco, com o que a classe dá", () => {
+  assert.deepEqual(startingLoadout({ id: HERO_ID, characterClass: "atracao_repulsao" }), PROTAGONIST.gear);
+  assert.deepEqual(joinParty([], "xandui", 1)!.equipment, { weapon: "gear-espada-reta", armor: "gear-gibao-de-couro" });
   assert.deepEqual(startingLoadout({ id: "ninguem", characterClass: "rachador" }), startingEquipment("rachador"));
   // Quem só acompanha não veste nada pra luta.
-  assert.equal(joinParty([], "gil", 1)!.equipment, undefined);
+  assert.equal(joinParty([], "oryndu", 1)!.equipment, undefined);
 });
 
 test("save de antes do equipamento ganha o de começo; peça que o catálogo não tem mais não estraga o save", () => {
   const old = newGame(createProtagonist());
-  joinParty(old.companions, "lish", 1);
-  joinParty(old.companions, "gil", 1);
+  joinParty(old.companions, "jarupa", 1);
+  joinParty(old.companions, "oryndu", 1);
   const legacy = JSON.parse(serializeSave(old));
   legacy.version = 3;
   delete legacy.character.equipment;
@@ -232,8 +233,8 @@ test("save de antes do equipamento ganha o de começo; peça que o catálogo nã
   assert.deepEqual(save.character.equipment, PROTAGONIST.gear);
   assert.deepEqual(save.character.gear, [...STARTING_STASH]);
   const byId = (id: string) => save.companions.find((member) => member.character.id === id)!.character;
-  assert.deepEqual(byId(companionId("lish")).equipment, COMPANIONS.lish.gear);
-  assert.equal(byId(companionId("gil")).equipment, undefined);
+  assert.deepEqual(byId(companionId("jarupa")).equipment, COMPANIONS.jarupa.gear);
+  assert.equal(byId(companionId("oryndu")).equipment, undefined);
 
   // Um save já na versão atual não é mexido: quem tirou a arma continua sem ela.
   const bare = newGame(createProtagonist());

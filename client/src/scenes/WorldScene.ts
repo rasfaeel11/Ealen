@@ -102,7 +102,6 @@ import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
 import { SoundPanel } from "../game/SoundPanel";
 import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
-import { unlockOrders } from "../game/profile";
 import type { GameSession } from "../game/session";
 import { Menu, addBodyText, addPanel, addTitleText } from "../game/ui";
 import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
@@ -630,7 +629,7 @@ export default class WorldScene extends Phaser.Scene {
     const talk = talker ? `  ·  E: ${talker.stands ? "falar com" : "examinar"} ${talker.name}` : "";
     const prey = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos), this.character);
     const journal = this.story.journal().length > 0 ? "  ·  J: diário" : "";
-    // A segunda linha: o que Halmira sabe fazer daqui, sem estar em luta.
+    // A segunda linha: o que o protagonista sabe fazer daqui, sem estar em luta.
     const skills = this.fieldAbilities().map((ability, index) => `${index + 1}: ${ability.name}`);
     this.hintText.setText(
       EXPLORE_HINT + journal + talk + (prey ? "  ·  F: emboscar" : "") + (skills.length > 0 ? `\n${skills.join("  ·  ")}` : ""),
@@ -779,10 +778,8 @@ export default class WorldScene extends Phaser.Scene {
     }
   }
 
-  /** Cumpre o que o texto deixou pra depois da última fala: o que destravou, uma luta, uma viagem. */
-  private settle({ fight, travel, unlocks }: Aftermath): void {
-    // O que o texto destravou é do jogador, não desta partida: vai pro perfil.
-    unlockOrders(unlocks);
+  /** Cumpre o que o texto deixou pra depois da última fala: uma luta, uma viagem. */
+  private settle({ fight, travel }: Aftermath): void {
     if (fight !== undefined && this.enemies.some((enemy) => enemy.group === fight)) {
       // A viagem pedida junto com a luta fica pra depois dela, e só pra quem vence.
       this.travelAfterFight = travel;

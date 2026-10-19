@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { maxBreath } from "../../breath";
+import { maxMana } from "../../mana";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
+  PROTAGONIST,
   createProtagonist,
   fights,
   joinParty,
+  keepsVow,
   leaveParty,
   partyCondition,
   presentCompanions,
@@ -18,6 +21,10 @@ import { samePos, tileAt } from "../../tactics/grid";
 import {
   AREAS,
   FOLLOW_GAP,
+  ambushableGroup,
+  engrave,
+  engravable,
+  engravingSlots,
   extendTrail,
   grantEncounterRewards,
   parseTiledMap,
@@ -43,19 +50,24 @@ function loadArea(areaId: string) {
 function makeParty(level = 1) {
   const hero = createProtagonist();
   const members: PartyMember[] = [];
-  joinParty(members, "lish", level);
-  joinParty(members, "varel", level);
+  joinParty(members, "jarupa", level);
+  joinParty(members, "xandui", level);
   return { hero, members, company: presentCompanions(members) };
 }
 
-test("a protagonista é Halmira, com mochila; companheiro entra sem mochila e no nível pedido", () => {
+test("o protagonista é Endyru, mago de atração e repulsão, com mochila; companheiro entra sem mochila e no nível pedido", () => {
   const { hero, company } = makeParty(4);
-  assert.equal(hero.name, "Halmira");
-  assert.equal(hero.race, "miraven");
+  assert.deepEqual([hero.name, hero.race, hero.characterClass], ["Endyru", "humano", "atracao_repulsao"]);
+  assert.deepEqual(PROTAGONIST.magic, { concept: "atracao_repulsao", level: 3 });
+  assert.equal(PROTAGONIST.style, undefined);
   assert.ok(hero.inventory);
-  assert.equal(createProtagonist("rachador").characterClass, "rachador");
+  assert.deepEqual(hero.equipment, { weapon: "gear-bordao", armor: "gear-tunica-de-linho" });
 
-  assert.deepEqual(company.map((character) => character.name), ["Lish", "Varel"]);
+  assert.deepEqual(company.map((character) => [character.name, character.characterClass]), [
+    ["Jarupã", "espadachim"],
+    ["Xanduí", "espadachim"],
+  ]);
+  assert.deepEqual(company.map((character) => character.equipment?.weapon), ["gear-espada-pesada", "gear-espada-reta"]);
   for (const character of company) {
     assert.equal(character.level, 4);
     assert.equal(character.currentHp, character.maxHp);
@@ -96,7 +108,7 @@ test("cada companheiro entra na luta num quadrado livre: o dele se der, senão o
   const heroTile = { x: wolfTile.x - 3, y: wolfTile.y };
   const taken = wolves.map((enemy) => tileOfPixel(map, enemy));
 
-  // Lish vinha em cima do personagem e Varel em cima de um lobo: nenhum dos dois pode ficar onde está.
+  // Jarupã vinha em cima do personagem e Xanduí em cima de um lobo: nenhum dos dois pode ficar onde está.
   const party = placeParty(
     map,
     hero,
@@ -144,7 +156,7 @@ test("o grupo luta junto até o fim; quem cai numa vitória se levanta com 1 de 
   }
   assert.equal(encounter.winner, "party");
 
-  // Faz de conta que Lish caiu no último golpe.
+  // Faz de conta que Jarupã caiu no último golpe.
   findUnit(encounter, company[0].id)!.currentHp = 0;
   syncPartyFromEncounter(encounter, [hero, ...company], true);
   assert.equal(company[0].currentHp, 1);
@@ -159,12 +171,13 @@ test("o grupo luta junto até o fim; quem cai numa vitória se levanta com 1 de 
   );
   assert.equal(rewards.xpGained, 140);
   assert.equal(rewards.levelUp.leveledUp, true);
-  // O Sombrílico só aprende Técnica no nível 3; o Cantor já ganha uma no 2.
+  // O mago aprende o Desarmar no nível 2; o espadachim não aprende Técnica (o golpe-selo é por iniciação).
+  assert.deepEqual(rewards.levelUp.leveledUp && rewards.levelUp.learned?.map((ability) => ability.name), ["Desarmar"]);
   assert.deepEqual(
     rewards.companionLevels.map(({ name, level, learned }) => ({ name, level, learned: learned.map((ability) => ability.name) })),
     [
-      { name: "Lish", level: 2, learned: [] },
-      { name: "Varel", level: 2, learned: ["Refrão do Silêncio"] },
+      { name: "Jarupã", level: 2, learned: [] },
+      { name: "Xanduí", level: 2, learned: [] },
     ],
   );
   assert.equal(company[0].inventory, undefined);
@@ -174,17 +187,21 @@ test("o grupo luta junto até o fim; quem cai numa vitória se levanta com 1 de 
   syncPartyFromEncounter(encounter, [hero, ...company], false);
   assert.equal(company[1].currentHp, 0);
   hero.breath = 0;
+  hero.mana = 0;
   restoreParty(hero, members);
   for (const character of [hero, ...company]) assert.equal(character.currentHp, character.maxHp);
   for (const character of [hero, ...company]) assert.equal(character.breath, maxBreath(character));
+  // Só quem conjura tem mana pra encher.
+  assert.equal(hero.mana, maxMana(hero, PROTAGONIST.magic!));
+  for (const character of company) assert.equal(character.mana, undefined);
 });
 
-test("uma condição de mapa pode perguntar pelo grupo: party:lish vale enquanto ele anda junto", () => {
+test("uma condição de mapa pode perguntar pelo grupo: party:jarupa vale enquanto ele anda junto", () => {
   const { members } = makeParty();
-  assert.equal(partyCondition("party:lish", members), true);
-  leaveParty(members, "lish");
-  assert.equal(partyCondition("party:lish", members), false);
-  assert.equal(partyCondition("party:lish", []), false);
+  assert.equal(partyCondition("party:jarupa", members), true);
+  leaveParty(members, "jarupa");
+  assert.equal(partyCondition("party:jarupa", members), false);
+  assert.equal(partyCondition("party:jarupa", []), false);
   // O que não pergunta pelo grupo, ou pergunta por quem não existe, fica pra história responder (ou pro teste acusar).
   assert.equal(partyCondition("sentinela_fora", members), undefined);
   assert.equal(partyCondition("party:ninguem", members), undefined);
@@ -194,59 +211,91 @@ test("quem acompanha sem lutar entra na luta como apoio, não como unidade", () 
   const { map, props } = loadArea("clareira");
   const hero = createProtagonist();
   const members: PartyMember[] = [];
-  joinParty(members, "lish", 1);
-  joinParty(members, "gil", 1);
-  const [lish, gil] = presentCompanions(members);
-  assert.equal(fights(lish), true);
-  assert.equal(fights(gil), false);
+  joinParty(members, "jarupa", 1);
+  joinParty(members, "oryndu", 1);
+  const [jarupa, oryndu] = presentCompanions(members);
+  assert.equal(fights(jarupa), true);
+  assert.equal(fights(oryndu), false);
   assert.equal(fights(hero), true);
-  assert.equal(supportOf(gil), "annotate");
+  assert.equal(supportOf(oryndu), "read_water");
+  // Quem não luta não veste nada pra luta.
+  assert.equal(oryndu.equipment, undefined);
 
   const heroTile = tileOfPixel(map, map.spawns.default);
   const group = map.enemies.filter((enemy) => enemy.group === "fiapo");
-  const party = placeParty(map, hero, heroTile, [{ character: lish, at: pixelOfTile(map, { x: heroTile.x - 1, y: heroTile.y }) }]);
+  const party = placeParty(map, hero, heroTile, [{ character: jarupa, at: pixelOfTile(map, { x: heroTile.x - 1, y: heroTile.y }) }]);
   // Passar quem luta entre os que só olham não o tira da luta nem faz dele apoio.
-  const { encounter } = startAreaEncounter(map, party, group, 5, props, undefined, [], [gil, lish]);
+  const { encounter } = startAreaEncounter(map, party, group, 5, props, undefined, [], [oryndu, jarupa]);
 
-  assert.deepEqual(encounter.supporters, [{ id: gil.id, name: "Gil", support: "annotate", ready: true }]);
-  assert.equal(findUnit(encounter, gil.id), undefined);
-  assert.ok(findUnit(encounter, lish.id));
+  assert.deepEqual(encounter.supporters, [{ id: oryndu.id, name: "Oryndu", support: "read_water", ready: true }]);
+  assert.equal(findUnit(encounter, oryndu.id), undefined);
+  assert.ok(findUnit(encounter, jarupa.id));
 
   // Fora da luta ele é do grupo como os outros: a vitória devolve as fichas e paga o XP sem tropeçar nele.
-  const before = gil.currentHp;
-  syncPartyFromEncounter(encounter, [hero, lish, gil], true);
-  assert.equal(gil.currentHp, before);
-  const rewards = grantEncounterRewards(hero, group.map((enemy) => enemy.creature), { rngState: 1 }, [], [lish, gil]);
+  const before = oryndu.currentHp;
+  syncPartyFromEncounter(encounter, [hero, jarupa, oryndu], true);
+  assert.equal(oryndu.currentHp, before);
+  const rewards = grantEncounterRewards(hero, group.map((enemy) => enemy.creature), { rngState: 1 }, [], [jarupa, oryndu]);
   assert.ok(rewards.xpGained > 0);
 });
 
-test("o estilo e o que cada um sabe além do kit vêm do elenco e do bestiário, a cada luta", () => {
+test("a escola, a aura e a magia vêm do elenco e do bestiário, a cada luta", () => {
   const { map, props } = loadArea("ruinas");
-  const hero = createProtagonist("rachador");
+  const hero = createProtagonist();
   const members: PartyMember[] = [];
-  joinParty(members, "lish", 1);
-  joinParty(members, "varel", 1);
-  const [lish, varel] = presentCompanions(members);
+  joinParty(members, "jarupa", 1);
+  joinParty(members, "xandui", 1);
+  const [jarupa, xandui] = presentCompanions(members);
 
   const group = map.enemies.filter((enemy) => enemy.group === "salao");
   const servant = group.find((enemy) => enemy.creature === "encounter-servo-enferrujado")!;
   const heroTile = { x: 17, y: 20 };
-  const party = placeParty(map, hero, heroTile, [lish, varel].map((character) => ({ character, at: pixelOfTile(map, heroTile) })));
+  const party = placeParty(map, hero, heroTile, [jarupa, xandui].map((character) => ({ character, at: pixelOfTile(map, heroTile) })));
   const { encounter, events } = startAreaEncounter(map, party, group, 9, props, undefined, [], [], {
-    [lish.id]: ["wounded_arm"],
+    [jarupa.id]: ["wounded_arm"],
   });
 
-  // Halmira é Gryskar III com qualquer Ordem: a escola é dela, não do kit.
+  // Jarupã é do Gryskar e Xanduí da Ipojy, os dois com aura no Fio; Endyru não tem escola, tem mana.
   const unit = (id: string) => findUnit(encounter, id)!;
-  assert.deepEqual([unit(hero.id).style, unit(hero.id).grade, unit(hero.id).aura], ["gryskar", 3, 3]);
-  assert.equal(unit(hero.id).characterClass, "rachador");
-  assert.deepEqual([unit(lish.id).style, unit(lish.id).grade], ["tsvirana", 3]);
-  assert.equal(unit(varel.id).style, undefined);
-  assert.ok(unit(varel.id).abilities.some((ability) => ability.id === "gift.tide_pull"));
-  assert.ok(!unit(lish.id).abilities.some((ability) => ability.id === "gift.tide_pull"));
+  assert.deepEqual([unit(jarupa.id).style, unit(jarupa.id).grade, unit(jarupa.id).aura], ["gryskar", 2, 2]);
+  assert.deepEqual([unit(xandui.id).style, unit(xandui.id).grade, unit(xandui.id).aura], ["ipojy", 2, 2]);
+  assert.equal(unit(hero.id).style, undefined);
+  assert.deepEqual([unit(hero.id).mana, unit(hero.id).manaLimit, unit(hero.id).concept], [maxMana(hero, PROTAGONIST.magic!), 3, "atracao_repulsao"]);
+  assert.equal(unit(jarupa.id).mana, undefined);
+  // Ninguém do trio tem habilidade própria além do kit.
+  for (const id of [hero.id, jarupa.id, xandui.id]) assert.ok(!unit(id).abilities.some((ability) => ability.id.startsWith("gift.")));
   assert.deepEqual([unit(servant.id).style, unit(servant.id).grade], ["baluarte", 2]);
 
-  // O que a história pôs em Lish entra com ele, e fica.
-  assert.ok(events.some((event) => event.type === "statusApplied" && event.target === lish.id && event.statusId === "wounded_arm"));
-  assert.deepEqual(unit(lish.id).statuses.map((status) => status.id), ["wounded_arm"]);
+  // O que a história pôs em Jarupã entra com ele, e fica.
+  assert.ok(events.some((event) => event.type === "statusApplied" && event.target === jarupa.id && event.statusId === "wounded_arm"));
+  assert.deepEqual(unit(jarupa.id).statuses.map((status) => status.id), ["wounded_arm"]);
+});
+
+test("Xanduí guarda o voto da Ipojy fora da luta também: com ela no comando, ninguém embosca", () => {
+  const { map } = loadArea("clareira");
+  const { hero, company } = makeParty();
+  const [jarupa, xandui] = company;
+  assert.deepEqual([keepsVow(hero), keepsVow(jarupa), keepsVow(xandui)], [false, false, true]);
+
+  const fiapo = map.enemies.filter((enemy) => enemy.group === "fiapo");
+  const near = { x: tileOfPixel(map, fiapo[0]).x - 7, y: tileOfPixel(map, fiapo[0]).y };
+  assert.equal(ambushableGroup(map, fiapo, near, hero), "fiapo");
+  assert.equal(ambushableGroup(map, fiapo, near, xandui), undefined);
+});
+
+test("Endyru grava no descanso até o nível de mago dele, só o que é magia dele; quem não conjura não grava", () => {
+  const { hero, company } = makeParty();
+  assert.equal(engravingSlots(hero), 3);
+  const spells = engravable(hero).map((ability) => ability.id);
+  assert.deepEqual(spells.sort(), ["atracao_repulsao.heal", "atracao_repulsao.heavy_attack", "atracao_repulsao.quick_attack"]);
+
+  assert.equal(engrave(hero, "atracao_repulsao.quick_attack"), true);
+  assert.equal(engrave(hero, "atracao_repulsao.attack"), false);
+  assert.equal(engrave(hero, "atracao_repulsao.quick_attack"), true);
+  assert.equal(engrave(hero, "atracao_repulsao.heavy_attack"), true);
+  assert.equal(engrave(hero, "atracao_repulsao.heal"), false, "não cabe mais nenhuma");
+  assert.deepEqual(hero.engraved, ["atracao_repulsao.quick_attack", "atracao_repulsao.quick_attack", "atracao_repulsao.heavy_attack"]);
+
+  assert.equal(engravingSlots(company[0]), 0);
+  assert.equal(engrave(company[0], "espadachim.attack"), false);
 });

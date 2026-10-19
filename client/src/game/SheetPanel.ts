@@ -222,8 +222,8 @@ export class SheetPanel {
 
     const info = CLASS_INFO[character.characterClass];
     const lines = [
-      `${RACE_INFO[character.race].name}  ·  ${info.name}`,
-      info.role,
+      `${RACE_INFO[character.race].name}  ·  ${cast?.calling ?? info.name}`,
+      ...(fights(character) ? [info.role] : []),
       `Nível ${character.level}  ·  XP ${character.xp}/${xpToNextLevel(character.level)}`,
       fights(character)
         ? `Vida ${character.currentHp}/${character.maxHp}  ·  Fôlego ${breathOf(character)}/${maxBreath(character)}`
@@ -232,7 +232,7 @@ export class SheetPanel {
     // Quem conjura: o conceito, o nível de mago, a mana e o limite do turno — passar dele cobra do corpo.
     const magic = magicOf(character);
     if (magic) {
-      lines.push(`${CONCEPTS[magic.concept].name}, ${mageLevelName(magic.level)}`);
+      lines.push(`${CONCEPTS[magic.concept].name}  ·  nível de mago: ${mageLevelName(magic.level)}`);
       lines.push(`Mana ${manaOf(character, magic)}/${maxMana(character, magic)}  ·  limite ${manaLimit(magic)} por turno`);
       lines.push(`Gravadas ${character.engraved?.length ?? 0}/${engravingSlots(character)}  ·  grava-se no descanso`);
     }

@@ -1,6 +1,5 @@
 // PROVISÓRIO. A Andarilha existe pra exercitar o sistema de diálogo — fala
-// que muda na segunda visita, na Ordem de quem ouve e no que já aconteceu no
-// mapa; teste anunciado na escolha; teste no meio do texto; item e flag;
+// que muda na segunda visita e no que já aconteceu no mapa; teste anunciado na escolha; teste no meio do texto; item e flag;
 // pista anotada no diário (note); uma conversa que termina levando o
 // personagem a outra área (travel).
 // Nada aqui é canônico: sai quando a história de verdade for escrita.
@@ -18,7 +17,6 @@ O que zumbe ainda não deu por você. Quem chega sem ser percebido escolhe a hor
 {andarilha == 1:
     Uma mulher de capa gasta descansa à beira do caminho, com os olhos no mato e não em você.
     Andarilha: Mais um de pé a esta hora. Senta, se quiser. Só não faz barulho.
-    {order() == "cantor_de_ealen": Andarilha: Você anda afinado demais pra quem veio a pé. Cantor, é? Então sabe do que eu falo quando peço silêncio.}
 - else:
     Andarilha: Você de novo. Ainda inteiro, pelo visto.
 }
@@ -69,50 +67,52 @@ Andarilha: Faz três noites que eu não durmo direito. Toma. Não é muito, mas 
         Andarilha: Todo mundo que passa quer alguma coisa. Eu também queria.
     }
     -> perguntas
-+ {in_party("lish")} [Pedir que Lish fique com ela.]
-    Andarilha: Ele não fala muito. Serve.
-    ~ leave_party("lish")
++ {in_party("jarupa")} [Pedir que Jarupã fique com ela.]
+    Andarilha: Fica, então.
+    ~ leave_party("jarupa")
     -> perguntas
-+ {in_party("gil")} [Pedir que Gil fique com ela.]
-    Andarilha: Esse fala. Tá bom, eu aguento.
-    ~ leave_party("gil")
++ {in_party("xandui")} [Pedir que Xanduí fique com ela.]
+    Andarilha: Fica, então.
+    ~ leave_party("xandui")
+    -> perguntas
++ {in_party("oryndu")} [Pedir que Oryndu fique com ela.]
+    Andarilha: Fica, então.
+    ~ leave_party("oryndu")
     -> perguntas
 + [Seguir caminho.]
     Andarilha: Vai com o ouvido aberto.
     -> END
 
-// PROVISÓRIO: Lish está na clareira só pra exercitar companheiros. Ele entra
-// no grupo aqui e sai pela Andarilha; o lugar e as falas de verdade vêm com a
-// história. O `npc` dele no mapa tem `unless` = `party:lish`: some enquanto
-// ele anda com o grupo e volta ao lugar quando sai, sem variável nenhuma.
-=== lish ===
-{lish == 1:
-    Um homem magro espera encostado numa árvore. O olho passa por ele e não segura o rosto.
-    Lish: Você vai pro lado das ruínas. Eu remo, e sei abrir quem se fecha demais.
-- else:
-    Lish: Mudou de ideia?
-}
-+ [Chamar Lish pra ir junto.]
-    Lish: Então eu vou atrás. Não me espere falar.
-    ~ join_party("lish")
+// PROVISÓRIO: o trio e o barqueiro estão na clareira só pra exercitar o grupo.
+// Cada um entra aqui e sai pela Andarilha; onde e como o trio se forma de
+// verdade (no contrato de Ybytuguá) e o que cada um diz vêm com o texto,
+// depois de o roteiro estar aprovado. Por isso ninguém do elenco fala aqui.
+// O `npc` de cada um no mapa tem `unless` = `party:chave`: some enquanto ele
+// anda com o grupo e volta ao lugar quando sai, sem variável nenhuma.
+=== jarupa ===
+Jarupã espera encostado numa árvore, com a espada pesada no ombro.
++ [Chamar Jarupã pra ir junto.]
+    ~ join_party("jarupa")
     -> END
 + [Deixar pra depois.]
     -> END
 
-// PROVISÓRIO: Gil é quem acompanha SEM lutar (`support` em COMPANIONS). Anda
-// na fila como Lish, mas numa luta não é unidade: fica de fora e oferece o
-// apoio dele (Anotar: mostra o que um inimigo pretende fazer), que qualquer
-// um do grupo chama na própria vez, uma vez por rodada.
-=== gil ===
-{gil == 1:
-    Um rapaz de dedos manchados de tinta escreve de pé, com a tábua apoiada no braço, e não para quando você chega.
-    Gil: Eu não sei bater em ninguém. Mas eu vejo a mão subir antes do golpe, e anoto. Às vezes ajuda.
-- else:
-    Gil: Ainda tenho tinta.
-}
-+ [Chamar Gil pra ir junto.]
-    Gil: Eu fico atrás. Sempre fico.
-    ~ join_party("gil")
+=== xandui ===
+Xanduí espera sentada numa pedra, com a espada reta atravessada nos joelhos.
++ [Chamar Xanduí pra ir junto.]
+    ~ join_party("xandui")
+    -> END
++ [Deixar pra depois.]
+    -> END
+
+// Oryndu é quem acompanha SEM lutar (`support` em COMPANIONS). Anda na fila
+// como os outros, mas numa luta não é unidade: fica de fora e oferece o apoio
+// dele (Ler a água: mostra o que um inimigo pretende fazer), que qualquer um
+// do grupo chama na própria vez, uma vez por rodada.
+=== oryndu ===
+Oryndu espera de pé, com o remo apoiado no ombro.
++ [Chamar Oryndu pra ir junto.]
+    ~ join_party("oryndu")
     -> END
 + [Deixar pra depois.]
     -> END

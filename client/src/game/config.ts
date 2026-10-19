@@ -37,8 +37,6 @@ export const FONT_BODY = '"Spectral", Georgia, serif';
 export const SCENES = {
   boot: "Boot",
   title: "Title",
-  prologue: "Prologue",
-  classSelect: "ClassSelect",
   saves: "Saves",
   world: "World",
 } as const;

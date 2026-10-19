@@ -30,7 +30,7 @@ function withScribe(
   return startEncounter({
     grid,
     units: place((marker) => markers[marker][0]),
-    supporters: [{ id: "gil", name: "Gil", support: "annotate" }],
+    supporters: [{ id: "oryndu", name: "Oryndu", support: "read_water" }],
     surprised,
     seed: 3,
   });
@@ -46,11 +46,11 @@ const pass = (encounter: Encounter) => run(encounter, { type: "endTurn", unitId:
 test("quem acompanha sem lutar não entra na iniciativa nem conta pra vitória", () => {
   const { encounter, events } = withScribe(["A....E"], duel);
   assert.deepEqual(encounter.order.sort(), ["A", "E"]);
-  assert.deepEqual(encounter.supporters, [{ id: "gil", name: "Gil", support: "annotate", ready: true }]);
-  assert.ok(!eventsOf(events, "battleStarted")[0].order.some((entry) => entry.unit === "gil"));
+  assert.deepEqual(encounter.supporters, [{ id: "oryndu", name: "Oryndu", support: "read_water", ready: true }]);
+  assert.ok(!eventsOf(events, "battleStarted")[0].order.some((entry) => entry.unit === "oryndu"));
 });
 
-test("Anotar mostra o plano que a IA tem pro inimigo, sem gastar nada de quem chamou", () => {
+test("Ler a água mostra o plano que a IA tem pro inimigo, sem gastar nada de quem chamou", () => {
   const { encounter } = withScribe(["A....E"], duel);
   const hero = activeUnit(encounter)!;
   const enemy = findUnit(encounter, "E")!;
@@ -59,9 +59,9 @@ test("Anotar mostra o plano que a IA tem pro inimigo, sem gastar nada de quem ch
 
   const plan = foresee(encounter, "E");
   const before = structuredClone(encounter);
-  const events = run(encounter, { type: "support", unitId: "A", supporterId: "gil", target: enemy.pos });
+  const events = run(encounter, { type: "support", unitId: "A", supporterId: "oryndu", target: enemy.pos });
 
-  assert.deepEqual(events[0], { type: "supportUsed", supporter: "gil", supporterName: "Gil", support: "annotate", name: "Anotar", unit: "A" });
+  assert.deepEqual(events[0], { type: "supportUsed", supporter: "oryndu", supporterName: "Oryndu", support: "read_water", name: "Ler a água", unit: "A" });
   const [intent] = eventsOf(events, "intentRevealed");
   assert.equal(intent.unit, "E");
   assert.deepEqual(intent.tile, plan.tile);
@@ -79,10 +79,10 @@ test("Anotar mostra o plano que a IA tem pro inimigo, sem gastar nada de quem ch
   assert.deepEqual({ ...encounter, supporters: before.supporters }, before);
 });
 
-test("o plano anotado é o que o inimigo faz, se nada mudar até a vez dele", () => {
+test("o plano lido na água é o que o inimigo faz, se nada mudar até a vez dele", () => {
   const { encounter } = withScribe(["A....E"], duel);
   const enemy = findUnit(encounter, "E")!;
-  const [intent] = eventsOf(run(encounter, { type: "support", unitId: "A", supporterId: "gil", target: enemy.pos }), "intentRevealed");
+  const [intent] = eventsOf(run(encounter, { type: "support", unitId: "A", supporterId: "oryndu", target: enemy.pos }), "intentRevealed");
   pass(encounter);
 
   const used: string[] = [];
@@ -99,7 +99,7 @@ test("o plano anotado é o que o inimigo faz, se nada mudar até a vez dele", ()
 test("o apoio vale uma vez por rodada, e volta quando a rodada vira", () => {
   const { encounter } = withScribe(["A..........E"], duel);
   const enemy = findUnit(encounter, "E")!;
-  const again = { type: "support", unitId: "A", supporterId: "gil", target: enemy.pos } as const;
+  const again = { type: "support", unitId: "A", supporterId: "oryndu", target: enemy.pos } as const;
 
   run(encounter, again);
   assert.deepEqual(applyCommand(encounter, again), { ok: false, reason: "resource_spent" });
@@ -122,20 +122,20 @@ test("apoio que não existe, alvo que não é inimigo e inimigo chamando são re
     reason: "unknown_ability",
   });
   for (const target of [hero.pos, { x: 2, y: 0 }]) {
-    assert.deepEqual(applyCommand(encounter, { type: "support", unitId: "A", supporterId: "gil", target }), { ok: false, reason: "invalid_target" });
+    assert.deepEqual(applyCommand(encounter, { type: "support", unitId: "A", supporterId: "oryndu", target }), { ok: false, reason: "invalid_target" });
   }
   assert.equal(encounter.supporters[0].ready, true);
 
   pass(encounter);
-  assert.deepEqual(applyCommand(encounter, { type: "support", unitId: "E", supporterId: "gil", target: hero.pos }), {
+  assert.deepEqual(applyCommand(encounter, { type: "support", unitId: "E", supporterId: "oryndu", target: hero.pos }), {
     ok: false,
     reason: "invalid_target",
   });
 });
 
-test("de quem vai perder a vez, o que se anota é isso", () => {
+test("de quem vai perder a vez, o que se lê é isso", () => {
   const { encounter } = withScribe(["A....E"], duel, "enemy");
   const enemy = findUnit(encounter, "E")!;
-  const events = run(encounter, { type: "support", unitId: "A", supporterId: "gil", target: enemy.pos });
+  const events = run(encounter, { type: "support", unitId: "A", supporterId: "oryndu", target: enemy.pos });
   assert.deepEqual(eventsOf(events, "intentRevealed"), [{ type: "intentRevealed", unit: "E", tile: enemy.pos, abilities: [], skips: true }]);
 });

@@ -11,13 +11,17 @@ const STARTING_ITEM_QUANTITY = 2;
 /**
  * Atributos de cada Ordem no nível 1, antes do modificador do Povo.
  *
- * Os cinco de combate vieram de um balanceador numérico (o projeto
+ * Os das Ordens do Eälen vieram de um balanceador numérico (o projeto
  * `ealen-IA`, hoje aposentado) rodado sobre o combate ANTIGO, de posturas.
  * Ficaram porque dão a cada Ordem um perfil próprio — um tanque de verdade,
  * um canhão de vidro de verdade —, não porque estejam balanceados pro
- * combate tático: são ponto de partida, pra ajustar à mão.
+ * combate tático: são ponto de partida, pra ajustar à mão. Os do trio são
+ * provisórios do mesmo jeito: o mago lê (Eir e Ul), o espadachim aguenta e
+ * acerta (Dain e Il), e nenhum dos dois é culto no que não é dele.
  */
 const CLASS_BASE_ATTRIBUTES: Record<CharacterClass, Attributes> = {
+  atracao_repulsao: { dain: 3, eir: 8, nath: 5, il: 5, or: 4, len: 6, ul: 8 },
+  espadachim: { dain: 8, eir: 2, nath: 7, il: 7, or: 6, len: 4, ul: 3 },
   luminar: { dain: 3, eir: 7, nath: 7, il: 4, or: 8, len: 5, ul: 5 },
   entropista: { dain: 4, eir: 9, nath: 4, il: 6, or: 4, len: 5, ul: 7 },
   cantor_de_ealen: { dain: 3, eir: 10, nath: 4, il: 6, or: 4, len: 7, ul: 5 },

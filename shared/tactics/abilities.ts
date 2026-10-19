@@ -6,12 +6,21 @@ import type { Dice } from "./rng";
 import type { Ability, Effect } from "./types";
 
 /**
- * Os kits: o que cada Ordem sabe fazer numa luta.
+ * Os kits: o que cada classe sabe fazer numa luta.
  *
- * Um kit são as cinco Artes da Ordem (as posturas de ../combatArts.ts) mais
+ * Um kit são as cinco Artes da classe (as posturas de ../combatArts.ts) mais
  * as Técnicas dela, que chegam com o nível. As posturas têm o mesmo NOME de
- * papel em toda Ordem — golpe rápido, golpe, golpe pesado, guarda, cura —,
- * mas cada Ordem faz com elas o que o Princípio dela faz:
+ * papel em toda classe — golpe rápido, golpe, golpe pesado, guarda, cura —,
+ * mas cada uma faz com elas o que ela é:
+ *
+ * - ATRAÇÃO E REPULSÃO (Endyru): puxa e empurra de longe, desarma e
+ *   arremessa, e cura — tudo magia, paga em mana e recitada. Só o bordão é
+ *   de graça e sai na hora. Nos níveis baixos o espadachim amassa o mago
+ *   (`magia` §5.3): ele é controle e preparo; quem mata são os outros dois.
+ * - ESPADACHIM (Jarupã, Xanduí): golpe rápido, golpe, golpe pesado (que
+ *   custa Fôlego) e guarda. O que diferencia um do outro é a escola.
+ *
+ * As seis Ordens do Eälen ficam só nas criaturas provisórias:
  *
  * - GUARDIÃO (gravidade): puxa de longe quem ele quer por perto, arremessa,
  *   prende o passo, e se ancora — nada o move.
@@ -52,6 +61,7 @@ const HEAL_BREATH = 2;
 const GUARD_BREATH = 1;
 
 const D6: Dice = { count: 1, sides: 6 };
+const D8: Dice = { count: 1, sides: 8 };
 
 type Damage = Extract<Effect, { kind: "damage" }>;
 /** Uma habilidade do kit, sem o que vem de fora: o id (a Ordem e a chave) e o nome e o flavor (de ../combatArts.ts). */
@@ -96,11 +106,75 @@ const HEAL: Body = {
   breath: HEAL_BREATH,
 };
 
+/** A Cura de quem conjura (`magia` §4.3): o mesmo texto de primeiros socorros, pago em mana, e recitado. */
+const CURE: Body = { cost: "action", range: HEAL_RANGE, targets: "ally", effects: [{ kind: "heal", dice: D6, attribute: "eir" }], mana: 2 };
+
 /**
- * O kit de cada Ordem: as habilidades dela pela chave (as posturas e as
+ * O kit de cada classe: as habilidades dela pela chave (as posturas e as
  * Técnicas de ../combatArts.ts), montadas sobre com o que a pessoa bate.
  */
 const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
+  // Endyru: atração e repulsão. A magia (o que custa mana) é recitada: sai no começo do turno seguinte e pode
+  // quebrar (ver `mana` em Ability). Os números são provisórios: o Puxão é um verso, o Empurrão uma página, e o
+  // Arremesso e o Desarmar são do Círculo — custam mais do que o limite de uma Página num turno.
+  atracao_repulsao: (arm) => ({
+    quick_attack: {
+      cost: "bonus",
+      range: 4,
+      targets: "enemy",
+      attack: { toHit: 2 },
+      effects: [{ kind: "push", distance: -2 }],
+      mana: 1,
+    },
+    attack: { cost: "action", ...wield(arm), effects: [hurt(arm)], opportunity: punishes(arm) },
+    heavy_attack: {
+      cost: "action",
+      range: 3,
+      targets: "enemy",
+      attack: { toHit: 0 },
+      effects: [
+        { kind: "damage", dice: D6, attribute: "primary" },
+        { kind: "push", distance: 2 },
+      ],
+      mana: 2,
+    },
+    defend: GUARD,
+    heal: CURE,
+    desarmar: {
+      cost: "action",
+      range: 4,
+      targets: "enemy",
+      attack: { toHit: 1 },
+      effects: [{ kind: "status", statusId: "disarmed", turns: 2 }],
+      mana: 3,
+    },
+    arremesso: {
+      cost: "action",
+      range: 4,
+      targets: "enemy",
+      attack: { toHit: 0 },
+      effects: [
+        { kind: "damage", dice: D8, attribute: "primary", multiplier: 1.5 },
+        { kind: "push", distance: 3 },
+      ],
+      mana: 4,
+    },
+  }),
+
+  // Jarupã e Xanduí: a lâmina. O que pesa custa Fôlego; a escola (o traço, o triângulo) vem do elenco.
+  espadachim: (arm) => ({
+    quick_attack: { cost: "bonus", ...wield(arm, 3), effects: [hurt(arm, { multiplier: 0.6 })] },
+    attack: { cost: "action", ...wield(arm), effects: [hurt(arm)], opportunity: punishes(arm) },
+    heavy_attack: {
+      cost: "action",
+      ...wield(arm, -4),
+      effects: [heavy(arm)],
+      breath: HEAVY_BREATH,
+      cooldown: HEAVY_COOLDOWN,
+    },
+    defend: GUARD,
+  }),
+
   guardiao: (arm) => ({
     // Não é a arma, é o peso: de longe, puxa o alvo pra dentro do próprio alcance.
     quick_attack: {
@@ -349,17 +423,18 @@ function artOf(characterClass: CharacterClass, slug: string): (CombatArt & { lev
 }
 
 /**
- * Habilidades que são de UMA pessoa, não de uma Ordem: o que alguém do elenco
- * sabe fazer além do kit (`gifts` em ../party.ts). Vêm do que a história diz
- * de cada um; os números são provisórios como o resto.
+ * Habilidades que são de UMA pessoa, não de uma classe: o que alguém do
+ * elenco sabe fazer além do kit (`gifts` em ../party.ts). Ninguém do trio tem
+ * uma ainda; as três que existem eram do elenco do Eälen e ficam como as
+ * peças que exercitam (`foes`, `limit`, `backlash`, ação bônus), até alguém
+ * do elenco ganhar a dele. Os números são provisórios como o resto.
  *
- * - `tide_pull` é o repuxo de Varel: adianta a maré e abre a guarda de todo
- *   inimigo de pé. Uma vez por luta, e a magia cobra — Fôlego, e o turno
- *   seguinte dele.
- * - `net_cast` é a rede de coleta de Halmira, aberta em cima de alguém: quem
- *   fica enredado quase não anda.
- * - `crooked_step` é o pé torto de Lish: fora de prumo de propósito, sem
- *   gastar o golpe do turno.
+ * - `tide_pull` adianta a maré e abre a guarda de todo inimigo de pé. Uma vez
+ *   por luta, e cobra — Fôlego, e o turno seguinte de quem a fez.
+ * - `net_cast` é uma rede aberta em cima de alguém: quem fica enredado quase
+ *   não anda.
+ * - `crooked_step` é ficar fora de prumo de propósito, sem gastar o golpe do
+ *   turno.
  */
 export const GIFTS = {
   tide_pull: {

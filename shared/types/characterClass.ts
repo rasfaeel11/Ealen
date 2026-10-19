@@ -1,7 +1,15 @@
 import type { Attributes } from "./attributes";
 
-/** As seis Ordens (classes) jogáveis de Talys. */
+/**
+ * O que cada um É numa luta (`magia` §3 e §5 no repositório da história):
+ * quem conjura, pelo conceito que conjura — `atracao_repulsao`, o de Endyru —,
+ * e quem luta de espada (`espadachim`), cuja escola vem do elenco (ver
+ * ../tactics/styles.ts). As seis Ordens do Eälen ficam só nas criaturas
+ * provisórias, até o bestiário do mundo entrar no lugar delas.
+ */
 export type CharacterClass =
+  | "atracao_repulsao"
+  | "espadachim"
   | "luminar"
   | "entropista"
   | "cantor_de_ealen"
@@ -10,14 +18,14 @@ export type CharacterClass =
   | "rachador";
 
 export interface ClassInfo {
-  /** Nome completo da Ordem, como o mundo a chama. */
+  /** Nome completo, como o mundo o chama. */
   name: string;
-  /** Epíteto curto — o que um membro da Ordem é, em três palavras. */
-  title: string;
+  /** Epíteto curto das Ordens do Eälen — o que um membro da Ordem é, em três palavras. */
+  title?: string;
   /** Papel mecânico no combate. */
   role: string;
-  /** A frase que resume a posição filosófica da Ordem. */
-  creed: string;
+  /** A frase que resume a posição filosófica de uma Ordem do Eälen. */
+  creed?: string;
   /** Atributo(s) que a classe escala primariamente. */
   primaryAttributes: (keyof Attributes)[];
 }
@@ -29,6 +37,16 @@ export interface ClassInfo {
  * sistema ao estado anterior simplesmente não tem cura.
  */
 export const CLASS_INFO: Record<CharacterClass, ClassInfo> = {
+  atracao_repulsao: {
+    name: "Mago de atração e repulsão",
+    role: "Controle",
+    primaryAttributes: ["eir", "ul"],
+  },
+  espadachim: {
+    name: "Espadachim",
+    role: "Linha de frente",
+    primaryAttributes: ["dain", "il"],
+  },
   luminar: {
     name: "Luminar",
     title: "Cavaleiro da Ordem Perfeita",

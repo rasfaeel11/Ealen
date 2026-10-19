@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
+import { beginNewGame } from "../game/newGame";
 import { firstEmptySlot, lastPlayedSlot, readSlots } from "../game/save";
 import { GameSession } from "../game/session";
 import { playMusic } from "../game/audio";
@@ -15,12 +16,8 @@ export default class TitleScene extends Phaser.Scene {
   create(): void {
     const centerX = GAME_WIDTH / 2;
 
-    addTitleText(this, centerX, 210, "EÄLEN", { fontSize: "112px" }).setOrigin(0.5);
-    addBodyText(this, centerX, 300, "O Canto das Primeiras Luzes", {
-      fontSize: "30px",
-      fontStyle: "italic",
-      color: TEXT_COLORS.inkDim,
-    }).setOrigin(0.5);
+    // Título provisório (ver AGENTS.md).
+    addTitleText(this, centerX, 240, "TRÊS NA ESTRADA", { fontSize: "84px" }).setOrigin(0.5);
 
     const slots = readSlots();
     const lastSlot = lastPlayedSlot(slots);
@@ -54,7 +51,7 @@ export default class TitleScene extends Phaser.Scene {
               return;
             }
             this.registry.set(REGISTRY_NEW_GAME_SLOT, slot);
-            this.scene.start(SCENES.prologue);
+            beginNewGame(this);
           },
         },
         {

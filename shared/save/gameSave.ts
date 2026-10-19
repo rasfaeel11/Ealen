@@ -1,8 +1,10 @@
 import { ATTRIBUTE_KEYS } from "../types/attributes";
 import type { Character } from "../types/character";
+import type { Equipment } from "../types/inventory";
 import { CLASS_INFO } from "../types/characterClass";
 import { RACE_INFO } from "../types/principle";
-import { STARTING_STASH, fights, startingLoadout, type PartyMember } from "../party";
+import { STARTING_STASH, castSheet, fights, startingLoadout, type PartyMember } from "../party";
+import { packStory, unpackStory } from "../story/memory";
 import { AREAS } from "../world/areas";
 
 /**
@@ -15,7 +17,7 @@ import { AREAS } from "../world/areas";
  * Campo novo no save: acrescentar em `GameSave`, subir `SAVE_VERSION` e
  * escrever em `MIGRATIONS` como um save da versão anterior ganha esse campo.
  */
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 /** Onde o personagem está: a área e o ponto do mapa dela, em pixels. */
 export interface SaveLocation {
@@ -81,7 +83,57 @@ const MIGRATIONS: Record<number, (old: Json) => Json> = {
       ? old.companions.map((member) => (isObject(member) ? { ...member, character: outfit(member.character) } : member))
       : old.companions,
   }),
+  // A versão 4 era do elenco do Eälen. Cada ficha vira a de quem está no lugar dela (ver RECAST), refeita no mesmo
+  // nível, de vida cheia; o que cada um vestia vai pro guardado de quem leva a mochila, e o que a história pôs em
+  // alguém (afflict) passa pro novo dono.
+  4: (old) => {
+    const worn: string[] = [];
+    const companions = Array.isArray(old.companions)
+      ? old.companions.map((member) => (isObject(member) ? { ...member, character: recast(member.character, worn) } : member))
+      : old.companions;
+    const character = recast(old.character, worn);
+    if (isObject(character)) character.gear = [...(Array.isArray(character.gear) ? character.gear : []), ...worn];
+    return { ...old, version: 5, character, companions, story: typeof old.story === "string" ? restory(old.story) : old.story };
+  },
 };
+
+/** Quem, no elenco de agora, ficou no lugar de quem era do Eälen: pelo id da ficha. O protagonista continua "hero". */
+const RECAST: Record<string, string> = {
+  "companion:lish": "companion:jarupa",
+  "companion:varel": "companion:xandui",
+  "companion:gil": "companion:oryndu",
+};
+
+/**
+ * A ficha `value`, de alguém do elenco do Eälen, refeita como a de quem está no lugar dele: a ficha nova do
+ * elenco no mesmo nível (e com o mesmo XP), com a mochila e o guardado de antes. O que ele vestia e a ficha nova
+ * não veste no mesmo lugar vai pra `worn`. O que não parece uma ficha do elenco passa como veio.
+ */
+function recast(value: unknown, worn: string[]): unknown {
+  if (!isObject(value) || typeof value.id !== "string" || !isNumber(value.level)) return value;
+  const sheet = castSheet(RECAST[value.id] ?? value.id, value.level);
+  if (!sheet) return value;
+  if (isObject(value.equipment)) {
+    for (const [slot, id] of Object.entries(value.equipment)) {
+      if (typeof id === "string" && id !== sheet.equipment?.[slot as keyof Equipment]) worn.push(id);
+    }
+  }
+  return {
+    ...sheet,
+    xp: isNumber(value.xp) ? value.xp : 0,
+    ...(value.inventory !== undefined ? { inventory: value.inventory } : {}),
+    ...(value.gear !== undefined ? { gear: value.gear } : {}),
+  };
+}
+
+/** O estado da história com as condições (afflict) de quem era do Eälen passadas pra quem está no lugar dele. */
+function restory(saved: string): string {
+  const { ink, memory } = unpackStory(saved);
+  const ids = Object.keys(memory.afflictions);
+  if (!ids.some((id) => id in RECAST)) return saved;
+  memory.afflictions = Object.fromEntries(ids.map((id) => [RECAST[id] ?? id, memory.afflictions[id]]));
+  return packStory(ink, memory);
+}
 
 /** A dona da mochila ganha o que um jogo novo traz guardado, se ainda não guarda nada. */
 function stash(value: unknown): unknown {

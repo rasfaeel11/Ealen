@@ -1,6 +1,6 @@
 /**
- * Apoios: o que faz na luta quem acompanha o grupo SEM lutar (o escrivão que
- * anota, não o que bate).
+ * Apoios: o que faz na luta quem acompanha o grupo SEM lutar (o barqueiro que
+ * lê a água, não o que bate).
  *
  * Quem apoia não é uma unidade: não tem vez na iniciativa, não ocupa
  * quadrado, não apanha e não conta pra vitória nem pra derrota. O que ele
@@ -24,10 +24,11 @@ export interface SupportTemplate {
 }
 
 export const SUPPORTS = {
-  annotate: {
-    id: "annotate",
-    name: "Anotar",
-    flavor: "Quem passa o dia lendo o que os outros vão fazer lê também um golpe antes de ele sair.",
+  // Oryndu: quem vive do rio vê a água mexer antes do bicho subir.
+  read_water: {
+    id: "read_water",
+    name: "Ler a água",
+    flavor: "Quem vive do rio vê a água mexer antes do bicho subir, e diz por onde ele vem e em quem.",
     kind: "reveal",
   },
 } satisfies Record<string, SupportTemplate>;

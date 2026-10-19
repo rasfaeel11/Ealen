@@ -44,6 +44,8 @@ const D6: Dice = { count: 1, sides: 6 };
  * próprio Princípio. É também a arma natural das criaturas.
  */
 const BARE: Record<CharacterClass, Arm> = {
+  atracao_repulsao: { dice: D6, range: 1, toHit: 0 },
+  espadachim: { dice: D6, range: 1, toHit: 0 },
   luminar: { dice: D6, range: 1, toHit: 0 },
   guardiao: { dice: D6, range: 1, toHit: 0 },
   sombrilico: { dice: D6, range: 1, toHit: 0 },
@@ -54,6 +56,8 @@ const BARE: Record<CharacterClass, Arm> = {
 
 /** Com o que cada Ordem começa. Quem é do elenco pode começar com outra coisa (`gear` em ./party.ts). */
 const STARTING_EQUIPMENT: Record<CharacterClass, Equipment> = {
+  atracao_repulsao: { weapon: "gear-bordao", armor: "gear-tunica-de-linho" },
+  espadachim: { weapon: "gear-espada-reta", armor: "gear-gibao-de-couro" },
   luminar: { weapon: "gear-espada-de-prumo", armor: "gear-cota-de-escamas" },
   guardiao: { weapon: "gear-maca-de-lastro", armor: "gear-cota-de-escamas" },
   sombrilico: { weapon: "gear-adaga-fosca", armor: "gear-manto-de-viagem" },

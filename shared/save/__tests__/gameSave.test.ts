@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PROTAGONIST, joinParty, leaveParty } from "../../party";
+import { joinParty, leaveParty } from "../../party";
+import { packStory, unpackStory } from "../../story/memory";
 import type { Character } from "../../types/character";
 import {
   SAVE_VERSION,
@@ -13,10 +14,6 @@ import {
   parseSave,
   serializeSave,
   summarizeSave,
-  availableOrders,
-  emptyProfile,
-  parseProfile,
-  unlockOrder,
   type GameSave,
 } from "../index";
 
@@ -50,9 +47,9 @@ test("um save vai pra texto e volta igual", () => {
   save.story = '{"flags":true}';
   save.playTimeMs = 90_000;
   save.savedAt = 1_700_000_000_000;
-  joinParty(save.companions, "lish", 3);
-  joinParty(save.companions, "varel", 3);
-  leaveParty(save.companions, "varel");
+  joinParty(save.companions, "jarupa", 3);
+  joinParty(save.companions, "xandui", 3);
+  leaveParty(save.companions, "xandui");
 
   assert.deepEqual(read(serializeSave(save)), save);
 });
@@ -79,6 +76,8 @@ test("o que não é um save é recusado sem lançar", () => {
     { version: SAVE_VERSION, character: { ...makeCharacter(), level: "3" }, story: null },
     { version: SAVE_VERSION, character: { ...makeCharacter(), attributes: { dain: 5 } }, story: null },
     { version: SAVE_VERSION, character: { ...makeCharacter(), breath: "cheio" }, story: null },
+    { version: SAVE_VERSION, character: { ...makeCharacter(), mana: "cheia" }, story: null },
+    { version: SAVE_VERSION, character: { ...makeCharacter(), engraved: ["puxão", 3] }, story: null },
     { version: SAVE_VERSION, character: makeCharacter(), story: 12 },
     // Versão sem caminho de migração.
     { version: 0, character: makeCharacter() },
@@ -173,23 +172,62 @@ test("save da versão 2 ganha um grupo vazio, e companheiro com a ficha estragad
   assert.deepEqual(read({ ...old, version: 2 }).companions, []);
 
   const save = newGame(makeCharacter());
-  const lish = joinParty(save.companions, "lish", 1)!;
+  const jarupa = joinParty(save.companions, "jarupa", 1)!;
   const read2 = read({
     ...save,
-    companions: [...save.companions, { character: { name: "Sem ficha" }, present: true }, { character: lish, present: true }, "nada"],
+    companions: [...save.companions, { character: { name: "Sem ficha" }, present: true }, { character: jarupa, present: true }, "nada"],
   });
-  assert.deepEqual(read2.companions, [{ character: lish, present: true }]);
+  assert.deepEqual(read2.companions, [{ character: jarupa, present: true }]);
 });
 
-test("o perfil guarda as Ordens destravadas, e o que não é um perfil vira um vazio", () => {
-  const profile = emptyProfile();
-  assert.deepEqual(availableOrders(profile), [PROTAGONIST.characterClass]);
-  assert.equal(unlockOrder(profile, "rachador"), true);
-  assert.equal(unlockOrder(profile, "rachador"), false);
-  // A Ordem que ela já tem não se destrava.
-  assert.equal(unlockOrder(profile, PROTAGONIST.characterClass), false);
-  assert.deepEqual(availableOrders(parseProfile(JSON.stringify(profile))), [PROTAGONIST.characterClass, "rachador"]);
+test("save da versão 4, do elenco do Eälen, vira o do elenco de agora: mesmo nível, mesma mochila, o que vestia guardado", () => {
+  const halmira: Character = {
+    ...makeCharacter(),
+    name: "Halmira",
+    race: "miraven",
+    characterClass: "guardiao",
+    level: 3,
+    xp: 40,
+    breath: 1,
+    equipment: { weapon: "gear-lamina-de-mergulho", armor: "gear-tunica-de-linho", accessory: "gear-rede-de-coleta" },
+    gear: ["gear-gancho-de-coleta"],
+  };
+  const lish = { ...makeCharacter(), id: "companion:lish", name: "Lish", race: "kelbar", characterClass: "sombrilico", level: 3, equipment: { weapon: "gear-faca-larga" } };
+  const gil = { ...makeCharacter(), id: "companion:gil", name: "Gil", race: "althirim", characterClass: "luminar", level: 2, inventory: undefined };
+  const story = packStory(JSON.stringify({ flows: {} }), {
+    journal: [],
+    clock: null,
+    afflictions: { "companion:lish": ["wounded_arm"], hero: ["wounded_arm"] },
+  });
+  const old = {
+    ...newGame(halmira),
+    version: 4,
+    companions: [
+      { character: lish, present: true },
+      { character: gil, present: false },
+    ],
+    story,
+  };
 
-  for (const raw of [null, "{quebrado", "[]", { orders: "todas" }, 7]) assert.deepEqual(parseProfile(raw), emptyProfile());
-  assert.deepEqual(parseProfile({ orders: ["bardo", "luminar", "luminar", PROTAGONIST.characterClass] }), { orders: ["luminar"] });
+  const save = read(old);
+  const hero = save.character;
+  assert.deepEqual([hero.id, hero.name, hero.race, hero.characterClass, hero.level, hero.xp], ["hero", "Endyru", "humano", "atracao_repulsao", 3, 40]);
+  assert.equal(hero.currentHp, hero.maxHp);
+  assert.equal(hero.breath, undefined);
+  assert.deepEqual(hero.equipment, { weapon: "gear-bordao", armor: "gear-tunica-de-linho" });
+  assert.deepEqual(hero.inventory, halmira.inventory);
+  // O que cada um vestia foi pro guardado de quem leva a mochila.
+  // A túnica, Endyru veste no mesmo lugar: fica no corpo, não vai pro guardado.
+  assert.deepEqual(hero.gear, ["gear-gancho-de-coleta", "gear-faca-larga", "gear-lamina-de-mergulho", "gear-rede-de-coleta"]);
+
+  assert.deepEqual(
+    save.companions.map(({ character, present }) => [character.id, character.name, character.characterClass, character.level, present]),
+    [
+      ["companion:jarupa", "Jarupã", "espadachim", 3, true],
+      ["companion:oryndu", "Oryndu", "espadachim", 2, false],
+    ],
+  );
+  // O que a história pôs em Lish agora está em Jarupã; o resto da história fica como estava.
+  const { memory } = unpackStory(save.story!);
+  assert.deepEqual(memory.afflictions, { "companion:jarupa": ["wounded_arm"], hero: ["wounded_arm"] });
 });

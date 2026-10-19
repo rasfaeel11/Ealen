@@ -72,7 +72,9 @@ export const STATUSES = {
   /** O que a cura deixa em quem a recebe (ver HEAL_PER_BREATH em ../breath.ts): o corpo queimou o que tinha, e a próxima cura até o descanso custa o dobro. */
   hungry: { id: "hungry", name: "Fome", hunger: true, untilRest: true },
 
-  // --- O que os kits das Ordens põem (ver KITS em ./abilities.ts) -------------
+  // --- O que os kits põem (ver KITS em ./abilities.ts) ------------------------
+  /** Atração e repulsão: o cabo escorregou da mão. O que ele tenta com a arma sai torto. */
+  disarmed: { id: "disarmed", name: "Desarmado", toHit: -4 },
   /** Sombrílico: não está onde se olha. Quem o ataca precisa de muito mais pra acertar. */
   unseen: { id: "unseen", name: "Despercebido", evasion: 5 },
   /** Rachador (e quem luta de viés): torto de propósito. */
@@ -99,7 +101,7 @@ export const STATUSES = {
   cracked: { id: "cracked", name: "Trincado", damageTaken: 3 },
   /** Rachador: o padrão quebrado de vez. Todo golpe acha uma abertura nova. */
   broken_symmetry: { id: "broken_symmetry", name: "Simetria quebrada", damageTaken: 4, attributeBonus: { or: -1 } },
-  /** Halmira: a rede de coleta nas pernas de alguém. */
+  /** A rede aberta nas pernas de alguém (o `net_cast`). */
   netted: { id: "netted", name: "Enredado", speed: -4 },
 } satisfies Record<string, StatusTemplate>;
 

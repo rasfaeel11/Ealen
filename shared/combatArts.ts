@@ -1,7 +1,10 @@
 import type { CharacterClass } from "./types/characterClass";
 
 /**
- * As Artes de combate (ver LORE.md §7).
+ * As Artes de combate: o nome e o que cada postura É, por classe. As do trio
+ * vêm do repertório do cânone (`magia` §3.5 no repositório da história: o que
+ * atração e repulsão faz em cada nível) e da aura do espadachim (§5); as das
+ * Ordens (ver LORE.md §7) ficam só nas criaturas provisórias do Eälen.
  *
  * Toda Ordem tem as mesmas cinco posturas; o que muda é o que elas SÃO. Um
  * Guardião dobra a densidade local, um Cantor ajusta uma frequência, um
@@ -43,6 +46,51 @@ export const STANCE_ORDER: CombatStance[] = ["quick_attack", "attack", "heavy_at
  * não preenche, e fratura não remenda.
  */
 export const CLASS_COMBAT_ARTS: Record<CharacterClass, Record<CombatStance, CombatArt | null>> = {
+  // Endyru: o que ele lê. Toda magia é recitada (sai no turno seguinte) e custa mana; o bordão, não.
+  atracao_repulsao: {
+    quick_attack: {
+      name: "Puxão",
+      flavor: "Um verso curto lido em voz alta, o mesmo de puxar o balde do poço. O outro vem dois passos.",
+    },
+    attack: {
+      name: "Bordão",
+      flavor: "A madeira do bordão, sem texto nenhum. Quem estuda também apanha na estrada.",
+    },
+    heavy_attack: {
+      name: "Empurrão",
+      flavor: "A repulsão de uma página inteira: o outro é jogado pra trás e cai pesado.",
+    },
+    defend: {
+      name: "Guarda",
+      flavor: "O bordão atravessado na frente do corpo. Dá tempo de tomar fôlego.",
+    },
+    heal: {
+      name: "Cura",
+      flavor: "O texto de primeiros socorros que toda escola ensina. Acelera o que o corpo faria sozinho, e o corpo cobra.",
+    },
+  },
+
+  // Jarupã e Xanduí: a lâmina e a aura. A escola de cada um (Gryskar, Ipojy) é o que muda a luta.
+  espadachim: {
+    quick_attack: {
+      name: "Golpe Rápido",
+      flavor: "A ponta da lâmina antes do corpo. Fere pouco, mas não deixa o outro respirar.",
+    },
+    attack: {
+      name: "Golpe",
+      flavor: "A lâmina com a aura no fio. É o que sobra quando o resto falha.",
+    },
+    heavy_attack: {
+      name: "Golpe Pesado",
+      flavor: "A aura inteira num golpe só. Cansa, e leva um tempo pra vir de novo.",
+    },
+    defend: {
+      name: "Guarda",
+      flavor: "Lâmina na frente do corpo e o pé firme. Dá tempo de tomar fôlego.",
+    },
+    heal: null,
+  },
+
   luminar: {
     quick_attack: {
       name: "Cadência Justa",
@@ -179,6 +227,23 @@ export const CLASS_COMBAT_ARTS: Record<CharacterClass, Record<CombatStance, Comb
  * segunda é o que ela faz que ninguém mais faz.
  */
 export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>> = {
+  // O que atração e repulsão faz no Círculo: chega com o nível, e custa mais mana do que uma Página aguenta num turno.
+  atracao_repulsao: {
+    desarmar: {
+      name: "Desarmar",
+      flavor: "Atração na arma, não no corpo: o cabo escorrega da mão de quem a segurava.",
+      level: 2,
+    },
+    arremesso: {
+      name: "Arremesso",
+      flavor: "Repulsão do tamanho de um círculo: o outro voa três passos e se arrebenta no que encontrar.",
+      level: 3,
+    },
+  },
+
+  // O golpe-selo de cada escola só vem por iniciação, a partir do grau 4: o trio não chega lá.
+  espadachim: {},
+
   luminar: {
     muralha_de_prumo: {
       name: "Muralha de Prumo",

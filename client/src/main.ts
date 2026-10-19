@@ -2,8 +2,6 @@ import * as Phaser from "phaser";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from "./game/config";
 import BootScene from "./scenes/BootScene";
 import TitleScene from "./scenes/TitleScene";
-import PrologueScene from "./scenes/PrologueScene";
-import ClassSelectScene from "./scenes/ClassSelectScene";
 import SaveSlotsScene from "./scenes/SaveSlotsScene";
 import WorldScene from "./scenes/WorldScene";
 
@@ -38,6 +36,6 @@ void waitForFonts().then(() => {
     },
     // O som do jogo é sintetizado em `game/audio.ts`, com o contexto de áudio dele: o do Phaser não é usado.
     audio: { noAudio: true },
-    scene: [BootScene, TitleScene, SaveSlotsScene, PrologueScene, ClassSelectScene, WorldScene],
+    scene: [BootScene, TitleScene, SaveSlotsScene, WorldScene],
   });
 });

@@ -57,6 +57,8 @@ export function standingFrame(facing: Facing): number {
 }
 
 const CLASS_COLOR: Record<CharacterClass, string> = {
+  atracao_repulsao: "#5f86c8",
+  espadachim: "#b08a4a",
   luminar: "#e8c47a",
   entropista: "#b0623a",
   cantor_de_ealen: "#5fb8b0",

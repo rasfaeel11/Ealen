@@ -9,17 +9,20 @@ import { isSworn, type StyleId } from "./tactics/styles";
 import type { SupportId } from "./tactics/supports";
 import type { Character } from "./types/character";
 import type { Equipment } from "./types/inventory";
-import { CLASS_INFO, type CharacterClass } from "./types/characterClass";
+import type { CharacterClass } from "./types/characterClass";
 import type { Race } from "./types/race";
 
 /**
- * O elenco: a protagonista, que é sempre a mesma, e quem pode andar com ela.
+ * O elenco: o protagonista, que é sempre o mesmo, e quem pode andar com ele.
+ * Quem são está no repositório da história (as fichas `endyru`, `jarupa`,
+ * `xandui` e `oryndu`): o jogo só diz como cada um luta.
  *
- * O jogo não tem criação de personagem. Quem joga é Halmira; o que pode mudar
- * num jogo novo é a ORDEM dela, e só entre as que o jogador já destravou (ver
- * ./save/profile.ts) — sem nada destravado, não há o que escolher.
+ * O jogo não tem criação de personagem. Quem joga é Endyru, jovem: estudante
+ * da universidade de Xerumbetyba, mago de atração e repulsão, no nível de
+ * Página. No caminho, forma o grupo com Jarupã (Gryskar) e Xanduí (Ipojy), e
+ * Oryndu, o barqueiro, os acompanha sem lutar.
  *
- * Um companheiro é uma ficha inteira, como a dela: tem nível, vida e XP
+ * Um companheiro é uma ficha inteira, como a dele: tem nível, vida e XP
  * próprios, entra na luta como unidade do lado do jogador e é comandado por
  * ele. Quem entra e quem sai do grupo é a história que decide (`join_party` e
  * `leave_party` no texto, ver ./story/runner.ts).
@@ -28,13 +31,11 @@ import type { Race } from "./types/race";
  * outros, mas numa luta não é unidade — fica de fora da grade e oferece um
  * apoio que o grupo chama (ver ./tactics/supports.ts).
  *
- * As Ordens aqui são PROVISÓRIAS: cada um ganhou o kit da Ordem que mais se
- * parece com o papel dele. O que a história diz de cada um está no ESTILO
- * (`style`: a escola de espada, Ipojy, Gryskar ou Tsvirana, e a proficiência
- * nela, limitada pelo nível de aura — ver ./tactics/styles.ts), no
- * que só ele sabe fazer (`gifts`, ver GIFTS em ./tactics/abilities.ts) e no
- * que ele traz no corpo (`gear`, ver ./equipment.ts). Estilo e habilidade
- * própria vêm daqui a cada luta, não da ficha salva: mudar o elenco muda quem
+ * Cada um é o que é (`characterClass`: o mago pelo conceito, o espadachim pela
+ * lâmina), e o que a história diz dele está aqui: a escola de espada e a aura
+ * (`style`, `aura` — ver ./tactics/styles.ts), a magia (`magic`, ver
+ * ./mana.ts) e o que traz no corpo (`gear`, ver ./equipment.ts). Escola, aura
+ * e magia vêm daqui a cada luta, não da ficha salva: mudar o elenco muda quem
  * já está jogando. O equipamento é só o de COMEÇO — depois é da ficha, e o
  * jogador troca.
  */
@@ -45,55 +46,55 @@ export const HERO_ID = "hero";
 export interface CastMember {
   name: string;
   race: Race;
-  /** A Ordem dá o kit de quem luta e, por enquanto, a cara de todos no mapa. */
+  /** O que ele é numa luta: dá o kit de quem luta e, por enquanto, a cara de todos no mapa. */
   characterClass: CharacterClass;
+  /** O que ele é, na ficha, quando não é o nome da classe (o barqueiro). */
+  calling?: string;
   /** Acompanha sem lutar: numa luta não é unidade, e oferece este apoio. */
   support?: SupportId;
   /** A escola de espada e a proficiência nela. Sem isto, fica fora do triângulo. */
   style?: { id: StyleId; grade: number };
   /** O nível de aura, 1 a 7: a proficiência na escola nunca passa dele. */
   aura?: number;
-  /** O que só ele sabe fazer, além do kit da Ordem. */
+  /** O que só ele sabe fazer, além do kit da classe. */
   gifts?: readonly GiftId[];
   /** Conjura: o conceito do sangue dele e o nível de mago (ver ./mana.ts). Sem isto, não tem mana nem paga magia. */
   magic?: Magic;
-  /** Com o que ele chega: os ids das peças (ver ./mock/equipment.ts). Sem isto, o que a Ordem dele dá. */
+  /** Com o que ele chega: os ids das peças (ver ./mock/equipment.ts). Sem isto, o que a classe dele dá. */
   gear?: Equipment;
 }
 
+/** Endyru, jovem: estudante de Xerumbetyba, mago de atração e repulsão no nível de Página. Não tem escola de espada. */
 export const PROTAGONIST: CastMember = {
-  name: "Halmira",
-  race: "miraven",
-  characterClass: "guardiao",
-  style: { id: "gryskar", grade: 3 },
-  aura: 3,
-  // Mergulhadora: a lâmina de cortar corda, a túnica e a rede no ombro — que ela também sabe abrir em cima de alguém.
-  gifts: ["net_cast"],
-  gear: { weapon: "gear-lamina-de-mergulho", armor: "gear-tunica-de-linho", accessory: "gear-rede-de-coleta" },
+  name: "Endyru",
+  race: "humano",
+  characterClass: "atracao_repulsao",
+  magic: { concept: "atracao_repulsao", level: 3 },
+  gear: { weapon: "gear-bordao", armor: "gear-tunica-de-linho" },
 };
 
-/** Quem pode entrar no grupo, pela chave que o texto usa (`join_party("lish")`). */
+/** Quem pode entrar no grupo, pela chave que o texto usa (`join_party("jarupa")`). */
 export const COMPANIONS: Record<string, CastMember> = {
-  lish: {
-    name: "Lish",
-    race: "kelbar",
-    characterClass: "sombrilico",
-    style: { id: "tsvirana", grade: 3 },
-    aura: 3,
-    // A faca de lado na cintura, e o corpo fora de prumo de propósito.
-    gifts: ["crooked_step"],
-    gear: { weapon: "gear-faca-larga", armor: "gear-manto-de-viagem" },
+  // Do Gryskar, o Bate-Primeiro: bate primeiro e pergunta depois. Aura baixa (Fio), e a espada pesada da escola.
+  jarupa: {
+    name: "Jarupã",
+    race: "humano",
+    characterClass: "espadachim",
+    style: { id: "gryskar", grade: 2 },
+    aura: 2,
+    gear: { weapon: "gear-espada-pesada", armor: "gear-gibao-de-couro" },
   },
-  // Não tem estilo de luta: o que ele tem é a maré, e ela cobra.
-  varel: {
-    name: "Varel",
-    race: "miraven",
-    characterClass: "cantor_de_ealen",
-    gifts: ["tide_pull"],
-    gear: { weapon: "gear-corda-de-nos", armor: "gear-tunica-de-linho" },
+  // Da Ipojy, a Espera: nunca dá o primeiro golpe (o voto). Aura baixa (Fio), e a espada reta da escola.
+  xandui: {
+    name: "Xanduí",
+    race: "humano",
+    characterClass: "espadachim",
+    style: { id: "ipojy", grade: 2 },
+    aura: 2,
+    gear: { weapon: "gear-espada-reta", armor: "gear-gibao-de-couro" },
   },
-  // Não luta: anota. A Ordem é só a cara dele no mapa, por enquanto.
-  gil: { name: "Gil", race: "althirim", characterClass: "luminar", support: "annotate" },
+  // Não luta: lê a água. A classe é só a cara dele no mapa, por enquanto.
+  oryndu: { name: "Oryndu", race: "humano", characterClass: "espadachim", calling: "Barqueiro", support: "read_water" },
 };
 
 export function isCompanionKey(key: string): boolean {
@@ -125,7 +126,7 @@ export function supportOf(character: Pick<Character, "id">): SupportId | undefin
   return character.id === HERO_ID ? undefined : castOf(character)?.support;
 }
 
-/** O id, na luta e no save, de quem o texto chama de `who`: "hero" é Halmira, o resto são as chaves de COMPANIONS. Undefined se não existe. */
+/** O id, na luta e no save, de quem o texto chama de `who`: "hero" é Endyru, o resto são as chaves de COMPANIONS. Undefined se não existe. */
 export function castId(who: string): string | undefined {
   if (who === HERO_ID) return HERO_ID;
   return isCompanionKey(who) ? companionId(who) : undefined;
@@ -145,25 +146,14 @@ export function fights(character: Pick<Character, "id">): boolean {
   return supportOf(character) === undefined;
 }
 
-export function isOrder(value: unknown): value is CharacterClass {
-  return typeof value === "string" && Object.prototype.hasOwnProperty.call(CLASS_INFO, value);
-}
-
-/**
- * Com o que a ficha `character` começa: o que o elenco diz dela, se ela está
- * na Ordem em que o elenco a conhece; senão, a arma e a armadura da Ordem que
- * tem (a lâmina de mergulho não serve a quem virou Cantora), com o acessório
- * que é dela. Quem não é do elenco começa com o que a Ordem dá.
- */
+/** Com o que a ficha `character` começa: o que o elenco diz dela; quem não é do elenco (ou não diz), o que a classe dá. */
 export function startingLoadout(character: Pick<Character, "id" | "characterClass">): Equipment {
   const member = castOf(character);
-  const fromOrder = startingEquipment(character.characterClass);
-  if (!member?.gear) return fromOrder;
-  if (member.characterClass === character.characterClass) return { ...member.gear };
-  return member.gear.accessory ? { ...fromOrder, accessory: member.gear.accessory } : fromOrder;
+  return member?.gear ? { ...member.gear } : startingEquipment(character.characterClass);
 }
 
-function createSheet(id: string, member: CastMember, characterClass: CharacterClass): Character {
+function createSheet(id: string, member: CastMember): Character {
+  const { characterClass } = member;
   const attributes = createStartingAttributes(member.race, characterClass);
   const maxHp = startingMaxHp(attributes);
   return {
@@ -182,13 +172,27 @@ function createSheet(id: string, member: CastMember, characterClass: CharacterCl
   };
 }
 
-/** Halmira no nível 1, com a mochila inicial e o que ela veste. `order` só difere da dela num jogo novo com Ordem destravada. */
-export function createProtagonist(order: CharacterClass = PROTAGONIST.characterClass): Character {
-  return { ...createSheet(HERO_ID, PROTAGONIST, order), inventory: createStartingInventory(), gear: [...STARTING_STASH] };
+/** Endyru no nível 1, com a mochila inicial e o que ele veste. */
+export function createProtagonist(): Character {
+  return { ...createSheet(HERO_ID, PROTAGONIST), inventory: createStartingInventory(), gear: [...STARTING_STASH] };
 }
 
-/** O que a protagonista leva guardado ao começar: o gancho de coleta, que todo mergulhador tem e que é outra arma pra quem quiser. */
-export const STARTING_STASH: readonly string[] = ["gear-gancho-de-coleta"];
+/** O que o protagonista leva guardado ao começar: nada além do que veste. */
+export const STARTING_STASH: readonly string[] = [];
+
+/**
+ * A ficha nova de quem é do elenco, com o id `id` (o do protagonista ou o de
+ * um companheiro), já no nível `level`, de vida cheia — sem mochila nem
+ * guardado. Undefined em quem não é do elenco. É como um save de antes do
+ * elenco de agora ganha as fichas dele (ver ./save/gameSave.ts).
+ */
+export function castSheet(id: string, level: number): Character | undefined {
+  const member = castOf({ id });
+  if (!member) return undefined;
+  const sheet = createSheet(id, member);
+  raiseToLevel(sheet, level);
+  return sheet;
+}
 
 /** Sobe a ficha até `level`, com a vida cheia. Não desce ninguém. */
 export function raiseToLevel(character: Character, level: number): void {
@@ -243,7 +247,7 @@ export function joinParty(members: PartyMember[], key: string, level: number): C
   let member = members.find((other) => other.character.id === companionId(key));
   if (member?.present) return undefined;
   if (!member) {
-    member = { character: createSheet(companionId(key), cast, cast.characterClass), present: false };
+    member = { character: createSheet(companionId(key), cast), present: false };
     members.push(member);
   }
   member.present = true;

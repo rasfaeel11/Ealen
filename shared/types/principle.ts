@@ -59,8 +59,8 @@ export const PRINCIPLE_INFO: Record<Principle, PrincipleInfo> = {
   },
 };
 
-/** Princípio que cada Ordem jogável manipula. */
-export const CLASS_PRINCIPLE: Record<CharacterClass, Principle> = {
+/** Princípio que cada Ordem do Eälen manipula. Quem é do mundo da série não manipula Princípio nenhum. */
+export const CLASS_PRINCIPLE: Partial<Record<CharacterClass, Principle>> = {
   luminar: "harmonia",
   entropista: "entropia",
   cantor_de_ealen: "ealen",
@@ -71,20 +71,21 @@ export const CLASS_PRINCIPLE: Record<CharacterClass, Principle> = {
 
 export interface RaceInfo {
   name: string;
-  /** Onde o povo vive em Talys. */
-  homeland: string;
-  /** Temperamento cultural, em poucas palavras. */
-  temperament: string;
-  /** Uma frase de como esse povo enxerga o mundo. */
-  creed: string;
+  /** Onde o povo vive. */
+  homeland?: string;
+  /** Temperamento cultural, em poucas palavras (dos povos do Eälen). */
+  temperament?: string;
+  /** Uma frase de como esse povo enxerga o mundo (dos povos do Eälen). */
+  creed?: string;
 }
 
 /**
- * Os quatro Povos de Talys (ver LORE.md §5). Repare que nenhum deles está
- * atrelado a uma Ordem jogável: os Povos cresceram perto de Princípios que
- * em boa parte ainda não viraram classe. Isso é proposital.
+ * Os povos. O humano é o do mundo da série (ver a ficha `humanos` no
+ * repositório da história); os quatro de Talys ficam só nas criaturas
+ * provisórias do Eälen.
  */
 export const RACE_INFO: Record<Race, RaceInfo> = {
+  humano: { name: "Humano", homeland: "Yrandupe" },
   althirim: {
     name: "Althirim",
     homeland: "Planaltos altos e secos, longe de tudo",

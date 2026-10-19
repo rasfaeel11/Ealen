@@ -2,12 +2,11 @@ import { Story } from "inkjs";
 import { gearedAttributes } from "../equipment";
 import { findItem, giveItem, itemCount, takeItem, type GameItem } from "../inventoryEffects";
 import { applyXpGain } from "../leveling";
-import { HERO_ID, castId, isInParty, isOrder, joinParty, leaveParty, presentCompanions, type PartyMember } from "../party";
+import { HERO_ID, castId, isInParty, joinParty, leaveParty, presentCompanions, type PartyMember } from "../party";
 import { STATUSES, isStatusId, passesWithRest, type StatusId } from "../tactics/statuses";
 import { AREAS } from "../world/areas";
 import type { RngHolder } from "../tactics/rng";
 import type { Character } from "../types/character";
-import type { CharacterClass } from "../types/characterClass";
 import type { LevelUpResult } from "../types/levelUp";
 import { checkChance, isAttribute, rollCheck, type CheckResult, type SkillCheck } from "./checks";
 import {
@@ -63,11 +62,10 @@ import {
  *                            de inimigos da área em que se está
  *   travel("area", "ponto")  quando a conversa acabar, leva o personagem a
  *                            esse ponto de chegada dessa área
- *   join_party("lish")       põe um companheiro no grupo (as chaves estão
+ *   join_party("jarupa")     põe um companheiro no grupo (as chaves estão
  *                            em COMPANIONS, ../party.ts)
- *   leave_party("lish")      tira do grupo; a ficha dele fica guardada
- *   in_party("lish")         se ele está no grupo agora
- *   unlock_order("rachador") destrava uma Ordem pros próximos jogos novos
+ *   leave_party("jarupa")    tira do grupo; a ficha dele fica guardada
+ *   in_party("jarupa")       se ele está no grupo agora
  *   note("id", "texto")      anota uma pista no diário (de novo com o mesmo
  *                            id, troca o texto em vez de duplicar)
  *   noted("id")              se a pista está no diário, e legível
@@ -81,11 +79,11 @@ import {
  *                            cada rodada que vira numa luta ("round") gasta
  *                            do relógio sem o texto mandar
  *   clock_stop()             tira o relógio da tela
- *   afflict("lish", "wounded_arm")   põe em alguém uma condição que dura
+ *   afflict("jarupa", "wounded_arm")   põe em alguém uma condição que dura
  *                            ENTRE lutas: ele entra em toda luta com ela.
- *                            "hero" é Halmira; o resto, as chaves do elenco
- *   cure("lish", "wounded_arm")      tira
- *   afflicted("lish", "wounded_arm") se ele a tem
+ *                            "hero" é Endyru; o resto, as chaves do elenco
+ *   cure("jarupa", "wounded_arm")      tira
+ *   afflicted("jarupa", "wounded_arm") se ele a tem
  *
  * `start_fight` e `travel` não interrompem o texto: viram acontecimentos
  * (`fight`, `travel`) que a cena cumpre depois da última fala — ver `aftermath`.
@@ -122,8 +120,6 @@ export type StoryEvent =
   | { type: "travel"; area: string; spawn: string }
   | { type: "joined"; name: string }
   | { type: "left"; name: string }
-  /** Uma Ordem destravada pros próximos jogos novos. Quem guarda isso é o perfil do jogador, não o save. */
-  | { type: "unlock"; order: CharacterClass }
   /** Uma pista anotada no diário (ou reescrita). */
   | { type: "noted"; entry: JournalEntry }
   /** Anotações apagadas do diário, da mais recente pra mais antiga. */
@@ -139,8 +135,6 @@ export type StoryEvent =
 export interface Aftermath {
   fight?: string;
   travel?: { area: string; spawn: string };
-  /** Ordens que o texto destravou, pra cena gravar no perfil do jogador. */
-  unlocks: CharacterClass[];
 }
 
 /**
@@ -149,13 +143,12 @@ export interface Aftermath {
  * acontece se ela for vencida.
  */
 export function aftermath(steps: readonly DialogueStep[]): Aftermath {
-  const result: Aftermath = { unlocks: [] };
+  const result: Aftermath = {};
   for (const step of steps) {
     for (const beat of step.beats) {
       if (beat.kind !== "event") continue;
       if (beat.event.type === "fight") result.fight = beat.event.group;
       else if (beat.event.type === "travel") result.travel = { area: beat.event.area, spawn: beat.event.spawn };
-      else if (beat.event.type === "unlock") result.unlocks.push(beat.event.order);
     }
   }
   return result;
@@ -275,10 +268,6 @@ export class StoryRunner {
     story.BindExternalFunction("leave_party", (key: string) => {
       const left = leaveParty(host.companions, String(key));
       if (left) this.pending.push({ type: "left", name: left.name });
-    });
-    story.BindExternalFunction("unlock_order", (order: string) => {
-      if (!isOrder(order)) throw new Error(`A história destrava uma Ordem que não existe: "${String(order)}"`);
-      this.pending.push({ type: "unlock", order });
     });
     story.BindExternalFunction("note", (id: string, text: string) => {
       const entry = noteEntry(this.memory.journal, String(id), String(text));

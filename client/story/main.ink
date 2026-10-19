@@ -1,4 +1,4 @@
-// A história do jogo. Tudo que se conversa em Talys é um trecho (knot) desta
+// A história do jogo. Tudo que se conversa é um trecho (knot) desta
 // história única: cada arquivo incluído aqui traz os trechos de um lugar, e
 // um `npc` no mapa aponta pro trecho dele pela propriedade `dialog`.
 //
@@ -9,8 +9,8 @@
 // O que o texto pode perguntar e pedir ao jogo (ver shared/story/runner.ts):
 
 EXTERNAL attr(name)         // attr("len"): o atributo do personagem
-EXTERNAL order()            // a Ordem de Halmira: "luminar", "entropista", "cantor_de_ealen", "guardiao", "sombrilico", "rachador"
-EXTERNAL people()           // "althirim", "miraven", "taharim", "kelbar"
+EXTERNAL order()            // o que o protagonista é: "atracao_repulsao" (Endyru)
+EXTERNAL people()           // o povo dele: "humano"
 EXTERNAL level()
 EXTERNAL has_item(id)
 EXTERNAL defeated(group)    // defeated("clareira:fiapo"): aquele grupo de inimigos já foi vencido?
@@ -21,10 +21,9 @@ EXTERNAL take_item(id)      // tira um da mochila; devolve se havia: {take_item(
 EXTERNAL grant_xp(amount)
 EXTERNAL start_fight(group) // start_fight("fiapo"): acabada a conversa, luta com esse grupo DESTA área
 EXTERNAL travel(area, spawn) // travel("ruinas", "from_clareira"): acabada a conversa, o personagem vai pra lá
-EXTERNAL join_party(who)    // join_party("lish"): entra no grupo. As chaves estão em shared/party.ts
+EXTERNAL join_party(who)    // join_party("jarupa"): entra no grupo. As chaves estão em shared/party.ts
 EXTERNAL leave_party(who)   // sai do grupo; a ficha dele fica guardada pra quando voltar
 EXTERNAL in_party(who)      // está no grupo agora?
-EXTERNAL unlock_order(id)   // destrava uma Ordem pra Halmira nos próximos jogos novos (fica no perfil, não no save)
 EXTERNAL note(id, text)     // note("rede", "A Companhia paga por rede vazia."): anota uma pista no diário (J abre)
 EXTERNAL noted(id)          // a pista está no diário, e legível?
 EXTERNAL forget(count)      // forget(3): apaga as 3 anotações mais recentes; ficam em branco no lugar delas
@@ -36,7 +35,7 @@ EXTERNAL clock()            // quanto já passou (0 sem relógio)
 EXTERNAL clock_left()       // quanto falta
 EXTERNAL clock_cost(what, amount)   // clock_cost("rest", 2): quanto descansar ("rest"), lutar ("fight") ou cada rodada que vira numa luta ("round") gasta sozinho
 EXTERNAL clock_stop()       // tira o relógio da tela
-EXTERNAL afflict(who, status)   // afflict("lish", "wounded_arm"): uma condição que dura ENTRE lutas. "hero" é Halmira
+EXTERNAL afflict(who, status)   // afflict("jarupa", "wounded_arm"): uma condição que dura ENTRE lutas. "hero" é Endyru
 EXTERNAL cure(who, status)      // tira
 EXTERNAL afflicted(who, status) // ele a tem?
 
@@ -50,8 +49,8 @@ EXTERNAL afflicted(who, status) // ele a tem?
 // O mapa também lê as variáveis daqui: um npc, inimigo, gatilho ou saída com a
 // propriedade `if` (ou `unless`) só existe enquanto a variável de mesmo nome
 // for verdadeira (ou falsa). Pôr alguém no mapa, tirar, armar um gatilho ou
-// abrir uma saída é mudar um VAR. A condição `party:lish` pergunta pelo grupo
-// em vez de por um VAR: vale enquanto Lish anda com Halmira.
+// abrir uma saída é mudar um VAR. A condição `party:jarupa` pergunta pelo grupo
+// em vez de por um VAR: vale enquanto Jarupã anda com Endyru.
 //
 // E o relógio: `clock:8` num `if`/`unless` vale quando ele já chegou em 8. É
 // como o tempo fecha uma porta — acabar o tempo não mata ninguém, tira opções.

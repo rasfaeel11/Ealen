@@ -1,21 +1,55 @@
 import type { EquipmentItem } from "../types/inventory";
 
 /**
- * O equipamento de Talys: armas, armaduras e acessórios. O que cada lugar
+ * O equipamento: armas, armaduras e acessórios. O que cada lugar
  * faz está em `EquipmentData` (../types/inventory.ts); as regras de vestir,
  * em ../equipment.ts.
  *
  * Como os consumíveis, nada aqui é "espada +1": a descrição diz o que a
- * coisa É, os números dizem o que ela faz. TUDO PROVISÓRIO — as peças do
- * capítulo (a lâmina de mergulho, o gancho, o gibão da Companhia) vêm do que
- * a história já descreve; o resto existe pra dar a cada Ordem com o que
- * começar e ao jogador alguma coisa pra achar e trocar.
+ * coisa É, os números dizem o que ela faz. TUDO PROVISÓRIO. As do trio (a
+ * espada reta, a espada pesada, o bordão, o gibão de couro) são de ferro-cru,
+ * o primeiro nível do cânone (`magia` §7.4), e a espada de cada um é a arma
+ * preferida da escola dele. O resto é do Eälen — as peças do capítulo e as
+ * das Ordens — e fica pras criaturas provisórias e pro jogador achar.
  *
  * Régua: o dado de quem luta sem nada na mão é 1d6. Arma leve acerta mais
  * (d6, +1), arma pesada fere mais e acerta menos (d10, -1). Armadura vai de
  * +1 (pano) a +3 (placa, que pesa: -1 de movimento).
  */
 export const EQUIPMENT: EquipmentItem[] = [
+  // --- O do trio -------------------------------------------------------------
+  {
+    id: "gear-espada-reta",
+    name: "Espada Reta",
+    description: "Lâmina reta de dois gumes, de ferro-cru. É a arma da Espera: espera o golpe do outro e corta na volta.",
+    category: "equipment",
+    rarity: "common",
+    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 1, orders: ["espadachim"] },
+  },
+  {
+    id: "gear-espada-pesada",
+    name: "Espada Pesada",
+    description: "Larga e pesada, de ferro-cru. Pede o golpe que decide logo, o do Bate-Primeiro.",
+    category: "equipment",
+    rarity: "common",
+    data: { slot: "weapon", dice: { count: 1, sides: 10 }, range: 1, toHit: -1, orders: ["espadachim"] },
+  },
+  {
+    id: "gear-bordao",
+    name: "Bordão",
+    description: "Vara de madeira de quem anda a pé. Não tem texto nenhum gravado: é madeira.",
+    category: "equipment",
+    rarity: "common",
+    data: { slot: "weapon", dice: { count: 1, sides: 6 }, range: 1, orders: ["atracao_repulsao"] },
+  },
+  {
+    id: "gear-gibao-de-couro",
+    name: "Gibão de Couro",
+    description: "Couro grosso costurado em camadas, de quem escolta barco. Segura corte; não segura queda na água.",
+    category: "equipment",
+    rarity: "common",
+    data: { slot: "armor", defense: 2 },
+  },
   // --- Armas de perto -------------------------------------------------------
   {
     id: "gear-lamina-de-mergulho",

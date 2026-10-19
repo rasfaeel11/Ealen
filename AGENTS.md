@@ -263,7 +263,6 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P0 — a conversão (o jogo não existe sem isto)
 | # | Task | O que é |
 |---|---|---|
-| 7 | **O elenco** | Endyru, Jarupã, Xanduí e Oryndu no lugar de Halmira, Lish, Varel e Gil. Ordens destraváveis e `ClassSelect` saem. |
 | 8 | **O Ykuruã** | Cura na água, Muralha que muda na terra, deixa `when: burst` (alguém passou do limite de mana), puxar aos poucos funcionando contra ele. Unidade grande, se couber. |
 | 9 | **Atributos com nomes do mundo** | Depois da aprovação do autor. |
 
@@ -307,6 +306,14 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   além do que ele pode pagar: sem Fôlego, nada se acelera. Quem foi curado fica com Fome até o descanso, e com fome a
   cura custa o dobro. Vale na luta e fora dela. Antes a fome travava a recuperação de Fôlego pela guarda; isso
   deixava o grupo sem Fôlego pro resto da luta (duas IAs empacavam), e a regra do dobro ficou no lugar.
+- **7. O elenco.** Endyru (humano, classe `atracao_repulsao`, Página: Puxão, Bordão, Empurrão, Guarda, Cura;
+  Desarmar no nível 2 e Arremesso no 3, tudo magia recitada e paga em mana), Jarupã (`espadachim`, Gryskar, Fio,
+  espada pesada), Xanduí (`espadachim`, Ipojy, Fio, espada reta) e Oryndu (barqueiro, apoio "Ler a água") no
+  lugar de Halmira, Lish, Varel e Gil, em código, testes, Ink, mapa e save (versão 5 refaz as fichas antigas no
+  mesmo nível). Saíram o perfil, `unlock_order`, `ClassSelect`, os retratos das Ordens e o prólogo do Eälen (que
+  mostrava a Ruptura, vestígio da singularidade). O título virou "Três na Estrada". As Ordens do Eälen ficam só nas
+  criaturas provisórias. Na clareira, o trio e Oryndu não falam: o texto deles espera o roteiro (task 11).
+  `docs/motor.md` ainda descreve o elenco antigo nas seções de elenco, Ordens destraváveis e cenas: falta atualizar.
 
 ## 9. O que precisa virar cânone na história
 
