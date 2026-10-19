@@ -1,5 +1,6 @@
 import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileIndex, type Pos } from "./grid";
 import { attackOdds } from "./attack";
+import { healCap, healToll } from "../breath";
 import { reachableTiles } from "./movement";
 import { PROPS, type PropTemplate } from "./props";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
@@ -283,9 +284,11 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
         case "heal": {
           if (victim.statuses.some((status) => status.noHeal)) break;
           const missing = victim.maxHp - victim.currentHp;
-          const amount = Math.min(missing, attributeOf(actor, effect.attribute) + meanRoll(effect.dice));
+          // A cura não vai além do que o corpo dele pode pagar, e o Fôlego que ele paga conta contra (ver healCap em ../breath.ts).
+          const hungry = victim.statuses.some((status) => status.hunger);
+          const amount = Math.min(missing, attributeOf(actor, effect.attribute) + meanRoll(effect.dice), healCap(victim.breath, hungry));
           // Curar quem está por um fio vale o dobro de curar um arranhão.
-          favor += outlook.lands * amount * (1 + missing / victim.maxHp);
+          favor += outlook.lands * (amount * (1 + missing / victim.maxHp) - BREATH_VALUE * healToll(amount, hungry));
           break;
         }
         case "status":

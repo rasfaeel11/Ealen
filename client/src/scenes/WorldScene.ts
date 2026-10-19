@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import {
   AREAS,
   FOLLOW_GAP,
+  HUNGER,
   STARTING_AREA,
   STARTING_SPAWN,
   StoryRunner,
@@ -1121,20 +1122,24 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * Uma cura feita fora de luta. Custa o Fôlego de quem a faz (ver `mend`) e
+   * Uma cura feita fora de luta. Custa o Fôlego de quem a faz e o de quem a recebe, que fica com fome (ver `mend`), e
    * tempo — o de uma rodada, se a história está contando.
    */
   private mendOutside(caster: Character, ability: Ability, target: Character): number | undefined {
-    const healed = mend(caster, ability, target, STORY_RNG);
+    // Quem paga a cura é o paciente: com fome, o dobro — e a fome fica até o descanso.
+    const hungry = this.story.afflictions()[target.id]?.includes(HUNGER) ?? false;
+    const healed = mend(caster, ability, target, STORY_RNG, hungry);
     if (healed === undefined) return undefined;
     // Magia que custa mais que o limite de uma vez cobra do corpo também fora de luta.
     const mark = burstMark(caster, ability);
-    if (mark) this.story.mark(caster.id, mark);
+    let marked = false;
+    if (mark) marked = this.story.mark(caster.id, mark) || marked;
+    if (healed > 0) marked = this.story.mark(target.id, HUNGER) || marked;
     if (this.story.spend("round")) {
       this.save.story = this.story.save();
       this.clockBar.set(this.story.clock());
       this.syncPresence();
-    } else if (mark) {
+    } else if (marked) {
       this.save.story = this.story.save();
     }
     this.persist();

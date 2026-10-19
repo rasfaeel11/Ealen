@@ -34,6 +34,8 @@ export interface StatusTemplate {
   immovable?: boolean;
   /** Cura nenhuma pega no portador — nem de habilidade, nem de item. */
   noHeal?: boolean;
+  /** Com fome: a cura cobra do portador o dobro de Fôlego (ver HEAL_PER_BREATH em ../breath.ts). */
+  hunger?: boolean;
   /**
    * Dura entre lutas e sai no descanso: a marca LEVE da mana (ver ../mana.ts). O
    * motor a põe pra durar a luta toda; o mundo a passa pra história (`afflict`)
@@ -67,6 +69,8 @@ export const STATUSES = {
   surprised: { id: "surprised", name: "Surpreso", skipsTurn: true },
   /** A marca da mana de atração e repulsão (ver ../mana.ts): sangue pelo nariz e tremor na mão. Passa com o descanso. */
   bloodied: { id: "bloodied", name: "Sangue e tremor", toHit: -2, untilRest: true },
+  /** O que a cura deixa em quem a recebe (ver HEAL_PER_BREATH em ../breath.ts): o corpo queimou o que tinha, e a próxima cura até o descanso custa o dobro. */
+  hungry: { id: "hungry", name: "Fome", hunger: true, untilRest: true },
 
   // --- O que os kits das Ordens põem (ver KITS em ./abilities.ts) -------------
   /** Sombrílico: não está onde se olha. Quem o ataca precisa de muito mais pra acertar. */
@@ -123,6 +127,7 @@ export function isHarmful(status: ActiveStatus): boolean {
     (status.damageTaken ?? 0) > 0 ||
     (status.speed ?? 0) < 0 ||
     status.harm !== undefined ||
-    status.noHeal === true
+    status.noHeal === true ||
+    status.hunger === true
   );
 }

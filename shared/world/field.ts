@@ -1,4 +1,4 @@
-import { breathOf } from "../breath";
+import { breathOf, healCap, healToll } from "../breath";
 import { CONCEPTS, manaLimit, manaOf } from "../mana";
 import { gearedAttributes } from "../equipment";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
@@ -120,13 +120,18 @@ export function burstMark(character: Pick<Character, "id">, ability: Ability): S
  * `caster` usa a habilidade de cura `ability` em `target`, fora de luta.
  * Muta `target`, cobra o Fôlego (e a mana) de `caster` e devolve quanto
  * curou; undefined se não é uma cura, se ela só serve em quem a faz e o alvo é
- * outro, se falta o que pagar (ver canAfford) ou se o alvo não precisa — e aí
- * nada se gasta, nem o dado rola.
+ * outro, se falta o que pagar (ver canAfford), se o alvo não precisa ou não
+ * tem Fôlego pra pagar a cura — e aí nada se gasta, nem o dado rola.
+ *
+ * Quem paga a cura é o paciente, como dentro da luta (ver HEAL_PER_BREATH em
+ * ../breath.ts): `target` perde o Fôlego dela, e a cura não vai além do que
+ * ele tem. Com fome (`hungry`: a condição que a história guarda pra ele), o
+ * dobro. A fome que ela deixa (`HUNGER`) quem põe na história é quem chama.
  */
-export function mend(caster: Character, ability: Ability, target: Character, rng: RngHolder): number | undefined {
+export function mend(caster: Character, ability: Ability, target: Character, rng: RngHolder, hungry = false): number | undefined {
   if (fieldUse(ability) !== "mend") return undefined;
   if (ability.targets === "self" && target !== caster) return undefined;
-  if (target.currentHp >= target.maxHp || !canAfford(caster, ability)) return undefined;
+  if (target.currentHp >= target.maxHp || !canAfford(caster, ability) || healCap(breathOf(target), hungry) <= 0) return undefined;
 
   if (ability.breath) caster.breath = breathOf(caster) - ability.breath;
   const magic = castOf(caster)?.magic;
@@ -136,7 +141,8 @@ export function mend(caster: Character, ability: Ability, target: Character, rng
     if (effect.kind !== "heal") continue;
     const attribute = effect.attribute === "primary" ? CLASS_INFO[caster.characterClass].primaryAttributes[0] : effect.attribute;
     const amount = (attribute ? gearedAttributes(caster)[attribute] : 0) + rollDice(rng, effect.dice);
-    const gained = Math.min(target.maxHp - target.currentHp, amount);
+    const gained = Math.min(target.maxHp - target.currentHp, amount, healCap(breathOf(target), hungry));
+    target.breath = breathOf(target) - healToll(gained, hungry);
     target.currentHp += gained;
     healed += gained;
   }

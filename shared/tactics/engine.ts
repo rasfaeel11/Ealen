@@ -1,6 +1,7 @@
 import { foresee } from "./ai";
 import { attackEdge, attackTotals } from "./attack";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
+import { HUNGER, healCap, healToll } from "../breath";
 import { CONCEPTS } from "../mana";
 import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { findPath } from "./movement";
@@ -557,10 +558,19 @@ function spendMana(unit: Unit, amount: number, events: TacticalEvent[]): void {
   const limit = unit.manaLimit ?? 0;
   if (before > limit || unit.manaSpent <= limit) return;
   events.push({ type: "manaBurst", unit: unit.id, spent: unit.manaSpent, limit });
-  if (!unit.concept) return;
-  const mark = CONCEPTS[unit.concept].mark;
-  addStatus(unit, STATUSES[mark], Infinity, events);
-  if (!unit.marks?.includes(mark)) unit.marks = [...(unit.marks ?? []), mark];
+  if (unit.concept) leaveMark(unit, STATUSES[CONCEPTS[unit.concept].mark], events);
+}
+
+/**
+ * Põe em `unit` uma marca que sai da luta com ele (`untilRest`: a da mana, a
+ * fome da cura), pra durar a luta toda, e a anota em `marks` — cair apaga as
+ * condições, não o que ele leva pra fora. A que ele já tem não se renova.
+ */
+function leaveMark(unit: Unit, mark: StatusTemplate, events: TacticalEvent[]): void {
+  if (unit.statuses.some((status) => status.id === mark.id)) return;
+  addStatus(unit, mark, Infinity, events);
+  const id = mark.id as StatusId;
+  if (!unit.marks?.includes(id)) unit.marks = [...(unit.marks ?? []), id];
 }
 
 function useAbility(
@@ -834,12 +844,24 @@ function applyEffect(
         events.push({ type: "healDenied", target: target.id, name: denied.name });
         return;
       }
-      const amount = Math.min(
-        target.maxHp - target.currentHp,
-        attributeOf(actor, effect.attribute) + rollDice(encounter, effect.dice),
-      );
+      // A cura acelera o que o corpo faria sozinho, e quem paga é o corpo de quem a recebe (ver HEAL_PER_BREATH em
+      // ../breath.ts): Fôlego (o dobro, com fome), e a fome que fica até o descanso. Sem Fôlego, nada se acelera.
+      const rolled = attributeOf(actor, effect.attribute) + rollDice(encounter, effect.dice);
+      const missing = target.maxHp - target.currentHp;
+      const hungry = target.statuses.some((status) => status.hunger);
+      if (missing > 0 && healCap(target.breath, hungry) <= 0) {
+        events.push({ type: "healDenied", target: target.id, name: "Sem fôlego" });
+        return;
+      }
+      const amount = Math.min(missing, rolled, healCap(target.breath, hungry));
+      const toll = healToll(amount, hungry);
+      if (toll > 0) {
+        target.breath -= toll;
+        events.push({ type: "breathDrained", unit: target.id, amount: toll, remaining: target.breath });
+      }
       target.currentHp += amount;
       events.push({ type: "heal", target: target.id, amount, remainingHp: target.currentHp });
+      if (amount > 0) leaveMark(target, STATUSES[HUNGER], events);
       return;
     }
     case "status":

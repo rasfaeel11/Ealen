@@ -263,7 +263,6 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P0 — a conversão (o jogo não existe sem isto)
 | # | Task | O que é |
 |---|---|---|
-| 6 | **Cura que cobra o paciente** | A cura tira do alvo (Fôlego, fome) o que acelera. |
 | 7 | **O elenco** | Endyru, Jarupã, Xanduí e Oryndu no lugar de Halmira, Lish, Varel e Gil. Ordens destraváveis e `ClassSelect` saem. |
 | 8 | **O Ykuruã** | Cura na água, Muralha que muda na terra, deixa `when: burst` (alguém passou do limite de mana), puxar aos poucos funcionando contra ele. Unidade grande, se couber. |
 | 9 | **Atributos com nomes do mundo** | Depois da aprovação do autor. |
@@ -304,6 +303,10 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   (o `R` abre o painel de gravar), uma por gravação até o nível de mago, num objeto ou círculo: na luta sai na hora,
   serve uma vez, e é a única magia que abre luta — o círculo preparado antes. O círculo não tem lugar no mapa: é o
   texto pronto, não um quadrado marcado.
+- **6. A cura cobra o paciente.** Cada 3 de vida que a cura devolve custa 1 de Fôlego a quem a recebe, e ela não vai
+  além do que ele pode pagar: sem Fôlego, nada se acelera. Quem foi curado fica com Fome até o descanso, e com fome a
+  cura custa o dobro. Vale na luta e fora dela. Antes a fome travava a recuperação de Fôlego pela guarda; isso
+  deixava o grupo sem Fôlego pro resto da luta (duas IAs empacavam), e a regra do dobro ficou no lugar.
 
 ## 9. O que precisa virar cânone na história
 

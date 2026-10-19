@@ -1,3 +1,4 @@
+import type { StatusId } from "./tactics/statuses";
 import type { Character } from "./types/character";
 
 /**
@@ -29,6 +30,28 @@ export function breathOf(character: Pick<Character, "level" | "attributes" | "br
   const max = maxBreath(character);
   const { breath } = character;
   return typeof breath === "number" && Number.isFinite(breath) ? Math.max(0, Math.min(max, Math.floor(breath))) : max;
+}
+
+/**
+ * A CURA cobra do paciente (`magia` §4.3): ela acelera o que o corpo faria
+ * sozinho, e quem paga é o corpo dele. Cada HEAL_PER_BREATH de vida devolvida
+ * custa um de Fôlego de quem a recebe, e a cura nunca vai além do que ele tem
+ * pra pagar: sem Fôlego, nada se acelera. E fica a FOME (a condição `hungry`,
+ * ver ./tactics/statuses.ts): até o descanso, a cura custa a ele o dobro.
+ */
+export const HEAL_PER_BREATH = 3;
+
+/** A condição que a cura deixa em quem a recebeu: a fome, até o descanso. */
+export const HUNGER: StatusId = "hungry";
+
+/** Quanta vida a cura pode devolver a quem tem `breath` de Fôlego; com fome (`hungry`), a metade. */
+export function healCap(breath: number, hungry = false): number {
+  return Math.floor((Math.max(0, breath) * HEAL_PER_BREATH) / (hungry ? 2 : 1));
+}
+
+/** Quanto Fôlego o paciente paga por `healed` de vida devolvida; com fome, o dobro. */
+export function healToll(healed: number, hungry = false): number {
+  return Math.ceil((Math.max(0, healed) * (hungry ? 2 : 1)) / HEAL_PER_BREATH);
 }
 
 /** Devolve o Fôlego inteiro: é o que o descanso faz. */

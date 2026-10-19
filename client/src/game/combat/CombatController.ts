@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import {
   COVER_DEFENSE,
   FLANK_TO_HIT,
+  HEAL_PER_BREATH,
   HEIGHT_TO_HIT,
   PROPS,
   STATUSES,
@@ -125,6 +126,8 @@ export function describeStatus(status: StatusTemplate): string {
   if (status.speed) notes.push(`movimento ${status.speed > 0 ? "+" : ""}${status.speed}`);
   if (status.immovable) notes.push("nada o tira do lugar");
   if (status.noHeal) notes.push("não pode ser curado");
+  if (status.hunger) notes.push("a cura custa o dobro de Fôlego");
+  if (status.untilRest) notes.push("até o descanso");
   if (status.guaranteedCrit) notes.push("o próximo golpe é crítico");
   if (status.breaksGuard) notes.push("derruba a guarda");
   if (status.skipsTurn) notes.push("perde a vez");
@@ -150,8 +153,9 @@ export function describeAbility(ability: Ability): string {
       parts.push(effect.multiplier ? `dano ${dice} x${effect.multiplier}` : `dano ${dice}`);
       if (effect.piercing) parts.push("fura a armadura");
       if (effect.leech) parts.push(effect.leech === 1 ? "devolve como vida o que tirar" : `devolve ${Math.round(effect.leech * 100)}% como vida`);
-    } else if (effect.kind === "heal") parts.push(`cura ${effect.dice.count}d${effect.dice.sides}`);
-    else if (effect.kind === "status") {
+    } else if (effect.kind === "heal") {
+      parts.push(`cura ${effect.dice.count}d${effect.dice.sides}, e quem recebe paga 1 de Fôlego a cada ${HEAL_PER_BREATH} (o dobro com fome)`);
+    } else if (effect.kind === "status") {
       const status = STATUSES[effect.statusId];
       const what = describeStatus(status);
       const span = effect.turns === 1 ? "até o próximo turno" : `por ${effect.turns} turnos`;
