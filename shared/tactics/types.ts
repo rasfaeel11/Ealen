@@ -4,6 +4,7 @@ import type { ConsumableItem, Inventory } from "../types/inventory";
 import type { Grid, Pos } from "./grid";
 import type { Prop } from "./props";
 import type { Dice } from "./rng";
+import type { ConceptId } from "../mana";
 import type { ActiveStatus, StatusId } from "./statuses";
 import type { StyleId } from "./styles";
 import type { SupportId, Supporter } from "./supports";
@@ -92,6 +93,11 @@ export interface Ability {
   backlash?: { statusId: StatusId; turns: number };
   /** Quanto Fôlego custa a quem usa (ver ../breath.ts). Sem isto, nada: o golpe comum não cansa. */
   breath?: number;
+  /**
+   * Quanta mana custa (ver ../mana.ts): é magia, e só quem conjura a usa. O
+   * que passa do limite do turno de quem a usa cobra do corpo dele.
+   */
+  mana?: number;
   /**
    * Recarga: por quantos turnos de quem a usou ela fica sem poder ser usada
    * de novo. Com 1, não sai em dois turnos seguidos. Sem isto, volta na hora.
@@ -237,6 +243,23 @@ export interface Unit {
   breath: number;
   maxBreath: number;
   /**
+   * Quem conjura (ver ../mana.ts): a mana que resta e a de quem está
+   * descansado, quanto ele gasta num turno sem o corpo pagar (`manaLimit`),
+   * quanto já gastou desde que o turno dele começou (`manaSpent`) e o conceito,
+   * que diz a marca de quem passa do limite. Quem não conjura não tem nada disto.
+   */
+  mana?: number;
+  maxMana?: number;
+  manaLimit?: number;
+  manaSpent?: number;
+  concept?: ConceptId;
+  /**
+   * As marcas que o corpo levou nesta luta e que saem com ele dela (as de
+   * `untilRest`, ver ./statuses.ts): o mundo as passa pra história no fim.
+   * Ficam aqui mesmo que ele caia, quando as condições se apagam.
+   */
+  marks?: StatusId[];
+  /**
    * As habilidades em recarga: quantos FINS de turno dele ainda faltam pra
    * cada uma voltar. A pergunta certa é `cooldownLeft` (./units.ts).
    */
@@ -318,6 +341,15 @@ export type TacticalEvent =
   | { type: "breathRecovered"; unit: string; amount: number; remaining: number }
   /** `unit` PERDEU Fôlego pelo golpe de outro (o efeito `breath` negativo). */
   | { type: "breathDrained"; unit: string; amount: number; remaining: number }
+  /** `unit` pagou a mana de uma magia. O `abilityUsed` dela vem logo depois (ou o `manaBurst`, antes dele). */
+  | { type: "manaSpent"; unit: string; amount: number; remaining: number }
+  /**
+   * `unit` passou do limite de mana do turno: gastou `spent` desde que a vez
+   * dele começou, e o corpo aguentava `limit`. A marca do conceito dele vem
+   * logo depois (`statusApplied`). É uma vez por turno: passar mais no mesmo
+   * turno não dispara de novo.
+   */
+  | { type: "manaBurst"; unit: string; spent: number; limit: number }
   | { type: "abilityUsed"; unit: string; abilityId: string; name: string; target: Pos; reaction: boolean }
   | {
       type: "attackRoll";
@@ -394,6 +426,8 @@ export type CommandError =
   | "resource_spent"
   /** Falta Fôlego pra habilidade. */
   | "no_breath"
+  /** Falta mana pra magia (ou quem a pediu não conjura). */
+  | "no_mana"
   /** A habilidade ainda está em recarga. */
   | "recharging"
   | "invalid_target"

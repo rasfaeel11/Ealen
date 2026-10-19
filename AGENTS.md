@@ -263,7 +263,6 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P0 — a conversão (o jogo não existe sem isto)
 | # | Task | O que é |
 |---|---|---|
-| 4 | **Mana e custo no corpo** | Recurso Mana pra quem conjura; limite por turno; passou do limite, a marca do conceito como `afflict`. |
 | 5 | **Recitada e Gravada** | Recitada com tempo (declara, sai no turno seguinte, pode quebrar). Gravada preparada no descanso, num número limitado de objetos e círculos, ativada sem tempo. O círculo no chão como golpe de abertura. |
 | 6 | **Cura que cobra o paciente** | A cura tira do alvo (Fôlego, fome) o que acelera. |
 | 7 | **O elenco** | Endyru, Jarupã, Xanduí e Oryndu no lugar de Halmira, Lish, Varel e Gil. Ordens destraváveis e `ClassSelect` saem. |
@@ -295,6 +294,11 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   Não dá golpe de abertura e não embosca (`keepsVow` no elenco). A IA espelha a regra: antes de a luta abrir, quem é
   da Ipojy não ameaça ninguém. A mania `retaliates` do fiscal ficou junto, porque o texto provisório da estrada
   fala dela; sai quando o castelo de pedágio entrar no lugar.
+- **4. Mana e custo no corpo.** `shared/mana.ts`: quem tem `magic` no elenco (conceito e nível de mago, Verso a
+  Divindade) paga a magia em mana, que fica na ficha e só o descanso devolve. O limite por turno é o nível de mago.
+  Passou dele, o motor solta `manaBurst` (a deixa `when: burst` do Ykuruã vai ler isto) e põe a marca do conceito:
+  atração e repulsão dá Sangue e tremor, -2 no acerto. A marca sai da luta com ele, vai pra história como `afflict`
+  e sai no descanso (ou na derrota, que acorda inteiro). Ninguém do elenco conjura ainda: Endyru entra na task 7.
 
 ## 9. O que precisa virar cânone na história
 

@@ -3,7 +3,7 @@ import { gearedAttributes } from "../equipment";
 import { findItem, giveItem, itemCount, takeItem, type GameItem } from "../inventoryEffects";
 import { applyXpGain } from "../leveling";
 import { HERO_ID, castId, isInParty, isOrder, joinParty, leaveParty, presentCompanions, type PartyMember } from "../party";
-import { STATUSES, isStatusId, type StatusId } from "../tactics/statuses";
+import { STATUSES, isStatusId, passesWithRest, type StatusId } from "../tactics/statuses";
 import { AREAS } from "../world/areas";
 import type { RngHolder } from "../tactics/rng";
 import type { Character } from "../types/character";
@@ -21,6 +21,7 @@ import {
   chargeClock,
   packStory,
   recallEntries,
+  restAfflictions,
   startClock,
   tickClock,
   unpackStory,
@@ -423,6 +424,21 @@ export class StoryRunner {
     const known = this.host.companions.find((member) => member.character.id === id);
     // Quem ainda não andou com o grupo não tem ficha: o nome vem do elenco quando ele entrar.
     return { id, name: known?.character.name ?? String(who) };
+  }
+
+  /**
+   * O jogo põe em quem tem a ficha `id` uma condição que dura entre lutas sem
+   * o texto mandar: a marca da mana que alguém trouxe de uma luta (ver
+   * `lingeringMarks` em ../world/encounters.ts). Vai pro mesmo lugar do
+   * `afflict`, e o texto a lê com `afflicted`. Devolve se mudou.
+   */
+  mark(id: string, statusId: StatusId): boolean {
+    return afflict(this.memory.afflictions, id, statusId);
+  }
+
+  /** O descanso: tira de todo mundo o que só dura até ele (`untilRest`, a marca da mana). Devolve se tirou alguma. */
+  rest(): boolean {
+    return restAfflictions(this.memory.afflictions, passesWithRest);
   }
 
   /** As condições que a história pôs em cada um e que duram entre lutas, pelo id da ficha — o que uma luta recebe em `lasting`. */

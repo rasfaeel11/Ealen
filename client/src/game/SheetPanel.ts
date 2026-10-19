@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import {
   ATTRIBUTE_KEYS,
   CLASS_INFO,
+  CONCEPTS,
   EQUIPMENT_SLOTS,
   RACE_INFO,
   STATUSES,
@@ -16,7 +17,13 @@ import {
   gearBonus,
   gearedAttributes,
   kitOf,
+  magicOf,
+  mageLevelName,
+  manaLimit,
+  manaOf,
   maxBreath,
+  maxMana,
+  missing,
   proficiency,
   sheetAbilities,
   storedGear,
@@ -219,6 +226,12 @@ export class SheetPanel {
         ? `Vida ${character.currentHp}/${character.maxHp}  ·  Fôlego ${breathOf(character)}/${maxBreath(character)}`
         : "Acompanha sem lutar",
     ];
+    // Quem conjura: o conceito, o nível de mago, a mana e o limite do turno — passar dele cobra do corpo.
+    const magic = magicOf(character);
+    if (magic) {
+      lines.push(`${CONCEPTS[magic.concept].name}, ${mageLevelName(magic.level)}`);
+      lines.push(`Mana ${manaOf(character, magic)}/${maxMana(character, magic)}  ·  limite ${manaLimit(magic)} por turno`);
+    }
     if (cast?.style) {
       const grade = proficiency(cast.style.grade, cast.aura);
       const aura = cast.aura !== undefined ? `  ·  aura ${auraName(cast.aura)}` : "";
@@ -292,12 +305,18 @@ export class SheetPanel {
   /** O que dá pra fazer com `ability` agora, fora de luta — o rótulo da lista e a linha da descrição. */
   private usage(ability: Ability): { tag: string; text: string } {
     const use = fights(this.character) ? fieldUse(ability) : undefined;
-    // Fora de luta ela custa o mesmo Fôlego que dentro, e só o descanso o devolve.
-    if (use !== undefined && (use === "mend" || this.index === 0) && !canAfford(this.character, ability)) {
+    // Fora de luta ela custa o mesmo Fôlego e a mesma mana que dentro, e só o descanso os devolve.
+    const short = use !== undefined && (use === "mend" || this.index === 0) ? missing(this.character, ability) : undefined;
+    if (short === "breath") {
       return {
         tag: "  ·  sem fôlego",
         text: `Falta Fôlego: custa ${ability.breath}, e ${this.character.name} tem ${breathOf(this.character)}. Descansar devolve.`,
       };
+    }
+    if (short === "mana") {
+      const magic = magicOf(this.character);
+      const has = magic ? `, e ${this.character.name} tem ${manaOf(this.character, magic)}` : `, e ${this.character.name} não conjura`;
+      return { tag: "  ·  sem mana", text: `Falta mana: custa ${ability.mana}${has}. Descansar devolve.` };
     }
     if (use === "mend") return { tag: "  ·  cura", text: "Enter: usar agora em alguém do grupo." };
     if (use === "opening" && this.index === 0) {

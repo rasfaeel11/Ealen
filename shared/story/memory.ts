@@ -82,6 +82,19 @@ export function cure(afflictions: Record<string, string[]>, id: string, status: 
   return true;
 }
 
+/**
+ * O descanso: tira de todo mundo as condições que só duram até ele
+ * (`passes`, a pergunta de quem sabe o que cada uma é — a marca da mana).
+ * Devolve se tirou alguma.
+ */
+export function restAfflictions(afflictions: Record<string, string[]>, passes: (status: string) => boolean): boolean {
+  let changed = false;
+  for (const [id, list] of Object.entries(afflictions)) {
+    for (const status of list.filter(passes)) changed = cure(afflictions, id, status) || changed;
+  }
+  return changed;
+}
+
 // --- Diário -----------------------------------------------------------------
 
 /**
@@ -263,5 +276,17 @@ export function chargeSavedClock(saved: string | null, what: ClockCost, times = 
   if (saved === null) return null;
   const { ink, memory } = unpackStory(saved);
   if (!memory.clock || !chargeClock(memory.clock, what, times)) return saved;
+  return packStory(ink, memory);
+}
+
+/**
+ * O descanso numa história JÁ GUARDADA (ver `restAfflictions`), sem abri-la:
+ * é como quem perde uma luta e desperta inteiro sai das marcas que só duram
+ * até o descanso. Sem nenhuma, devolve o texto como veio.
+ */
+export function restSavedStory(saved: string | null, passes: (status: string) => boolean): string | null {
+  if (saved === null) return null;
+  const { ink, memory } = unpackStory(saved);
+  if (!restAfflictions(memory.afflictions, passes)) return saved;
   return packStory(ink, memory);
 }

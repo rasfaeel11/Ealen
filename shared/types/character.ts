@@ -16,6 +16,8 @@ export interface Character {
   currentNodeId: string;
   /** O Fôlego que resta (ver ../breath.ts). Ausente = cheio. */
   breath?: number;
+  /** A mana que resta, em quem conjura (ver ../mana.ts). Ausente = cheia. */
+  mana?: number;
   /** Ausente = personagem ainda não tem mochila inicializada. */
   inventory?: Inventory<ConsumableItem>;
   /** O que veste: arma, armadura e acessório (ver ../equipment.ts). Lugar ausente = vazio. */

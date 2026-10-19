@@ -1,4 +1,5 @@
 import { breathOf } from "../breath";
+import { CONCEPTS, manaLimit, manaOf } from "../mana";
 import { gearedAttributes } from "../equipment";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
@@ -7,6 +8,7 @@ import { GIFTS, abilitiesFor } from "../tactics/abilities";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
 import { reachableTiles } from "../tactics/movement";
 import type { Prop } from "../tactics/props";
+import type { StatusId } from "../tactics/statuses";
 import { rollDice, type RngHolder } from "../tactics/rng";
 import type { Ability, Encounter } from "../tactics/types";
 import { unitFromCharacter } from "../tactics/units";
@@ -29,10 +31,12 @@ import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
  *   surpreso (ver Opening em ../tactics/engine.ts). Quem luta de perto corre
  *   até o alvo antes — a investida.
  *
- * Fora de luta uma habilidade custa o mesmo Fôlego que dentro (ver
- * ../breath.ts) — a cura na hora, o golpe de abertura pelo motor, ao começar
- * a luta. Recarga não há: é coisa de turno. A cura ainda gasta o relógio
- * (ver quem chama). TUDO PROVISÓRIO, como os kits.
+ * Fora de luta uma habilidade custa o mesmo Fôlego e a mesma mana que dentro
+ * (ver ../breath.ts e ../mana.ts) — a cura na hora, o golpe de abertura pelo
+ * motor, ao começar a luta. Recarga não há: é coisa de turno. Também não há
+ * turno pro limite de mana: fora de luta, só passa dele a magia que custa mais
+ * que ele de uma vez (`burstMark`). A cura ainda gasta o relógio (ver quem
+ * chama). TUDO PROVISÓRIO, como os kits.
  */
 
 /** Tudo que uma ficha sabe fazer: o kit da Ordem e o que só ela sabe (`gifts` no elenco). */
@@ -52,17 +56,38 @@ export function fieldUse(ability: Ability): FieldUse | undefined {
   return "opening";
 }
 
-/** `character` tem Fôlego pra usar `ability` fora de luta? */
-export function canAfford(character: Pick<Character, "level" | "attributes" | "breath">, ability: Ability): boolean {
-  return breathOf(character) >= (ability.breath ?? 0);
+type Payer = Pick<Character, "id" | "level" | "attributes" | "breath" | "mana">;
+
+/** O que falta a `character` pra usar `ability` fora de luta: `breath` (Fôlego), `mana` (numa magia; quem não conjura não tem nenhuma), ou nada. */
+export function missing(character: Payer, ability: Ability): "breath" | "mana" | undefined {
+  if (breathOf(character) < (ability.breath ?? 0)) return "breath";
+  if (!ability.mana) return undefined;
+  const magic = castOf(character)?.magic;
+  return magic !== undefined && manaOf(character, magic) >= ability.mana ? undefined : "mana";
+}
+
+/** `character` tem com que pagar `ability` fora de luta? */
+export function canAfford(character: Payer, ability: Ability): boolean {
+  return missing(character, ability) === undefined;
+}
+
+/**
+ * A marca que `character` leva se usar `ability` fora de luta: a do conceito
+ * dele, se a magia custa mais que o limite dele de uma vez. Undefined se o
+ * corpo aguenta (ou se não é magia). Quem a põe na história é quem chama.
+ */
+export function burstMark(character: Pick<Character, "id">, ability: Ability): StatusId | undefined {
+  const magic = castOf(character)?.magic;
+  if (!magic || (ability.mana ?? 0) <= manaLimit(magic)) return undefined;
+  return CONCEPTS[magic.concept].mark;
 }
 
 /**
  * `caster` usa a habilidade de cura `ability` em `target`, fora de luta.
- * Muta `target`, cobra o Fôlego de `caster` e devolve quanto curou; undefined
- * se não é uma cura, se ela só serve em quem a faz e o alvo é outro, se falta
- * Fôlego (ver canAfford) ou se o alvo não precisa — e aí nada se gasta, nem o
- * dado rola.
+ * Muta `target`, cobra o Fôlego (e a mana) de `caster` e devolve quanto
+ * curou; undefined se não é uma cura, se ela só serve em quem a faz e o alvo é
+ * outro, se falta o que pagar (ver canAfford) ou se o alvo não precisa — e aí
+ * nada se gasta, nem o dado rola.
  */
 export function mend(caster: Character, ability: Ability, target: Character, rng: RngHolder): number | undefined {
   if (fieldUse(ability) !== "mend") return undefined;
@@ -70,6 +95,8 @@ export function mend(caster: Character, ability: Ability, target: Character, rng
   if (target.currentHp >= target.maxHp || !canAfford(caster, ability)) return undefined;
 
   if (ability.breath) caster.breath = breathOf(caster) - ability.breath;
+  const magic = castOf(caster)?.magic;
+  if (ability.mana && magic) caster.mana = manaOf(caster, magic) - ability.mana;
   let healed = 0;
   for (const effect of ability.effects) {
     if (effect.kind !== "heal") continue;

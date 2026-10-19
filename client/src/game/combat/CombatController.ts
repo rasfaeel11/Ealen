@@ -103,6 +103,7 @@ const ERROR_TEXT: Record<CommandError, string> = {
   unknown_ability: "Habilidade desconhecida.",
   resource_spent: "Você já gastou isso neste turno.",
   no_breath: "Falta Fôlego pra isso.",
+  no_mana: "Falta mana pra isso.",
   recharging: "Ainda está em recarga.",
   invalid_target: "Alvo fora de alcance ou fora de vista.",
   item_unavailable: "Esse item não está na mochila.",
@@ -160,6 +161,7 @@ export function describeAbility(ability: Ability): string {
   if (ability.surface) parts.push(`deixa ${SURFACES[ability.surface.id].name} por ${ability.surface.rounds} rodadas`);
   if (ability.limit !== undefined) parts.push(ability.limit === 1 ? "uma vez por luta" : `${ability.limit} vezes por luta`);
   if (ability.breath) parts.push(`custa ${ability.breath} de Fôlego`);
+  if (ability.mana) parts.push(`custa ${ability.mana} de mana`);
   if (ability.cooldown) parts.push(ability.cooldown === 1 ? "não sai em dois turnos seguidos" : `recarga de ${ability.cooldown} turnos`);
   if (ability.backlash) parts.push(`cobra de você: ${STATUSES[ability.backlash.statusId].name}`);
   return parts.join(" · ");
@@ -443,6 +445,7 @@ export class CombatController {
       return [
         ability.cost === "action" ? "Ação" : "Bônus",
         ...(ability.breath ? [`${ability.breath} fôlego`] : []),
+        ...(ability.mana ? [`${ability.mana} mana`] : []),
         ...(wait > 0 ? [`volta em ${wait}`] : []),
         ...(isBlow(ability) && vowForbids(encounter, unit) ? ["o voto: não bate primeiro"] : []),
       ].join(" · ");
@@ -505,6 +508,8 @@ export class CombatController {
         `Ação ${dot(unit.turn.action)}`,
         `Bônus ${dot(unit.turn.bonus)}`,
         `Fôlego ${unit.breath}/${unit.maxBreath}`,
+        // Quem conjura vê a mana e quanto do limite do turno já gastou: passar dele cobra do corpo.
+        ...(unit.mana !== undefined ? [`Mana ${unit.mana}/${unit.maxMana}  (turno ${unit.manaSpent ?? 0}/${unit.manaLimit})`] : []),
       ].join("   ·   "),
     );
     if (this.aim?.kind === "interact") this.options = inReach.map((prop) => prop.pos);
@@ -765,7 +770,16 @@ export class CombatController {
       }
 
       case "breathSpent":
-        // Quem age pelo jogador vê o Fôlego na barra; o golpe que ele pagou vem logo depois.
+      case "manaSpent":
+        // Quem age pelo jogador vê o Fôlego e a mana na barra; o golpe que ele pagou vem logo depois.
+        return;
+
+      case "manaBurst":
+        // Mana demais de uma vez: o corpo cobra na hora. A marca vem logo depois, como condição.
+        sfx("sting");
+        this.floatOver(event.unit, "Passou do limite", TEXT_COLORS.danger, -30, 22);
+        this.hud.log(`${this.unit(event.unit).name} gasta mana demais de uma vez (${event.spent}, e o corpo aguenta ${event.limit}).`);
+        await this.wait(260);
         return;
 
       case "breathRecovered":

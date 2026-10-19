@@ -1,4 +1,5 @@
 import { breathOf, maxBreath } from "../breath";
+import { manaLimit, manaOf, maxMana, type Magic } from "../mana";
 import { gearDefense, gearSpeed, gearedAttributes } from "../equipment";
 import type { Attributes } from "../types/attributes";
 import type { Character } from "../types/character";
@@ -28,6 +29,8 @@ export interface UnitPlacement {
   aura?: number;
   /** Habilidades próprias, além das da Ordem (ver GIFTS em ./abilities.ts). */
   gifts?: readonly GiftId[];
+  /** Conjura: o conceito e o nível de mago (ver ../mana.ts). A mana dele vem da ficha. */
+  magic?: Magic;
 }
 
 /**
@@ -53,6 +56,14 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     statuses: [],
     breath: breathOf(character),
     maxBreath: maxBreath(character),
+    ...(placement.magic
+      ? {
+          mana: manaOf(character, placement.magic),
+          maxMana: maxMana(character, placement.magic),
+          manaLimit: manaLimit(placement.magic),
+          concept: placement.magic.concept,
+        }
+      : {}),
     inventory: character.inventory ? structuredClone(character.inventory) : undefined,
     ai: placement.ai ? { ...placement.ai } : undefined,
     ...(placement.invulnerable ? { invulnerable: true } : {}),
@@ -63,10 +74,11 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
   };
 }
 
-/** Devolve à ficha o que a luta gastou: HP, Fôlego e mochila. */
+/** Devolve à ficha o que a luta gastou: HP, Fôlego, mana e mochila. */
 export function syncCharacterFromUnit(character: Character, unit: Unit): void {
   character.currentHp = unit.currentHp;
   character.breath = unit.breath;
+  if (unit.mana !== undefined) character.mana = unit.mana;
   if (unit.inventory) character.inventory = structuredClone(unit.inventory);
 }
 
@@ -91,9 +103,10 @@ export function cooldownLeft(unit: Unit, ability: Ability): number {
 /**
  * Por que `unit` não pode usar `ability` agora — ou `ready`, se pode: `spent`
  * é a ação (ou a bônus) do turno já gasta, `limit` os usos da luta,
- * `recharging` a recarga e `breath` o Fôlego que falta. Não olha alvo.
+ * `recharging` a recarga, `breath` o Fôlego que falta e `mana` a mana que
+ * falta (quem não conjura não tem nenhuma). Não olha alvo.
  */
-export type Readiness = "ready" | "spent" | "limit" | "recharging" | "breath";
+export type Readiness = "ready" | "spent" | "limit" | "recharging" | "breath" | "mana";
 
 /**
  * `unit` pode usar `ability` agora? É a mesma pergunta pro motor, pra IA e
@@ -105,6 +118,7 @@ export function readiness(unit: Unit, ability: Ability, outOfTurn = false): Read
   if (usesLeft(unit, ability) <= 0) return "limit";
   if ((unit.cooldowns?.[ability.id] ?? 0) > 0) return "recharging";
   if (unit.breath < (ability.breath ?? 0)) return "breath";
+  if ((ability.mana ?? 0) > 0 && (unit.mana ?? 0) < ability.mana!) return "mana";
   return "ready";
 }
 

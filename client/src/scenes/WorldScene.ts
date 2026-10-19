@@ -13,9 +13,12 @@ import {
   exitAt,
   extendTrail,
   breathOf,
+  burstMark,
   canAfford,
   fieldUse,
   maxBreath,
+  maxMana,
+  missing,
   fightCues,
   findUnit,
   firedTrigger,
@@ -24,6 +27,9 @@ import {
   keepsVow,
   isBlocked,
   isDefeated,
+  lingeringMarks,
+  magicOf,
+  manaOf,
   markBroken,
   markDefeated,
   mend,
@@ -34,11 +40,13 @@ import {
   fights,
   clockCondition,
   partyCondition,
+  passesWithRest,
   peopleTiles,
   pixelOfTile,
   placeParty,
   presentCompanions,
   restoreParty,
+  restSavedStory,
   samePos,
   sheetAbilities,
   standAreaProps,
@@ -601,7 +609,9 @@ export default class WorldScene extends Phaser.Scene {
       fights(character) ? `   |   ${character.name}  ${character.currentHp}/${character.maxHp}` : `   |   ${character.name}`,
     );
     const breath = `Fôlego ${breathOf(this.character)}/${maxBreath(this.character)}`;
-    this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}  ·  ${breath}${company.join("")}`);
+    const magic = magicOf(this.character);
+    const mana = magic ? `  ·  Mana ${manaOf(this.character, magic)}/${maxMana(this.character, magic)}` : "";
+    this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}  ·  ${breath}${mana}${company.join("")}`);
   }
 
   /** Com quem dá pra falar daqui, se houver alguém. */
@@ -635,16 +645,22 @@ export default class WorldScene extends Phaser.Scene {
     this.tweens.add({ targets: banner, alpha: 0, delay: 2000, duration: 800, onComplete: () => banner.destroy() });
   }
 
-  /** Provisório, no lugar de acampamento/estalagem: recupera todo o HP e o Fôlego do grupo, em qualquer lugar fora de luta. */
+  /**
+   * Provisório, no lugar de acampamento/estalagem: recupera todo o HP, o Fôlego e a mana do grupo, em qualquer lugar
+   * fora de luta. A marca leve da mana passa junto.
+   */
   private rest(): void {
     if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
     restoreParty(this.character, this.save.companions);
     sfx("rest");
+    const healed = this.story.rest();
     // Descansar gasta o tempo do relógio, se a história disse que gasta — e o que o tempo fecha, fecha.
     if (this.story.spend("rest")) {
       this.save.story = this.story.save();
       this.clockBar.set(this.story.clock());
       this.syncPresence();
+    } else if (healed) {
+      this.save.story = this.story.save();
     }
     this.persist();
     this.refreshStatus();
@@ -910,7 +926,11 @@ export default class WorldScene extends Phaser.Scene {
       );
       restoreParty(character, this.save.companions);
       // O que a história disse na luta não vale, mas o tempo que ela gastou, sim: tentar de novo custa — as rodadas que viraram e a luta em si.
-      this.save.story = chargeSavedClock(chargeSavedClock(this.save.story, "round", encounter.round - 1), "fight");
+      // Quem desperta inteiro desperta também sem a marca leve da mana, como quem descansou.
+      this.save.story = restSavedStory(
+        chargeSavedClock(chargeSavedClock(this.save.story, "round", encounter.round - 1), "fight"),
+        passesWithRest,
+      );
       // O lugar gravado continua o de antes da luta; a área de destino grava o novo ao abrir.
       this.session.commit();
       this.leaving = true;
@@ -944,6 +964,10 @@ export default class WorldScene extends Phaser.Scene {
     }
     this.trail = [{ ...this.pos }, ...this.followers.map((follower) => ({ ...follower.pos }))];
     // Agora o que as deixas disseram vale: a luta não foi perdida. E ela gastou o tempo que a história cobra.
+    // A marca de quem passou do limite de mana sai da luta com ele e fica até o descanso.
+    for (const [id, marks] of Object.entries(lingeringMarks(encounter, [character, ...company]))) {
+      for (const mark of marks) this.story.mark(id, mark);
+    }
     this.story.spend("fight");
     this.clockBar.set(this.story.clock());
     this.save.story = this.story.save();
@@ -1005,7 +1029,9 @@ export default class WorldScene extends Phaser.Scene {
       const ability = this.fieldAbilities()[Number(event.code.slice(-1)) - 1];
       if (!ability) return;
       if (fieldUse(ability) === "mend") this.openSheet();
-      else if (!canAfford(this.character, ability)) this.showBanner("Falta Fôlego pra isso.");
+      else if (!canAfford(this.character, ability)) {
+        this.showBanner(missing(this.character, ability) === "mana" ? "Falta mana pra isso." : "Falta Fôlego pra isso.");
+      }
       else if (keepsVow(this.character)) this.showBanner("Quem é da Espera não dá o primeiro golpe.");
       else if (!this.aimOpening(ability)) this.showBanner("Ninguém ao alcance que ainda não tenha te percebido.");
     }
@@ -1078,10 +1104,15 @@ export default class WorldScene extends Phaser.Scene {
   private mendOutside(caster: Character, ability: Ability, target: Character): number | undefined {
     const healed = mend(caster, ability, target, STORY_RNG);
     if (healed === undefined) return undefined;
+    // Magia que custa mais que o limite de uma vez cobra do corpo também fora de luta.
+    const mark = burstMark(caster, ability);
+    if (mark) this.story.mark(caster.id, mark);
     if (this.story.spend("round")) {
       this.save.story = this.story.save();
       this.clockBar.set(this.story.clock());
       this.syncPresence();
+    } else if (mark) {
+      this.save.story = this.story.save();
     }
     this.persist();
     this.refreshStatus();

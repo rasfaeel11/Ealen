@@ -247,7 +247,7 @@ export function startAreaEncounter(
   });
   const units = party.map(({ character, tile }) => {
     const cast = castOf(character);
-    return unitFromCharacter(character, { team: "party", pos: tile, style: cast?.style, aura: cast?.aura, gifts: cast?.gifts });
+    return unitFromCharacter(character, { team: "party", pos: tile, style: cast?.style, aura: cast?.aura, gifts: cast?.gifts, magic: cast?.magic });
   });
   for (const enemy of enemies) {
     const entry = findBestiaryEntry(enemy.creature);
@@ -266,6 +266,21 @@ export function startAreaEncounter(
     );
   }
   return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, lasting, opening, seed });
+}
+
+/**
+ * As marcas que cada um do grupo leva da luta pra fora dela (as que duram até
+ * o descanso, como a da mana — ver ../mana.ts), pelo id da ficha. Quem chama
+ * as passa pra história (`StoryRunner.mark`), que é onde o que dura entre
+ * lutas mora. Só numa luta que não foi perdida: a perdida volta atrás inteira.
+ */
+export function lingeringMarks(encounter: Encounter, party: readonly Pick<Character, "id">[]): Record<string, StatusId[]> {
+  const marks: Record<string, StatusId[]> = {};
+  for (const { id } of party) {
+    const unit = findUnit(encounter, id);
+    if (unit?.marks?.length) marks[id] = [...unit.marks];
+  }
+  return marks;
 }
 
 /**

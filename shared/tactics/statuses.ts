@@ -34,6 +34,12 @@ export interface StatusTemplate {
   immovable?: boolean;
   /** Cura nenhuma pega no portador — nem de habilidade, nem de item. */
   noHeal?: boolean;
+  /**
+   * Dura entre lutas e sai no descanso: a marca LEVE da mana (ver ../mana.ts). O
+   * motor a põe pra durar a luta toda; o mundo a passa pra história (`afflict`)
+   * quando a luta acaba, e o descanso a tira.
+   */
+  untilRest?: boolean;
 }
 
 /**
@@ -59,6 +65,8 @@ export const STATUSES = {
   wounded_arm: { id: "wounded_arm", name: "Braço ferido", toHit: -2 },
   /** Quem foi pego de surpresa (ver `surprised` em EncounterSetup): perde o primeiro turno. */
   surprised: { id: "surprised", name: "Surpreso", skipsTurn: true },
+  /** A marca da mana de atração e repulsão (ver ../mana.ts): sangue pelo nariz e tremor na mão. Passa com o descanso. */
+  bloodied: { id: "bloodied", name: "Sangue e tremor", toHit: -2, untilRest: true },
 
   // --- O que os kits das Ordens põem (ver KITS em ./abilities.ts) -------------
   /** Sombrílico: não está onde se olha. Quem o ataca precisa de muito mais pra acertar. */
@@ -95,6 +103,11 @@ export type StatusId = keyof typeof STATUSES;
 
 export function isStatusId(id: unknown): id is StatusId {
   return typeof id === "string" && id in STATUSES;
+}
+
+/** A condição de id `id` passa com o descanso (`untilRest`)? Falso pro que não é condição. */
+export function passesWithRest(id: string): boolean {
+  return isStatusId(id) && (STATUSES[id] as StatusTemplate).untilRest === true;
 }
 
 /**

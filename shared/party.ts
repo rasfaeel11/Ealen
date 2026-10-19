@@ -1,5 +1,6 @@
 import { createStartingAttributes, createStartingInventory, startingMaxHp } from "./characterCreation";
 import { restoreBreath } from "./breath";
+import { restoreMana, type Magic } from "./mana";
 import { startingEquipment } from "./equipment";
 import { applyXpGain, xpToNextLevel } from "./leveling";
 import { MOCK_MAP_NODES } from "./mock/seed";
@@ -54,6 +55,8 @@ export interface CastMember {
   aura?: number;
   /** O que só ele sabe fazer, além do kit da Ordem. */
   gifts?: readonly GiftId[];
+  /** Conjura: o conceito do sangue dele e o nível de mago (ver ./mana.ts). Sem isto, não tem mana nem paga magia. */
+  magic?: Magic;
   /** Com o que ele chega: os ids das peças (ver ./mock/equipment.ts). Sem isto, o que a Ordem dele dá. */
   gear?: Equipment;
 }
@@ -110,6 +113,11 @@ export function castOf(character: Pick<Character, "id">): CastMember | undefined
   if (!character.id.startsWith(COMPANION_ID)) return undefined;
   const key = character.id.slice(COMPANION_ID.length);
   return isCompanionKey(key) ? COMPANIONS[key] : undefined;
+}
+
+/** O conceito e o nível de mago de quem tem a ficha `character`, se ele conjura (ver ./mana.ts). */
+export function magicOf(character: Pick<Character, "id">): Magic | undefined {
+  return castOf(character)?.magic;
 }
 
 /** O apoio que a ficha `character` oferece numa luta, se ela é de quem acompanha sem lutar. Undefined em quem luta. */
@@ -252,10 +260,12 @@ export function leaveParty(members: PartyMember[], key: string): Character | und
   return member.character;
 }
 
-/** Vida e Fôlego cheios pra todo mundo que já andou com ela, presente ou não. */
+/** Vida, Fôlego e mana cheios pra todo mundo que já andou com ela, presente ou não. */
 export function restoreParty(hero: Character, members: readonly PartyMember[]): void {
   for (const character of [hero, ...members.map((member) => member.character)]) {
     character.currentHp = character.maxHp;
     restoreBreath(character);
+    const magic = castOf(character)?.magic;
+    if (magic) restoreMana(character, magic);
   }
 }

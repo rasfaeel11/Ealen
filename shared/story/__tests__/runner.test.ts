@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Compiler, CompilerOptions } from "inkjs/full";
+import { passesWithRest } from "../../tactics/statuses";
 import type { Character } from "../../types/character";
 import {
   StoryRunner,
@@ -8,6 +9,7 @@ import {
   chargeSavedClock,
   checkChance,
   clockCondition,
+  restSavedStory,
   rollCheck,
   unpackStory,
   type DialogueBeat,
@@ -643,4 +645,23 @@ test("afflict põe em alguém uma condição que dura entre lutas, vai no save, 
 
   assert.throws(() => runner.start("ninguem"));
   assert.throws(() => runner.start("nada"));
+});
+
+test("a marca da mana que vem de uma luta fica entre lutas, o texto a lê, e o descanso (ou a derrota) a tira", () => {
+  const runner = new StoryRunner(ARM, makeHost());
+  runner.start("queda");
+  assert.equal(runner.mark("hero", "bloodied"), true);
+  assert.equal(runner.mark("hero", "bloodied"), false);
+  assert.deepEqual(runner.afflictions(), { "companion:lish": ["wounded_arm"], hero: ["bloodied"] });
+
+  // A derrota acorda inteiro: a marca sai do que está guardado, o braço de Lish (que é da história) fica.
+  const saved = runner.save();
+  const woke = restSavedStory(saved, passesWithRest);
+  assert.deepEqual(new StoryRunner(ARM, makeHost(), woke).afflictions(), { "companion:lish": ["wounded_arm"] });
+  assert.equal(restSavedStory(woke, passesWithRest), woke);
+
+  // O descanso também.
+  assert.equal(runner.rest(), true);
+  assert.equal(runner.rest(), false);
+  assert.deepEqual(runner.afflictions(), { "companion:lish": ["wounded_arm"] });
 });

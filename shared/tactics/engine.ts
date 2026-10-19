@@ -1,6 +1,7 @@
 import { foresee } from "./ai";
 import { attackEdge, attackTotals } from "./attack";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
+import { CONCEPTS } from "../mana";
 import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { findPath } from "./movement";
 import { PROPS, fellProp, type Prop, type PropTemplate } from "./props";
@@ -258,6 +259,8 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
     const harms = next.statuses.filter((status) => status.harm);
     tickStatuses(next, events);
     next.turn = { movement, action: true, bonus: true, reaction: true };
+    // O limite de mana é por turno: a conta do corpo recomeça quando a vez dele começa.
+    if (next.manaSpent !== undefined) delete next.manaSpent;
     events.push({ type: "turnStarted", unit: next.id });
 
     for (const status of harms) {
@@ -511,8 +514,9 @@ function opportunityThreats(encounter: Encounter, mover: Unit, next: Pos): { att
 
 /**
  * Cobra de `unit` o que `ability` custa além da ação do turno: um uso do
- * `limit`, o Fôlego (evento `breathSpent`) e a recarga. `inTurn` diz se ela
- * saiu no turno dele: aí o fim deste turno não conta na recarga.
+ * `limit`, o Fôlego (evento `breathSpent`), a mana (ver `spendMana`) e a
+ * recarga. `inTurn` diz se ela saiu no turno dele: aí o fim deste turno não
+ * conta na recarga.
  */
 function charge(unit: Unit, ability: Ability, inTurn: boolean, events: TacticalEvent[]): void {
   if (ability.limit !== undefined) unit.used = { ...unit.used, [ability.id]: (unit.used?.[ability.id] ?? 0) + 1 };
@@ -520,7 +524,30 @@ function charge(unit: Unit, ability: Ability, inTurn: boolean, events: TacticalE
     unit.breath -= ability.breath;
     events.push({ type: "breathSpent", unit: unit.id, amount: ability.breath, remaining: unit.breath });
   }
+  if (ability.mana) spendMana(unit, ability.mana, events);
   if (ability.cooldown) unit.cooldowns = { ...unit.cooldowns, [ability.id]: ability.cooldown + (inTurn ? 1 : 0) };
+}
+
+/**
+ * `unit` paga `amount` de mana (evento `manaSpent`) e soma no que já gastou
+ * desde que a vez dele começou. Se essa soma acaba de passar do limite dele,
+ * o corpo cobra: evento `manaBurst` e a marca do conceito, pra durar a luta
+ * (e, anotada em `marks`, pra sair dela com ele). Fora do turno dele (o golpe
+ * de abertura, uma reação), conta pro turno que vem.
+ */
+function spendMana(unit: Unit, amount: number, events: TacticalEvent[]): void {
+  unit.mana = (unit.mana ?? 0) - amount;
+  events.push({ type: "manaSpent", unit: unit.id, amount, remaining: unit.mana });
+
+  const before = unit.manaSpent ?? 0;
+  unit.manaSpent = before + amount;
+  const limit = unit.manaLimit ?? 0;
+  if (before > limit || unit.manaSpent <= limit) return;
+  events.push({ type: "manaBurst", unit: unit.id, spent: unit.manaSpent, limit });
+  if (!unit.concept) return;
+  const mark = CONCEPTS[unit.concept].mark;
+  addStatus(unit, STATUSES[mark], Infinity, events);
+  if (!unit.marks?.includes(mark)) unit.marks = [...(unit.marks ?? []), mark];
 }
 
 function useAbility(
@@ -534,6 +561,7 @@ function useAbility(
   if (!ability) return "unknown_ability";
   const state = readiness(unit, ability);
   if (state === "breath") return "no_breath";
+  if (state === "mana") return "no_mana";
   if (state === "recharging") return "recharging";
   if (state !== "ready") return "resource_spent";
   if (!abilityTargets(encounter, unit, ability).some((pos) => samePos(pos, target))) return "invalid_target";
