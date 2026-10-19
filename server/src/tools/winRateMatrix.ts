@@ -81,6 +81,7 @@ function fight(characterClass: CharacterClass, creatureId: string, seed: number)
         pos: ARENA.markers.E[0],
         ai: creature.ai,
         style: creature.style,
+        aura: creature.aura,
         quirks: creatureQuirks(creature, "hero"),
       }),
     ],

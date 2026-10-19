@@ -4,7 +4,7 @@ import type { Attributes } from "../types/attributes";
 import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
 import { GIFTS, abilitiesFor, type GiftId } from "./abilities";
-import type { StyleId } from "./styles";
+import { proficiency, type StyleId } from "./styles";
 import { samePos, type Pos } from "./grid";
 import type { Ability, AiProfile, AiQuirks, Encounter, TeamId, Unit } from "./types";
 
@@ -22,8 +22,10 @@ export interface UnitPlacement {
   invulnerable?: boolean;
   /** Manias da IA (ver AiQuirks). */
   quirks?: AiQuirks;
-  /** O estilo de luta e o grau nele (ver ./styles.ts). */
+  /** A escola (ou o Baluarte) e a proficiência nela (ver ./styles.ts). A proficiência entra limitada por `aura`. */
   style?: { id: StyleId; grade: number };
+  /** O nível de aura, 1 a 7: o teto da proficiência. */
+  aura?: number;
   /** Habilidades próprias, além das da Ordem (ver GIFTS em ./abilities.ts). */
   gifts?: readonly GiftId[];
 }
@@ -55,7 +57,8 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     ai: placement.ai ? { ...placement.ai } : undefined,
     ...(placement.invulnerable ? { invulnerable: true } : {}),
     ...(placement.quirks ? { quirks: { ...placement.quirks } } : {}),
-    ...(placement.style ? { style: placement.style.id, grade: placement.style.grade } : {}),
+    ...(placement.style ? { style: placement.style.id, grade: proficiency(placement.style.grade, placement.aura) } : {}),
+    ...(placement.aura !== undefined ? { aura: placement.aura } : {}),
     turn: { movement: 0, action: false, bonus: false, reaction: true },
   };
 }

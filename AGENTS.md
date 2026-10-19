@@ -263,7 +263,6 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P0 — a conversão (o jogo não existe sem isto)
 | # | Task | O que é |
 |---|---|---|
-| 2 | **Escolas no lugar dos estilos** | Ipojy, Gryskar e Tsvirana em `styles.ts`, triângulo fechado, traço de cada uma, proficiência 1 a 7 limitada pelo nível de aura. |
 | 3 | **Voto da Ipojy** | Quem é da Espera não abre luta, não embosca, não dá golpe de abertura. |
 | 4 | **Mana e custo no corpo** | Recurso Mana pra quem conjura; limite por turno; passou do limite, a marca do conceito como `afflict`. |
 | 5 | **Recitada e Gravada** | Recitada com tempo (declara, sai no turno seguinte, pode quebrar). Gravada preparada no descanso, num número limitado de objetos e círculos, ativada sem tempo. O círculo no chão como golpe de abertura. |
@@ -286,6 +285,12 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
 
 ### Feito
 - **1. A descrição técnica mudou de casa.** O AGENTS.md do Eälen está inteiro em `docs/motor.md`, sem mudança.
+- **2. Escolas no lugar dos estilos.** `styles.ts` tem Ipojy, Gryskar e Tsvirana em triângulo fechado. Gryskar
+  leva a Onda, Tsvirana a Rachadura, e a Ipojy o Contragolpe: quem a ataca e erra leva o golpe de volta, na reação
+  dela (a IA não pesa isso, de propósito: bate na Espera como em qualquer um). A proficiência vai de 1 a 7 e entra
+  na luta cortada pelo nível de aura (Punho a Divindade). O Baluarte, com a Muralha, ficou só pra criatura grande,
+  fora do triângulo. Na gente provisória do Eälen: o fiscal é Ipojy, os mergulhadores Gryskar, Taevel Tsvirana;
+  Halmira e Lish viraram Gryskar e Tsvirana até a task 7 trocar o elenco. Detalhe em `docs/motor.md`.
 
 ## 9. O que precisa virar cânone na história
 

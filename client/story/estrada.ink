@@ -72,7 +72,7 @@ Os dois sentam no parapeito, cada um segurando onde dói. A ponte volta a ser s�
 // Taevel é a luta que não se perde: uma deixa `defeat` no mapa abre
 // `taevel_basta` NO LUGAR da derrota, e a luta para ali. Quem o derruba leva
 // o que ele dá; quem cai só ouve. A mania dele é `mirrors` — a ação de cada
-// turno repete o TIPO da última ação de Halmira — e o estilo é o Viés, cuja
+// turno repete o TIPO da última ação de Halmira — e a escola é a Tsvirana, cuja
 // Rachadura dobra o dano em quem se repetiu.
 === taevel ===
 {taevel == 1:

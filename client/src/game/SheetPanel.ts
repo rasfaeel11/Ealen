@@ -6,6 +6,7 @@ import {
   RACE_INFO,
   STATUSES,
   STYLES,
+  auraName,
   breathOf,
   canAfford,
   castOf,
@@ -16,6 +17,7 @@ import {
   gearedAttributes,
   kitOf,
   maxBreath,
+  proficiency,
   sheetAbilities,
   storedGear,
   styleLabel,
@@ -66,10 +68,11 @@ const ATTRIBUTE_LABEL: Record<keyof Attributes, [string, string]> = {
   ul: ["Ul", "Mistério"],
 };
 
-/** O que cada traço de estilo faz, em uma linha. */
+/** O que cada traço de escola faz, em uma linha. */
 const TRAIT_TEXT: Record<keyof typeof STYLES, string> = {
-  mare: "cada golpe seguido no mesmo alvo soma no dano do próximo",
-  vies: "dobra o dano em quem repete a ação do turno anterior",
+  ipojy: "quem a ataca e erra leva o golpe de volta, na reação",
+  gryskar: "cada golpe seguido no mesmo alvo soma no dano do próximo",
+  tsvirana: "dobra o dano em quem repete a ação do turno anterior",
   baluarte: "tira um tanto fixo de cada golpe que recebe",
 };
 
@@ -120,7 +123,7 @@ export interface SheetHost {
 /**
  * A ficha de quem está no grupo, aberta por cima do mundo parado: o retrato
  * (o mesmo boneco do mapa, ampliado e andando no lugar), quem é, os
- * atributos, o que veste, o estilo, as condições que carrega e o que sabe
+ * atributos, o que veste, a escola, as condições que carrega e o que sabe
  * fazer — e, apagado, o que a Ordem ainda vai ensinar.
  *
  * É daqui que se usa uma habilidade FORA de luta: uma cura, em alguém do
@@ -217,7 +220,9 @@ export class SheetPanel {
         : "Acompanha sem lutar",
     ];
     if (cast?.style) {
-      lines.push(`${styleLabel({ style: cast.style.id, grade: cast.style.grade })}  ·  ${STYLES[cast.style.id].trait}`);
+      const grade = proficiency(cast.style.grade, cast.aura);
+      const aura = cast.aura !== undefined ? `  ·  aura ${auraName(cast.aura)}` : "";
+      lines.push(`${styleLabel({ style: cast.style.id, grade })}${aura}  ·  ${STYLES[cast.style.id].trait}`);
     }
     let y = TOP + PORTRAIT + 14;
     y += this.add(addTitleText(scene, WHO_X, y, character.name, { fontSize: "26px" })).height + 6;

@@ -163,11 +163,11 @@ export function describeAbility(ability: Ability): string {
   return parts.join(" · ");
 }
 
-/** O que a posição e o confronto de estilos fizeram a um ataque, em palavras: "flanqueado +2", "cobertura +2 na defesa"... */
+/** O que a posição e o confronto de escolas fizeram a um ataque, em palavras: "flanqueado +2", "cobertura +2 na defesa"... */
 function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 | 1; style: -1 | 0 | 1 }): string[] {
   const notes: string[] = [];
-  if (edge.style > 0) notes.push(`estilo leva vantagem +${STYLE_TO_HIT}`);
-  if (edge.style < 0) notes.push(`estilo em desvantagem -${STYLE_TO_HIT}`);
+  if (edge.style > 0) notes.push(`escola leva vantagem +${STYLE_TO_HIT}`);
+  if (edge.style < 0) notes.push(`escola em desvantagem -${STYLE_TO_HIT}`);
   if (edge.flanked) notes.push(`flanqueado +${FLANK_TO_HIT}`);
   if (edge.height > 0) notes.push(`de cima +${HEIGHT_TO_HIT}`);
   if (edge.height < 0) notes.push(`de baixo -${HEIGHT_TO_HIT}`);
@@ -822,13 +822,17 @@ export class CombatController {
       }
 
       case "styleTrait": {
-        // O traço do estilo de quem bate: aparece sobre ele, antes do dano que ele engrossa.
+        // O traço da escola de quem bate: aparece sobre ele, antes do dano que ele engrossa (ou do golpe que ele devolve).
         const text = event.trait === "wave" ? `${event.name} x${(event.hits ?? 0) + 1}` : `${event.name}!`;
         this.floatOver(event.unit, text, TEXT_COLORS.goldBright, -22, 22);
+        const actor = this.unit(event.unit).name;
+        const target = this.unit(event.target).name;
         this.hud.log(
           event.trait === "wave"
-            ? `${this.unit(event.unit).name} insiste em ${this.unit(event.target).name}: ${event.name} (${(event.hits ?? 0) + 1} golpes seguidos).`
-            : `${this.unit(event.target).name} se repetiu: ${event.name} de ${this.unit(event.unit).name}.`,
+            ? `${actor} insiste em ${target}: ${event.name} (${(event.hits ?? 0) + 1} golpes seguidos).`
+            : event.trait === "counter"
+              ? `${target} errou: ${event.name} de ${actor}.`
+              : `${target} se repetiu: ${event.name} de ${actor}.`,
         );
         await this.wait(140);
         return;

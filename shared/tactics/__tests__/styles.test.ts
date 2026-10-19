@@ -10,6 +10,8 @@ import {
   gridFromAscii,
   planTurn,
   startEncounter,
+  auraName,
+  proficiency,
   styleLabel,
   styleMatchup,
   unitFromCharacter,
@@ -25,7 +27,7 @@ import {
 import { FIRST, eventsOf, makeCharacter, makeUnit, run } from "./helpers";
 
 /**
- * Os estilos: o triângulo na rolagem de ataque, o traço de cada um no dano,
+ * As escolas: o triângulo na rolagem de ataque, o traço de cada uma no golpe,
  * e o que veio junto — habilidade com limite e preço, condição que dura a
  * luta toda, e as manias da IA que leem o que os outros vêm fazendo.
  */
@@ -53,24 +55,46 @@ function compare(encounter: Encounter, command: Parameters<typeof applyCommand>[
   return { events: real, damage: damage(real), other: damage(run(copy, command)) };
 }
 
-test("o triângulo: Viés vence Baluarte, Maré vence Viés, Baluarte e Maré são neutros, igual empata", () => {
-  assert.equal(styleMatchup("vies", "baluarte"), 1);
-  assert.equal(styleMatchup("baluarte", "vies"), -1);
-  assert.equal(styleMatchup("mare", "vies"), 1);
-  assert.equal(styleMatchup("vies", "mare"), -1);
-  assert.equal(styleMatchup("mare", "baluarte"), 0);
-  assert.equal(styleMatchup("baluarte", "mare"), 0);
-  assert.equal(styleMatchup("mare", "mare"), 0);
-  assert.equal(styleMatchup("mare", undefined), 0);
-  assert.equal(styleLabel({ style: "mare", grade: 3 }), "Maré III");
+test("o triângulo fechado: Ipojy vence Gryskar, Gryskar vence Tsvirana, Tsvirana vence Ipojy; o Baluarte fica fora, igual empata", () => {
+  assert.equal(styleMatchup("ipojy", "gryskar"), 1);
+  assert.equal(styleMatchup("gryskar", "ipojy"), -1);
+  assert.equal(styleMatchup("gryskar", "tsvirana"), 1);
+  assert.equal(styleMatchup("tsvirana", "gryskar"), -1);
+  assert.equal(styleMatchup("tsvirana", "ipojy"), 1);
+  assert.equal(styleMatchup("ipojy", "tsvirana"), -1);
+  for (const school of ["ipojy", "gryskar", "tsvirana"] as const) {
+    assert.equal(styleMatchup(school, "baluarte"), 0);
+    assert.equal(styleMatchup("baluarte", school), 0);
+    assert.equal(styleMatchup(school, school), 0);
+    assert.equal(styleMatchup(school, undefined), 0);
+  }
+  assert.equal(styleLabel({ style: "gryskar", grade: 3 }), "Gryskar III");
+  assert.equal(styleLabel({ style: "ipojy", grade: 7 }), "Ipojy VII");
+  // O Baluarte não é escola: não tem grau.
+  assert.equal(styleLabel({ style: "baluarte", grade: 2 }), "Baluarte");
   assert.equal(styleLabel({}), "");
 });
 
-test("a vantagem de estilo entra na rolagem de ataque, pros dois lados, e só entre inimigos", () => {
+test("a proficiência vai de 1 a 7 e nunca passa do nível de aura", () => {
+  assert.equal(proficiency(3, 2), 2);
+  assert.equal(proficiency(2, 3), 2);
+  assert.equal(proficiency(9), 7);
+  assert.equal(proficiency(0, 4), 1);
+  assert.equal(auraName(1), "Punho");
+  assert.equal(auraName(2), "Fio");
+  assert.equal(auraName(7), "Divindade");
+  assert.equal(auraName(undefined), "");
+
+  // Na luta, o grau já entra cortado pela aura.
+  const capped = unitFromCharacter(makeCharacter("A"), { team: "party", pos: { x: 0, y: 0 }, style: { id: "ipojy", grade: 4 }, aura: 2 });
+  assert.deepEqual([capped.style, capped.grade, capped.aura], ["ipojy", 2, 2]);
+});
+
+test("a vantagem de escola entra na rolagem de ataque, pros dois lados, e só entre inimigos", () => {
   const { encounter } = stage(["AE.B"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), "vies"),
-    styled(makeUnit("E", "enemy", at("E"), TOUGH), "baluarte"),
-    styled(makeUnit("B", "party", at("B")), "baluarte"),
+    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), "ipojy"),
+    styled(makeUnit("E", "enemy", at("E"), TOUGH), "gryskar"),
+    styled(makeUnit("B", "party", at("B")), "gryskar"),
   ]);
   const [lish, guard, ally] = encounter.units;
   const strike = lish.abilities.find((ability) => ability.id === "guardiao.attack")!;
@@ -86,9 +110,9 @@ test("a vantagem de estilo entra na rolagem de ataque, pros dois lados, e só en
   assert.equal(roll.total, roll.natural + attackTotals(lish, strike, guard, edge).bonus);
 });
 
-test("Onda: cada golpe seguido no mesmo alvo soma no dano do próximo; errar zera", () => {
+test("Onda do Gryskar: cada golpe seguido no mesmo alvo soma no dano do próximo; errar zera", () => {
   const { encounter } = stage(["AE"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), "mare"),
+    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), "gryskar"),
     makeUnit("E", "enemy", at("E"), TOUGH),
   ]);
   const hero = findUnit(encounter, "A")!;
@@ -125,9 +149,9 @@ test("Onda: cada golpe seguido no mesmo alvo soma no dano do próximo; errar zer
   assert.ok(waves > 0 && resets > 0, "a luta deveria ter tido onda e erro");
 });
 
-test("Onda: trocar de alvo recomeça a conta, e área não é insistência", () => {
+test("Onda do Gryskar: trocar de alvo recomeça a conta, e área não é insistência", () => {
   const { encounter } = stage(["FAE"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 60, or: 60 } }), "mare"),
+    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 60, or: 60 } }), "gryskar"),
     makeUnit("E", "enemy", at("E"), TOUGH),
     makeUnit("F", "enemy", at("F"), TOUGH),
   ]);
@@ -139,9 +163,9 @@ test("Onda: trocar de alvo recomeça a conta, e área não é insistência", () 
   assert.deepEqual(hero.streak, roll.outcome === "fumble" ? undefined : { target: "F", hits: 1 });
 });
 
-test("Rachadura: o dano dobra em quem acabou de repetir a ação do turno anterior", () => {
+test("Rachadura da Tsvirana: o dano dobra em quem acabou de repetir a ação do turno anterior", () => {
   const { encounter } = stage(["AE"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 60, or: 60 } }), "vies"),
+    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 60, or: 60 } }), "tsvirana"),
     makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { or: 0 } }),
   ]);
   const enemy = findUnit(encounter, "E")!;
@@ -196,7 +220,7 @@ test("o motor anota o que cada um faz com a ação: repetir, variar e bater em s
   assert.equal(hero.habit!.attackTurns, 0);
 });
 
-test("Muralha: o Baluarte tira um tanto fixo de cada golpe, depois da armadura", () => {
+test("Muralha: o Baluarte de criatura tira um tanto fixo de cada golpe, depois da armadura", () => {
   const { encounter } = stage(["AE"], (at) => [
     makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 60, or: 60 } }),
     styled(makeUnit("E", "enemy", at("E"), TOUGH), "baluarte"),
@@ -208,6 +232,62 @@ test("Muralha: o Baluarte tira um tanto fixo de cada golpe, depois da armadura",
   );
   if (eventsOf(events, "attackRoll")[0].outcome === "fumble") return;
   assert.equal(other - damage, 2);
+});
+
+test("Contragolpe da Ipojy: quem a ataca e erra leva o golpe de volta, na reação dela, uma vez por rodada", () => {
+  const { encounter } = stage(["AE"], (at) => [
+    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { il: FIRST } }),
+    // Couro de pedra: quase todo golpe nela erra.
+    styled(makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { or: 200 } }), "ipojy"),
+  ]);
+  const enemy = findUnit(encounter, "E")!;
+
+  let countered = 0;
+  for (let turn = 0; turn < 20; turn++) {
+    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: enemy.pos });
+    const [roll] = eventsOf(events, "attackRoll");
+    const traits = eventsOf(events, "styleTrait");
+    if (roll.outcome === "crit") {
+      assert.deepEqual(traits, []);
+    } else {
+      countered += 1;
+      assert.deepEqual(traits, [{ type: "styleTrait", unit: "E", target: "A", trait: "counter", name: "Contragolpe" }]);
+      // O golpe de volta é uma reação, logo depois do aviso, e gasta a reação dela.
+      const used = eventsOf(events, "abilityUsed");
+      assert.deepEqual(
+        used.map((event) => [event.unit, event.abilityId, event.reaction]),
+        [
+          ["A", "guardiao.attack", false],
+          ["E", "guardiao.attack", true],
+        ],
+      );
+      assert.ok(events.indexOf(traits[0]) < events.indexOf(used[1]));
+      assert.equal(enemy.turn.reaction, false);
+
+      // Sem reação, o segundo erro da rodada passa sem resposta.
+      const again = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.quick_attack", target: enemy.pos });
+      assert.deepEqual(eventsOf(again, "styleTrait"), []);
+    }
+    pass(encounter);
+    pass(encounter);
+  }
+  assert.ok(countered > 0, "a luta deveria ter tido contragolpe");
+});
+
+test("Contragolpe da Ipojy: não alcança quem errou de longe, e não vem de quem não é da Espera", () => {
+  const { encounter } = stage(["A..E", "F..."], (at) => [
+    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { il: FIRST } }),
+    styled(makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { or: 200 } }), "ipojy"),
+    styled(makeUnit("F", "enemy", at("F"), { ...TOUGH, attributes: { or: 200 } }), "gryskar"),
+  ]);
+  // O puxão de três quadrados erra de longe: o golpe dela é de perto e não chega.
+  const far = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.quick_attack", target: findUnit(encounter, "E")!.pos });
+  if (eventsOf(far, "attackRoll")[0].outcome !== "crit") assert.deepEqual(eventsOf(far, "styleTrait"), []);
+  assert.equal(findUnit(encounter, "E")!.turn.reaction, true);
+
+  // Colado, mas noutra escola: errar não custa nada.
+  const near = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: findUnit(encounter, "F")!.pos });
+  assert.deepEqual(eventsOf(near, "styleTrait"), []);
 });
 
 test("Adiantar a Maré pega todo inimigo de pé, vale uma vez por luta e cobra o turno seguinte de quem a fez", () => {

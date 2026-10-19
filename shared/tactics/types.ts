@@ -213,9 +213,15 @@ export interface Unit {
   ai?: Partial<AiProfile>;
   /** Manias da IA (ver AiQuirks). Ignorado em quem o jogador comanda. */
   quirks?: AiQuirks;
-  /** O estilo de luta e o grau nele (ver ./styles.ts). Sem estilo, não entra no triângulo nem tem traço. */
+  /**
+   * A escola de espada (ou o Baluarte de uma criatura) e a proficiência nela,
+   * já limitada pelo nível de aura (ver ./styles.ts). Sem estilo, não entra no
+   * triângulo nem tem traço.
+   */
   style?: StyleId;
   grade?: number;
+  /** O nível de aura do espadachim, 1 a 7 (ver AURA_LEVELS em ./styles.ts). Só o que a interface mostra. */
+  aura?: number;
   /** A Onda: em quem ele vem acertando em seguida, e quantos golpes já pegaram. */
   streak?: { target: string; hits: number };
   /**
@@ -325,11 +331,13 @@ export type TacticalEvent =
     }
   | { type: "blocked"; unit: string; amount: number }
   /**
-   * O traço do estilo de `unit` pesou no golpe em `target`: `wave` é a Onda
-   * (com `hits` golpes seguidos somando no dano), `crack` a Rachadura (o alvo
-   * se repetiu e o dano dobrou). O `damage` vem logo depois.
+   * O traço da escola de `unit` pesou no golpe em `target`: `wave` é a Onda
+   * do Gryskar (com `hits` golpes seguidos somando no dano) e `crack` a
+   * Rachadura da Tsvirana (o alvo se repetiu e o dano dobrou) — o `damage`
+   * vem logo depois. `counter` é o Contragolpe da Ipojy: `target` o atacou e
+   * errou, e o `abilityUsed` (de reação) de `unit` contra ele vem logo depois.
    */
-  | { type: "styleTrait"; unit: string; target: string; trait: "wave" | "crack"; name: string; hits?: number }
+  | { type: "styleTrait"; unit: string; target: string; trait: "wave" | "crack" | "counter"; name: string; hits?: number }
   | { type: "damage"; target: string; amount: number; remainingHp: number }
   /** O golpe pegou em quem não tem vida pra perder (`invulnerable`): nada acontece. */
   | { type: "immune"; target: string }

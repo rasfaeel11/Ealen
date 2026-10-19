@@ -33,8 +33,10 @@ export interface BestiaryEntry {
   quirks?: AiQuirks;
   /** É gente, não um Princípio solto: no mapa usa o boneco, não o vulto. */
   person?: boolean;
-  /** O estilo de luta e o grau nele (ver ../tactics/styles.ts). */
+  /** A escola de espada de quem é gente, ou o Baluarte de uma criatura, e a proficiência nela (ver ../tactics/styles.ts). */
   style?: { id: StyleId; grade: number };
+  /** O nível de aura de quem luta de espada, 1 a 7: a proficiência na escola nunca passa dele. */
+  aura?: number;
   /**
    * Não tem vida pra perder: nada a fere e ela nunca cai (ver `invulnerable`
    * em Unit). A luta com ela só acaba por uma deixa do roteiro — o teste dos

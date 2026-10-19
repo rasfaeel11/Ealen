@@ -6,7 +6,7 @@ import { findPath } from "./movement";
 import { PROPS, fellProp, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
 import { STATUSES, isHarmful, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
-import { STYLES, punishFactor, styleReduction, waveBonus } from "./styles";
+import { STYLES, counters, punishFactor, styleReduction, waveBonus } from "./styles";
 import {
   SURFACES,
   enterCost,
@@ -562,6 +562,8 @@ function resolveAbility(
     reaction,
   });
 
+  // Quem é da Ipojy e foi atacado em vão devolve o golpe — depois que este acabar de acontecer.
+  const countering: Unit[] = [];
   for (const target of targets) {
     const strike = ability.radius === undefined && dealsDamage(ability) && target.team !== actor.team;
     let critical = false;
@@ -569,6 +571,7 @@ function resolveAbility(
       const outcome = rollAttack(encounter, actor, target, ability, targetPos, events);
       if (outcome === "miss" || outcome === "fumble") {
         if (strike) delete actor.streak;
+        if (target.team !== actor.team && counters(target)) countering.push(target);
         continue;
       }
       critical = outcome === "crit";
@@ -593,6 +596,32 @@ function resolveAbility(
   if (ability.surface) {
     laySurface(encounter, ability.surface.id, surfaceTiles(encounter, ability, targetPos), ability.surface.rounds, events);
   }
+
+  for (const defender of countering) counterStrike(encounter, defender, actor, events);
+}
+
+/**
+ * O CONTRAGOLPE da Ipojy (ver ./styles.ts): `defender` acabou de ser atacado
+ * por `attacker` e o golpe errou. Se ele ainda tem a reação do turno e um
+ * golpe que pune (`opportunity`) que alcance quem errou, devolve com ele,
+ * pago como um ataque de oportunidade. Sem reação, sem golpe pronto ou longe
+ * demais, nada acontece.
+ */
+function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, events: TacticalEvent[]): void {
+  if (!isAlive(defender) || !isAlive(attacker) || !defender.turn.reaction) return;
+  const ability = defender.abilities.find(
+    (candidate) =>
+      candidate.opportunity &&
+      readiness(defender, candidate, true) === "ready" &&
+      abilityTargets(encounter, defender, candidate).some((pos) => samePos(pos, attacker.pos)),
+  );
+  if (!ability) return;
+
+  defender.turn.reaction = false;
+  const style = STYLES[defender.style!];
+  events.push({ type: "styleTrait", unit: defender.id, target: attacker.id, trait: "counter", name: style.trait });
+  charge(defender, ability, false, events);
+  resolveAbility(encounter, defender, ability, attacker.pos, [attacker], true, events);
 }
 
 /**

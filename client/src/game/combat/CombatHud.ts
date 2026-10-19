@@ -119,7 +119,7 @@ export class CombatHud {
       const unit = encounter.units.find((candidate) => candidate.id === id)!;
       const marker = unit === active ? "▸ " : "   ";
       if (!isAlive(unit)) return `${marker}${unit.name}   caiu`;
-      // O estilo de cada um fica à vista: é o que diz quem leva vantagem sobre quem.
+      // A escola de cada um fica à vista: é o que diz quem leva vantagem sobre quem.
       const style = unit.style ? `  ·  ${styleLabel(unit)}` : "";
       // As condições que ele carrega, pelo nome: é o que diz em quem vale bater agora.
       const statuses = unit.statuses.length > 0 ? `\n      ${unit.statuses.map((status) => status.name).join(", ")}` : "";

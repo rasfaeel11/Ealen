@@ -236,11 +236,11 @@ test("o estilo e o que cada um sabe além do kit vêm do elenco e do bestiário,
     [lish.id]: ["wounded_arm"],
   });
 
-  // Halmira é Maré III com qualquer Ordem: o estilo é dela, não do kit.
+  // Halmira é Gryskar III com qualquer Ordem: a escola é dela, não do kit.
   const unit = (id: string) => findUnit(encounter, id)!;
-  assert.deepEqual([unit(hero.id).style, unit(hero.id).grade], ["mare", 3]);
+  assert.deepEqual([unit(hero.id).style, unit(hero.id).grade, unit(hero.id).aura], ["gryskar", 3, 3]);
   assert.equal(unit(hero.id).characterClass, "rachador");
-  assert.deepEqual([unit(lish.id).style, unit(lish.id).grade], ["vies", 3]);
+  assert.deepEqual([unit(lish.id).style, unit(lish.id).grade], ["tsvirana", 3]);
   assert.equal(unit(varel.id).style, undefined);
   assert.ok(unit(varel.id).abilities.some((ability) => ability.id === "gift.tide_pull"));
   assert.ok(!unit(lish.id).abilities.some((ability) => ability.id === "gift.tide_pull"));

@@ -41,6 +41,10 @@ import { activeUnit, damageTakenOf, effectiveAttribute, isAlive, movementOf, pri
  * que `readiness`, `abilityTargets` e `reachableTiles` oferecem — o que o
  * motor aceita. Fôlego ela gasta sem poupar (criatura só luta uma vez) e
  * dá valor a recuperar.
+ *
+ * O Contragolpe da Ipojy (ver ./styles.ts) ela não pesa: bate em quem é da
+ * Espera como em qualquer um, e é isso que a Espera pune. Pesando, duas IAs
+ * diante de um da Ipojy em guarda ficavam se guardando pra sempre.
  */
 
 export const DEFAULT_AI_PROFILE: AiProfile = { aggression: 1, finisher: 1, support: 1, caution: 0.5 };

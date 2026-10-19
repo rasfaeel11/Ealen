@@ -50,9 +50,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     },
   },
 
-  // PROVISÓRIO: os estilos do lobo (Maré) e do servo (Baluarte) existem pra exercitar o triângulo.
   "encounter-lobo-de-bruma": {
-    style: { id: "mare", grade: 2 },
     glyph: "☾",
     principle: "ausencia",
     summary: "Um lobo comum que aprendeu a não estar onde se olha.",
@@ -84,6 +82,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     },
   },
 
+  // PROVISÓRIO: o Baluarte do servo existe pra exercitar a Muralha. Bicho não tem escola de espada.
   "encounter-servo-enferrujado": {
     style: { id: "baluarte", grade: 2 },
     glyph: "⚙",
@@ -261,10 +260,11 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
   // PROVISÓRIO: a gente do capítulo. Não são Princípios soltos, são pessoas
   // (`person`): o `principle` de cada uma é só o do ofício, e os números, os
   // kits e as falas esperam a história. O que já é delas é o jeito de lutar —
-  // o estilo e a mania da IA (ver AiQuirks).
+  // a escola de espada, a aura e a mania da IA (ver AiQuirks).
   "encounter-fiscal": {
     person: true,
-    style: { id: "baluarte", grade: 2 },
+    style: { id: "ipojy", grade: 2 },
+    aura: 2,
     glyph: "⚖",
     principle: "harmonia",
     summary: "Fiscal da Companhia: confere o que sobe da água e fecha o caminho de quem não mostra.",
@@ -299,12 +299,13 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
 
   "encounter-mergulhador": {
     person: true,
-    style: { id: "mare", grade: 2 },
+    style: { id: "gryskar", grade: 2 },
+    aura: 2,
     glyph: "⚓",
     principle: "ausencia",
     summary: "Mergulhador de arpão, do mesmo ofício de Halmira e de outra rede.",
     lore: "Aprendeu a acertar o que se mexe no escuro, de longe e sem pressa. Em terra faz igual: escolhe um, e não troca de alvo enquanto ele estiver de pé.",
-    // De longe, e sempre no mesmo: é a Onda que rende.
+    // De longe, e sempre no mesmo: é a Onda do Gryskar que rende.
     ai: { finisher: 1.3, caution: 1 },
     drops: [{ itemId: "item-lagrima-de-eir", chance: 0.4 }],
     template: {
@@ -330,12 +331,13 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
 
   "encounter-taevel": {
     person: true,
-    style: { id: "vies", grade: 3 },
+    style: { id: "tsvirana", grade: 3 },
+    aura: 3,
     glyph: "≋",
     principle: "fratura",
     summary: "Taevel. Luta devolvendo o gesto de quem está na frente dele.",
     lore: "Não escolhe o golpe: espera o seu e responde com o mesmo. Quem varia, enfrenta um espelho. Quem se repete, enfrenta alguém que já sabia.",
-    // Repete o tipo da última ação de Halmira; o Viés pune quem se repetiu.
+    // Repete o tipo da última ação de Halmira; a Rachadura da Tsvirana pune quem se repetiu.
     quirks: { mirrors: "hero" },
     drops: [],
     template: {

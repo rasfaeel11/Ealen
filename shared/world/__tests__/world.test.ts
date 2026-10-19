@@ -894,7 +894,7 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     const fiscais = new Set(group.map((enemy) => enemy.id));
     for (const id of fiscais) {
       assert.deepEqual(findUnit(encounter, id)!.quirks, { retaliates: 3 });
-      assert.equal(findUnit(encounter, id)!.style, "baluarte");
+      assert.equal(findUnit(encounter, id)!.style, "ipojy");
     }
 
     // Quem só fica ali não apanha: quatro rodadas passando a vez, e nenhum golpe.
@@ -904,21 +904,30 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     // E não arredam pé: ficam colados nele, no caminho.
     for (const id of fiscais) assert.equal(distance(findUnit(quiet, id)!.pos, findUnit(quiet, HERO_ID)!.pos), 1);
 
-    // Quem insiste, apanha — mas só depois do terceiro turno seguido batendo.
+    // Quem insiste, apanha — mas só depois do terceiro turno seguido batendo. O golpe que a Ipojy devolve a quem
+    // erra é reação, não iniciativa dele: não conta.
     const target = findUnit(encounter, group[0].id)!;
     const log = play(encounter, (now) => ({ type: "ability", unitId: HERO_ID, abilityId: "guardiao.attack", target: target.pos }), 40);
-    const struck = log.find(({ event }) => event.type === "attackRoll" && fiscais.has(event.actor));
+    const struck = log.find(
+      ({ event }) =>
+        event.type === "abilityUsed" &&
+        fiscais.has(event.unit) &&
+        !event.reaction &&
+        findUnit(encounter, event.unit)!.abilities.some(
+          (ability) => ability.id === event.abilityId && ability.effects.some((effect) => effect.kind === "damage"),
+        ),
+    );
     assert.ok(struck, "os fiscais não revidaram nunca");
     assert.ok((struck.habit?.attackTurns ?? 0) >= 3, `revidaram com ${struck.habit?.attackTurns} turnos de ataque`);
   });
 
-  test("na estrada, os mergulhadores lutam de longe, na Maré, e a luta com eles anda até o fim", () => {
+  test("na estrada, os mergulhadores lutam de longe, no Gryskar, e a luta com eles anda até o fim", () => {
     const { encounter, group } = fight("mergulhadores", { x: 41, y: 14 }, stout());
     assert.equal(group.length, 2);
     assert.ok(group.every((enemy) => !enemy.passive));
     for (const enemy of group) {
       const unit = findUnit(encounter, enemy.id)!;
-      assert.equal(unit.style, "mare");
+      assert.equal(unit.style, "gryskar");
       assert.ok(unit.abilities.some((ability) => ability.range > 1 && ability.effects.some((effect) => effect.kind === "damage")));
     }
     play(encounter, chooseCommand, 3000);
@@ -929,7 +938,7 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     const { encounter, group } = fight("taevel", { x: 10, y: 17 }, stout());
     const taevel = findUnit(encounter, group[0].id)!;
     assert.deepEqual(taevel.quirks, { mirrors: HERO_ID });
-    assert.equal(taevel.style, "vies");
+    assert.equal(taevel.style, "tsvirana");
 
     const script = ["defend", "defend", "attack", "attack", "defend"];
     let turn = 0;

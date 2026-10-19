@@ -304,6 +304,7 @@ test("cada criatura do bestiário, com os pesos dela, luta até o fim contra cad
             pos: at("E"),
             ai: creature.ai,
             style: creature.style,
+            aura: creature.aura,
             quirks: creatureQuirks(creature, "H"),
           }),
         ],

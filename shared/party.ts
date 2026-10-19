@@ -29,7 +29,8 @@ import type { Race } from "./types/race";
  *
  * As Ordens aqui são PROVISÓRIAS: cada um ganhou o kit da Ordem que mais se
  * parece com o papel dele. O que a história diz de cada um está no ESTILO
- * (`style`: Maré, Viés ou Baluarte, e o grau — ver ./tactics/styles.ts), no
+ * (`style`: a escola de espada, Ipojy, Gryskar ou Tsvirana, e a proficiência
+ * nela, limitada pelo nível de aura — ver ./tactics/styles.ts), no
  * que só ele sabe fazer (`gifts`, ver GIFTS em ./tactics/abilities.ts) e no
  * que ele traz no corpo (`gear`, ver ./equipment.ts). Estilo e habilidade
  * própria vêm daqui a cada luta, não da ficha salva: mudar o elenco muda quem
@@ -47,8 +48,10 @@ export interface CastMember {
   characterClass: CharacterClass;
   /** Acompanha sem lutar: numa luta não é unidade, e oferece este apoio. */
   support?: SupportId;
-  /** O estilo de luta e o grau nele. Sem isto, fica fora do triângulo. */
+  /** A escola de espada e a proficiência nela. Sem isto, fica fora do triângulo. */
   style?: { id: StyleId; grade: number };
+  /** O nível de aura, 1 a 7: a proficiência na escola nunca passa dele. */
+  aura?: number;
   /** O que só ele sabe fazer, além do kit da Ordem. */
   gifts?: readonly GiftId[];
   /** Com o que ele chega: os ids das peças (ver ./mock/equipment.ts). Sem isto, o que a Ordem dele dá. */
@@ -59,7 +62,8 @@ export const PROTAGONIST: CastMember = {
   name: "Halmira",
   race: "miraven",
   characterClass: "guardiao",
-  style: { id: "mare", grade: 3 },
+  style: { id: "gryskar", grade: 3 },
+  aura: 3,
   // Mergulhadora: a lâmina de cortar corda, a túnica e a rede no ombro — que ela também sabe abrir em cima de alguém.
   gifts: ["net_cast"],
   gear: { weapon: "gear-lamina-de-mergulho", armor: "gear-tunica-de-linho", accessory: "gear-rede-de-coleta" },
@@ -71,7 +75,8 @@ export const COMPANIONS: Record<string, CastMember> = {
     name: "Lish",
     race: "kelbar",
     characterClass: "sombrilico",
-    style: { id: "vies", grade: 3 },
+    style: { id: "tsvirana", grade: 3 },
+    aura: 3,
     // A faca de lado na cintura, e o corpo fora de prumo de propósito.
     gifts: ["crooked_step"],
     gear: { weapon: "gear-faca-larga", armor: "gear-manto-de-viagem" },

@@ -239,7 +239,7 @@ export function startAreaEncounter(
   });
   const units = party.map(({ character, tile }) => {
     const cast = castOf(character);
-    return unitFromCharacter(character, { team: "party", pos: tile, style: cast?.style, gifts: cast?.gifts });
+    return unitFromCharacter(character, { team: "party", pos: tile, style: cast?.style, aura: cast?.aura, gifts: cast?.gifts });
   });
   for (const enemy of enemies) {
     const entry = findBestiaryEntry(enemy.creature);
@@ -252,6 +252,7 @@ export function startAreaEncounter(
         ai: entry.ai,
         invulnerable: entry.invulnerable,
         style: entry.style,
+        aura: entry.aura,
         quirks: creatureQuirks(entry, HERO_ID),
       }),
     );
