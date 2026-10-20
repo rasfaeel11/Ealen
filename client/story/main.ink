@@ -15,7 +15,7 @@ EXTERNAL level()
 EXTERNAL mage_level()        // o nível de mago de Endyru: 3 é a Página, 4 o Círculo
 EXTERNAL mage_rise(level)    // mage_rise(4): Endyru chega ao Círculo e aprende o que ele dá. Só sobe
 EXTERNAL has_item(id)
-EXTERNAL defeated(group)    // defeated("clareira:fiapo"): aquele grupo de inimigos já foi vencido?
+EXTERNAL defeated(group)    // defeated("ymonha:pedagio"): aquele grupo de inimigos já foi vencido?
 EXTERNAL check(name, difficulty)   // rola um teste agora, no meio do texto: {check("saber", 13): ... | ...}
 EXTERNAL passed()           // passou o teste da escolha? (escolha marcada com # check: labia 13)
 EXTERNAL give_item(id)
@@ -24,17 +24,14 @@ EXTERNAL money(coin)        // money("cobre"): quanto a bolsa tem. As moedas sã
 EXTERNAL pay(coin, amount)  // pay("prata", 2): paga se tem tudo e devolve se pagou; sem o bastante, não tira nada
 EXTERNAL earn(coin, amount) // earn("cobre", 30): põe na bolsa
 EXTERNAL grant_xp(amount)
-EXTERNAL start_fight(group) // start_fight("fiapo"): acabada a conversa, luta com esse grupo DESTA área
-EXTERNAL travel(area, spawn) // travel("ruinas", "from_clareira"): acabada a conversa, o personagem vai pra lá
+EXTERNAL start_fight(group) // start_fight("pedagio"): acabada a conversa, luta com esse grupo DESTA área
+EXTERNAL travel(area, spawn) // travel("ybytugua", "cais"): acabada a conversa, o personagem vai pra lá
 EXTERNAL join_party(who)    // join_party("jarupa"): entra no grupo. As chaves estão em shared/party.ts
 EXTERNAL leave_party(who)   // sai do grupo; a ficha dele fica guardada pra quando voltar
 EXTERNAL in_party(who)      // está no grupo agora?
-EXTERNAL note(id, text)     // note("rede", "A Companhia paga por rede vazia."): anota uma pista no diário (J abre)
-EXTERNAL noted(id)          // a pista está no diário, e legível?
-EXTERNAL forget(count)      // forget(3): apaga as 3 anotações mais recentes; ficam em branco no lugar delas
-EXTERNAL recall(id)         // devolve uma anotação apagada
-EXTERNAL recall_all()       // devolve todas
-EXTERNAL clock_start(label, value, limit)   // clock_start("Vazante", 0, 12): põe um relógio no alto da tela
+EXTERNAL note(id, text)     // note("papel", "O papel tem o selo de Ymboripe."): anota uma pista no diário (J abre)
+EXTERNAL noted(id)          // a pista está no diário?
+EXTERNAL clock_start(label, value, limit)   // clock_start("Cheia", 0, 12): põe um relógio no alto da tela
 EXTERNAL clock_tick(amount) // faz o tempo andar (negativo volta); para em 0 e no limite
 EXTERNAL clock()            // quanto já passou (0 sem relógio)
 EXTERNAL clock_left()       // quanto falta
@@ -74,6 +71,8 @@ EXTERNAL afflicted(who, status) // ele a tem?
 // encerra a luta só fala e mexe em variáveis: se a luta for perdida depois, a
 // história volta ao que era antes dela, e o que ele tivesse dado, não.
 
-INCLUDE clareira.ink
-INCLUDE ruinas.ink
-INCLUDE estrada.ink
+// Um arquivo por lugar, na ordem em que o jogo passa por eles.
+INCLUDE ymonha.ink
+INCLUDE ybytugua.ink
+INCLUDE baixios.ink
+INCLUDE floresta.ink

@@ -1,9 +1,8 @@
 /**
  * O que a história guarda além das variáveis dela: o DIÁRIO de pistas e o
- * RELÓGIO que corre por cima de um trecho do jogo (a vazante, a conta de
- * Halmira).
+ * RELÓGIO que corre por cima de um trecho do jogo (a cheia).
  *
- * Os dois são estado da história — quem escreve, apaga e faz o tempo andar é
+ * Os dois são estado da história — quem escreve e faz o tempo andar é
  * o texto — e por isso viajam com ela: `StoryRunner.save` devolve os dois
  * junto com o estado do Ink, num texto só (`packStory`). Assim o save não
  * ganha campo, e o que acontece com a história acontece com eles: o que uma
@@ -15,11 +14,9 @@
 
 /** Uma anotação do diário. Guarda FATOS, na ordem em que foram anotados; a conclusão é de quem lê. */
 export interface JournalEntry {
-  /** Único no diário: é por ele que o texto pergunta (`noted`) e devolve (`recall`). */
+  /** Único no diário: é por ele que o texto pergunta (`noted`). */
   id: string;
   text: string;
-  /** Apagada (`forget`): continua no lugar dela, em branco, até alguém devolver. */
-  lost?: boolean;
 }
 
 /**
@@ -99,8 +96,7 @@ export function restAfflictions(afflictions: Record<string, string[]>, passes: (
 
 /**
  * Anota `text` no fim do diário. Anotar de novo o mesmo `id` não duplica:
- * troca o texto e, se a anotação estava apagada, devolve-a. Devolve a
- * anotação se o diário mudou.
+ * troca o texto. Devolve a anotação se o diário mudou.
  */
 export function noteEntry(journal: JournalEntry[], id: string, text: string): JournalEntry | undefined {
   const known = journal.find((entry) => entry.id === id);
@@ -109,39 +105,16 @@ export function noteEntry(journal: JournalEntry[], id: string, text: string): Jo
     journal.push(entry);
     return entry;
   }
-  if (known.text === text && !known.lost) return undefined;
+  if (known.text === text) return undefined;
   known.text = text;
-  delete known.lost;
   return known;
 }
 
-/** Está no diário, e legível? */
+/** Está no diário? */
 export function isNoted(journal: readonly JournalEntry[], id: string): boolean {
-  return journal.some((entry) => entry.id === id && !entry.lost);
+  return journal.some((entry) => entry.id === id);
 }
 
-/**
- * Apaga as `count` anotações mais RECENTES que ainda se leem. As antigas não
- * somem: quem leva lembrança só leva o que é novo. Devolve as apagadas, da
- * mais recente pra mais antiga.
- */
-export function forgetRecent(journal: JournalEntry[], count: number): JournalEntry[] {
-  const lost: JournalEntry[] = [];
-  for (let index = journal.length - 1; index >= 0 && lost.length < count; index--) {
-    const entry = journal[index];
-    if (entry.lost) continue;
-    entry.lost = true;
-    lost.push(entry);
-  }
-  return lost;
-}
-
-/** Devolve a anotação apagada de id `id` — ou, sem `id`, todas. Devolve as que voltaram, na ordem do diário. */
-export function recallEntries(journal: JournalEntry[], id?: string): JournalEntry[] {
-  const back = journal.filter((entry) => entry.lost && (id === undefined || entry.id === id));
-  for (const entry of back) delete entry.lost;
-  return back;
-}
 
 // --- Relógio ----------------------------------------------------------------
 
@@ -202,7 +175,7 @@ function readJournal(raw: unknown): JournalEntry[] {
   for (const entry of raw) {
     if (!isObject(entry) || typeof entry.id !== "string" || typeof entry.text !== "string") continue;
     if (journal.some((other) => other.id === entry.id)) continue;
-    journal.push({ id: entry.id, text: entry.text, ...(entry.lost === true ? { lost: true } : {}) });
+    journal.push({ id: entry.id, text: entry.text });
   }
   return journal;
 }

@@ -16,13 +16,11 @@ import {
   afflict,
   cure,
   emptyMemory,
-  forgetRecent,
   isClockCost,
   isNoted,
   noteEntry,
   chargeClock,
   packStory,
-  recallEntries,
   restAfflictions,
   startClock,
   tickClock,
@@ -77,9 +75,6 @@ import {
  *   note("id", "texto")      anota uma pista no diário (de novo com o mesmo
  *                            id, troca o texto em vez de duplicar)
  *   noted("id")              se a pista está no diário, e legível
- *   forget(3)                apaga as 3 anotações mais recentes; ficam em
- *                            branco no lugar delas
- *   recall("id")             devolve uma anotação apagada; recall_all(), todas
  *   clock_start("Vazante", 0, 12)   põe um relógio na tela, de 0 a 12
  *   clock_tick(2)            faz o tempo andar (negativo volta)
  *   clock(), clock_left()    quanto já passou, e quanto falta
@@ -134,10 +129,6 @@ export type StoryEvent =
   | { type: "left"; name: string }
   /** Uma pista anotada no diário (ou reescrita). */
   | { type: "noted"; entry: JournalEntry }
-  /** Anotações apagadas do diário, da mais recente pra mais antiga. */
-  | { type: "forgot"; entries: JournalEntry[] }
-  /** Anotações apagadas que voltaram. */
-  | { type: "recalled"; entries: JournalEntry[] }
   /** O relógio mudou: como ficou, ou null se saiu da tela. Não se anuncia na caixa — a barra mostra. */
   | { type: "clock"; clock: StoryClock | null }
   /** Alguém ganhou (ou perdeu, com `cured`) uma condição que dura entre lutas. `status` é o nome dela. */
@@ -308,16 +299,6 @@ export class StoryRunner {
       const entry = noteEntry(this.memory.journal, String(id), String(text));
       if (entry) this.pending.push({ type: "noted", entry: { ...entry } });
     });
-    story.BindExternalFunction("forget", (count: number) => {
-      const entries = forgetRecent(this.memory.journal, Number(count));
-      if (entries.length > 0) this.pending.push({ type: "forgot", entries: entries.map((entry) => ({ ...entry })) });
-    });
-    const recall = (id?: string) => {
-      const entries = recallEntries(this.memory.journal, id);
-      if (entries.length > 0) this.pending.push({ type: "recalled", entries: entries.map((entry) => ({ ...entry })) });
-    };
-    story.BindExternalFunction("recall", (id: string) => recall(String(id)));
-    story.BindExternalFunction("recall_all", () => recall());
     story.BindExternalFunction("clock_start", (label: string, value: number, limit: number) => {
       if (!(Number(limit) > 0)) throw new Error(`A história põe um relógio sem tamanho: "${String(label)}" vai até ${String(limit)}`);
       this.memory.clock = startClock(String(label), Number(value), Number(limit));
@@ -482,7 +463,7 @@ export class StoryRunner {
     this.pending.push({ type: "clock", clock: this.memory.clock && structuredClone(this.memory.clock) });
   }
 
-  /** O diário, na ordem em que foi escrito. As anotações apagadas vêm junto, marcadas (`lost`). */
+  /** O diário, na ordem em que foi escrito. */
   journal(): readonly JournalEntry[] {
     return this.memory.journal;
   }

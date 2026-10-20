@@ -41,9 +41,6 @@ EXTERNAL leave_party(who)
 EXTERNAL in_party(who)
 EXTERNAL note(id, text)
 EXTERNAL noted(id)
-EXTERNAL forget(count)
-EXTERNAL recall(id)
-EXTERNAL recall_all()
 EXTERNAL clock_start(label, value, limit)
 EXTERNAL clock_tick(amount)
 EXTERNAL clock()
@@ -265,7 +262,7 @@ test("luta e viagem pedidas pelo texto não cortam a fala: viram o que a cena fa
 Chefe: Ninguém passa.
 ~ start_fight("guardas")
 + [Recuar.]
-    ~ travel("clareira", "default")
+    ~ travel("ybytugua", "cais")
     Você recua.
     -> END
 + [Avançar.]
@@ -280,7 +277,7 @@ Chefe: Ninguém passa.
   assert.equal(first.choices.length, 2);
 
   const retreat = runner.choose(first.choices[0].index);
-  assert.deepEqual(aftermath([first, retreat]), { fight: "guardas", travel: { area: "clareira", spawn: "default" } });
+  assert.deepEqual(aftermath([first, retreat]), { fight: "guardas", travel: { area: "ybytugua", spawn: "cais" } });
   assert.deepEqual(aftermath([]), {});
 
   assert.throws(() => new StoryRunner(compile(`
@@ -401,23 +398,6 @@ Quatro coisas vistas.
 Uma delas, vista melhor.
 -> END
 
-=== coletor ===
-~ forget(2)
-{noted("rede"): A rede você ainda lembra.}
-{noted("jarras"): As jarras também. | As jarras, não.}
--> END
-
-=== cera ===
-~ recall("jarras")
--> END
-
-=== tudo ===
-~ recall_all()
--> END
-
-=== mais_do_que_ha ===
-~ forget(99)
--> END
 `);
 
 test("note escreve no diário na ordem, sem duplicar: o mesmo id troca o texto", () => {
@@ -436,43 +416,6 @@ test("note escreve no diário na ordem, sem duplicar: o mesmo id troca o texto",
   assert.deepEqual(runner.journal().map((entry) => entry.id), ["rede", "nomes", "chao", "jarras"]);
 });
 
-test("forget apaga só o que é recente e deixa o espaço; recall devolve uma, recall_all devolve o resto", () => {
-  const runner = new StoryRunner(NOTES, makeHost());
-  runner.start("pistas");
-
-  const taken = runner.start("coletor");
-  assert.deepEqual(eventsIn(taken.beats), [
-    {
-      type: "forgot",
-      entries: [
-        { id: "jarras", text: "As jarras estão viradas pra dentro.", lost: true },
-        { id: "chao", text: "O chão do arquivo é redondo.", lost: true },
-      ],
-    },
-  ]);
-  assert.deepEqual(lines(taken.beats), ["A rede você ainda lembra.", "As jarras, não."]);
-  // As apagadas continuam no lugar delas, em branco.
-  assert.deepEqual(runner.journal().map((entry) => [entry.id, entry.lost === true]), [
-    ["rede", false],
-    ["nomes", false],
-    ["chao", true],
-    ["jarras", true],
-  ]);
-
-  assert.deepEqual(eventsIn(runner.start("cera").beats), [
-    { type: "recalled", entries: [{ id: "jarras", text: "As jarras estão viradas pra dentro." }] },
-  ]);
-  // Devolver o que não está apagado não é notícia.
-  assert.deepEqual(eventsIn(runner.start("cera").beats), []);
-  assert.deepEqual(eventsIn(runner.start("tudo").beats), [
-    { type: "recalled", entries: [{ id: "chao", text: "O chão do arquivo é redondo." }] },
-  ]);
-  assert.ok(runner.journal().every((entry) => !entry.lost));
-
-  // Pedir mais do que há leva tudo, e só.
-  const all = eventsIn(runner.start("mais_do_que_ha").beats);
-  assert.equal(all.length === 1 && all[0].type === "forgot" && all[0].entries.length, 4);
-});
 
 const TIDE = compile(`
 VAR porta_coberta = false
@@ -561,7 +504,7 @@ test("a condição clock:N de um objeto do mapa vale quando o relógio já chego
 test("diário e relógio vão no save junto com a história, e um save de antes deles abre com os dois vazios", () => {
   const before = new StoryRunner(NOTES + "", makeHost());
   before.start("pistas");
-  before.start("coletor");
+  before.start("de_novo");
   const reopened = new StoryRunner(NOTES, makeHost(), before.save());
   assert.deepEqual(reopened.journal(), before.journal());
   assert.equal(reopened.visited("pistas"), true);

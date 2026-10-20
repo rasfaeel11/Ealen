@@ -39,11 +39,9 @@ import {
   type Trail,
 } from "../index";
 
-/** O grupo no mundo de verdade: os mapas são os do jogo (client/public/maps). */
-const PUBLIC_DIR = new URL("../../../client/public/", import.meta.url);
-
-function loadArea(areaId: string) {
-  const map = parseTiledMap(JSON.parse(readFileSync(new URL(AREAS[areaId].map, PUBLIC_DIR), "utf8")));
+/** O grupo num mundo de mapas do Tiled: os provisórios do Eälen, que ficaram como peças de teste (./fixtures). */
+function loadArea(name: string) {
+  const map = parseTiledMap(JSON.parse(readFileSync(new URL(`./fixtures/${name}.tmj`, import.meta.url), "utf8")));
   return { map, props: standAreaProps(map) };
 }
 

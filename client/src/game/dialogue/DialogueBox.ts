@@ -64,16 +64,6 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
       return { text: `${event.name} deixa o grupo.`, color: TEXT_COLORS.inkDim };
     case "noted":
       return { text: `Anotado no diário: ${event.entry.text}`, color: TEXT_COLORS.item };
-    case "forgot":
-      return {
-        text:
-          event.entries.length === 1
-            ? "Uma anotação some do diário. Fica o espaço em branco."
-            : `${event.entries.length} anotações somem do diário. Fica o espaço em branco.`,
-        color: TEXT_COLORS.danger,
-      };
-    case "recalled":
-      return { text: `De volta ao diário: ${event.entries.map((entry) => entry.text).join(" ")}`, color: TEXT_COLORS.item };
     case "afflicted":
       return event.cured
         ? { text: `${event.name} não tem mais: ${event.status}.`, color: TEXT_COLORS.goldBright }

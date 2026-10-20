@@ -9,6 +9,7 @@ export const TILESETS: Record<string, string> = {
   placeholder: "tilesets/placeholder.png",
   "placeholder-tall": "tilesets/placeholder-tall.png",
   "placeholder-high": "tilesets/placeholder-high.png",
+  "placeholder-water": "tilesets/placeholder-water.png",
 };
 
 /** A história compilada (client/story -> public/story.json, ver vite.config.ts), guardada como texto. */

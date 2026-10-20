@@ -263,9 +263,8 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P1 — o conteúdo
 | # | Task | O que é |
 |---|---|---|
-| 10 | **Mapas** | O rio com o castelo de pedágio, Ybytuguá, os baixios, a floresta entre as bacias. |
-| 11 | **O texto** | Ink, ato por ato, depois de o roteiro estar aprovado. |
-| 12 | **Dinheiro e pedágio** | Cobre e prata; pagar o pedágio é uma das três saídas do castelo. |
+| 14 | **Nomes pro autor** | Quem aparece pelo papel e pode ganhar nome: o castelão, a conselheira, o mercador, o ferreiro (nome de demônio), o mestre da guilda, o recitador. Vai como proposta; só entra depois de gravado. |
+| 15 | **Retoque dos mapas no Tiled** | Os quatro mapas saíram de um gerador, com os placeholders; o desenho de verdade é do autor (o contrato do Tiled está em `docs/motor.md`). |
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
 ### P2 e P3
@@ -326,6 +325,18 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   nome aprovado aparece pelo papel. Armas novas: chuço, besta e as duas espadas temperadas do ferreiro. Os dois itens
   que o jogo usa (os ids do Eälen ficam) agora são o Unguento de Barqueiro e o Pão de Viagem. As criaturas do Eälen
   ficam no fim do bestiário só pros testes do motor: nenhum mapa as usa.
+- **10, 11 e 12. O jogo de verdade.** As quatro áreas do cânone (`ymonha`, `ybytugua`, `baixios`, `floresta`) e a
+  história inteira em Ink, um arquivo por lugar, seguindo a §6: a abertura no barco parado na corrente (pagar,
+  convencer com Lábia ou lutar; o voto de Xanduí e o "Não no rio, rapaz"), o contrato na Mesa (o trio se forma, o
+  relógio da Cheia começa), o ferreiro e a receita, a primeira ida que não se vence, a margem onde Endyru chega ao
+  Círculo, a leitura na floresta e o papel de Ymboripe, o castelão e o livro de contas, a cheia (a deixa `burst`
+  impõe a pressa e a `dismiss` tira Oryndu da luta) e o fim, uma semana depois. O segredo de Xanduí só pela forma
+  (o contrato lido "porque ele lê bonito", o aviso de cabeça pra baixo, a cláusula repetida palavra por palavra, o
+  relatório que ela guarda pra "ler com calma"). A bolsa de cobre e prata paga o pedágio, a cabeça, a fiança, o
+  ferreiro e a parte de quem fica. Quem não tem nome aprovado aparece pelo papel (task 14). O tileset ganhou água
+  rasa, lodo e a corrente (`placeholder-water`). Os mapas e o texto provisórios do Eälen saíram do jogo; os mapas
+  ficaram como fixtures dos testes do mundo. O diário que se apagava (`forget`/`recall`) saiu, como a §4 manda. O
+  teste da história joga o caminho inteiro, do pedágio ao fim.
 - **Revisão das tasks 1 a 8** (2026-10-20). O que estava errado: um comentário apontava pra um arquivo que não existe;
   dois testes não passavam no typecheck desde antes da conversão; e Endyru ficava na Página pra sempre, com Desarmar e
   Arremesso chegando pelo nível — o cânone diz que ele chega ao Círculo e que esse repertório é do Círculo (`magia`

@@ -185,3 +185,73 @@ test("a história é compilada lembrando todo trecho lido: é o que gasta um gat
   runner.start(once.dialog);
   assert.equal(runner.visited(once.dialog), true);
 });
+
+test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa, o grupo e o nível de mago andam junto", () => {
+  const host = makeHost(5, 3);
+  host.character.characterClass = "atracao_repulsao";
+  host.character.mageLevel = 3;
+  let runner = new StoryRunner(story, host);
+  /** Abre `knot` e vai escolhendo, em ordem, as escolhas cujo texto começa com cada pedaço de `picks`. */
+  const play = (knot: string, ...picks: string[]) => {
+    let step = runner.start(knot);
+    const steps = [step];
+    for (const pick of picks) {
+      const choice = step.choices.find((candidate) => candidate.text.startsWith(pick));
+      assert.ok(choice, `"${knot}" não oferece "${pick}" (oferece: ${step.choices.map((c) => c.text).join(" | ")})`);
+      step = runner.choose(choice.index);
+      steps.push(step);
+    }
+    assert.deepEqual(step.choices, [], `"${knot}" não terminou depois de ${picks.join(", ")}`);
+    return aftermath(steps);
+  };
+  const present = () => host.companions.filter((member) => member.present).map((member) => member.character.name).sort();
+
+  // Abertura: o barco na corrente. Paga a cabeça, e o grupo da descida está todo no barco.
+  play("abertura", "Pagar a sua cabeça");
+  assert.equal(runner.flag("pedagio_resolvido"), true);
+  assert.deepEqual(host.character.purse, { cobre: 6 });
+  assert.deepEqual(present(), ["Jarupã", "Oryndu", "Xanduí"]);
+  assert.deepEqual(play("barco_ymonha", "Descer"), { travel: { area: "ybytugua", spawn: "cais" } });
+
+  // Ato 1: a escolta acaba no cais, e o trio se forma na Mesa.
+  play("chegada_ybytugua");
+  assert.deepEqual(present(), ["Oryndu"]);
+  play("conselheira", "Aceitar");
+  assert.equal(runner.flag("contrato"), true);
+  assert.deepEqual(present(), ["Jarupã", "Oryndu", "Xanduí"]);
+  assert.equal(runner.clock()?.label, "Cheia");
+  assert.equal(host.character.purse?.prata, 2);
+
+  // O ferreiro tempera as duas espadas com a prata do adiantamento.
+  play("ferreiro", "Pagar dois de prata");
+  assert.equal(runner.flag("temperadas"), true);
+  assert.equal(host.character.purse?.prata, 0);
+
+  // A primeira ida não se vence: a deixa da rodada 3 encerra a luta e abre o ato 2.
+  assert.deepEqual(play("primeira_ida", "Entrar na água"), { fight: "primeira" });
+  play("primeira_oryndu");
+  assert.equal(runner.flag("ato2"), true);
+
+  // Ato 2: a margem (o Círculo), a leitura na floresta, o papel, o castelão e o livro.
+  play("margem");
+  assert.equal(host.character.mageLevel, 4);
+  assert.deepEqual(play("leitura_na_margem", "Ir pra cima"), { fight: "recitador" });
+  play("recitador_caiu");
+  assert.equal(runner.flag("papel_do_recitador"), true);
+  assert.deepEqual(play("castelao", "Pedir o livro"), { fight: "castelo" });
+  play("castelao_caiu");
+  assert.equal(runner.flag("prova"), true);
+
+  // Ato 3: o conselho chama, a cheia, e o fim.
+  play("conselheira");
+  assert.equal(runner.flag("ato3"), true);
+  assert.deepEqual(play("a_cheia", "Entrar na água"), { fight: "final" });
+  assert.deepEqual(play("final_fim"), { travel: { area: "ybytugua", spawn: "depois" } });
+  assert.equal(runner.flag("ykurua_morto"), true);
+  assert.deepEqual(present(), ["Jarupã", "Xanduí"]);
+
+  runner = new StoryRunner(story, host, runner.save());
+  play("fim");
+  assert.equal(runner.clock(), null);
+  assert.equal(host.character.purse?.prata, 4, "seis da pilha dele, menos duas pra parte de quem fica");
+});

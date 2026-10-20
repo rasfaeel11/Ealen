@@ -97,7 +97,7 @@ import { CombatController } from "../game/combat/CombatController";
 import { drawArea, drawBrackets, drawReach, drawStop } from "../game/combat/marks";
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
-import { JournalGlimpse, JournalPanel } from "../game/JournalPanel";
+import { JournalPanel } from "../game/JournalPanel";
 import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
 import { SoundPanel } from "../game/SoundPanel";
@@ -756,26 +756,9 @@ export default class WorldScene extends Phaser.Scene {
     return steps;
   }
 
-  /**
-   * O que a tela faz na hora em que a conversa chega num acontecimento, além
-   * do que a caixa anuncia: o relógio anda, e o diário se apaga (ou se refaz)
-   * À VISTA — a página fica aberta enquanto a caixa fala disso, e o que ela
-   * devolve aqui é como fechá-la.
-   */
+  /** O que a tela faz na hora em que a conversa chega num acontecimento, além do que a caixa anuncia: o relógio anda. */
   private onStoryEvent(event: StoryEvent): (() => void) | void {
-    if (event.type === "clock") {
-      this.clockBar.set(event.clock);
-    } else if (event.type === "forgot" || event.type === "recalled") {
-      const glimpse = new JournalGlimpse(
-        this,
-        (object) => this.addHud(object),
-        this.story.journal(),
-        event.entries,
-        event.type,
-        this.clockBar.visible ? CLOCK_BAR_BOTTOM + 8 : 24,
-      );
-      return () => glimpse.destroy();
-    }
+    if (event.type === "clock") this.clockBar.set(event.clock);
   }
 
   /** Cumpre o que o texto deixou pra depois da última fala: uma luta, uma viagem. */

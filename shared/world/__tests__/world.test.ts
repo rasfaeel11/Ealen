@@ -53,6 +53,16 @@ function loadArea(areaId: string): AreaMap {
 }
 
 const maps = Object.fromEntries(Object.keys(AREAS).map((areaId) => [areaId, loadArea(areaId)]));
+
+/**
+ * Os mapas provisórios do Eälen (a clareira, a estrada e as ruínas), que saíram do jogo e ficaram aqui como peças
+ * que exercitam o motor do mundo: luta puxada por quem chega perto, patamar, emboscada, deixas, quem não se fere.
+ */
+function loadFixture(name: string): AreaMap {
+  return parseTiledMap(JSON.parse(readFileSync(new URL(`./fixtures/${name}.tmj`, import.meta.url), "utf8")));
+}
+const fixtures = { clareira: loadFixture("clareira"), estrada: loadFixture("estrada"), ruinas: loadFixture("ruinas") };
+const fixtureProps = Object.fromEntries(Object.entries(fixtures).map(([name, map]) => [name, standAreaProps(map)]));
 /** O terreno de cada área antes dos destrutíveis: é nele que eles têm que caber. */
 const bare = Object.fromEntries(Object.keys(AREAS).map((areaId) => [areaId, loadArea(areaId)]));
 /** Os destrutíveis de cada área, de pé na grade de `maps` — como o jogo a vê ao entrar. */
@@ -250,7 +260,7 @@ for (const [areaId, map] of Object.entries(maps)) {
   };
 
   test("chegar perto de um inimigo puxa o grupo dele inteiro pra luta, na grade da área", () => {
-    const map = maps.estrada;
+    const map = fixtures.estrada;
     const [wolf] = map.enemies;
     const wolfTile = tileOfPixel(map, wolf);
     const playerTile = { x: wolfTile.x - 3, y: wolfTile.y };
@@ -271,7 +281,7 @@ for (const [areaId, map] of Object.entries(maps)) {
   });
 
   test("cobertura e altura vêm das propriedades dos tiles, e a luta no patamar das ruínas anda até o fim", () => {
-    const map = maps.ruinas;
+    const map = fixtures.ruinas;
     const high = map.grid.tiles.filter((tile) => tile.elevation > 0);
     assert.ok(high.length > 0, "as ruínas deveriam ter chão elevado");
     assert.ok(high.every((tile) => !tile.blocksMove));
@@ -291,7 +301,7 @@ for (const [areaId, map] of Object.entries(maps)) {
   });
 
   test("a criatura entra na luta com o que carrega, e o que ela não usou fica pra quem vence", () => {
-    const map = maps.estrada;
+    const map = fixtures.estrada;
     const servo = { ...map.enemies[0], id: "servo", creature: "encounter-servo-enferrujado" };
     const tile = tileOfPixel(map, servo);
     const { encounter } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: { x: tile.x - 3, y: tile.y } }], [servo], 5);
@@ -584,7 +594,7 @@ test("inimigo passivo não percebe ninguém nem pode ser emboscado; o hostil se 
 });
 
 test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda até o fim", () => {
-  const map = maps.estrada;
+  const map = fixtures.estrada;
   const group = map.enemies.filter((candidate) => candidate.group === "lobos");
   const wolfTile = tileOfPixel(map, group[0]);
   const hero: Character = {
@@ -603,7 +613,7 @@ test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda
   assert.equal(aggroedGroup(map, group, playerTile), undefined);
   assert.equal(ambushableGroup(map, group, playerTile), "lobos");
 
-  const { encounter, events } = startAreaEncounter(map, [{ character: hero, tile: playerTile }], group, 3, props.estrada, "enemy");
+  const { encounter, events } = startAreaEncounter(map, [{ character: hero, tile: playerTile }], group, 3, fixtureProps.estrada, "enemy");
   // Quem abre a luta de verdade é o herói: todo lobo que estava na frente dele perdeu a vez.
   assert.equal(encounter.order[encounter.turnIndex], "hero");
   assert.equal(encounter.round, 1);
@@ -731,7 +741,7 @@ test("o roteiro vai pra luta com os nomes do mapa trocados por ids, e sem as dei
 });
 
 test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa", () => {
-  const map = maps.ruinas;
+  const map = fixtures.ruinas;
   const group = map.enemies.filter((candidate) => candidate.group === "sentinela");
   const cues = map.cues.filter((cue) => cue.group === "sentinela");
   const stop = cues.find((cue) => cue.ends === "stop");
@@ -755,7 +765,7 @@ test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa
     [{ character: hero, tile: { x: tile.x + 2, y: tile.y } }],
     group,
     7,
-    props.ruinas,
+    fixtureProps.ruinas,
     undefined,
     fightCues(map, cues, group),
   );
@@ -783,7 +793,7 @@ test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa
 });
 
 test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou para sozinha na rodada 6", () => {
-  const map = maps.ruinas;
+  const map = fixtures.ruinas;
   const group = map.enemies.filter((candidate) => candidate.group === "coletor");
   const cues = map.cues.filter((cue) => cue.group === "coletor");
   const bell = map.props.find((prop) => prop.name === "Sino")!;
@@ -800,7 +810,7 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     currentNodeId: "",
   });
   const fight = (tile: Pos) =>
-    startAreaEncounter(map, [{ character: hero(), tile }], group, 7, standAreaProps(loadArea("ruinas")), undefined, fightCues(map, cues, group));
+    startAreaEncounter(map, [{ character: hero(), tile }], group, 7, standAreaProps(loadFixture("ruinas")), undefined, fightCues(map, cues, group));
   const collector = (encounter: Encounter) => findUnit(encounter, group[0].id)!;
 
   // Colado no sino: quando a vez chega, toca, e a luta acaba vencida com o Coletor inteiro.
@@ -854,7 +864,7 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
   });
   /** A luta com `groupId`, num mapa só dela, com o herói em `tile`. */
   const fight = (groupId: string, tile: Pos, hero: Character, seed = 7) => {
-    const map = loadArea("estrada");
+    const map = loadFixture("estrada");
     const group = map.enemies.filter((candidate) => candidate.group === groupId);
     const cues = map.cues.filter((cue) => cue.group === groupId);
     const started = startAreaEncounter(map, [{ character: hero, tile }], group, seed, standAreaProps(map), undefined, fightCues(map, cues, group));
@@ -874,7 +884,7 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
   };
 
   test("na estrada, os fiscais fecham a ponte de lado a lado enquanto estão de pé nela", () => {
-    const map = loadArea("estrada");
+    const map = loadFixture("estrada");
     standAreaProps(map);
     const fiscais = map.enemies.filter((enemy) => enemy.group === "fiscais");
     assert.equal(fiscais.length, 2);

@@ -154,13 +154,13 @@ test("o resumo diz quem é, onde está e há quanto tempo joga", () => {
   const save = newGame(makeCharacter());
   assert.equal(summarizeSave(save).areaName, "—");
 
-  save.location = { areaId: "clareira", x: 0, y: 0 };
+  save.location = { areaId: "ybytugua", x: 0, y: 0 };
   save.playTimeMs = 2 * 3_600_000 + 5 * 60_000 + 999;
   const summary = summarizeSave(save);
   assert.equal(summary.name, "Herói");
   assert.equal(summary.className, "Luminar");
   assert.equal(summary.level, 3);
-  assert.match(summary.areaName, /^Clareira/);
+  assert.equal(summary.areaName, "Ybytuguá");
   assert.equal(summary.playTime, "2h 05min");
 
   assert.equal(formatPlayTime(0), "0min");

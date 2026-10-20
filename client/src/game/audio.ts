@@ -369,8 +369,11 @@ const TRACKS = {
 
 export type TrackId = keyof typeof TRACKS;
 
-/** A música de cada área (a chave de `AREAS`). Área que não está aqui toca a da clareira. */
-const AREA_MUSIC: Record<string, TrackId> = { clareira: "clareira", estrada: "estrada", ruinas: "ruinas" };
+/**
+ * A música de cada área (a chave de `AREAS`). As faixas têm o nome dos lugares do Eälen, onde nasceram: a calma
+ * fica com a cidade, a tensa com o rio e a floresta, a sombria com os baixios. Área que não está aqui toca a calma.
+ */
+const AREA_MUSIC: Record<string, TrackId> = { ymonha: "estrada", ybytugua: "clareira", baixios: "ruinas", floresta: "estrada" };
 
 export function areaMusic(areaId: string): TrackId {
   return AREA_MUSIC[areaId] ?? "clareira";

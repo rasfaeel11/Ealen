@@ -236,10 +236,8 @@ test("quem luta de perto corre até o alvo pra abrir a luta; quem atira abre de 
   assert.deepEqual(openingStrikes(map, archer, heroTile, ability(archer, "attack"), [wolf]), []);
 });
 
-test("o golpe dado de fora abre a luta na estrada de verdade: o lobo apanha antes da primeira rodada e o grupo dele perde a vez", () => {
-  const map = parseTiledMap(
-    JSON.parse(readFileSync(new URL(`../../../client/public/${AREAS.estrada.map}`, import.meta.url), "utf8")),
-  );
+test("o golpe dado de fora abre a luta numa estrada do Tiled: o lobo apanha antes da primeira rodada e o grupo dele perde a vez", () => {
+  const map = parseTiledMap(JSON.parse(readFileSync(new URL("./fixtures/estrada.tmj", import.meta.url), "utf8")));
   const props = standAreaProps(map);
   const group = map.enemies.filter((candidate) => candidate.group === "lobos");
   const wolfTile = tileOfPixel(map, group[0]);
