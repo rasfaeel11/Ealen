@@ -105,7 +105,7 @@ export interface Ability {
   mana?: number;
   /**
    * Gravada: o texto foi escrito antes, no descanso, num objeto ou num
-   * círculo no chão (ver ../engraving.ts). Na luta só se ativa — sai na hora,
+   * círculo no chão (ver engrave em ../world/field.ts). Na luta só se ativa — sai na hora,
    * paga a mana na ativação — e cada gravação serve uma vez.
    */
   engraved?: boolean;

@@ -1,11 +1,9 @@
 # Jogo — Três na Estrada (título provisório)
 
-Conteúdo do jogo, para ser transferido ao AGENTS.md do repositório do jogo. Não é arquivo do cânone: o que
-aqui virar fato do mundo só entra na história quando o autor aprovar as fichas da §9.
+O autor aprovou tudo em 2026-10-19, e os fatos do mundo estão gravados no repositório da história (`historiav2`,
+em `jogo.md` e nas fichas e referências da §9). Fato novo continua indo pro autor antes de entrar (§1).
 
-Linhas marcadas com [PROPOSTA] foram completadas pelo co-autor e aguardam a aprovação do autor.
-
-> RPG tático pra navegador, de 2 a 4 horas, passado no mundo da série de Karuã, uns 25 anos antes do Livro 1 [PROPOSTA].
+> RPG tático pra navegador, de 2 a 4 horas, passado no mundo da série de Karuã, uns 25 anos antes do Livro 1.
 > Quem joga é **Endyru** jovem, o pai de Karuã. No caminho, forma o grupo com **Jarupã** e **Xanduí**, os pais de Exandy.
 > Phaser 3 + TypeScript, mundo em pixel art, combate em grade travado no próprio mapa.
 >
@@ -55,7 +53,7 @@ O mundo mora no repositório da história (`historiav2`, gerido pelo lore-pack).
   receita absurda que funciona; placa e nome de demônio dizem exatamente o que são.
 - Tema da série: respeitar o tempo, num mundo imediatista. A magia cobra a pressa. **No jogo, a pressa é de
   Endyru**: o rapaz que, adulto, vai passar a vida alertando o filho de que a estrada mata. O jogo mostra de
-  onde vem o alerta [PROPOSTA].
+  onde vem o alerta.
 - O mundo é maior que o grupo: camponeses e barqueiros que vivem pelas estações e pela cheia, cidades que
   mudam de dono.
 - Mostrar, não contar. Ninguém explica ao outro o que os dois já sabem. Sem flashbacks.
@@ -67,20 +65,22 @@ Gente e lugar humanos seguem a língua humana de `alfabeto.md` (tupi-guarani: se
 termina em vogal; lugares em -tyba, -guá, -pe). Demônio, elfo e dragão, cada um na sua. Nome novo confere a
 lista de nomes já usados e vai pro autor antes de entrar.
 
-## 2. Onde se passa: Xerumbetyba antes da unificação [PROPOSTA]
+## 2. Onde se passa: Xerumbetyba antes da unificação
 
 - **Xerumbetyba** (no cânone: reino humano do interior de Yrandupe, vizinho de Tanguratyba, famoso pela maior
   universidade e pelas maiores bibliotecas). No Livro 1 já é um reino só; no tempo do jogo é uma colcha de
-  ducados, senhorios e cidades livres às vésperas da unificação [PROPOSTA].
-- **O Ymonhã**, o rio grande [PROPOSTA]: a espinha da região. Cada senhor dono de uma margem cobra pedágio de
+  ducados, senhorios e cidades livres às vésperas da unificação.
+- **O Ymonhã**, o rio grande: a espinha da região. Cada senhor dono de uma margem cobra pedágio de
   quem desce. Castelo de pedágio, corrente atravessada no rio, ponte fechada.
-- **Bacias como fronteiras** [PROPOSTA]: cada afluente é um senhorio; a floresta e a serra entre duas bacias são
+- **Bacias como fronteiras**: cada afluente é um senhorio; a floresta e a serra entre duas bacias são
   terra de ninguém, onde se contrata aventureiro.
-- **Ybytuguá**, a cidade livre [PROPOSTA]: sem senhor nem exército, com conselho de guildas e dinheiro. Vive do
+- **Ybytuguá**, a cidade livre: sem senhor nem exército, com conselho de guildas e dinheiro. Vive do
   comércio do rio. Por isso contrata gente como o trio.
-- **O ducado de cima** [PROPOSTA]: o senhorio mais forte, rio acima, que vai unificar a região. Nome a criar.
-- **A universidade** já está lá, em outra cidade: é de onde Endyru sai (§3.1).
-- **A unificação** fecha o jogo [PROPOSTA]: a cidade livre se rende ao ducado de cima, e a era dos contratos
+- **O ducado de cima**: o senhorio mais forte, rio acima, que vai unificar a região: **Ymboripe**, hoje a capital
+  de Xerumbetyba. Quem manda é Pytumã; a herdeira, Iraxê (nenhum dos dois aparece no jogo).
+- **A universidade** fica em **Kuatiarape**, cidade livre rio acima de Ybytuguá (que também cai na unificação): é
+  de onde Endyru sai (§3.1).
+- **A unificação** fecha o jogo: a cidade livre se rende ao ducado de cima, e a era dos contratos
   naquela terra acaba.
 - O mapa do jogo é pequeno, como o do Livro 1: um trecho de rio com um castelo de pedágio, a cidade livre, os
   baixios onde mora a criatura, a floresta entre as bacias.
@@ -91,28 +91,28 @@ Protagonista fixo, sem criação de personagem. **O trio se forma no jogo.**
 
 ### 3.1 Endyru — mago, atração e repulsão
 - Humano. Futuro professor da cadeira de atração e repulsão em Itamoguá.
-- Estudante da universidade de Xerumbetyba, sem dinheiro pra terminar: desce o rio atrás de contrato [PROPOSTA].
-- Nível de mago no começo: Página; chega a Círculo no fim do jogo [PROPOSTA]. (Karuã chega ao Círculo aos 13,
+- Estudante da universidade de Xerumbetyba, em Kuatiarape, sem dinheiro pra terminar: desce o rio atrás de contrato.
+- Nível de mago no começo: Página; chega a Círculo no fim do jogo. (Karuã chega ao Círculo aos 13,
   "o mais novo da história": Endyru tem de ser mais velho que isso quando chega lá.)
 - É quem lê: contratos, placas, cartas, mapas.
 - Apressado: quer o dinheiro, o nível e o nome, tudo agora. O jogo cobra isso dele (§6).
 
-### 3.2 Jarupã — espadachim, Gryskar (o Bate-Primeiro) [PROPOSTA]
+### 3.2 Jarupã — espadachim, Gryskar (o Bate-Primeiro)
 - Humano, canastrão, nada culto. Bate primeiro e pergunta depois.
-- Nível de aura baixo (Punho ou Fio) [PROPOSTA].
-- Já anda com Xanduí quando o jogo começa; os dois são dupla de escolta de barco [PROPOSTA].
+- Nível de aura baixo (Punho ou Fio).
+- Já anda com Xanduí quando o jogo começa; os dois são dupla de escolta de barco.
 
-### 3.3 Xanduí — espadachim, Ipojy (a Espera) [PROPOSTA]
+### 3.3 Xanduí — espadachim, Ipojy (a Espera)
 - Humana, canastrona, nada culta. Não sabe ler e nunca disse.
-- Da Ipojy: é ela, anos depois, quem ensina Exandy [PROPOSTA]. O voto: nunca dá o primeiro golpe.
-- **Por que o trio existe** [PROPOSTA]: o contrato de Ybytuguá exige que alguém do grupo saiba ler, para assinar
+- Da Ipojy: é ela, anos depois, quem ensina Exandy. O voto: nunca dá o primeiro golpe.
+- **Por que o trio existe**: o contrato de Ybytuguá exige que alguém do grupo saiba ler, para assinar
   e para o relatório ao conselho. Jarupã não lê; Xanduí diz que "a letra dela não serve pra conselho" e é ela
   quem insiste em levar o estudante. Ninguém nunca diz por quê.
 - **Como o segredo vive no jogo:** pela forma, nunca pela fala. Ela pede que Endyru leia "porque ele lê
   bonito", segura um aviso de cabeça pra baixo uma vez, decora o que ouve e repete palavra por palavra. O
   jogador atento percebe; ninguém no jogo percebe. É ironia pra quem leu o cap. 13 do Livro 1.
 
-### 3.4 Oryndu — barqueiro [PROPOSTA]
+### 3.4 Oryndu — barqueiro
 - Humano, barqueiro do Ymonhã. Conhece a cheia e os baixios, e as regras da gente do rio (§5.2).
 - Acompanha o grupo sem lutar: é o apoio no lugar de Gil. Apoio: **Ler a água** — mostra onde a criatura vai
   emergir e o que ela vai atacar (o `annotate` do Eälen, com outra cara).
@@ -128,19 +128,19 @@ O motor é o do Eälen (§7). O que muda é o que cada peça É neste mundo.
 | Ordens destraváveis | **Saem.** Cada um tem o que é: Endyru o conceito, os outros a escola de espada | `magia` §3, §5.5 |
 | Estilos Maré / Viés / Baluarte | **Escolas Gryskar / Tsvirana / Ipojy** | `magia` §5.5 |
 | Triângulo incompleto (Baluarte e Maré neutros) | **Triângulo fechado**: Ipojy vence Gryskar, Gryskar vence Tsvirana, Tsvirana vence Ipojy | `magia` §5.5 |
-| Traço de cada estilo | Gryskar = a Onda (pressão no mesmo alvo); Tsvirana = a Rachadura (pune quem repete); Ipojy = contra-ataque em quem a ataca e erra [PROPOSTA] | `ipojy`, `gryskar`, `tsvirana` |
+| Traço de cada estilo | Gryskar = a Onda (pressão no mesmo alvo); Tsvirana = a Rachadura (pune quem repete); Ipojy = contra-ataque em quem a ataca e erra | `ipojy`, `gryskar`, `tsvirana` |
 | Grau do estilo (só aparece) | **Proficiência 1 a 7 por escola**, nunca acima do nível de aura; golpe-selo a partir do 4, só por iniciação (o trio não chega lá) | `magia` §5.6 |
 | Fôlego | **Fôlego** pra técnica de espadachim, **Mana** pra quem conjura | `magia` §4, §5.1 |
 | Golpe pesado custa Fôlego | **Mana gasta de uma vez cobra do corpo**: passou do limite num turno, vem a marca | `magia` §4.1, §4.2 |
 | `afflict` (Braço ferido) | **Marca da mana exaurida**: atração e repulsão dá sangue pelo nariz e tremor (acerto menor). A leve passa com descanso; a enorme não acontece com o trio | `magia` §4.2 |
-| Habilidade usada na hora | **Recitada**: leva tempo. Declara num turno, sai no seguinte; apanhar no meio pode quebrar [PROPOSTA] | `magia` §2.5 |
+| Habilidade usada na hora | **Recitada**: leva tempo. Declara num turno, sai no seguinte; apanhar no meio pode quebrar | `magia` §2.5 |
 | — | **Gravada**: preparada fora de luta, no descanso, num objeto ou círculo. Na luta só se ativa, sem tempo de recitar. Cada texto gravado serve a uma coisa só | `magia` §2.5 |
 | Golpe de abertura | **Círculo gravado no chão**: a emboscada do mago é preparar o terreno antes | `magia` §2.5 |
 | Mania `retaliates` do fiscal | **Voto da Ipojy**: quem é da Espera nunca abre a luta, não embosca e não dá golpe de abertura | `ipojy` |
 | Cura do Luminar | **Cura**: magia de primeiros socorros, separada dos conceitos. Acelera, e **quem paga é o paciente** (Fôlego, fome) | `magia` §4.3 |
 | Kits por Ordem | **Repertório por nível**: atração e repulsão no Círculo arremessa, desarma, desvia projétil, puxa-se até um ponto (o puxão e o empurrão do Guardião já fazem isso) | `magia` §3.5 |
 | Curva de poder | **Nos níveis baixos o espadachim amassa o mago.** Endyru é controle e preparo; quem mata são os dois | `magia` §5.3, §7.3 |
-| Atributos Tirán (Dain, Eir...) | Nomes simples, em português: Força, Fator, Vigor, Olho, Couro, Lábia, Saber [PROPOSTA] | — |
+| Atributos Tirán (Dain, Eir...) | Nomes simples, em português: Força, Fator, Vigor, Olho, Couro, Lábia, Saber | — |
 | Povos de Eälen | Humanos, demônios, elfos, dragões, meio-elfos | `biblia` §3.4 |
 | Gil, o apoio que anota | Oryndu, o barqueiro que lê a água (§3.4) | — |
 | Relógio "Luz do dia" | **Relógio da cheia**: o rio sobe com a estação, e com ele a criatura (§5) | camponeses pelas estações |
@@ -149,7 +149,7 @@ O motor é o do Eälen (§7). O que muda é o que cada peça É neste mundo.
 | Equipamento | Níveis do cânone: Ferro-cru, Temperado, Gravado, Recitado. Estelar e Dracônico ficam fora do alcance do trio | `magia` §7.4 |
 | Dinheiro | Cobre e prata | — |
 
-## 5. A criatura: o Ykuruã [PROPOSTA inteira]
+## 5. A criatura: o Ykuruã
 
 A primeira criatura do bestiário do mundo.
 
@@ -162,7 +162,7 @@ A primeira criatura do bestiário do mundo.
 - Na água se cura e é rápido. Na terra é lento, pesado, e o couro seca e racha.
 - Animal, não monstro de mito: não tem mente, não guarda nada, não é pista de nada. Não responde a vestígio.
 - Era ressacada: na era de ouro, um espadachim sozinho o matava. Hoje uma cidade precisa contratar grupo.
-- Nome: humano, Ykuruã. Na língua dos portos, **o Bebe-Cheia** [PROPOSTA]. Alternativas: Ypuãma, Mbykuruã.
+- Nome: humano, Ykuruã. Na língua dos portos, **o Bebe-Cheia**. Alternativas: Ypuãma, Mbykuruã.
 
 ### 5.2 O que a gente do rio sabe
 - "Na cheia, ninguém conjura no rio." Barqueiro usa Verso pra puxar a rede e mais nada.
@@ -174,7 +174,7 @@ A primeira criatura do bestiário do mundo.
 - **Na água**: cura a cada turno, se esconde (só a ponta das costas à vista), escolhe onde emergir. Bater nele
   ali é quase inútil.
 - **Atraído pela pressa**: toda vez que alguém passa do limite de mana num turno (a mesma conta que dá a marca),
-  ele vai pra cima de quem conjurou e ganha um turno a mais [PROPOSTA]. Peça nova do motor: uma deixa
+  ele vai pra cima de quem conjurou e ganha um turno a mais. Peça nova do motor: uma deixa
   `when: burst`.
 - **Como se vence**: tirando-o da água. Atração e repulsão no Círculo puxa, mas não puxa um bicho desse
   tamanho de uma vez sem passar do limite. O jeito é puxar aos poucos, turno após turno, com Versos pequenos ou
@@ -184,7 +184,7 @@ A primeira criatura do bestiário do mundo.
 - No bestiário do motor: grande (2x2 se o motor ganhar unidade grande; senão 1 quadrado e uma área de alcance
   maior), Baluarte de criatura com Muralha alta na água e baixa na terra.
 
-## 6. A história do jogo [PROPOSTA; o autor decidiu os pontos da abertura do arquivo, o co-autor o resto]
+## 6. A história do jogo
 
 Três atos, 2 a 4 horas, umas 10 a 15 lutas e dois chefes (o castelão do pedágio e o Ykuruã).
 
@@ -229,7 +229,7 @@ Três atos, 2 a 4 horas, umas 10 a 15 lutas e dois chefes (o castelão do pedág
 - O Ykuruã morre. O comércio volta. Uma semana depois, Ybytuguá assina mesmo assim com o ducado de cima: a
   cidade livre deixa de ser livre, e o trio não pode fazer nada sobre isso.
 - Endyru volta pra universidade com o pagamento, e sai do jogo pela cátedra. Jarupã e Xanduí seguem pela
-  estrada; ele dá a ela, de presente, alguma coisa escrita que ela guarda sem ler [PROPOSTA].
+  estrada; ele dá a ela, de presente, alguma coisa escrita que ela guarda sem ler.
 - Nada de epílogo explicando o futuro. Quem leu os livros sabe.
 
 ## 7. A base técnica
@@ -312,8 +312,8 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   mesmo nível). Saíram o perfil, `unlock_order`, `ClassSelect`, os retratos das Ordens e o prólogo do Eälen (que
   mostrava a Ruptura, vestígio da singularidade). O título virou "Três na Estrada". As Ordens do Eälen ficam só nas
   criaturas provisórias. Na clareira, o trio e Oryndu não falam: o texto deles espera o roteiro (task 11).
-- **8. O Ykuruã.** Entrou no bestiário (`encounter-ykurua`) com o que o cânone diz dele. O chão ganhou água (`water`
-  no tileset do Tiled, `w` nos desenhos de teste). Bicho de rio (`river`) na água fica Submerso — rápido, Muralha
+- **8. O Ykuruã.** Entrou no bestiário (`encounter-ykurua`) com o que o cânone diz dele. O chão ganhou água (a propriedade
+  `water` de um tile do tileset do Tiled, `w` nos desenhos de teste). Bicho de rio (`river`) na água fica Submerso — rápido, Muralha
   alta (2 do Baluarte + 6) e se refaz 6 por turno —, e em seco fica Em seco — lento, couro rachado, Muralha zero; a
   troca acontece sempre que ele muda de quadrado, inclusive puxado. É pesado (`heft` 1): cada puxão o tira um
   quadrado a menos, então ele sai da água aos poucos. A cada `manaBurst` de alguém do outro lado, ele ganha um
@@ -321,19 +321,18 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   (`prey`). A deixa `when: burst` dispara na primeira vez. A unidade grande (2x2) não coube: pede ocupação de
   vários quadrados em toda a grade, e ficou de fora. Ele ainda não está em nenhum mapa: os baixios são da task 10.
 
-## 9. O que precisa virar cânone na história
+## 9. Onde isto está no cânone
 
-Nada disto foi gravado. Com a aprovação do autor, o co-autor grava:
+Gravado no repositório da história com a aprovação de 2026-10-19:
 
-- **Referência nova `bestiario`** (`referencias/bestiario.md`), com o Ykuruã como §1. Criatura não tem tipo de
-  ficha, e a referência guarda o bestiário inteiro por tema, como a bíblia §7 pede.
-- **Fichas novas:** `ymonha` (lugar), `ybytugua` (lugar), `oryndu` (personagem).
-- **Fichas que mudam:** `xerumbetyba` (antes da unificação, a colcha de ducados e cidades livres; unificada
-  uns 25 anos antes do Livro 1), `endyru` (estudou na universidade de Xerumbetyba; a estrada do jogo e a morte
-  de Oryndu como origem do alerta ao filho), `jarupa` (Gryskar), `xandui` (Ipojy; ensina Exandy).
-- **`alfabeto.md`:** Ymonhã, Ybytuguá, Ykuruã, Bebe-Cheia e Oryndu na lista de nomes.
-- **`estado.md`:** a decisão do jogo em "Decisões recentes".
-- Ainda sem nome: o ducado de cima.
+- `referencias/bestiario.md` §1: o Ykuruã.
+- Fichas novas: `ymonha`, `ybytugua`, `oryndu`, `ymboripe`, `kuatiarape`.
+- Fichas que mudaram: `xerumbetyba`, `endyru`, `jarupa`, `xandui`.
+- `alfabeto.md`, `estado.md` e a bíblia (nomes aprovados).
+- A `mesa-dos-contratos`: o balcão onde o contrato de Ybytuguá se registra (nome da companhia, nível, fiança).
+
+O que o jogo ainda quiser e não estiver lá (nome de gente, criatura nova) vai como proposta, e até a aprovação
+o jogo usa o papel no lugar do nome: o castelão, o mercador, a conselheira, o ferreiro.
 
 ## 10. Delegação ao Antigravity
 

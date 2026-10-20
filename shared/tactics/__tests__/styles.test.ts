@@ -188,6 +188,8 @@ test("o motor anota o que cada um faz com a ação: repetir, variar e bater em s
     makeUnit("E", "enemy", at("E")),
   ]);
   const hero = findUnit(encounter, "A")!;
+  // Lido por uma função: o deepEqual estreita o tipo de `hero.habit` e o TypeScript não vê o turno mudá-lo.
+  const habit = () => hero.habit!;
   const turn = (abilityId?: string) => {
     if (abilityId) run(encounter, { type: "ability", unitId: "A", abilityId, target: hero.pos });
     pass(encounter);
@@ -197,12 +199,12 @@ test("o motor anota o que cada um faz com a ação: repetir, variar e bater em s
   turn("guardiao.defend");
   assert.deepEqual(hero.habit, { last: "guardiao.defend", repeated: false, attackTurns: 0 });
   turn("guardiao.defend");
-  assert.equal(hero.habit!.repeated, true);
+  assert.equal(habit().repeated, true);
   // Um turno sem ação não repete nada, e quebra a sequência.
   turn();
   assert.deepEqual(hero.habit, { last: undefined, repeated: false, attackTurns: 0 });
   turn("guardiao.defend");
-  assert.equal(hero.habit!.repeated, false);
+  assert.equal(habit().repeated, false);
 
   // Golpe atrás de golpe conta os turnos seguidos batendo; a guarda zera.
   run(encounter, { type: "move", unitId: "A", to: { x: 3, y: 0 } });
@@ -214,10 +216,10 @@ test("o motor anota o que cada um faz com a ação: repetir, variar e bater em s
   findUnit(encounter, "E")!.currentHp = findUnit(encounter, "E")!.maxHp = 9000;
   strike();
   strike();
-  assert.equal(hero.habit!.attackTurns, 2);
-  assert.equal(hero.habit!.repeated, true);
+  assert.equal(habit().attackTurns, 2);
+  assert.equal(habit().repeated, true);
   turn("guardiao.defend");
-  assert.equal(hero.habit!.attackTurns, 0);
+  assert.equal(habit().attackTurns, 0);
 });
 
 test("Muralha: o Baluarte de criatura tira um tanto fixo de cada golpe, depois da armadura", () => {

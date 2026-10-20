@@ -52,6 +52,7 @@ function room(side = 14): AreaMap {
     triggers: [],
     cues: [],
     props: [],
+    occupied: [],
   };
 }
 
