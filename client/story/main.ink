@@ -20,6 +20,9 @@ EXTERNAL check(name, difficulty)   // rola um teste agora, no meio do texto: {ch
 EXTERNAL passed()           // passou o teste da escolha? (escolha marcada com # check: labia 13)
 EXTERNAL give_item(id)
 EXTERNAL take_item(id)      // tira um da mochila; devolve se havia: {take_item("x"): ... | ...}
+EXTERNAL money(coin)        // money("cobre"): quanto a bolsa tem. As moedas são "cobre" e "prata", e não se trocam
+EXTERNAL pay(coin, amount)  // pay("prata", 2): paga se tem tudo e devolve se pagou; sem o bastante, não tira nada
+EXTERNAL earn(coin, amount) // earn("cobre", 30): põe na bolsa
 EXTERNAL grant_xp(amount)
 EXTERNAL start_fight(group) // start_fight("fiapo"): acabada a conversa, luta com esse grupo DESTA área
 EXTERNAL travel(area, spawn) // travel("ruinas", "from_clareira"): acabada a conversa, o personagem vai pra lá

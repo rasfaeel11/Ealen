@@ -32,6 +32,8 @@ export interface Character {
   mageLevel?: number;
   /** Ausente = personagem ainda não tem mochila inicializada. */
   inventory?: Inventory<ConsumableItem>;
+  /** O dinheiro de quem leva a mochila, em cobre e em prata (ver ../purse.ts). Ausente = bolsa vazia. */
+  purse?: Partial<Record<"cobre" | "prata", number>>;
   /** O que veste: arma, armadura e acessório (ver ../equipment.ts). Lugar ausente = vazio. */
   equipment?: Equipment;
   /**

@@ -30,6 +30,9 @@ EXTERNAL check(name, difficulty)
 EXTERNAL passed()
 EXTERNAL give_item(id)
 EXTERNAL take_item(id)
+EXTERNAL money(coin)
+EXTERNAL pay(coin, amount)
+EXTERNAL earn(coin, amount)
 EXTERNAL grant_xp(amount)
 EXTERNAL start_fight(group)
 EXTERNAL travel(area, spawn)
@@ -683,4 +686,34 @@ test("mage_rise sobe Endyru de nível de mago (só sobe) e anuncia o que ele apr
   // Chamado de novo no mesmo nível, ou pra baixo, não faz nada.
   assert.deepEqual(events, [{ type: "mageRose", level: "Círculo", learned: ["Desarmar", "Arremesso"] }]);
   assert.equal(host.character.mageLevel, 4);
+});
+
+const TOLL = compile(`
+=== pedagio ===
+~ earn("cobre", 10)
+{pay("prata", 1): Pagou em prata. | Não tem prata.}
+{pay("cobre", 12): Pagou doze. | Não tem doze.}
+{pay("cobre", 8): Pagou oito.}
+Sobrou {money("cobre")}.
+-> END
+
+=== moeda_errada ===
+~ earn("ouro", 1)
+-> END
+`);
+
+test("a bolsa: earn põe, pay só tira se tem tudo, money conta; cobre e prata não se trocam", () => {
+  const host = makeHost();
+  const step = new StoryRunner(TOLL, host).start("pedagio");
+
+  assert.deepEqual(lines(step.beats), ["Não tem prata.", "Não tem doze.", "Pagou oito.", "Sobrou 2."]);
+  assert.deepEqual(
+    step.beats.flatMap((beat) => (beat.kind === "event" ? [beat.event] : [])),
+    [
+      { type: "coins", coin: "cobre", amount: 10, left: 10 },
+      { type: "coins", coin: "cobre", amount: -8, left: 2 },
+    ],
+  );
+  assert.deepEqual(host.character.purse, { cobre: 2 });
+  assert.throws(() => new StoryRunner(TOLL, makeHost()).start("moeda_errada"), /moeda que não existe/);
 });

@@ -76,7 +76,7 @@ function makeHost(attribute: number, seed: number): StoryHost {
 }
 
 /** O que o trecho de uma deixa que NÃO encerra a luta não pode fazer: mexer na ficha ou no grupo. */
-const MID_FIGHT_FORBIDDEN: ReadonlySet<string> = new Set(["item", "itemTaken", "xp", "joined", "left"]);
+const MID_FIGHT_FORBIDDEN: ReadonlySet<string> = new Set(["item", "itemTaken", "coins", "xp", "joined", "left", "mageRose"]);
 
 /** Quantas escolhas seguidas uma conversa aguenta antes de ser considerada um laço sem saída. */
 const MAX_DEPTH = 6;

@@ -3,6 +3,7 @@ import { gearedAttributes } from "../equipment";
 import { findItem, giveItem, itemCount, takeItem, type GameItem } from "../inventoryEffects";
 import { applyXpGain } from "../leveling";
 import { MAGE_LEVELS, mageLevelName } from "../mana";
+import { coinsOf, earnCoins, isCoin, payCoins, type Coin } from "../purse";
 import { HERO_ID, castId, isInParty, joinParty, leaveParty, magicOf, presentCompanions, type PartyMember } from "../party";
 import { learnedAtMage } from "../tactics/abilities";
 import { STATUSES, isStatusId, passesWithRest, type StatusId } from "../tactics/statuses";
@@ -60,6 +61,9 @@ import {
  *   give_item("id")     põe um item na mochila
  *   take_item("id")     tira um da mochila; diz se havia o que tirar
  *   grant_xp(30)
+ *   money("cobre")           quantas moedas desse metal a bolsa tem ("cobre" ou "prata")
+ *   pay("prata", 2)          tira da bolsa, se tem tudo; diz se pagou (não tira nada se não tem)
+ *   earn("cobre", 30)        põe na bolsa
  *   mage_rise(4)             sobe o protagonista a esse nível de mago (4 é o
  *                            Círculo); só sobe. mage_level() diz o de agora
  *   start_fight("grupo")     quando a conversa acabar, luta com esse grupo
@@ -117,6 +121,8 @@ export type StoryEvent =
   /** `kept` falso = a mochila estava cheia e o item se perdeu. */
   | { type: "item"; item: GameItem; kept: boolean }
   | { type: "itemTaken"; item: GameItem }
+  /** Moedas que entraram (`amount` positivo) ou saíram da bolsa, e quantas ficaram (ver ../purse.ts). */
+  | { type: "coins"; coin: Coin; amount: number; left: number }
   | { type: "xp"; amount: number; levelUp: LevelUpResult }
   /** O protagonista chegou a um nível de mago novo (`level` é o nome dele, "Círculo") e aprendeu `learned`. */
   | { type: "mageRose"; level: string; learned: string[] }
@@ -240,6 +246,7 @@ export class StoryRunner {
     story.BindExternalFunction("level", () => host.character.level, true);
     story.BindExternalFunction("mage_level", () => magicOf(host.character)?.level ?? 0, true);
     story.BindExternalFunction("has_item", (id: string) => itemCount(host.character, id) > 0, true);
+    story.BindExternalFunction("money", (coin: string) => coinsOf(host.character, this.coin(coin)), true);
     story.BindExternalFunction("defeated", (key: string) => host.isDefeated(key), true);
     story.BindExternalFunction("passed", () => this.lastCheckPassed, true);
     story.BindExternalFunction("in_party", (key: string) => isInParty(host.companions, String(key)), true);
@@ -262,6 +269,17 @@ export class StoryRunner {
       if (!takeItem(host.character, id)) return false;
       this.pending.push({ type: "itemTaken", item });
       return true;
+    });
+    story.BindExternalFunction("pay", (coin: string, amount: number) => {
+      const which = this.coin(coin);
+      if (!payCoins(host.character, which, Number(amount))) return false;
+      this.pending.push({ type: "coins", coin: which, amount: -Math.floor(Number(amount)), left: coinsOf(host.character, which) });
+      return true;
+    });
+    story.BindExternalFunction("earn", (coin: string, amount: number) => {
+      const which = this.coin(coin);
+      const left = earnCoins(host.character, which, Number(amount));
+      this.pending.push({ type: "coins", coin: which, amount: Math.floor(Number(amount)), left });
     });
     story.BindExternalFunction("grant_xp", (amount: number) => {
       // O grupo inteiro aprende junto; o que a caixa anuncia é o que houve com o personagem.
@@ -420,6 +438,12 @@ export class StoryRunner {
   /** Muda uma variável que a história declara (com VAR). É como o jogo conta algo a ela. */
   setFlag(name: string, value: boolean | number | string): void {
     this.story.variablesState.$(name, value);
+  }
+
+  /** A moeda de que o texto fala em `money`, `pay` e `earn`. Outra que não cobre ou prata é erro de quem escreveu. */
+  private coin(name: unknown): Coin {
+    if (!isCoin(name)) throw new Error(`A história fala de uma moeda que não existe: "${String(name)}"`);
+    return name;
   }
 
   /** De quem o texto fala em `afflict` e `cure`: o id da ficha e o nome. Quem não é do elenco é erro de quem escreveu. */

@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import {
+  describePurse,
   fights,
   usableOutside,
   type Character,
@@ -130,7 +131,7 @@ export class BagPanel {
   private listItems(): void {
     const inventory = this.host.owner.inventory;
     const slots = [...(inventory?.slots ?? [])].sort((a, b) => a.slotIndex - b.slotIndex);
-    this.title.setText(`MOCHILA  ${slots.length}/${inventory?.maxSlots ?? 0}`);
+    this.title.setText(`MOCHILA  ${slots.length}/${inventory?.maxSlots ?? 0}  ·  bolsa: ${describePurse(this.host.owner)}`);
     if (slots.length === 0) this.detail.setText("Nada na mochila.\n\nO que os vencidos carregavam sem usar fica pra quem vence.");
 
     this.setMenu(

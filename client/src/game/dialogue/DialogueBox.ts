@@ -47,6 +47,10 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
           : `+${event.amount} de XP.`,
         color: TEXT_COLORS.goldBright,
       };
+    case "coins":
+      return event.amount >= 0
+        ? { text: `Recebeu ${event.amount} de ${event.coin}. Na bolsa: ${event.left}.`, color: TEXT_COLORS.item }
+        : { text: `Pagou ${-event.amount} de ${event.coin}. Na bolsa: ${event.left}.`, color: TEXT_COLORS.item };
     case "mageRose":
       return {
         text: `Endyru chegou ao .`,

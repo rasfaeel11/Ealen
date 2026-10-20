@@ -327,6 +327,8 @@ function isCharacter(value: unknown): value is Character {
     // A mana e as gravações também: quem não conjura não tem nenhuma das duas (ver ../mana.ts e ../world/field.ts).
     (value.mana === undefined || isNumber(value.mana)) &&
     (value.mageLevel === undefined || isNumber(value.mageLevel)) &&
+    // A bolsa: de antes de o dinheiro existir, vazia (ver ../purse.ts).
+    (value.purse === undefined || (isObject(value.purse) && Object.values(value.purse).every(isNumber))) &&
     (value.engraved === undefined || (Array.isArray(value.engraved) && value.engraved.every((id) => typeof id === "string"))) &&
     isObject(attributes) &&
     ATTRIBUTE_KEYS.every((key) => isNumber(attributes[key])) &&
