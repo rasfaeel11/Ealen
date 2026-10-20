@@ -1,5 +1,6 @@
 import { addItemToInventory } from "../inventoryEffects";
 import type { AiQuirks } from "../tactics/types";
+import type { UnitPlacement } from "../tactics/units";
 import type { BestiaryEntry } from "../types/bestiary";
 import type { Character } from "../types/character";
 import { findItemTemplate } from "./items";
@@ -21,6 +22,40 @@ import { findItemTemplate } from "./items";
  * veste: `template.equipment` é a arma e a armadura com que luta.
  */
 export const BESTIARY: Record<string, BestiaryEntry> = {
+  // O Ykuruã, o Bebe-Cheia: a primeira criatura do bestiário do mundo (`referencias/bestiario.md` §1 no
+  // repositório da história). Animal, não Princípio: não tem `principle`. Os números e os nomes dos golpes são
+  // provisórios; a classe é só de onde ele tira o golpe de corpo (bicho não tem escola de espada).
+  "encounter-ykurua": {
+    // Na água se cura e é rápido, na terra seca e racha (ver soak em ../tactics/engine.ts); sente mana gasta de
+    // uma vez e vem atrás de quem a gastou; e é grande demais pra se puxar de uma vez.
+    river: true,
+    heft: 1,
+    drawnToMana: true,
+    style: { id: "baluarte", grade: 1 },
+    glyph: "≈",
+    summary: "Bicho de rio, anfíbio, do tamanho de um barco de carga. Na língua dos portos, o Bebe-Cheia.",
+    lore: "Couro grosso como casca de árvore velha, coberto de lodo e conchas; boca larga, olhos pequenos, quase cego. Dorme enterrado no lodo dos baixios a maior parte do ano e acorda com a cheia. Sente mana gasta de uma vez e vem até onde ela bateu.",
+    // Animal: vai pra cima, sem medo e sem pensar.
+    ai: { aggression: 1.3, caution: 0.4 },
+    drops: [],
+    template: {
+      id: "enemy-ykurua",
+      name: "Ykuruã",
+      race: "bicho",
+      characterClass: "espadachim",
+      level: 5,
+      xp: 0,
+      attributes: { dain: 9, eir: 1, nath: 12, il: 3, or: 8, len: 1, ul: 1 },
+      currentHp: 90,
+      maxHp: 90,
+      currentNodeId: "",
+      arts: {
+        attack: "Bocada",
+        heavy_attack: "Investida",
+      },
+    },
+  },
+
   "encounter-fiapo-de-ruido": {
     glyph: "〰",
     principle: "ealen",
@@ -376,6 +411,26 @@ export function spawnCreature(entry: BestiaryEntry): Character {
     if (item) addItemToInventory(character, item);
   }
   return character;
+}
+
+/**
+ * Como a criatura `entry` entra numa luta (ver UnitPlacement em
+ * ../tactics/units.ts): os pesos e as manias da IA, a escola ou o Baluarte, o
+ * que ela é no corpo (sem vida, bicho de rio, pesada, atraída pela mana). Falta
+ * só o lado, o quadrado e o id, que são de quem a põe ali. `heroId` é quem faz
+ * o papel do protagonista nas manias (ver creatureQuirks).
+ */
+export function creaturePlacement(entry: BestiaryEntry, heroId: string): Omit<UnitPlacement, "team" | "pos" | "id"> {
+  return {
+    ai: entry.ai,
+    invulnerable: entry.invulnerable,
+    style: entry.style,
+    aura: entry.aura,
+    quirks: creatureQuirks(entry, heroId),
+    river: entry.river,
+    heft: entry.heft,
+    drawnToMana: entry.drawnToMana,
+  };
 }
 
 /**

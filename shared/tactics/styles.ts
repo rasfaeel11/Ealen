@@ -143,7 +143,12 @@ export function counters(unit: Pick<Unit, "style">): boolean {
   return template(unit.style)?.counter === true;
 }
 
-/** MURALHA: quanto `target` tira de cada golpe que recebe, depois da armadura. */
+/**
+ * MURALHA: quanto `target` tira de cada golpe que recebe, depois da armadura —
+ * a do Baluarte mais o que as condições dele somam (`wall`: alta na água, baixa
+ * em seco, no bicho de rio). Nunca abaixo de zero.
+ */
 export function styleReduction(target: Unit): number {
-  return template(target.style)?.damageReduction ?? 0;
+  const walls = target.statuses.reduce((sum, status) => sum + (status.wall ?? 0), 0);
+  return Math.max(0, (template(target.style)?.damageReduction ?? 0) + walls);
 }

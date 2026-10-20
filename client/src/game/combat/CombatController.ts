@@ -42,6 +42,7 @@ import {
   type Encounter,
   type PixelPos,
   type Pos,
+  type StatusId,
   type StatusTemplate,
   type Supporter,
   type SurfaceId,
@@ -803,6 +804,14 @@ export class CombatController {
         return;
       }
 
+      case "manaDrawn":
+        // O bicho sentiu a mana e vem: o turno a mais dele vem quando a vez de quem age acabar.
+        sfx("notice");
+        this.floatOver(event.unit, "Sentiu a mana", TEXT_COLORS.danger, -30, 20);
+        this.hud.log(`${this.unit(event.unit).name} sente a mana de ${this.unit(event.caster).name} e vem atrás.`);
+        await this.wait(240);
+        return;
+
       case "manaBurst":
         // Mana demais de uma vez: o corpo cobra na hora. A marca vem logo depois, como condição.
         sfx("sting");
@@ -832,9 +841,15 @@ export class CombatController {
         const actor = this.actor(event.unit);
         // O dano que vem agora é da condição: ninguém bateu, ninguém recua de ninguém.
         this.blow = {};
-        sfx("sting");
-        this.hud.log(`${this.unit(event.unit).name} sofre por estar ${event.name.toLowerCase()}.`);
-        this.floatOver(event.unit, event.name, TEXT_COLORS.danger, -22, 20);
+        // A condição que fere (Decaindo) ou a que refaz (Submerso, o bicho de rio na água).
+        const mends = (STATUSES[event.statusId as StatusId] as StatusTemplate | undefined)?.regen !== undefined;
+        sfx(mends ? "heal" : "sting");
+        this.hud.log(
+          mends
+            ? `${this.unit(event.unit).name} se refaz, ${event.name.toLowerCase()}.`
+            : `${this.unit(event.unit).name} sofre por estar ${event.name.toLowerCase()}.`,
+        );
+        this.floatOver(event.unit, event.name, mends ? TEXT_COLORS.goldBright : TEXT_COLORS.danger, -22, 20);
         if (actor) this.ring(actor.pos, COLORS.guard);
         return;
       }

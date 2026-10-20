@@ -86,6 +86,7 @@ export interface RaceInfo {
  */
 export const RACE_INFO: Record<Race, RaceInfo> = {
   humano: { name: "Humano", homeland: "Yrandupe" },
+  bicho: { name: "Bicho" },
   althirim: {
     name: "Althirim",
     homeland: "Planaltos altos e secos, longe de tudo",

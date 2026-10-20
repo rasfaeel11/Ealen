@@ -28,6 +28,10 @@ export interface StatusTemplate {
   damageTaken?: number;
   /** Fere o portador no começo de cada turno dele em que está ativa, sem ataque, armadura nem guarda. */
   harm?: Dice;
+  /** Cura o portador desse tanto no começo de cada turno dele em que está ativa (o bicho de rio na água). */
+  regen?: number;
+  /** Somado à Muralha do portador: o tanto fixo que sai de cada golpe que ele recebe, depois da armadura (ver ./styles.ts). */
+  wall?: number;
   /** Somado aos quadrados de movimento do portador em cada turno (negativo = passo preso; o movimento nunca fica abaixo de zero). */
   speed?: number;
   /** Nada desloca o portador: empurrão e puxão não o tiram do lugar. */
@@ -69,6 +73,11 @@ export const STATUSES = {
   surprised: { id: "surprised", name: "Surpreso", skipsTurn: true },
   /** A marca da mana de atração e repulsão (ver ../mana.ts): sangue pelo nariz e tremor na mão. Passa com o descanso. */
   bloodied: { id: "bloodied", name: "Sangue e tremor", toHit: -2, untilRest: true },
+  // --- O bicho de rio na água e na terra (ver soak em ./engine.ts): quem as põe e tira é o chão. ---
+  /** Na água: só a ponta das costas à vista. Rápido, a Muralha alta, e se refaz a cada turno. */
+  submerged: { id: "submerged", name: "Submerso", speed: 2, wall: 6, regen: 6 },
+  /** Fora d'água: o couro seca e racha. Lento, e a Muralha quase não segura. */
+  beached: { id: "beached", name: "Em seco", speed: -3, wall: -2, damageTaken: 2 },
   /** O que a cura deixa em quem a recebe (ver HEAL_PER_BREATH em ../breath.ts): o corpo queimou o que tinha, e a próxima cura até o descanso custa o dobro. */
   hungry: { id: "hungry", name: "Fome", hunger: true, untilRest: true },
 

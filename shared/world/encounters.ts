@@ -1,6 +1,6 @@
 import { addItemToInventory, findItem, giveItem, type GameItem } from "../inventoryEffects";
 import { applyXpGain, xpForEnemy } from "../leveling";
-import { creatureQuirks, findBestiaryEntry, spawnCreature } from "../mock/bestiary";
+import { creaturePlacement, findBestiaryEntry, spawnCreature } from "../mock/bestiary";
 import { findItemTemplate } from "../mock/items";
 import { startEncounter, type Opening } from "../tactics/engine";
 import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "../tactics/grid";
@@ -194,6 +194,7 @@ export function fightCues(
     switch (when.kind) {
       case "round":
       case "defeat":
+      case "burst":
         return cue(when);
       case "down": {
         const unit = cueUnit(when.who, enemies);
@@ -257,11 +258,7 @@ export function startAreaEncounter(
         team: "enemy",
         pos: tileOfPixel(map, enemy),
         id: enemy.id,
-        ai: entry.ai,
-        invulnerable: entry.invulnerable,
-        style: entry.style,
-        aura: entry.aura,
-        quirks: creatureQuirks(entry, HERO_ID),
+        ...creaturePlacement(entry, HERO_ID),
       }),
     );
   }

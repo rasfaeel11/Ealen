@@ -21,8 +21,8 @@ export interface BestiaryEntry {
   template: Character;
   /** Símbolo exibido no lugar do retrato da criatura na tela de combate. */
   glyph: string;
-  /** Princípio fundamental do qual a criatura é efeito colateral. */
-  principle: Principle;
+  /** Princípio fundamental do qual a criatura do Eälen é efeito colateral. Bicho do mundo da série não tem. */
+  principle?: Principle;
   /** Uma linha: o que é, pro sumário do códice. */
   summary: string;
   /** Duas ou três frases: de onde veio e como se comporta. */
@@ -43,6 +43,12 @@ export interface BestiaryEntry {
    * mapas acusa o grupo que tem uma destas e nenhuma deixa que encerre.
    */
   invulnerable?: boolean;
+  /** Bicho de rio: na água se cura e se esconde, em seco racha (ver `river` em Unit). */
+  river?: boolean;
+  /** O peso: cada empurrão ou puxão o desloca esse tanto a menos (ver `heft` em Unit). */
+  heft?: number;
+  /** Sente mana gasta de uma vez e vem atrás de quem a gastou, com um turno a mais (ver `drawnToMana` em Unit). */
+  drawnToMana?: boolean;
   /**
    * Ids dos consumíveis que ela leva pra luta (repita o id pra levar mais de
    * um). A IA usa quando vale a pena; o que sobrar fica pra quem a vencer.

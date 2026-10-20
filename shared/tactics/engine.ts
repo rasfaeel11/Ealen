@@ -159,6 +159,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     if (!isAlive(unit)) continue;
     for (const statusId of setup.lasting?.[unit.id] ?? []) addStatus(unit, STATUSES[statusId], Infinity, events);
   }
+  for (const unit of encounter.units) soak(encounter, unit, events);
   for (const unit of encounter.units) {
     if (unit.team !== setup.surprised || !isAlive(unit)) continue;
     unit.turn.reaction = false;
@@ -188,7 +189,7 @@ function strikeFirst(encounter: Encounter, opening: Opening, events: TacticalEve
   }
   if (!abilityTargets(encounter, unit, ability).some((pos) => samePos(pos, opening.target))) return;
 
-  charge(unit, ability, false, events);
+  charge(encounter, unit, ability, false, events);
   resolveAbility(encounter, unit, ability, opening.target, affectedUnits(encounter, ability, opening.target), false, events);
   if (ability.backlash && isAlive(unit)) addStatus(unit, STATUSES[ability.backlash.statusId], ability.backlash.turns, events);
 }
@@ -233,7 +234,9 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
 
 /**
  * Passa a vez pro próximo que ainda está de pé, abrindo uma rodada nova
- * quando a ordem dá a volta. Quem começa o turno em cima de uma superfície
+ * quando a ordem dá a volta. Se há turno a mais na fila (`bonusTurns`), ele
+ * vem antes, fora da ordem (`interlude`), e depois a ordem segue de onde
+ * estava. Quem começa o turno em cima de uma superfície
  * que fere leva o dano dela — e, se cair ali, a vez passa adiante (ou a luta
  * acaba, se era o último do lado dele). Quem vinha recitando solta a magia
  * agora (ver `release`), antes de fazer qualquer outra coisa. Quem começa o
@@ -242,8 +245,11 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
  */
 function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
   for (;;) {
-    let next: Unit | undefined;
-    do {
+    // O turno a mais que acabou (ou se perdeu) não é da ordem: ela segue de onde estava.
+    delete encounter.interlude;
+    let next: Unit | undefined = takeBonusTurn(encounter);
+    if (next) encounter.interlude = next.id;
+    else do {
       encounter.turnIndex += 1;
       if (encounter.turnIndex >= encounter.order.length) {
         encounter.turnIndex = 0;
@@ -263,6 +269,7 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
     const skip = next.statuses.find((status) => status.skipsTurn);
     const movement = movementOf(next);
     const harms = next.statuses.filter((status) => status.harm);
+    const regens = next.statuses.filter((status) => status.regen);
     tickStatuses(next, events);
     next.turn = { movement, action: true, bonus: true, reaction: true };
     // O limite de mana é por turno: a conta do corpo recomeça quando a vez dele começa.
@@ -273,6 +280,11 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
       if (!isAlive(next) || next.invulnerable) break;
       events.push({ type: "statusTriggered", unit: next.id, statusId: status.id, name: status.name });
       dealDamage(encounter, next, rollDice(encounter, status.harm!), events);
+    }
+    for (const status of regens) {
+      if (!isAlive(next) || next.currentHp >= next.maxHp) break;
+      events.push({ type: "statusTriggered", unit: next.id, statusId: status.id, name: status.name });
+      restore(next, status.regen!, events);
     }
     touchSurface(encounter, next, events);
     if (!isAlive(next)) {
@@ -295,9 +307,23 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
   }
 }
 
-/** O turno de `unit` acabou (ou foi perdido): fecha o que ele vem fazendo e conta um turno nas recargas. */
+/** O próximo turno a mais da fila de quem ainda está de pé, tirando-o da fila. Undefined se não há. */
+function takeBonusTurn(encounter: Encounter): Unit | undefined {
+  while (encounter.bonusTurns?.length) {
+    const unit = findUnit(encounter, encounter.bonusTurns.shift()!);
+    if (encounter.bonusTurns.length === 0) delete encounter.bonusTurns;
+    if (unit && isAlive(unit)) return unit;
+  }
+  return undefined;
+}
+
+/**
+ * O turno de `unit` acabou (ou foi perdido): fecha o que ele vem fazendo e
+ * conta um turno nas recargas. Quem ia atrás de uma presa (`prey`) já foi.
+ */
 function closeTurn(unit: Unit): void {
   closeHabit(unit);
+  delete unit.prey;
   if (!unit.cooldowns) return;
   const left = Object.entries(unit.cooldowns).filter(([, turns]) => turns > 1);
   if (left.length > 0) unit.cooldowns = Object.fromEntries(left.map(([id, turns]) => [id, turns - 1]));
@@ -359,6 +385,8 @@ function isDue(encounter: Encounter, when: CueWhen): boolean {
       return when.props.every((id) => encounter.props.some((prop) => prop.id === id && prop.used));
     case "defeat":
       return !encounter.units.some((unit) => unit.team === "party" && isAlive(unit));
+    case "burst":
+      return (encounter.bursts ?? 0) > 0;
   }
 }
 
@@ -486,7 +514,7 @@ function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]
     for (const threat of opportunityThreats(encounter, unit, step)) {
       flush();
       threat.attacker.turn.reaction = false;
-      charge(threat.attacker, threat.ability, false, events);
+      charge(encounter, threat.attacker, threat.ability, false, events);
       resolveAbility(encounter, threat.attacker, threat.ability, unit.pos, [unit], true, events);
       if (!isAlive(unit)) return undefined;
     }
@@ -502,6 +530,7 @@ function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]
     }
   }
   flush();
+  soak(encounter, unit, events);
   return undefined;
 }
 
@@ -532,13 +561,13 @@ function opportunityThreats(encounter: Encounter, mover: Unit, next: Pos): { att
  * recarga. `inTurn` diz se ela saiu no turno dele: aí o fim deste turno não
  * conta na recarga.
  */
-function charge(unit: Unit, ability: Ability, inTurn: boolean, events: TacticalEvent[]): void {
+function charge(encounter: Encounter, unit: Unit, ability: Ability, inTurn: boolean, events: TacticalEvent[]): void {
   if (ability.limit !== undefined) unit.used = { ...unit.used, [ability.id]: (unit.used?.[ability.id] ?? 0) + 1 };
   if (ability.breath) {
     unit.breath -= ability.breath;
     events.push({ type: "breathSpent", unit: unit.id, amount: ability.breath, remaining: unit.breath });
   }
-  if (ability.mana) spendMana(unit, ability.mana, events);
+  if (ability.mana) spendMana(encounter, unit, ability.mana, events);
   if (ability.cooldown) unit.cooldowns = { ...unit.cooldowns, [ability.id]: ability.cooldown + (inTurn ? 1 : 0) };
 }
 
@@ -546,10 +575,12 @@ function charge(unit: Unit, ability: Ability, inTurn: boolean, events: TacticalE
  * `unit` paga `amount` de mana (evento `manaSpent`) e soma no que já gastou
  * desde que a vez dele começou. Se essa soma acaba de passar do limite dele,
  * o corpo cobra: evento `manaBurst` e a marca do conceito, pra durar a luta
- * (e, anotada em `marks`, pra sair dela com ele). Fora do turno dele (o golpe
- * de abertura, uma reação), conta pro turno que vem.
+ * (e, anotada em `marks`, pra sair dela com ele). E quem sente mana gasta de
+ * uma vez (`drawnToMana`, do outro lado) vem atrás dele: ganha um turno a mais,
+ * na fila (`bonusTurns`), com ele de presa (`prey`). Fora do turno dele (o
+ * golpe de abertura, uma reação), conta pro turno que vem.
  */
-function spendMana(unit: Unit, amount: number, events: TacticalEvent[]): void {
+function spendMana(encounter: Encounter, unit: Unit, amount: number, events: TacticalEvent[]): void {
   unit.mana = (unit.mana ?? 0) - amount;
   events.push({ type: "manaSpent", unit: unit.id, amount, remaining: unit.mana });
 
@@ -558,6 +589,13 @@ function spendMana(unit: Unit, amount: number, events: TacticalEvent[]): void {
   const limit = unit.manaLimit ?? 0;
   if (before > limit || unit.manaSpent <= limit) return;
   events.push({ type: "manaBurst", unit: unit.id, spent: unit.manaSpent, limit });
+  encounter.bursts = (encounter.bursts ?? 0) + 1;
+  for (const hunter of encounter.units) {
+    if (!hunter.drawnToMana || hunter.team === unit.team || !isAlive(hunter)) continue;
+    hunter.prey = unit.id;
+    events.push({ type: "manaDrawn", unit: hunter.id, caster: unit.id });
+    if (!encounter.bonusTurns?.includes(hunter.id)) encounter.bonusTurns = [...(encounter.bonusTurns ?? []), hunter.id];
+  }
   if (unit.concept) leaveMark(unit, STATUSES[CONCEPTS[unit.concept].mark], events);
 }
 
@@ -601,7 +639,7 @@ function useAbility(
     events.push({ type: "recitationStarted", unit: unit.id, abilityId: ability.id, name: ability.name, target: { ...target } });
     return undefined;
   }
-  charge(unit, ability, true, events);
+  charge(encounter, unit, ability, true, events);
   resolveAbility(encounter, unit, ability, target, affectedUnits(encounter, ability, target), false, events);
   // A magia cobra de quem a fez, se ele ainda está de pé pra pagar.
   if (ability.backlash && isAlive(unit)) addStatus(unit, STATUSES[ability.backlash.statusId], ability.backlash.turns, events);
@@ -636,7 +674,7 @@ function release(encounter: Encounter, unit: Unit, events: TacticalEvent[]): voi
     return;
   }
 
-  charge(unit, ability, true, events);
+  charge(encounter, unit, ability, true, events);
   resolveAbility(encounter, unit, ability, pos, affectedUnits(encounter, ability, pos), false, events);
   if (ability.backlash && isAlive(unit)) addStatus(unit, STATUSES[ability.backlash.statusId], ability.backlash.turns, events);
 }
@@ -733,7 +771,7 @@ function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, eve
   defender.turn.reaction = false;
   const style = STYLES[defender.style!];
   events.push({ type: "styleTrait", unit: defender.id, target: attacker.id, trait: "counter", name: style.trait });
-  charge(defender, ability, false, events);
+  charge(encounter, defender, ability, false, events);
   resolveAbility(encounter, defender, ability, attacker.pos, [attacker], true, events);
 }
 
@@ -920,8 +958,9 @@ function dealDamage(encounter: Encounter, target: Unit, amount: number, events: 
  * Desloca `target` em linha reta pra longe de `actor` (ou pra perto, com
  * distância negativa), um quadrado por vez, até acabar a distância ou
  * bater em parede, borda ou corpo. Movimento forçado não provoca ataque de
- * oportunidade, mas a superfície de onde o alvo vai parar age sobre ele.
- * Quem carrega uma condição `immovable` não sai do lugar.
+ * oportunidade, mas a superfície de onde o alvo vai parar age sobre ele, e
+ * a água também (`soak`). Quem carrega uma condição `immovable` não sai do
+ * lugar; quem é pesado (`heft`) sai esse tanto a menos.
  */
 function push(encounter: Encounter, actor: Unit, target: Unit, pushDistance: number, events: TacticalEvent[]): void {
   if (target.statuses.some((status) => status.immovable)) return;
@@ -931,7 +970,8 @@ function push(encounter: Encounter, actor: Unit, target: Unit, pushDistance: num
   if (dx === 0 && dy === 0) return;
 
   const from = { ...target.pos };
-  for (let step = 0; step < Math.abs(pushDistance); step++) {
+  const steps = Math.abs(pushDistance) - (target.heft ?? 0);
+  for (let step = 0; step < steps; step++) {
     const next = { x: target.pos.x + dx, y: target.pos.y + dy };
     if (tileAt(encounter.grid, next)?.blocksMove ?? true) break;
     if (unitAt(encounter, next)) break;
@@ -940,6 +980,22 @@ function push(encounter: Encounter, actor: Unit, target: Unit, pushDistance: num
   if (samePos(from, target.pos)) return;
   events.push({ type: "pushed", unit: target.id, from, to: { ...target.pos } });
   touchSurface(encounter, target, events);
+  soak(encounter, target, events);
+}
+
+/**
+ * O bicho de rio (`river`) e o chão em que ele está: na água fica Submerso
+ * (rápido, a Muralha alta, e se refaz a cada turno); fora dela, Em seco (lento,
+ * o couro racha, a Muralha quase some). As duas duram enquanto ele não mudar de
+ * chão: quem as põe e tira é isto, chamado na abertura e sempre que ele muda
+ * de quadrado (andando ou empurrado). Tirá-lo da água é o jeito de vencê-lo.
+ */
+function soak(encounter: Encounter, unit: Unit, events: TacticalEvent[]): void {
+  if (!unit.river || !isAlive(unit)) return;
+  const wet = tileAt(encounter.grid, unit.pos)?.water === true;
+  const [now, gone] = wet ? [STATUSES.submerged, STATUSES.beached] : [STATUSES.beached, STATUSES.submerged];
+  removeStatuses(unit, (status) => status.id === gone.id, events);
+  if (!unit.statuses.some((status) => status.id === now.id)) addStatus(unit, now, Infinity, events);
 }
 
 // --- Destrutíveis -----------------------------------------------------------

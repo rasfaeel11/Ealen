@@ -31,6 +31,10 @@ export interface UnitPlacement {
   gifts?: readonly GiftId[];
   /** Conjura: o conceito e o nível de mago (ver ../mana.ts). A mana dele vem da ficha. */
   magic?: Magic;
+  /** Bicho de rio, o peso dele e se a mana gasta de uma vez o atrai (ver `river`, `heft` e `drawnToMana` em Unit). */
+  river?: boolean;
+  heft?: number;
+  drawnToMana?: boolean;
 }
 
 /**
@@ -69,6 +73,9 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     inventory: character.inventory ? structuredClone(character.inventory) : undefined,
     ai: placement.ai ? { ...placement.ai } : undefined,
     ...(placement.invulnerable ? { invulnerable: true } : {}),
+    ...(placement.river ? { river: true } : {}),
+    ...(placement.heft ? { heft: placement.heft } : {}),
+    ...(placement.drawnToMana ? { drawnToMana: true } : {}),
     ...(placement.quirks ? { quirks: { ...placement.quirks } } : {}),
     ...(placement.style ? { style: placement.style.id, grade: proficiency(placement.style.grade, placement.aura) } : {}),
     ...(placement.aura !== undefined ? { aura: placement.aura } : {}),
@@ -150,10 +157,10 @@ export function isOver(encounter: Encounter): boolean {
   return encounter.winner !== undefined || encounter.stopped === true;
 }
 
-/** Quem está no turno. Undefined só depois que a luta acabou. */
+/** Quem está no turno — o do turno a mais, se há um acontecendo (`interlude`). Undefined só depois que a luta acabou. */
 export function activeUnit(encounter: Encounter): Unit | undefined {
   if (isOver(encounter)) return undefined;
-  return findUnit(encounter, encounter.order[encounter.turnIndex]);
+  return findUnit(encounter, encounter.interlude ?? encounter.order[encounter.turnIndex]);
 }
 
 /** Quem está de pé neste quadrado. Mortos não ocupam espaço. */

@@ -76,6 +76,9 @@ const PRINCIPLE_COLOR: Record<Principle, string> = {
   ausencia: "#56607a",
 };
 
+/** O vulto de criatura sem Princípio (o bicho do mundo da série). */
+const CREATURE_COLOR = "#5a7a5e";
+
 const PLACEHOLDER_WIDTH = 16;
 const PLACEHOLDER_HEIGHT = 24;
 const DARK = "#141110";
@@ -176,7 +179,8 @@ export function registerMapSprites(scene: Phaser.Scene): void {
     placeholders[classSpriteKey(characterClass)] = humanoid(CLASS_COLOR[characterClass]);
   }
   for (const [creatureId, entry] of Object.entries(BESTIARY)) {
-    const color = PRINCIPLE_COLOR[entry.principle];
+    // Bicho do mundo da série não é Princípio nenhum: a cor do lodo.
+    const color = entry.principle ? PRINCIPLE_COLOR[entry.principle] : CREATURE_COLOR;
     placeholders[creatureSpriteKey(creatureId)] = entry.person ? humanoid(color) : creature(color);
   }
 

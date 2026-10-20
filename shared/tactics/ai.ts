@@ -148,6 +148,7 @@ export function foresee(encounter: Encounter, unitId: string): AiPlan {
   if (!unit || turnIndex < 0 || !isAlive(unit)) throw new Error(`"${unitId}" não está de pé nesta luta.`);
 
   sim.turnIndex = turnIndex;
+  delete sim.interlude;
   unit.turn = { movement: movementOf(unit), action: true, bonus: true, reaction: unit.turn.reaction };
   return planTurn(sim);
 }
@@ -165,7 +166,9 @@ export function planTurn(encounter: Encounter): AiPlan {
   profile.caution *= 2 - me.currentHp / me.maxHp;
 
   const foes = sim.units.filter((unit) => unit.team !== me.team && isAlive(unit));
-  const toFoe = walkingDistances(sim, foes.map((foe) => foe.pos));
+  // Quem vem atrás de uma presa (quem gastou mana demais de uma vez, ver `drawnToMana`) só vê ela.
+  const prey = foes.find((unit) => unit.id === me.prey);
+  const toFoe = walkingDistances(sim, (prey ? [prey] : foes).map((foe) => foe.pos));
   const origin = { ...actor.pos };
 
   const stops = [{ pos: origin, cost: 0, hazard: 0 }, ...reachableTiles(encounter, actor)];
@@ -191,6 +194,7 @@ export function planTurn(encounter: Encounter): AiPlan {
         const struck = offensive ? affectedUnits(sim, ability, target).filter((unit) => unit.team !== me.team) : [];
         // Quem só revida não levanta a mão pra quem ainda não o provocou o bastante.
         if (me.quirks?.retaliates && offensive && !struck.some(provoked)) continue;
+        if (prey && offensive && !struck.includes(prey)) continue;
         if (struck.length > 0) canStrike = true;
 
         const value = abilityValue(sim, me, profile, ability, target);

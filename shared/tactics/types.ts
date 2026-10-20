@@ -165,14 +165,17 @@ export interface AiQuirks {
  * - `broken`: quando o destrutível `prop` quebra;
  * - `used`: quando alguém já mexeu em TODOS os `props` (ver o comando `interact`);
  * - `defeat`: quando o grupo do jogador inteiro está no chão — NO LUGAR da
- *   derrota, que não acontece.
+ *   derrota, que não acontece;
+ * - `burst`: quando alguém passou do limite de mana num turno (o evento
+ *   `manaBurst`, ver ../mana.ts).
  */
 export type CueWhen =
   | { kind: "round"; round: number }
   | { kind: "down"; unit: string }
   | { kind: "broken"; prop: string }
   | { kind: "used"; props: string[] }
-  | { kind: "defeat" };
+  | { kind: "defeat" }
+  | { kind: "burst" };
 
 /**
  * A condição que uma deixa põe em quem está na luta ao disparar: é a história
@@ -287,6 +290,21 @@ export interface Unit {
    * com um destes só acaba por uma deixa.
    */
   invulnerable?: boolean;
+  /**
+   * Bicho de rio (o Ykuruã): na água fica Submerso, em seco fica Em seco (ver
+   * soak em ./engine.ts). Quem põe e tira as duas é o chão em que ele está.
+   */
+  river?: boolean;
+  /** O peso dele: cada empurrão ou puxão o desloca esse tanto de quadrados a menos. Bicho grande se puxa aos poucos. */
+  heft?: number;
+  /**
+   * Sente mana gasta de uma vez: quando alguém do outro lado passa do limite
+   * (`manaBurst`), ele ganha um turno a mais, logo depois da vez de quem está
+   * agindo, e vai pra cima de quem conjurou (`prey`).
+   */
+  drawnToMana?: boolean;
+  /** Atrás de quem ele vai no próximo turno: quem passou do limite de mana. Sai quando esse turno acaba. */
+  prey?: string;
   turn: TurnResources;
 }
 
@@ -318,6 +336,16 @@ export interface Encounter {
    * da Ipojy não levanta a mão (o voto, ver ./styles.ts).
    */
   opened?: boolean;
+  /** Quantas vezes alguém já passou do limite de mana nesta luta: é o que a deixa `burst` espera. */
+  bursts?: number;
+  /**
+   * Turnos a mais, fora da ordem (o bicho atraído pela mana, ver `drawnToMana`
+   * em Unit): os ids, na fila. Cada um acontece quando a vez de quem está
+   * agindo acaba, e depois a ordem segue de onde estava.
+   */
+  bonusTurns?: string[];
+  /** De quem é o turno a mais que está acontecendo agora. Enquanto houver, é ele quem age (ver activeUnit em ./units.ts). */
+  interlude?: string;
   rngState: number;
   /** Preenchido quando um dos lados acaba, ou quando uma deixa dá a vitória. Depois disso nenhum comando é aceito. */
   winner?: TeamId;
@@ -367,6 +395,8 @@ export type TacticalEvent =
    * turno não dispara de novo.
    */
   | { type: "manaBurst"; unit: string; spent: number; limit: number }
+  /** `unit` sentiu a mana de `caster` e vem atrás dele: ganhou um turno a mais (ver `drawnToMana` em Unit). Vem logo depois do `manaBurst`. */
+  | { type: "manaDrawn"; unit: string; caster: string }
   | { type: "abilityUsed"; unit: string; abilityId: string; name: string; target: Pos; reaction: boolean }
   /** `unit` começou a recitar a magia `abilityId`, mirada em `target`: ela sai no começo do próximo turno dele. */
   | { type: "recitationStarted"; unit: string; abilityId: string; name: string; target: Pos }

@@ -20,6 +20,8 @@ import type { CueEnding } from "../tactics/types";
  *     `elevation` (int)    altura do chão, em degraus; padrão 0. É só vantagem
  *                          de combate: quem barra a subida é o `blocksMove` da
  *                          face do degrau, e a escada é o quadrado sem ele
+ *     `water` (bool)       água (o rio, o baixio): é onde bicho de rio se cura
+ *                          e se esconde; pra quem anda, use `moveCost` junto
  *   Assim, pintar uma árvore já faz dela um obstáculo — não existe camada
  *   de colisão separada pra esquecer de atualizar.
  * - Camada de objetos, com o campo "Class"/"Type" de cada objeto dizendo o
@@ -64,6 +66,8 @@ import type { CueEnding } from "../tactics/types";
  *                                 esse Nome; `used A, B, C` espera os três
  *                `defeat`         quando o grupo do jogador cairia inteiro: a
  *                                 deixa acontece NO LUGAR da derrota
+ *                `burst`          quando alguém passa do limite de mana num
+ *                                 turno (ver ../mana.ts)
  *              Opcionais: `dialog` (o trecho da história que abre nessa hora,
  *              no meio da luta) e `ends` — `win` (a luta acaba ali, vencida,
  *              com quem estiver de pé) ou `stop` (a luta para, sem vencedor
@@ -166,7 +170,8 @@ export type AreaCueWhen =
   | { kind: "broken"; prop: string }
   /** Os Nomes dos objetos da área em que é preciso mexer — todos. */
   | { kind: "used"; props: string[] }
-  | { kind: "defeat" };
+  | { kind: "defeat" }
+  | { kind: "burst" };
 
 /** Uma deixa de luta (ver Cue em ../tactics/types.ts): o roteiro da luta com um grupo. */
 export interface AreaCue extends AreaCondition {
@@ -189,7 +194,7 @@ export const CUE_ON_ENEMIES = "enemies";
 /** Lê a propriedade `when` de uma deixa. Undefined se não der pra entender. */
 export function parseCueWhen(text: string): AreaCueWhen | undefined {
   const [, kind, rest = ""] = /^(\S+)\s*(.*)$/.exec(text.trim()) ?? [];
-  if (kind === "defeat") return rest === "" ? { kind } : undefined;
+  if (kind === "defeat" || kind === "burst") return rest === "" ? { kind } : undefined;
   if (kind === "round") return /^[1-9]\d*$/.test(rest) ? { kind, round: Number(rest) } : undefined;
   if (rest === "") return undefined;
   if (kind === "down") return { kind, who: rest };
@@ -319,6 +324,7 @@ function terrainByGid(tilesets: TiledTileset[]): Map<number, Partial<Tile>> {
         moveCost: typeof properties.moveCost === "number" ? properties.moveCost : undefined,
         cover: properties.cover === true ? true : undefined,
         elevation: typeof properties.elevation === "number" ? properties.elevation : undefined,
+        water: properties.water === true ? true : undefined,
       });
     }
   }
@@ -351,6 +357,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
       tile.moveCost = Math.max(tile.moveCost, properties.moveCost ?? 1);
       tile.cover ||= properties.cover ?? false;
       tile.elevation = Math.max(tile.elevation, properties.elevation ?? 0);
+      if (properties.water) tile.water = true;
     });
   }
 
@@ -444,7 +451,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
         const when = typeof properties.when === "string" ? parseCueWhen(properties.when) : undefined;
         if (typeof group !== "string" || !when) {
           throw new Error(
-            `Deixa "${object.name ?? ""}" precisa das propriedades "group" e "when" (round N, down Nome, broken Nome, used Nome ou defeat).`,
+            `Deixa "${object.name ?? ""}" precisa das propriedades "group" e "when" (round N, down Nome, broken Nome, used Nome, defeat ou burst).`,
           );
         }
         const wantsApply = typeof properties.apply === "string" && properties.apply !== "";

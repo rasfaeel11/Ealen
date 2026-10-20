@@ -263,7 +263,6 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P0 — a conversão (o jogo não existe sem isto)
 | # | Task | O que é |
 |---|---|---|
-| 8 | **O Ykuruã** | Cura na água, Muralha que muda na terra, deixa `when: burst` (alguém passou do limite de mana), puxar aos poucos funcionando contra ele. Unidade grande, se couber. |
 | 9 | **Atributos com nomes do mundo** | Depois da aprovação do autor. |
 
 ### P1 — o conteúdo
@@ -313,6 +312,14 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   mesmo nível). Saíram o perfil, `unlock_order`, `ClassSelect`, os retratos das Ordens e o prólogo do Eälen (que
   mostrava a Ruptura, vestígio da singularidade). O título virou "Três na Estrada". As Ordens do Eälen ficam só nas
   criaturas provisórias. Na clareira, o trio e Oryndu não falam: o texto deles espera o roteiro (task 11).
+- **8. O Ykuruã.** Entrou no bestiário (`encounter-ykurua`) com o que o cânone diz dele. O chão ganhou água (`water`
+  no tileset do Tiled, `w` nos desenhos de teste). Bicho de rio (`river`) na água fica Submerso — rápido, Muralha
+  alta (2 do Baluarte + 6) e se refaz 6 por turno —, e em seco fica Em seco — lento, couro rachado, Muralha zero; a
+  troca acontece sempre que ele muda de quadrado, inclusive puxado. É pesado (`heft` 1): cada puxão o tira um
+  quadrado a menos, então ele sai da água aos poucos. A cada `manaBurst` de alguém do outro lado, ele ganha um
+  turno a mais logo depois da vez de quem está agindo (`bonusTurns`/`interlude`) e vai atrás de quem conjurou
+  (`prey`). A deixa `when: burst` dispara na primeira vez. A unidade grande (2x2) não coube: pede ocupação de
+  vários quadrados em toda a grade, e ficou de fora. Ele ainda não está em nenhum mapa: os baixios são da task 10.
 
 ## 9. O que precisa virar cânone na história
 

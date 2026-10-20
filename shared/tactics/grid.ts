@@ -23,6 +23,12 @@ export interface Tile {
   cover: boolean;
   /** Altura do chão, em degraus. 0 = o nível do mapa. Quem ataca de cima acerta mais; de baixo, menos. */
   elevation: number;
+  /**
+   * Água: o rio, o baixio. Pra quem anda, é só o custo do passo; pra bicho de
+   * rio (`river` em Unit), é onde ele se cura e se esconde (ver soak em
+   * ./engine.ts). Ausente = seco.
+   */
+  water?: boolean;
 }
 
 export interface Grid {
@@ -150,6 +156,7 @@ const ASCII_TILES: Record<string, Tile> = {
   o: { ...FLOOR, blocksMove: true, cover: true },
   "~": { ...FLOOR, moveCost: 2 },
   "^": { ...FLOOR, elevation: 1 },
+  w: { ...FLOOR, moveCost: 2, water: true },
 };
 
 export interface AsciiGrid {
@@ -164,6 +171,7 @@ export interface AsciiGrid {
  *
  *   `.` chão   `#` parede   `o` obstáculo baixo (barra o passo, não a visão,
  *   e dá cobertura)   `~` terreno difícil (custa 2)   `^` chão elevado
+ *   `w` água rasa (custa 2, e é água pra bicho de rio)
  *
  * Qualquer outro caractere é chão e vira um marcador (posição de spawn).
  */
