@@ -21,3 +21,14 @@ export interface Attributes {
 }
 
 export const ATTRIBUTE_KEYS: (keyof Attributes)[] = ["forca", "fator", "vigor", "olho", "couro", "labia", "saber"];
+
+/** O nome de cada atributo como a interface o escreve, com acento. */
+export const ATTRIBUTE_NAMES: Record<keyof Attributes, string> = {
+  forca: "Força",
+  fator: "Fator",
+  vigor: "Vigor",
+  olho: "Olho",
+  couro: "Couro",
+  labia: "Lábia",
+  saber: "Saber",
+};

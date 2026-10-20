@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import { sfx } from "../audio";
-import type { DialogueBeat, DialogueChoice, DialogueStep, StoryEvent } from "@ealen/shared";
+import { ATTRIBUTE_NAMES, type Attributes, type DialogueBeat, type DialogueChoice, type DialogueStep, type StoryEvent } from "@ealen/shared";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { addBodyText, addPanel, addTitleText } from "../ui";
 
@@ -17,7 +17,7 @@ const CHOICE_LINE_HEIGHT = 30;
 /** A tecla que abriu a conversa não pode ser a mesma que passa a primeira fala. */
 const INPUT_GRACE_MS = 200;
 
-const ATTRIBUTE_LABEL = (attribute: string) => attribute[0].toUpperCase() + attribute.slice(1);
+const ATTRIBUTE_LABEL = (attribute: keyof Attributes) => ATTRIBUTE_NAMES[attribute];
 
 /**
  * Um acontecimento da história, em uma linha pra quem joga. Null é o que não
