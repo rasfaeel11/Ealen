@@ -21,7 +21,7 @@ const BASE_CHARACTER: Character = {
   characterClass: "guardiao",
   level: 1,
   xp: 0,
-  attributes: { dain: 5, eir: 5, nath: 5, il: 5, or: 5, len: 5, ul: 5 },
+  attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
   currentHp: 30,
   maxHp: 30,
   currentNodeId: "",
@@ -29,7 +29,7 @@ const BASE_CHARACTER: Character = {
 
 type CharacterOverrides = Omit<Partial<Character>, "attributes"> & { attributes?: Partial<Attributes> };
 
-/** Il alto o bastante pra agir primeiro, não importa o d20. */
+/** Olho alto o bastante pra agir primeiro, não importa o d20. */
 export const FIRST = 100;
 
 export function makeCharacter(id: string, overrides: CharacterOverrides = {}): Character {

@@ -21,8 +21,8 @@ export function xpToNextLevel(level: number): number {
  * acumulado permitir. Muta `character` (xp, level, attributes, maxHp,
  * currentHp) e retorna o resultado a mostrar no fim do combate.
  *
- * O atributo primário da classe sobe mais que os demais a cada nível; Nath
- * (Vitalidade) também aumenta o HP máximo, já que é o atributo que o
+ * O atributo primário da classe sobe mais que os demais a cada nível; Vigor
+ * também aumenta o HP máximo, já que é o atributo que o
  * governa. As Técnicas que a Ordem dá em cada nível alcançado (ver
  * `learnedAt` em ./tactics/abilities.ts) voltam em `learned`: a ficha já as
  * tem — o kit se monta pelo nível —, isto é só o que há pra anunciar.
@@ -42,7 +42,7 @@ export function applyXpGain(character: Character, xpGained: number): LevelUpResu
     for (const key of ATTRIBUTE_KEYS) {
       const growth = primaryAttributes.includes(key) ? 2 : 1;
       character.attributes[key] += growth;
-      if (key === "nath") {
+      if (key === "vigor") {
         const hpGrowth = growth * 3;
         character.maxHp += hpGrowth;
         character.currentHp = Math.min(character.maxHp, character.currentHp + hpGrowth);

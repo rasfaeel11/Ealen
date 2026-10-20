@@ -8,7 +8,7 @@
 //
 // O que o texto pode perguntar e pedir ao jogo (ver shared/story/runner.ts):
 
-EXTERNAL attr(name)         // attr("len"): o atributo do personagem
+EXTERNAL attr(name)         // attr("labia"): o atributo do personagem
 EXTERNAL order()            // o que o protagonista é: "atracao_repulsao" (Endyru)
 EXTERNAL people()           // o povo dele: "humano"
 EXTERNAL level()
@@ -16,8 +16,8 @@ EXTERNAL mage_level()        // o nível de mago de Endyru: 3 é a Página, 4 o 
 EXTERNAL mage_rise(level)    // mage_rise(4): Endyru chega ao Círculo e aprende o que ele dá. Só sobe
 EXTERNAL has_item(id)
 EXTERNAL defeated(group)    // defeated("clareira:fiapo"): aquele grupo de inimigos já foi vencido?
-EXTERNAL check(name, difficulty)   // rola um teste agora, no meio do texto: {check("ul", 13): ... | ...}
-EXTERNAL passed()           // passou o teste da escolha? (escolha marcada com # check: len 13)
+EXTERNAL check(name, difficulty)   // rola um teste agora, no meio do texto: {check("saber", 13): ... | ...}
+EXTERNAL passed()           // passou o teste da escolha? (escolha marcada com # check: labia 13)
 EXTERNAL give_item(id)
 EXTERNAL take_item(id)      // tira um da mochila; devolve se havia: {take_item("x"): ... | ...}
 EXTERNAL grant_xp(amount)
@@ -44,7 +44,7 @@ EXTERNAL afflicted(who, status) // ele a tem?
 // Convenções:
 //   Nome: fala        vira uma fala com o nome em cima. O resto é narração.
 //   + [Escolha]       fica disponível sempre.   * [Escolha]  some depois de usada.
-//   # check: len 13   na escolha: mostra a chance, rola ao escolher; o texto lê com passed().
+//   # check: labia 13   na escolha: mostra a chance, rola ao escolher; o texto lê com passed().
 //   Dificuldade: 10 fácil, 13 pra quem tem o atributo, 16 difícil, 19 quase só na sorte.
 //   Toda conversa termina em -> END.
 //

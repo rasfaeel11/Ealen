@@ -1,4 +1,4 @@
-import { ATTRIBUTE_KEYS } from "../types/attributes";
+import { ATTRIBUTE_KEYS, type Attributes } from "../types/attributes";
 import type { Character } from "../types/character";
 import type { Equipment } from "../types/inventory";
 import { CLASS_INFO } from "../types/characterClass";
@@ -17,7 +17,7 @@ import { AREAS } from "../world/areas";
  * Campo novo no save: acrescentar em `GameSave`, subir `SAVE_VERSION` e
  * escrever em `MIGRATIONS` como um save da versão anterior ganha esse campo.
  */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 /** Onde o personagem está: a área e o ponto do mapa dela, em pixels. */
 export interface SaveLocation {
@@ -95,7 +95,44 @@ const MIGRATIONS: Record<number, (old: Json) => Json> = {
     if (isObject(character)) character.gear = [...(Array.isArray(character.gear) ? character.gear : []), ...worn];
     return { ...old, version: 5, character, companions, story: typeof old.story === "string" ? restory(old.story) : old.story };
   },
+  // A versão 5 tinha os atributos com as runas do Eälen (dain, eir...). Cada ficha passa pros nomes do mundo (ver
+  // RENAMED), e o item de mochila que aumenta um atributo também.
+  5: (old) => ({
+    ...old,
+    version: 6,
+    character: rename(old.character),
+    companions: Array.isArray(old.companions)
+      ? old.companions.map((member) => (isObject(member) ? { ...member, character: rename(member.character) } : member))
+      : old.companions,
+  }),
 };
+
+/** A chave de cada atributo do Eälen na chave de agora. */
+const RENAMED: Record<string, keyof Attributes> = {
+  dain: "forca",
+  eir: "fator",
+  nath: "vigor",
+  il: "olho",
+  or: "couro",
+  len: "labia",
+  ul: "saber",
+};
+
+/** A ficha `value` com os atributos (e os itens da mochila que somam um) nas chaves de agora. Já nas de agora, ou o que não parece ficha, passa como veio. */
+function rename(value: unknown): unknown {
+  if (!isObject(value) || !isObject(value.attributes)) return value;
+  const attributes = Object.fromEntries(Object.entries(value.attributes).map(([key, amount]) => [RENAMED[key] ?? key, amount]));
+  const inventory = value.inventory;
+  if (!isObject(inventory) || !Array.isArray(inventory.slots)) return { ...value, attributes };
+  const slots = inventory.slots.map((slot) => {
+    const effect = isObject(slot) && isObject(slot.item) && isObject(slot.item.data) ? slot.item.data.effect : undefined;
+    if (!isObject(effect) || typeof effect.stat !== "string" || !(effect.stat in RENAMED)) return slot;
+    const item = slot.item as Json;
+    const data = item.data as Json;
+    return { ...slot, item: { ...item, data: { ...data, effect: { ...effect, stat: RENAMED[effect.stat] } } } };
+  });
+  return { ...value, attributes, inventory: { ...inventory, slots } };
+}
 
 /** Quem, no elenco de agora, ficou no lugar de quem era do Eälen: pelo id da ficha. O protagonista continua "hero". */
 const RECAST: Record<string, string> = {

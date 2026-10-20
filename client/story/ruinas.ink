@@ -1,5 +1,5 @@
 // PROVISÓRIO, como o resto: um ponto pra examinar (npc sem `look`), com um
-// teste de Ul de uma tentativa só e uma flag que muda o que se lê depois.
+// teste de Saber de uma tentativa só e uma flag que muda o que se lê depois.
 
 VAR inscricao_lida = false
 
@@ -9,7 +9,7 @@ VAR inscricao_lida = false
     -> END
 }
 Há runas talhadas na parede do fundo do patamar, gastas quase até sumir.
-* [Tentar ler. # check: ul 13]
+* [Tentar ler. # check: saber 13]
     {passed():
         ~ inscricao_lida = true
         Os traços se arrumam aos poucos em notação Tirán: "aqui se guardava a luz para a noite longa".
@@ -44,7 +44,7 @@ Um servo de metal fosco, de pé num canto onde não sobrou nada pra guardar. A c
     Sentinela: O depósito. Entrada restrita ao turno da noite.
     O depósito é um retângulo de chão mais claro, e nada mais.
     -> opcoes
-* [Dizer que o turno acabou. # check: len 13]
+* [Dizer que o turno acabou. # check: labia 13]
     {passed():
         Sentinela: Turno... encerrado. Registro aceito.
         Os ombros dela descem um dedo. A luz atrás dos olhos apaga devagar, como quem enfim tem licença pra isso.

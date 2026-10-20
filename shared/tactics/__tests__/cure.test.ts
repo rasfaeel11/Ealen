@@ -14,7 +14,7 @@ import { FIRST, eventsOf, makeCharacter, makeUnit, run } from "./helpers";
 
 function stage(patient: Partial<Unit>): Encounter {
   const { grid, markers } = gridFromAscii(["CP...E"]);
-  const caster = makeUnit("C", "party", markers.C[0], { characterClass: "luminar", attributes: { il: FIRST, eir: 6 } });
+  const caster = makeUnit("C", "party", markers.C[0], { characterClass: "luminar", attributes: { olho: FIRST, fator: 6 } });
   const hurt = Object.assign(makeUnit("P", "party", markers.P[0], { currentHp: 5, maxHp: 60 }), patient);
   return startEncounter({ grid, units: [caster, hurt, makeUnit("E", "enemy", markers.E[0])], seed: 3 }).encounter;
 }
@@ -54,7 +54,7 @@ test("a cura não vai além do que o corpo pode pagar, e sem Fôlego nada se ace
   const poor = stage({ breath: 1 });
   const patient = findUnit(poor, "P")!;
   const [heal] = eventsOf(run(poor, { type: "ability", unitId: "C", abilityId: "luminar.heal", target: patient.pos }), "heal");
-  // 1d6 + Eir 6 dá pelo menos 7; quem tem 1 de Fôlego só paga 3.
+  // 1d6 + Fator 6 dá pelo menos 7; quem tem 1 de Fôlego só paga 3.
   assert.equal(heal.amount, healCap(1));
   assert.equal(patient.breath, 0);
 
@@ -79,7 +79,7 @@ test("com fome, a próxima cura custa o dobro", () => {
 });
 
 test("fora de luta, a cura cobra o paciente do mesmo jeito", () => {
-  const caster = makeCharacter("C", { characterClass: "luminar", attributes: { eir: 6 } });
+  const caster = makeCharacter("C", { characterClass: "luminar", attributes: { fator: 6 } });
   const patient = makeCharacter("P", { currentHp: 5, maxHp: 60 });
   const heal: Ability = {
     id: "luminar.heal",
@@ -88,7 +88,7 @@ test("fora de luta, a cura cobra o paciente do mesmo jeito", () => {
     cost: "action",
     range: 4,
     targets: "ally",
-    effects: [{ kind: "heal", dice: { count: 1, sides: 6 }, attribute: "eir" }],
+    effects: [{ kind: "heal", dice: { count: 1, sides: 6 }, attribute: "fator" }],
     breath: 2,
   };
 

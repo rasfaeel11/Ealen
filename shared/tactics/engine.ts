@@ -121,7 +121,7 @@ export interface Opening {
 }
 
 /**
- * Começa uma luta: rola a iniciativa (d20 + Il) uma vez e abre o primeiro
+ * Começa uma luta: rola a iniciativa (d20 + Olho) uma vez e abre o primeiro
  * turno. A surpresa não mexe na iniciativa: quem foi surpreendido só perde a
  * vez quando ela chega.
  */
@@ -142,10 +142,10 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
   const rolls = encounter.units.map((unit, index) => ({
     unit,
     index,
-    initiative: rollDie(encounter, 20) + effectiveAttribute(unit, "il"),
+    initiative: rollDie(encounter, 20) + effectiveAttribute(unit, "olho"),
   }));
-  // Empate: quem tem mais Il; persistindo, quem foi declarado primeiro.
-  rolls.sort((a, b) => b.initiative - a.initiative || b.unit.attributes.il - a.unit.attributes.il || a.index - b.index);
+  // Empate: quem tem mais Olho; persistindo, quem foi declarado primeiro.
+  rolls.sort((a, b) => b.initiative - a.initiative || b.unit.attributes.olho - a.unit.attributes.olho || a.index - b.index);
   encounter.order = rolls.map((roll) => roll.unit.id);
 
   const events: TacticalEvent[] = [
@@ -648,7 +648,7 @@ function useAbility(
 
 // --- Recitação --------------------------------------------------------------
 
-/** O teste de quem apanha recitando: d20 + Ul contra isto mais metade do golpe. Provisório, como os kits. */
+/** O teste de quem apanha recitando: d20 + Saber contra isto mais metade do golpe. Provisório, como os kits. */
 const RECITE_FOCUS = 10;
 
 /**
@@ -776,7 +776,7 @@ function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, eve
 }
 
 /**
- * d20 + atributo primário + modificador contra 10 + Or do alvo, com o que a
+ * d20 + atributo primário + modificador contra 10 + Couro do alvo, com o que a
  * posição soma de cada lado (cobertura, flanco, altura — ver ./attack.ts).
  * 20 natural (ou Foco) é crítico e sempre acerta; 1 natural sempre erra e
  * deixa quem atacou Desequilibrado até o próprio próximo turno.
@@ -859,7 +859,7 @@ function applyEffect(
 
       // O que as condições de quem apanha somam ou tiram do golpe (Trincado, Ancorado), e depois a armadura —
       // que um golpe `piercing` não encontra.
-      const targetOr = effectiveAttribute(target, "or");
+      const targetOr = effectiveAttribute(target, "couro");
       amount = Math.max(1, amount + damageTakenOf(target) - (effect.piercing ? 0 : Math.floor(targetOr / 2)));
       // A Muralha de quem apanha: um tanto fixo a menos, depois da armadura.
       amount = Math.max(1, amount - styleReduction(target));
@@ -937,13 +937,13 @@ function restore(unit: Unit, amount: number, events: TacticalEvent[]): void {
 /**
  * Tira `amount` de vida de `target`. Quem cai perde as condições (e o que
  * recitava). Quem apanha recitando e fica de pé testa se o texto aguenta: d20
- * + Ul contra RECITE_FOCUS mais metade do golpe; falhando, ele se perde.
+ * + Saber contra RECITE_FOCUS mais metade do golpe; falhando, ele se perde.
  */
 function dealDamage(encounter: Encounter, target: Unit, amount: number, events: TacticalEvent[]): void {
   target.currentHp = Math.max(0, target.currentHp - amount);
   events.push({ type: "damage", target: target.id, amount, remainingHp: target.currentHp });
   if (target.currentHp > 0) {
-    if (target.reciting && rollDie(encounter, 20) + effectiveAttribute(target, "ul") < RECITE_FOCUS + Math.floor(amount / 2)) {
+    if (target.reciting && rollDie(encounter, 20) + effectiveAttribute(target, "saber") < RECITE_FOCUS + Math.floor(amount / 2)) {
       breakRecitation(target, "hit", events);
     }
     return;

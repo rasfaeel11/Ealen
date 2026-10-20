@@ -66,7 +66,7 @@ function makeHost(overrides: Partial<Character["attributes"]> = {}, defeated: st
       characterClass: "luminar",
       level: 1,
       xp: 0,
-      attributes: { dain: 5, eir: 5, nath: 5, il: 5, or: 5, len: 5, ul: 5, ...overrides },
+      attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5, ...overrides },
       currentHp: 30,
       maxHp: 30,
       currentNodeId: "",
@@ -88,7 +88,7 @@ VAR portao_aberto = false
 {guarda == 1: Um homem barra o portão.}
 Guarda: Alto lá{order() == "luminar":, portador de luz}.
 {defeated("estrada:lobos"): Guarda: Ouvi dizer que a estrada está limpa.}
-+ [Pedir passagem. # check: len 14]
++ [Pedir passagem. # check: labia 14]
     {passed():
         ~ portao_aberto = true
         Guarda: Passa.
@@ -132,11 +132,11 @@ test("a escolha com teste mostra a chance, rola ao ser feita, e o texto segue o 
     [100, true, "Guarda> Passa."],
     [-100, false, "Guarda> Hoje não."],
   ] as const) {
-    const host = makeHost({ len });
+    const host = makeHost({ labia: len });
     const runner = new StoryRunner(GUARD, host);
     const [ask, help] = runner.start("guarda").choices;
 
-    assert.deepEqual({ attribute: ask.check?.attribute, difficulty: ask.check?.difficulty }, { attribute: "len", difficulty: 14 });
+    assert.deepEqual({ attribute: ask.check?.attribute, difficulty: ask.check?.difficulty }, { attribute: "labia", difficulty: 14 });
     assert.equal(ask.check?.chance, passes ? 0.95 : 0.05);
     assert.equal(help.check, undefined);
 
@@ -152,8 +152,8 @@ test("a escolha com teste mostra a chance, rola ao ser feita, e o texto segue o 
 });
 
 test("a chance prometida é a que o dado entrega", () => {
-  const { character } = makeHost({ len: 5 });
-  const check = { attribute: "len", difficulty: 14 } as const;
+  const { character } = makeHost({ labia: 5 });
+  const check = { attribute: "labia", difficulty: 14 } as const;
 
   let passed = 0;
   const rng = { rngState: 99 };
@@ -176,7 +176,7 @@ test("dar item e XP muda o personagem e vira acontecimento, na ordem em que o te
 });
 
 test("o estado salvo leva as flags, as visitas e as escolhas já gastas pra próxima sessão", () => {
-  const host = makeHost({ len: 100 });
+  const host = makeHost({ labia: 100 });
   const first = new StoryRunner(GUARD, host);
   first.choose(first.start("guarda").choices[1].index);
   first.choose(first.start("guarda").choices[0].index);
@@ -197,10 +197,10 @@ test("um teste no meio do texto rola na hora, e o resultado vem antes da fala qu
   const json = compile(`
 === altar ===
 Há um altar.
-{check("ul", 12): Você reconhece o símbolo. | Não lhe diz nada.}
+{check("saber", 12): Você reconhece o símbolo. | Não lhe diz nada.}
 -> END
 `);
-  const step = new StoryRunner(json, makeHost({ ul: 100 })).start("altar");
+  const step = new StoryRunner(json, makeHost({ saber: 100 })).start("altar");
   assert.deepEqual(
     step.beats.map((beat) => (beat.kind === "line" ? beat.text : beat.event.type)),
     ["Há um altar.", "check", "Você reconhece o símbolo."],

@@ -22,7 +22,7 @@ export type AttributeRef = keyof Attributes | "primary";
 export type Effect =
   /**
    * Dano: (atributo + dados) x multiplicador + bônus, dobrado em crítico,
-   * menos metade do Or do alvo (mínimo 1).
+   * menos metade do Couro do alvo (mínimo 1).
    */
   | {
       kind: "damage";
@@ -31,7 +31,7 @@ export type Effect =
       multiplier?: number;
       /** Soma fixa de `attribute / divisor`, arredondada pra baixo. */
       bonus?: { attribute: keyof Attributes; divisor: number };
-      /** Fura a armadura: o Or do alvo não tira nada deste dano (a guarda e a Muralha ainda seguram). */
+      /** Fura a armadura: o Couro do alvo não tira nada deste dano (a guarda e a Muralha ainda seguram). */
       piercing?: boolean;
       /** Devolve a quem bate esta fração do dano que de fato entrou, como vida (arredondada pra baixo). */
       leech?: number;
@@ -75,7 +75,7 @@ export interface Ability {
    */
   radius?: number;
   /**
-   * Rola d20 + atributo primário + `toHit` contra 10 + Or do alvo, com cobertura,
+   * Rola d20 + atributo primário + `toHit` contra 10 + Couro do alvo, com cobertura,
    * flanco e altura por cima (ver ./attack.ts). Sem isto, sempre funciona.
    */
   attack?: { toHit: number };

@@ -5,7 +5,7 @@
 //
 // Os fiscais são dois inimigos `passive` com `dialog`, de pé NA ponte: enquanto
 // estiverem ali, não se atravessa. Saem pagando (take_item), na conversa
-// (teste de Len) ou na luta — e, sem luta, quem os tira do mapa é a variável
+// (teste de Lábia) ou na luta — e, sem luta, quem os tira do mapa é a variável
 // (`unless` = fiscais_fora).
 
 VAR fiscais_fora = false
@@ -24,7 +24,7 @@ VAR fiscais_fora = false
     Fiscal: O que sobe da água. E quem sobe com ela.
     O outro não diz nada. Também não sai do lugar.
     -> opcoes
-+ [Pagar a taxa com uma Lágrima de Eir.]
++ [Pagar a taxa com uma Lágrima de Fator.]
     {take_item("item-lagrima-de-eir"):
         O mais velho ergue o frasco contra a luz, confere o nível e guarda no próprio bolso.
         Fiscal: Taxa recolhida. Pode passar.
@@ -35,7 +35,7 @@ VAR fiscais_fora = false
         Fiscal: Sem taxa, sem ponte.
         -> opcoes
     }
-* [Dizer que já foi conferida rio acima. # check: len 13]
+* [Dizer que já foi conferida rio acima. # check: labia 13]
     {passed():
         Fiscal: Rio acima... então já está no livro. Passa.
         Os dois abrem um vão do tamanho exato de uma pessoa, e nem um dedo a mais.

@@ -25,7 +25,7 @@ function makeCharacter(): Character {
     characterClass: "luminar",
     level: 3,
     xp: 40,
-    attributes: { dain: 5, eir: 5, nath: 5, il: 5, or: 5, len: 5, ul: 5 },
+    attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
     currentHp: 22,
     maxHp: 30,
     currentNodeId: "",
@@ -74,7 +74,7 @@ test("o que não é um save é recusado sem lançar", () => {
     { version: SAVE_VERSION, character: { ...makeCharacter(), characterClass: "bardo" }, story: null },
     { version: SAVE_VERSION, character: { ...makeCharacter(), race: "toString" }, story: null },
     { version: SAVE_VERSION, character: { ...makeCharacter(), level: "3" }, story: null },
-    { version: SAVE_VERSION, character: { ...makeCharacter(), attributes: { dain: 5 } }, story: null },
+    { version: SAVE_VERSION, character: { ...makeCharacter(), attributes: { forca: 5 } }, story: null },
     { version: SAVE_VERSION, character: { ...makeCharacter(), breath: "cheio" }, story: null },
     { version: SAVE_VERSION, character: { ...makeCharacter(), mana: "cheia" }, story: null },
     { version: SAVE_VERSION, character: { ...makeCharacter(), engraved: ["puxão", 3] }, story: null },
@@ -230,4 +230,27 @@ test("save da versão 4, do elenco do Eälen, vira o do elenco de agora: mesmo n
   // O que a história pôs em Lish agora está em Jarupã; o resto da história fica como estava.
   const { memory } = unpackStory(save.story!);
   assert.deepEqual(memory.afflictions, { "companion:jarupa": ["wounded_arm"], hero: ["wounded_arm"] });
+});
+
+test("save da versão 5 troca as runas do Eälen pelos atributos do mundo, na ficha e no item que soma um", () => {
+  const runes = { dain: 1, eir: 2, nath: 3, il: 4, or: 5, len: 6, ul: 7 };
+  const tonic = {
+    slotIndex: 0,
+    quantity: 1,
+    item: {
+      id: "item-tonico",
+      name: "Tônico",
+      category: "consumable",
+      data: { effect: { kind: "buff_stat", stat: "len", bonus: 2, durationTurns: 3 }, usesRemaining: 1, maxUses: 1 },
+    },
+  };
+  const hero = { ...makeCharacter(), attributes: runes, inventory: { slots: [tonic], maxSlots: 12 } };
+  const jarupa = { ...makeCharacter(), id: "companion:jarupa", attributes: runes };
+  const save = read({ ...newGame(makeCharacter()), version: 5, character: hero, companions: [{ character: jarupa, present: true }] });
+
+  const named = { forca: 1, fator: 2, vigor: 3, olho: 4, couro: 5, labia: 6, saber: 7 };
+  assert.deepEqual(save.character.attributes, named);
+  assert.deepEqual(save.companions[0].character.attributes, named);
+  const [slot] = save.character.inventory!.slots;
+  assert.deepEqual(slot.item.data.effect, { kind: "buff_stat", stat: "labia", bonus: 2, durationTurns: 3 });
 });

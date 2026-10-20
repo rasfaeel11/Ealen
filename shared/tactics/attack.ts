@@ -97,8 +97,8 @@ export function attackTotals(actor: Unit, ability: Ability, target: Unit, edge: 
   const condition = actor.statuses.reduce((sum, status) => sum + (status.toHit ?? 0), 0);
   return {
     bonus: effectiveAttribute(actor, primaryAttribute(actor)) + (ability.attack?.toHit ?? 0) + edge.toHit + condition,
-    // A armadura e a esquiva só dificultam o acerto; quem tira dano do golpe que pega é o Or.
-    defense: 10 + effectiveAttribute(target, "or") + defenseBonus(target) + edge.defense,
+    // A armadura e a esquiva só dificultam o acerto; quem tira dano do golpe que pega é o Couro.
+    defense: 10 + effectiveAttribute(target, "couro") + defenseBonus(target) + edge.defense,
   };
 }
 

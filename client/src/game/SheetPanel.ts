@@ -67,15 +67,15 @@ const STAT_LINE = 30;
 /** A tecla que abriu a ficha não pode ser a mesma que a fecha. */
 const INPUT_GRACE_MS = 200;
 
-/** O que cada runa governa, em uma palavra (ver a tabela de atributos no AGENTS.md). */
+/** O nome de cada atributo e o que ele governa, em uma palavra (ver a tabela de atributos em docs/motor.md). */
 const ATTRIBUTE_LABEL: Record<keyof Attributes, [string, string]> = {
-  dain: ["Dain", "Força"],
-  eir: ["Eir", "Ressonância"],
-  nath: ["Nath", "Vitalidade"],
-  il: ["Il", "Percepção"],
-  or: ["Or", "Densidade"],
-  len: ["Len", "Voz"],
-  ul: ["Ul", "Mistério"],
+  forca: ["Força", "dano"],
+  fator: ["Fator", "magia"],
+  vigor: ["Vigor", "vida"],
+  olho: ["Olho", "acerto"],
+  couro: ["Couro", "defesa"],
+  labia: ["Lábia", "conversa"],
+  saber: ["Saber", "estudo"],
 };
 
 /** O que cada traço de escola faz, em uma linha. */

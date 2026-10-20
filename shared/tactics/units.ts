@@ -182,7 +182,7 @@ export function damageTakenOf(unit: Unit): number {
   return unit.statuses.reduce((sum, status) => sum + (status.damageTaken ?? 0), 0);
 }
 
-/** A defesa de `unit` além do Or: o que a armadura dá e o que as condições de esquiva somam. */
+/** A defesa de `unit` além do Couro: o que a armadura dá e o que as condições de esquiva somam. */
 export function defenseBonus(unit: Unit): number {
   return (unit.defense ?? 0) + unit.statuses.reduce((sum, status) => sum + (status.evasion ?? 0), 0);
 }

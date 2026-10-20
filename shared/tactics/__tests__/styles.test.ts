@@ -92,7 +92,7 @@ test("a proficiência vai de 1 a 7 e nunca passa do nível de aura", () => {
 
 test("a vantagem de escola entra na rolagem de ataque, pros dois lados, e só entre inimigos", () => {
   const { encounter } = stage(["AE.B"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), "tsvirana"),
+    styled(makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }), "tsvirana"),
     styled(makeUnit("E", "enemy", at("E"), TOUGH), "ipojy"),
     styled(makeUnit("B", "party", at("B")), "ipojy"),
   ]);
@@ -112,7 +112,7 @@ test("a vantagem de escola entra na rolagem de ataque, pros dois lados, e só en
 
 test("Onda do Gryskar: cada golpe seguido no mesmo alvo soma no dano do próximo; errar zera", () => {
   const { encounter } = stage(["AE"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), "gryskar"),
+    styled(makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }), "gryskar"),
     makeUnit("E", "enemy", at("E"), TOUGH),
   ]);
   const hero = findUnit(encounter, "A")!;
@@ -151,7 +151,7 @@ test("Onda do Gryskar: cada golpe seguido no mesmo alvo soma no dano do próximo
 
 test("Onda do Gryskar: trocar de alvo recomeça a conta, e área não é insistência", () => {
   const { encounter } = stage(["FAE"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 60, or: 60 } }), "gryskar"),
+    styled(makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 60, couro: 60 } }), "gryskar"),
     makeUnit("E", "enemy", at("E"), TOUGH),
     makeUnit("F", "enemy", at("F"), TOUGH),
   ]);
@@ -165,8 +165,8 @@ test("Onda do Gryskar: trocar de alvo recomeça a conta, e área não é insist�
 
 test("Rachadura da Tsvirana: o dano dobra em quem acabou de repetir a ação do turno anterior", () => {
   const { encounter } = stage(["AE"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 60, or: 60 } }), "tsvirana"),
-    makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { or: 0 } }),
+    styled(makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 60, couro: 60 } }), "tsvirana"),
+    makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 0 } }),
   ]);
   const enemy = findUnit(encounter, "E")!;
   enemy.habit = { last: "guardiao.attack", repeated: true, attackTurns: 2 };
@@ -184,7 +184,7 @@ test("Rachadura da Tsvirana: o dano dobra em quem acabou de repetir a ação do 
 
 test("o motor anota o que cada um faz com a ação: repetir, variar e bater em seguida", () => {
   const { encounter } = stage(["A...E"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const hero = findUnit(encounter, "A")!;
@@ -224,7 +224,7 @@ test("o motor anota o que cada um faz com a ação: repetir, variar e bater em s
 
 test("Muralha: o Baluarte de criatura tira um tanto fixo de cada golpe, depois da armadura", () => {
   const { encounter } = stage(["AE"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 60, or: 60 } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 60, couro: 60 } }),
     styled(makeUnit("E", "enemy", at("E"), TOUGH), "baluarte"),
   ]);
   const { events, damage, other } = compare(
@@ -238,9 +238,9 @@ test("Muralha: o Baluarte de criatura tira um tanto fixo de cada golpe, depois d
 
 test("Contragolpe da Ipojy: quem a ataca e erra leva o golpe de volta, na reação dela, uma vez por rodada", () => {
   const { encounter } = stage(["AE"], (at) => [
-    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { olho: FIRST } }),
     // Couro de pedra: quase todo golpe nela erra.
-    styled(makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { or: 200 } }), "ipojy"),
+    styled(makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 200 } }), "ipojy"),
   ]);
   const enemy = findUnit(encounter, "E")!;
 
@@ -278,9 +278,9 @@ test("Contragolpe da Ipojy: quem a ataca e erra leva o golpe de volta, na reaç�
 
 test("Contragolpe da Ipojy: não alcança quem errou de longe, e não vem de quem não é da Espera", () => {
   const { encounter } = stage(["A..E", "F..."], (at) => [
-    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { il: FIRST } }),
-    styled(makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { or: 200 } }), "ipojy"),
-    styled(makeUnit("F", "enemy", at("F"), { ...TOUGH, attributes: { or: 200 } }), "gryskar"),
+    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { olho: FIRST } }),
+    styled(makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 200 } }), "ipojy"),
+    styled(makeUnit("F", "enemy", at("F"), { ...TOUGH, attributes: { couro: 200 } }), "gryskar"),
   ]);
   // O puxão de três quadrados erra de longe: o golpe dela é de perto e não chega.
   const far = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.quick_attack", target: findUnit(encounter, "E")!.pos });
@@ -294,7 +294,7 @@ test("Contragolpe da Ipojy: não alcança quem errou de longe, e não vem de que
 
 test("Voto da Ipojy: quem é da Espera não abre a luta — só bate depois que alguém bateu", () => {
   const { encounter } = stage(["IE"], (at) => [
-    styled(makeUnit("I", "party", at("I"), { ...TOUGH, attributes: { il: FIRST } }), "ipojy"),
+    styled(makeUnit("I", "party", at("I"), { ...TOUGH, attributes: { olho: FIRST } }), "ipojy"),
     makeUnit("E", "enemy", at("E"), TOUGH),
   ]);
   const xandui = findUnit(encounter, "I")!;
@@ -324,8 +324,8 @@ test("Voto da Ipojy: não embosca — quem ainda está Surpreso não é alvo del
   const { encounter } = stage(
     ["AE", "I."],
     (at) => [
-      makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { il: FIRST } }),
-      styled(makeUnit("I", "party", at("I"), { ...TOUGH, attributes: { il: 90 } }), "ipojy"),
+      makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { olho: FIRST } }),
+      styled(makeUnit("I", "party", at("I"), { ...TOUGH, attributes: { olho: 90 } }), "ipojy"),
       makeUnit("E", "enemy", at("E"), TOUGH),
     ],
     { surprised: "enemy" },
@@ -352,7 +352,7 @@ test("Voto da Ipojy: não embosca — quem ainda está Surpreso não é alvo del
 
 test("Voto da Ipojy: antes de a luta abrir, quem passa por ela não leva ataque de oportunidade", () => {
   const { encounter } = stage(["IA..."], (at) => [
-    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { olho: FIRST } }),
     styled(makeUnit("I", "enemy", at("I"), TOUGH), "ipojy"),
   ]);
   const away = run(encounter, { type: "move", unitId: "A", to: { x: 3, y: 0 } });
@@ -368,7 +368,7 @@ test("Voto da Ipojy: quem é da Espera não dá golpe de abertura — a luta com
   const { encounter, events } = stage(
     ["I.E"],
     (at) => [
-      styled(makeUnit("I", "party", at("I"), { attributes: { il: FIRST } }), "ipojy"),
+      styled(makeUnit("I", "party", at("I"), { attributes: { olho: FIRST } }), "ipojy"),
       makeUnit("E", "enemy", at("E"), TOUGH),
     ],
     { surprised: "enemy", opening: { unitId: "I", abilityId: "guardiao.attack", target: { x: 2, y: 0 }, from: { x: 1, y: 0 } } },
@@ -381,9 +381,9 @@ test("Voto da Ipojy: quem é da Espera não dá golpe de abertura — a luta com
 
 test("Adiantar a Maré pega todo inimigo de pé, vale uma vez por luta e cobra o turno seguinte de quem a fez", () => {
   const { encounter } = stage(["A....E.F.G"], (at) => [
-    unitFromCharacter(makeCharacter("A", { attributes: { il: FIRST } }), { team: "party", pos: at("A"), gifts: ["tide_pull"] }),
-    makeUnit("E", "enemy", at("E"), { attributes: { il: 50 } }),
-    makeUnit("F", "enemy", at("F"), { attributes: { il: 40 } }),
+    unitFromCharacter(makeCharacter("A", { attributes: { olho: FIRST } }), { team: "party", pos: at("A"), gifts: ["tide_pull"] }),
+    makeUnit("E", "enemy", at("E"), { attributes: { olho: 50 } }),
+    makeUnit("F", "enemy", at("F"), { attributes: { olho: 40 } }),
     makeUnit("G", "enemy", at("G"), { currentHp: 0 }),
   ]);
   const varel = findUnit(encounter, "A")!;
@@ -418,7 +418,7 @@ test("Adiantar a Maré pega todo inimigo de pé, vale uma vez por luta e cobra o
 test("condição que já chega com alguém dura a luta toda, e a de braço ferido pesa na rolagem", () => {
   const { encounter, events } = stage(
     ["AE"],
-    (at) => [makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), makeUnit("E", "enemy", at("E"), TOUGH)],
+    (at) => [makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }), makeUnit("E", "enemy", at("E"), TOUGH)],
     { lasting: { A: ["wounded_arm"], ninguém: ["wounded_arm"] } },
   );
   const hero = findUnit(encounter, "A")!;
@@ -438,7 +438,7 @@ test("condição que já chega com alguém dura a luta toda, e a de braço ferid
 test("quem só revida não bate em quem ainda não o provocou o bastante", () => {
   const { encounter } = stage(["AE"], (at) => [
     makeUnit("A", "party", at("A")),
-    Object.assign(makeUnit("E", "enemy", at("E"), { attributes: { il: FIRST } }), { quirks: { retaliates: 3 } }),
+    Object.assign(makeUnit("E", "enemy", at("E"), { attributes: { olho: FIRST } }), { quirks: { retaliates: 3 } }),
   ]);
   const hero = findUnit(encounter, "A")!;
   const strikes = () => {
@@ -456,7 +456,7 @@ test("quem só revida não bate em quem ainda não o provocou o bastante", () =>
 test("quem espelha repete o tipo da última ação de quem ele copia", () => {
   const { encounter } = stage(["AE"], (at) => [
     makeUnit("A", "party", at("A")),
-    Object.assign(makeUnit("E", "enemy", at("E"), { characterClass: "sombrilico", attributes: { il: FIRST } }), { quirks: { mirrors: "A" } }),
+    Object.assign(makeUnit("E", "enemy", at("E"), { characterClass: "sombrilico", attributes: { olho: FIRST } }), { quirks: { mirrors: "A" } }),
   ]);
   const hero = findUnit(encounter, "A")!;
 

@@ -199,7 +199,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "A rede enrolada no ombro de todo mergulhador. O peso dela ensina o corpo a ficar onde está.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "accessory", attributes: { or: 1 } },
+    data: { slot: "accessory", attributes: { couro: 1 } },
   },
   {
     id: "gear-presa-de-bruma",
@@ -207,7 +207,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Dente de um lobo que aprendeu a não estar onde se olha. Quem o carrega passa a reparar no canto do olho.",
     category: "equipment",
     rarity: "uncommon",
-    data: { slot: "accessory", attributes: { il: 2 } },
+    data: { slot: "accessory", attributes: { olho: 2 } },
   },
   {
     id: "gear-sinete-da-companhia",
@@ -215,7 +215,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Um anel de cera azul endurecida. Não dá autoridade nenhuma — mas quem fala com ele no dedo é ouvido até o fim.",
     category: "equipment",
     rarity: "uncommon",
-    data: { slot: "accessory", attributes: { len: 2 } },
+    data: { slot: "accessory", attributes: { labia: 2 } },
   },
   {
     id: "gear-tabua-de-mare",
@@ -223,7 +223,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Ardósia gravada em colunas miúdas. Quem a consulta antes de falar erra menos sobre o que já aconteceu.",
     category: "equipment",
     rarity: "rare",
-    data: { slot: "accessory", attributes: { ul: 2, eir: 1 } },
+    data: { slot: "accessory", attributes: { saber: 2, fator: 1 } },
   },
   {
     id: "gear-conta-de-forja",
@@ -231,7 +231,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Uma esfera de ferro que ainda guarda o calor de quando foi feita. O braço que a leva no pulso bate como se tivesse pressa.",
     category: "equipment",
     rarity: "uncommon",
-    data: { slot: "accessory", attributes: { dain: 2 } },
+    data: { slot: "accessory", attributes: { forca: 2 } },
   },
 ];
 

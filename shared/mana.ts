@@ -10,7 +10,7 @@ import type { Character } from "./types/character";
  * - a MANA que tem (`Character.mana`; ausente = cheia), que só o descanso
  *   devolve — o que se gasta numa luta continua gasto na seguinte, como o
  *   Fôlego (ver ./breath.ts), que fica pra técnica de espadachim;
- * - o TETO dela (`maxMana`), que cresce com o nível de mago e com Eir;
+ * - o TETO dela (`maxMana`), que cresce com o nível de mago e com Fator;
  * - o LIMITE por turno (`manaLimit`): quanto ele gasta num turno sem que o
  *   corpo pague. É o nível de mago (Verso 1, Estrofe 2, Página 3, Círculo 4...).
  *
@@ -55,12 +55,12 @@ export interface Magic {
 
 /** Quanta mana o nível de mago dá, por nível. */
 const MANA_PER_LEVEL = 2;
-/** Quantos pontos de Eir (Ressonância) dão um de mana. */
+/** Quantos pontos de Fator (Ressonância) dão um de mana. */
 const EIR_PER_MANA = 2;
 
 /** A mana de quem está descansado. */
 export function maxMana(character: Pick<Character, "attributes">, magic: Magic): number {
-  return MANA_PER_LEVEL * magic.level + Math.floor(character.attributes.eir / EIR_PER_MANA);
+  return MANA_PER_LEVEL * magic.level + Math.floor(character.attributes.fator / EIR_PER_MANA);
 }
 
 /** Quanto ele gasta num turno sem o corpo pagar: o nível de mago. */

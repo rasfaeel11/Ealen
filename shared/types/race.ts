@@ -16,8 +16,8 @@ export type Race = "humano" | "bicho" | "althirim" | "miraven" | "taharim" | "ke
 export const RACE_MODIFIERS: Record<Race, Partial<Attributes>> = {
   humano: {},
   bicho: {},
-  althirim: { ul: 1, dain: -1 },
-  miraven: { eir: 1, dain: -1 },
-  taharim: { dain: 1, eir: -1 },
-  kelbar: { len: 1, or: -1 },
+  althirim: { saber: 1, forca: -1 },
+  miraven: { fator: 1, forca: -1 },
+  taharim: { forca: 1, fator: -1 },
+  kelbar: { labia: 1, couro: -1 },
 };

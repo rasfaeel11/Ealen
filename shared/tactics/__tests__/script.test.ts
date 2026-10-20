@@ -32,7 +32,7 @@ function scripted(
 
 /** Dois que não se alcançam: A (do jogador) age primeiro, E depois. */
 const apart = (at: (marker: string) => Pos) => [
-  makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+  makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
   makeUnit("E", "enemy", at("E")),
 ];
 
@@ -98,7 +98,7 @@ test("a queda de um alvo marcado dá a vitória, com o resto do grupo dele de p�
     ["AE.........F"],
     [{ id: "alvo", when: { kind: "down", unit: "E" }, ends: "win" }],
     (at) => [
-      makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 30 }, currentHp: 500, maxHp: 500 }),
+      makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 30 }, currentHp: 500, maxHp: 500 }),
       makeUnit("E", "enemy", at("E"), { currentHp: 1 }),
       makeUnit("F", "enemy", at("F"), { currentHp: 500, maxHp: 500 }),
     ],
@@ -125,7 +125,7 @@ test("a deixa de derrota acontece no lugar dela: o grupo cai e a luta para, sem 
     ],
     (at) => [
       makeUnit("A", "party", at("A"), { currentHp: 1 }),
-      makeUnit("E", "enemy", at("E"), { attributes: { il: FIRST, dain: 30 }, currentHp: 500, maxHp: 500 }),
+      makeUnit("E", "enemy", at("E"), { attributes: { olho: FIRST, forca: 30 }, currentHp: 500, maxHp: 500 }),
     ],
   );
   const log = playOut(encounter);
@@ -146,7 +146,7 @@ test("a primeira deixa que encerra a luta encerra: a que vinha depois não dispa
     ],
     (at) => [
       makeUnit("A", "party", at("A"), { currentHp: 1 }),
-      makeUnit("E", "enemy", at("E"), { attributes: { il: FIRST, dain: 30 }, currentHp: 500, maxHp: 500 }),
+      makeUnit("E", "enemy", at("E"), { attributes: { olho: FIRST, forca: 30 }, currentHp: 500, maxHp: 500 }),
     ],
   );
   const log = playOut(encounter);
@@ -161,7 +161,7 @@ test("quebrar o destrutível marcado dispara a deixa dele", () => {
     ["A...cE"],
     [{ id: "quebrou", when: { kind: "broken", prop: "caixote" }, ends: "win" }],
     (at) => [
-      makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { il: FIRST } }),
+      makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { olho: FIRST } }),
       makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
     ],
   );
@@ -189,7 +189,7 @@ test("deixa que espera quem não está na luta não dispara nunca, e a luta acab
       { id: "sem-caixote", when: { kind: "broken", prop: "caixote" }, ends: "stop" },
     ],
     (at) => [
-      makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 30 }, currentHp: 500, maxHp: 500 }),
+      makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 30 }, currentHp: 500, maxHp: 500 }),
       makeUnit("E", "enemy", at("E"), { currentHp: 1 }),
     ],
   );

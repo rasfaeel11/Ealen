@@ -16,18 +16,18 @@ const STARTING_ITEM_QUANTITY = 2;
  * Ficaram porque dão a cada Ordem um perfil próprio — um tanque de verdade,
  * um canhão de vidro de verdade —, não porque estejam balanceados pro
  * combate tático: são ponto de partida, pra ajustar à mão. Os do trio são
- * provisórios do mesmo jeito: o mago lê (Eir e Ul), o espadachim aguenta e
- * acerta (Dain e Il), e nenhum dos dois é culto no que não é dele.
+ * provisórios do mesmo jeito: o mago lê (Fator e Saber), o espadachim aguenta e
+ * acerta (Força e Olho), e nenhum dos dois é culto no que não é dele.
  */
 const CLASS_BASE_ATTRIBUTES: Record<CharacterClass, Attributes> = {
-  atracao_repulsao: { dain: 3, eir: 8, nath: 5, il: 5, or: 4, len: 6, ul: 8 },
-  espadachim: { dain: 8, eir: 2, nath: 7, il: 7, or: 6, len: 4, ul: 3 },
-  luminar: { dain: 3, eir: 7, nath: 7, il: 4, or: 8, len: 5, ul: 5 },
-  entropista: { dain: 4, eir: 9, nath: 4, il: 6, or: 4, len: 5, ul: 7 },
-  cantor_de_ealen: { dain: 3, eir: 10, nath: 4, il: 6, or: 4, len: 7, ul: 5 },
-  guardiao: { dain: 8, eir: 3, nath: 7, il: 4, or: 6, len: 5, ul: 5 },
-  sombrilico: { dain: 8, eir: 4, nath: 7, il: 8, or: 5, len: 5, ul: 5 },
-  rachador: { dain: 10, eir: 3, nath: 6, il: 9, or: 3, len: 5, ul: 5 },
+  atracao_repulsao: { forca: 3, fator: 8, vigor: 5, olho: 5, couro: 4, labia: 6, saber: 8 },
+  espadachim: { forca: 8, fator: 2, vigor: 7, olho: 7, couro: 6, labia: 4, saber: 3 },
+  luminar: { forca: 3, fator: 7, vigor: 7, olho: 4, couro: 8, labia: 5, saber: 5 },
+  entropista: { forca: 4, fator: 9, vigor: 4, olho: 6, couro: 4, labia: 5, saber: 7 },
+  cantor_de_ealen: { forca: 3, fator: 10, vigor: 4, olho: 6, couro: 4, labia: 7, saber: 5 },
+  guardiao: { forca: 8, fator: 3, vigor: 7, olho: 4, couro: 6, labia: 5, saber: 5 },
+  sombrilico: { forca: 8, fator: 4, vigor: 7, olho: 8, couro: 5, labia: 5, saber: 5 },
+  rachador: { forca: 10, fator: 3, vigor: 6, olho: 9, couro: 3, labia: 5, saber: 5 },
 };
 
 /** Atributos iniciais de um personagem novo: base da Ordem + modificador do Povo. */
@@ -38,12 +38,12 @@ export function createStartingAttributes(race: Race, characterClass: CharacterCl
   return attributes;
 }
 
-/** HP máximo inicial, derivado de Nath (Vitalidade). */
+/** HP máximo inicial, derivado de Vigor. */
 export function startingMaxHp(attributes: Attributes): number {
-  return 20 + attributes.nath * 4;
+  return 20 + attributes.vigor * 4;
 }
 
-/** Mochila inicial de um personagem novo: algumas Lágrimas de Eir pra já dar pra testar o sistema de itens. */
+/** Mochila inicial de um personagem novo: algumas Lágrimas de Fator pra já dar pra testar o sistema de itens. */
 export function createStartingInventory(): Inventory<ConsumableItem> {
   const startingItem = MOCK_ITEMS.find((item) => item.id === STARTING_ITEM_ID);
   if (!startingItem) {

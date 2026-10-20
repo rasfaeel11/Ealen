@@ -68,7 +68,7 @@ function sheet(id: string, characterClass: Character["characterClass"], extra: P
     characterClass,
     level: 1,
     xp: 0,
-    attributes: { dain: 6, eir: 5, nath: 6, il: 8, or: 4, len: 5, ul: 5 },
+    attributes: { forca: 6, fator: 5, vigor: 6, olho: 8, couro: 4, labia: 5, saber: 5 },
     currentHp: 40,
     maxHp: 40,
     currentNodeId: "",
@@ -115,12 +115,12 @@ test("fora de luta a magia custa mana; quem não conjura não paga nenhuma, e o 
 });
 
 test("a cura fora de luta usa a conta do motor, não passa da vida cheia e não rola o dado à toa", () => {
-  const healer = sheet("l", "luminar", { attributes: { dain: 6, eir: 5, nath: 6, il: 8, or: 4, len: 5, ul: 5 } });
+  const healer = sheet("l", "luminar", { attributes: { forca: 6, fator: 5, vigor: 6, olho: 8, couro: 4, labia: 5, saber: 5 } });
   const hurt = sheet("h", "guardiao", { currentHp: 10 });
   const rng = { rngState: 7 };
 
   const healed = mend(healer, ability(healer, "heal"), hurt, rng)!;
-  // Eir (5) + 1d6.
+  // Fator (5) + 1d6.
   assert.ok(healed >= 6 && healed <= 11, `curou ${healed}`);
   assert.equal(hurt.currentHp, 10 + healed);
 

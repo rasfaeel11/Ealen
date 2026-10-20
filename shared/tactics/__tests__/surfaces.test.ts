@@ -21,7 +21,7 @@ function duel(rows: string[], overrides: Parameters<typeof makeUnit>[3] = {}, se
   return setup(
     rows,
     (at) => [
-      makeUnit("A", "party", at("A"), { attributes: { il: FIRST }, ...overrides }),
+      makeUnit("A", "party", at("A"), { attributes: { olho: FIRST }, ...overrides }),
       makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
     ],
     seed,
@@ -30,7 +30,7 @@ function duel(rows: string[], overrides: Parameters<typeof makeUnit>[3] = {}, se
 
 test("o Entropista deixa o chão do alvo em chamas, acerte ou erre, e elas queimam quem começa o turno ali", () => {
   for (const seed of [1, 2, 3, 4, 5, 6]) {
-    const encounter = duel(["A....E"], { characterClass: "entropista", attributes: { il: FIRST } }, seed);
+    const encounter = duel(["A....E"], { characterClass: "entropista", attributes: { olho: FIRST } }, seed);
     const target = { x: 5, y: 0 };
 
     const cast = run(encounter, { type: "ability", unitId: "A", abilityId: "entropista.heavy_attack", target });
@@ -51,7 +51,7 @@ test("o Entropista deixa o chão do alvo em chamas, acerte ou erre, e elas queim
 });
 
 test("a superfície dura as rodadas dela e some", () => {
-  const encounter = duel(["A....E"], { characterClass: "entropista", attributes: { il: FIRST } });
+  const encounter = duel(["A....E"], { characterClass: "entropista", attributes: { olho: FIRST } });
   run(encounter, { type: "ability", unitId: "A", abilityId: "entropista.heavy_attack", target: { x: 5, y: 0 } });
 
   run(encounter, { type: "endTurn", unitId: "A" });
@@ -121,7 +121,7 @@ test("a geada prende o passo: entrar nela custa o dobro", () => {
 
 test("a área do Cantor deixa geada em todo o raio, menos onde ninguém pisa", () => {
   const { encounter } = setup(["A.....", "....E.", "....#."], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const events = run(encounter, {
@@ -139,8 +139,8 @@ test("a área do Cantor deixa geada em todo o raio, menos onde ninguém pisa", (
 
 test("quem cai ao começar o turno nas chamas perde a vez — e a luta, se era o último", () => {
   const { encounter } = setup(["A.EF"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
-    makeUnit("E", "enemy", at("E"), { currentHp: 1, attributes: { il: 50 } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
+    makeUnit("E", "enemy", at("E"), { currentHp: 1, attributes: { olho: 50 } }),
     makeUnit("F", "enemy", at("F")),
   ]);
   lay(encounter, "fire", { x: 2, y: 0 });
@@ -150,7 +150,7 @@ test("quem cai ao começar o turno nas chamas perde a vez — e a luta, se era o
   assert.equal(activeUnit(encounter)!.id, "F");
 
   const last = setup(["A.E"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E"), { currentHp: 1 }),
   ]).encounter;
   lay(last, "fire", { x: 2, y: 0 });
@@ -181,7 +181,7 @@ test("ser arremessado pra dentro das chamas queima", () => {
 
 test("a IA não fica parada no fogo podendo bater do quadrado ao lado, nem corta por ele à toa", () => {
   const { encounter } = setup([".....", ".AE..", "....."], (at) => [
-    makeUnit("A", "enemy", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E")),
   ]);
   lay(encounter, "fire", { x: 1, y: 1 });
@@ -191,7 +191,7 @@ test("a IA não fica parada no fogo podendo bater do quadrado ao lado, nem corta
   assert.ok(plan.action, "continua batendo");
 
   const chase = setup(["A.....E", "......."], (at) => [
-    makeUnit("A", "enemy", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E")),
   ]).encounter;
   lay(chase, "fire", { x: 5, y: 0 }, { x: 5, y: 1 });

@@ -37,7 +37,7 @@ function withScribe(
 }
 
 const duel = (at: (marker: string) => Pos) => [
-  makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+  makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
   makeUnit("E", "enemy", at("E")),
 ];
 

@@ -23,10 +23,10 @@ function unit(encounter: Encounter, id: string) {
 
 // --- Turnos -----------------------------------------------------------------
 
-test("quem tem mais Il age primeiro, e a ordem dá a volta abrindo rodada nova", () => {
+test("quem tem mais Olho age primeiro, e a ordem dá a volta abrindo rodada nova", () => {
   const { encounter, events } = setup(["A...E"], (at) => [
     makeUnit("E", "enemy", at("E")),
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
   ]);
 
   assert.deepEqual(encounter.order, ["A", "E"]);
@@ -43,7 +43,7 @@ test("quem tem mais Il age primeiro, e a ordem dá a volta abrindo rodada nova",
 
 test("só quem está no turno pode agir", () => {
   const { encounter } = setup(["A...E"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   assert.deepEqual(applyCommand(encounter, { type: "endTurn", unitId: "E" }), { ok: false, reason: "not_your_turn" });
@@ -53,7 +53,7 @@ test("só quem está no turno pode agir", () => {
 
 test("andar gasta movimento, e terreno difícil gasta o dobro", () => {
   const { encounter } = setup(["A.~.......E"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const events = run(encounter, { type: "move", unitId: "A", to: { x: 3, y: 0 } });
@@ -65,7 +65,7 @@ test("andar gasta movimento, e terreno difícil gasta o dobro", () => {
 
 test("movimento além do alcance é recusado sem mudar nada", () => {
   const { encounter } = setup(["A.........E"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const before = structuredClone(encounter);
@@ -79,7 +79,7 @@ test("movimento além do alcance é recusado sem mudar nada", () => {
 
 test("inimigo barra o corredor; aliado deixa passar mas não deixa parar em cima", () => {
   const corridor = setup(["#####", "A.E..", "#####"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]).encounter;
   assert.deepEqual(
@@ -88,7 +88,7 @@ test("inimigo barra o corredor; aliado deixa passar mas não deixa parar em cima
   );
 
   const withAlly = setup(["#####", "AB..E", "#####"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("B", "party", at("B")),
     makeUnit("E", "enemy", at("E")),
   ]).encounter;
@@ -105,7 +105,7 @@ test("inimigo barra o corredor; aliado deixa passar mas não deixa parar em cima
 
 test("corpo a corpo não alcança de longe, e tiro não atravessa parede", () => {
   const { encounter } = setup(["A.#.E"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   assert.deepEqual(
@@ -114,7 +114,7 @@ test("corpo a corpo não alcança de longe, e tiro não atravessa parede", () =>
   );
 
   const sniper = setup(["A.#.E"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]).encounter;
   assert.deepEqual(
@@ -129,7 +129,7 @@ test("um ataque gasta a ação; o golpe rápido cabe na ação bônus do mesmo t
     const { encounter } = setup(
       ["AE"],
       (at) => [
-        makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+        makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
         makeUnit("E", "enemy", at("E"), { currentHp: 200, maxHp: 200 }),
       ],
       seed,
@@ -162,7 +162,7 @@ test("um ataque gasta a ação; o golpe rápido cabe na ação bônus do mesmo t
 
 test("sair de perto de um inimigo corpo a corpo provoca um ataque de oportunidade, uma vez", () => {
   const { encounter } = setup(["...AE", "....F"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST }, currentHp: 500, maxHp: 500 }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST }, currentHp: 500, maxHp: 500 }),
     makeUnit("E", "enemy", at("E")),
     makeUnit("F", "enemy", at("F"), { characterClass: "rachador" }),
   ]);
@@ -185,7 +185,7 @@ test("o Guardião arremessa o alvo, e a parede segura o arremesso", () => {
     const { encounter } = setup(
       ["AE.#"],
       (at) => [
-        makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+        makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
         makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
       ],
       seed,
@@ -209,7 +209,7 @@ test("o Guardião arremessa o alvo, e a parede segura o arremesso", () => {
 
 test("área acerta todo mundo no raio, aliado inclusive", () => {
   const { encounter } = setup(["A...E", "....F", "....B"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
     makeUnit("B", "party", at("B")),
     makeUnit("E", "enemy", at("E")),
     makeUnit("F", "enemy", at("F")),
@@ -231,7 +231,7 @@ test("área acerta todo mundo no raio, aliado inclusive", () => {
 
 test("a guarda reduz o dano e cai no começo do próprio turno seguinte", () => {
   const { encounter } = setup(["AE"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const raised = run(encounter, {
@@ -260,7 +260,7 @@ test("a guarda reduz o dano e cai no começo do próprio turno seguinte", () => 
 // --- Itens ------------------------------------------------------------------
 
 test("item custa a ação bônus, cura e sai da mochila", () => {
-  const character = makeCharacter("A", { currentHp: 10, attributes: { il: FIRST } });
+  const character = makeCharacter("A", { currentHp: 10, attributes: { olho: FIRST } });
   addItemToInventory(character, findItemTemplate("item-lagrima-de-eir")!);
   addItemToInventory(character, findItemTemplate("item-oleo-da-coruja-de-miraven")!);
 
@@ -286,7 +286,7 @@ test("item custa a ação bônus, cura e sai da mochila", () => {
 });
 
 test("Foco garante o crítico do próximo ataque e se gasta nele", () => {
-  const character = makeCharacter("A", { attributes: { il: FIRST } });
+  const character = makeCharacter("A", { attributes: { olho: FIRST } });
   addItemToInventory(character, findItemTemplate("item-oleo-da-coruja-de-miraven")!);
 
   const { encounter } = setup(["AE"], (at) => [
@@ -368,7 +368,7 @@ test("quem é pego de surpresa perde o primeiro turno, mesmo ganhando a iniciati
   const { encounter, events } = startEncounter({
     grid,
     units: [
-      makeUnit("E", "enemy", markers.E[0], { attributes: { il: FIRST } }),
+      makeUnit("E", "enemy", markers.E[0], { attributes: { olho: FIRST } }),
       makeUnit("A", "party", markers.A[0]),
     ],
     surprised: "enemy",
@@ -393,7 +393,7 @@ test("quem é pego de surpresa perde o primeiro turno, mesmo ganhando a iniciati
 test("o surpreendido não tem reação até a própria vez: quem passa por ele não leva ataque de oportunidade", () => {
   const rows = ["..A..", "..E..", "....."];
   const place = (at: (marker: string) => Pos) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ];
   const away = { type: "move", unitId: "A", to: { x: 0, y: 0 } } as const;
@@ -440,7 +440,7 @@ test("o golpe de abertura acontece antes da primeira rodada e não gasta nada do
   const { encounter, events } = startEncounter({
     grid,
     units: [
-      makeUnit("E", "enemy", markers.E[0], { attributes: { il: FIRST }, currentHp: 500, maxHp: 500 }),
+      makeUnit("E", "enemy", markers.E[0], { attributes: { olho: FIRST }, currentHp: 500, maxHp: 500 }),
       makeUnit("A", "party", markers.A[0], { characterClass: "rachador" }),
     ],
     surprised: "enemy",

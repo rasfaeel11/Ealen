@@ -46,7 +46,7 @@ const PULL: Ability = {
 const BIG: Ability = { ...PULL, id: "test.big", name: "Grande", cost: "bonus", effects: [{ kind: "push", distance: 1 }], mana: 4 };
 
 function mage(pos: Pos): Unit {
-  const unit = unitFromCharacter(makeCharacter("M", { attributes: { il: FIRST } }), {
+  const unit = unitFromCharacter(makeCharacter("M", { attributes: { olho: FIRST } }), {
     team: "party",
     pos,
     magic: { concept: "atracao_repulsao", level: 3 },
@@ -113,7 +113,7 @@ test("puxar funciona aos poucos: ele é pesado, e cada quadrado fora d'água con
 test("quem passa do limite de mana chama o bicho: ele ganha um turno a mais, logo depois, e vai atrás de quem conjurou", () => {
   const { encounter } = stage(["M.X......Y"], (at) => [
     mage(at("M")),
-    makeUnit("X", "party", at("X"), { attributes: { il: 90 } }),
+    makeUnit("X", "party", at("X"), { attributes: { olho: 90 } }),
     ykurua(at("Y")),
   ]);
   const caster = findUnit(encounter, "M")!;

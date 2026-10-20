@@ -489,7 +489,7 @@ function itemValue(unit: Unit, profile: AiProfile, item: ConsumableItem, fight: 
 
 /** Se `stat` muda alguma coisa na luta de `unit`: é com o que ele ataca, se defende ou soma num efeito. */
 function reliesOn(unit: Unit, stat: keyof Attributes): boolean {
-  if (stat === "or" || stat === primaryAttribute(unit)) return true;
+  if (stat === "couro" || stat === primaryAttribute(unit)) return true;
   return unit.abilities.some((ability) =>
     ability.effects.some(
       (effect) =>
@@ -532,7 +532,7 @@ function forecast(encounter: Encounter, actor: Unit, ability: Ability, target: U
   const { hit, crit } = attackOdds(encounter, actor, ability, target, aim);
 
   const guarded = isGuarding(target);
-  const targetOr = effectiveAttribute(target, "or");
+  const targetOr = effectiveAttribute(target, "couro");
   const damageOn = (critical: boolean) => {
     // Quem não tem vida pra perder não sofre dano nenhum.
     if (target.invulnerable) return 0;

@@ -27,7 +27,7 @@ import { FIRST, eventsOf, makeCharacter, makeUnit, run } from "./helpers";
  * luta com ele.
  */
 
-/** Página: limite de 3 por turno. Com Eir 5, a mana cheia é 2 x 3 + 2 = 8. */
+/** Página: limite de 3 por turno. Com Fator 5, a mana cheia é 2 x 3 + 2 = 8. */
 const PAGE: Magic = { concept: "atracao_repulsao", level: 3 };
 
 /**
@@ -53,7 +53,7 @@ function stage(rows: string[], place: (at: (marker: string) => Pos) => Unit[], e
 }
 
 function mage(id: string, pos: Pos, mana?: number): Unit {
-  const unit = unitFromCharacter(makeCharacter(id, { attributes: { il: FIRST }, mana }), { team: "party", pos, magic: PAGE });
+  const unit = unitFromCharacter(makeCharacter(id, { attributes: { olho: FIRST }, mana }), { team: "party", pos, magic: PAGE });
   unit.abilities.push({ ...PULL }, { ...SHOVE });
   return unit;
 }

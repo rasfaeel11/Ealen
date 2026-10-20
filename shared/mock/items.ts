@@ -13,7 +13,7 @@ import type { ConsumableItem } from "../types/inventory";
 export const MOCK_ITEMS: ConsumableItem[] = [
   {
     id: "item-lagrima-de-eir",
-    name: "Lágrima de Eir",
+    name: "Lágrima de Fator",
     description:
       "Uma gota de ressonância pura, cristalizada antes de evaporar. Dissolvida na boca, devolve ao corpo a frequência que a ferida levou embora.",
     category: "consumable",
@@ -36,7 +36,7 @@ export const MOCK_ITEMS: ConsumableItem[] = [
       "Unguento mineral batido nas fornalhas das Gargantas. A pele não endurece: fica densa, e o que é denso não cede.",
     category: "consumable",
     rarity: "uncommon",
-    data: { effect: { kind: "buff_stat", stat: "or", bonus: 4, durationTurns: 2 }, usesRemaining: 1, maxUses: 1 },
+    data: { effect: { kind: "buff_stat", stat: "couro", bonus: 4, durationTurns: 2 }, usesRemaining: 1, maxUses: 1 },
   },
   {
     id: "item-brasa-de-forjardente",
@@ -45,7 +45,7 @@ export const MOCK_ITEMS: ConsumableItem[] = [
       "Um carvão que nunca apagou, arrancado de uma forja sagrada. Segurá-la queima — e o braço que queima bate mais forte antes de doer.",
     category: "consumable",
     rarity: "uncommon",
-    data: { effect: { kind: "buff_stat", stat: "dain", bonus: 4, durationTurns: 2 }, usesRemaining: 1, maxUses: 1 },
+    data: { effect: { kind: "buff_stat", stat: "forca", bonus: 4, durationTurns: 2 }, usesRemaining: 1, maxUses: 1 },
   },
   {
     id: "item-estilhaco-de-prumo",
@@ -54,7 +54,7 @@ export const MOCK_ITEMS: ConsumableItem[] = [
       "Lasca de um instrumento de medir que os Rachadores quebraram de propósito. Desde então mede melhor: o olho que o carrega enxerga onde as coisas fecham mal.",
     category: "consumable",
     rarity: "uncommon",
-    data: { effect: { kind: "buff_stat", stat: "il", bonus: 4, durationTurns: 2 }, usesRemaining: 1, maxUses: 1 },
+    data: { effect: { kind: "buff_stat", stat: "olho", bonus: 4, durationTurns: 2 }, usesRemaining: 1, maxUses: 1 },
   },
   {
     id: "item-incenso-purificador-de-althir",
@@ -81,7 +81,7 @@ export const MOCK_ITEMS: ConsumableItem[] = [
       "Ferramenta de Cantor, do tamanho de um dedo. Batido no osso, afina quem o carrega com Eälen — e por algumas respirações tudo que ele emite ressoa mais fundo.",
     category: "consumable",
     rarity: "rare",
-    data: { effect: { kind: "buff_stat", stat: "eir", bonus: 5, durationTurns: 3 }, usesRemaining: 1, maxUses: 1 },
+    data: { effect: { kind: "buff_stat", stat: "fator", bonus: 5, durationTurns: 3 }, usesRemaining: 1, maxUses: 1 },
   },
   {
     id: "item-calice-de-aguas-lentas",
@@ -99,7 +99,7 @@ export const MOCK_ITEMS: ConsumableItem[] = [
       "Um grão pesado demais para o tamanho que tem. Os Guardiões dizem que é um pedaço de limite: enquanto estiver na mão, quase nada consegue atravessar.",
     category: "consumable",
     rarity: "sacred",
-    data: { effect: { kind: "buff_stat", stat: "or", bonus: 7, durationTurns: 3 }, usesRemaining: 1, maxUses: 1 },
+    data: { effect: { kind: "buff_stat", stat: "couro", bonus: 7, durationTurns: 3 }, usesRemaining: 1, maxUses: 1 },
   },
 ];
 

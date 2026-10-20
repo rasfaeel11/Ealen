@@ -43,7 +43,7 @@ function staged(
 }
 
 const pair = (at: (marker: string) => Pos) => [
-  makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+  makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
   makeUnit("E", "enemy", at("E")),
 ];
 
@@ -92,7 +92,7 @@ test("só o grupo do jogador mexe em objeto", () => {
 
 test("o que não se quebra não é alvo de golpe nenhum, nem em área", () => {
   const { encounter } = staged(["Asc.....E"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const hero = activeUnit(encounter)!;
@@ -135,8 +135,8 @@ test("quem não tem vida não perde nenhuma: o golpe vira `immune`, e condição
   const ghost = (at: (marker: string) => Pos) => {
     const enemy = makeUnit("E", "enemy", at("E"));
     enemy.invulnerable = true;
-    // Dain alto: só um 1 natural erra.
-    return [makeUnit("A", "party", at("A"), { attributes: { il: FIRST, dain: 60, or: 60 } }), enemy];
+    // Força alto: só um 1 natural erra.
+    return [makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 60, couro: 60 } }), enemy];
   };
   // Procura uma seed em que o golpe pesado (dano + empurrão) pega.
   for (let seed = 1; seed < 30; seed++) {
@@ -160,7 +160,7 @@ test("chão que fere não fere quem não tem vida", () => {
   const { encounter } = staged(["A...E..."], (at) => {
     const enemy = makeUnit("E", "enemy", at("E"));
     enemy.invulnerable = true;
-    return [makeUnit("A", "party", at("A"), { characterClass: "entropista", attributes: { il: FIRST } }), enemy];
+    return [makeUnit("A", "party", at("A"), { characterClass: "entropista", attributes: { olho: FIRST } }), enemy];
   });
   const enemy = encounter.units.find((unit) => unit.id === "E")!;
   // As Chamas do Entropista ficam no chão dele, acerte ou erre.
@@ -176,7 +176,7 @@ test("a IA não vê valor em bater em quem não tem vida, e não trava por isso"
   const { encounter } = staged(["AE......"], (at) => {
     const hero = makeUnit("A", "party", at("A"));
     hero.invulnerable = true;
-    return [hero, makeUnit("E", "enemy", at("E"), { attributes: { il: FIRST } })];
+    return [hero, makeUnit("E", "enemy", at("E"), { attributes: { olho: FIRST } })];
   });
   for (let i = 0; i < 12 && activeUnit(encounter)?.id === "E"; i++) {
     const command = chooseCommand(encounter);
@@ -190,14 +190,14 @@ test("a deixa que traz uma condição a aplica ao disparar, em quem está de pé
   const { encounter } = staged(
     ["A....E...F"],
     (at) => [
-      makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
-      makeUnit("E", "enemy", at("E"), { attributes: { il: 50 } }),
+      makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
+      makeUnit("E", "enemy", at("E"), { attributes: { olho: 50 } }),
       makeUnit("F", "enemy", at("F"), { currentHp: 0 }),
     ],
     [{ id: "repuxo", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: ["E", "F", "ninguém"] } }],
   );
   const enemy = encounter.units.find((unit) => unit.id === "E")!;
-  const before = effectiveAttribute(enemy, "or");
+  const before = effectiveAttribute(enemy, "couro");
 
   pass(encounter);
   run(encounter, { type: "ability", unitId: "E", abilityId: "guardiao.defend", target: enemy.pos });
@@ -214,5 +214,5 @@ test("a deixa que traz uma condição a aplica ao disparar, em quem está de pé
   assert.equal(eventsOf(events, "statusApplied").length, 1);
   assert.ok(!enemy.statuses.some((status) => status.guard));
   assert.deepEqual(enemy.statuses.map((status) => status.id), ["exposed"]);
-  assert.equal(effectiveAttribute(enemy, "or"), before - 3);
+  assert.equal(effectiveAttribute(enemy, "couro"), before - 3);
 });

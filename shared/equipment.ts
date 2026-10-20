@@ -21,7 +21,7 @@ import type { Equipment, EquipmentItem, EquipmentSlot } from "./types/inventory"
  *   pesada, tira movimento (`gearSpeed`).
  * - O ACESSÓRIO soma atributos (`gearedAttributes`): na luta, nos testes da
  *   história e na cura feita fora de luta. Vida e Fôlego máximos continuam
- *   vindo do Nath da ficha, sem acessório.
+ *   vindo do Vigor da ficha, sem acessório.
  *
  * Criatura também pode vestir (`template.equipment` no bestiário): é como a
  * gente do capítulo ganha o bastão, o arpão e o gibão. O que ela veste não

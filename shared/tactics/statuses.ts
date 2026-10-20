@@ -12,7 +12,7 @@ export interface StatusTemplate {
   name: string;
   /** Somado aos atributos do portador enquanto durar (negativo = penalidade). */
   attributeBonus?: Partial<Attributes>;
-  /** Bloqueia dano recebido: Or + 1d6 a menos em cada golpe. */
+  /** Bloqueia dano recebido: Couro + 1d6 a menos em cada golpe. */
   guard?: boolean;
   /** O próximo ataque do portador é crítico; a condição se gasta nele. */
   guaranteedCrit?: boolean;
@@ -61,9 +61,9 @@ const D4: Dice = { count: 1, sides: 4 };
 
 export const STATUSES = {
   guarding: { id: "guarding", name: "Em guarda", guard: true },
-  off_balance: { id: "off_balance", name: "Desequilibrado", attributeBonus: { or: -3 } },
+  off_balance: { id: "off_balance", name: "Desequilibrado", attributeBonus: { couro: -3 } },
   /** A guarda aberta à força: a que estava de pé cai, e a armadura vale menos. */
-  exposed: { id: "exposed", name: "Sem guarda", attributeBonus: { or: -3 }, breaksGuard: true },
+  exposed: { id: "exposed", name: "Sem guarda", attributeBonus: { couro: -3 }, breaksGuard: true },
   focused: { id: "focused", name: "Foco", guaranteedCrit: true },
   /** O preço de uma magia: o próximo turno de quem a fez. */
   winded: { id: "winded", name: "Sem fôlego", skipsTurn: true },
@@ -95,21 +95,21 @@ export const STATUSES = {
   /** Guardião: a gravidade dobrada sob os pés. */
   heavy: { id: "heavy", name: "Pesado", speed: -3 },
   /** Entropista: a guarda enferruja antes de quem a segura. */
-  rusted: { id: "rusted", name: "Enferrujado", attributeBonus: { or: -2 }, breaksGuard: true },
+  rusted: { id: "rusted", name: "Enferrujado", attributeBonus: { couro: -2 }, breaksGuard: true },
   /** Entropista: o relógio adiantado. Fere a cada turno. */
   decaying: { id: "decaying", name: "Decaindo", harm: D4 },
   /** Entropista: o selo do fim. A armadura envelhece sozinha. */
-  decay_mark: { id: "decay_mark", name: "Marca de Decaimento", attributeBonus: { or: -4 } },
+  decay_mark: { id: "decay_mark", name: "Marca de Decaimento", attributeBonus: { couro: -4 } },
   /** Entropista: travado no estado em que está. Nada nele se restaura. */
   irreversible: { id: "irreversible", name: "Irreversível", noHeal: true },
   /** Cantor: a onda invertida por cima da voz dele. O que ele tentar sai fraco. */
   muffled: { id: "muffled", name: "Abafado", toHit: -3 },
   /** Cantor: a própria frequência multiplicada até soar como muitos. */
-  chorus: { id: "chorus", name: "Em coro", attributeBonus: { len: 4, eir: 4 } },
+  chorus: { id: "chorus", name: "Em coro", attributeBonus: { labia: 4, fator: 4 } },
   /** Rachador: uma fissura mínima. Dói no próximo golpe. */
   cracked: { id: "cracked", name: "Trincado", damageTaken: 3 },
   /** Rachador: o padrão quebrado de vez. Todo golpe acha uma abertura nova. */
-  broken_symmetry: { id: "broken_symmetry", name: "Simetria quebrada", damageTaken: 4, attributeBonus: { or: -1 } },
+  broken_symmetry: { id: "broken_symmetry", name: "Simetria quebrada", damageTaken: 4, attributeBonus: { couro: -1 } },
   /** A rede aberta nas pernas de alguém (o `net_cast`). */
   netted: { id: "netted", name: "Enredado", speed: -4 },
 } satisfies Record<string, StatusTemplate>;

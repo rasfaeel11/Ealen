@@ -48,7 +48,7 @@ Andarilha: Faz três noites que eu não durmo direito. Toma. Não é muito, mas 
     ~ andarilha_falou_das_ruinas = true
     Andarilha: Um salão sem teto. Tem um patamar no fundo, e quem sobe nele enxerga o salão inteiro — e acerta o salão inteiro.
     ~ note("ruinas_patamar", "Ao norte, as ruínas: um salão sem teto, com um patamar no fundo de onde se enxerga o salão inteiro.")
-    {check("ul", 12):
+    {check("saber", 12):
         Você junta o que ela diz com o que já viu de construções assim: salões desses guardavam óleo de lamparina. Se ainda houver barris, um golpe basta pra derramar fogo no chão.
         ~ note("ruinas_oleo", "Salões assim guardavam óleo de lamparina.")
     - else:
@@ -59,7 +59,7 @@ Andarilha: Faz três noites que eu não durmo direito. Toma. Não é muito, mas 
     Andarilha: Mostro até a porta. Dali pra dentro é com você.
     ~ travel("ruinas", "from_clareira")
     -> END
-* [Pedir alguma coisa pra viagem. # check: len 13]
+* [Pedir alguma coisa pra viagem. # check: labia 13]
     {passed():
         Andarilha: Você pede bonito. Tá bom. Eu ia guardar pra uma hora ruim, mas a sua parece mais perto que a minha.
         ~ give_item("item-lagrima-de-eir")

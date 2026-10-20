@@ -37,7 +37,7 @@ function duel(seed = 1) {
   return setup(
     ["AE"],
     (at) => [
-      makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+      makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
       makeUnit("E", "enemy", at("E"), { currentHp: 900, maxHp: 900 }),
     ],
     seed,
@@ -54,10 +54,10 @@ function heavy(encounter: Encounter): Command {
   return { type: "ability", unitId: "A", abilityId: HEAVY, target: unit(encounter, "E").pos };
 }
 
-test("o Fôlego de quem está descansado cresce com o nível e com Nath, e ficha que nunca gastou está cheia", () => {
-  const fresh = makeCharacter("x", { level: 1, attributes: { nath: 5 } });
+test("o Fôlego de quem está descansado cresce com o nível e com Vigor, e ficha que nunca gastou está cheia", () => {
+  const fresh = makeCharacter("x", { level: 1, attributes: { vigor: 5 } });
   assert.equal(maxBreath(fresh), 6);
-  assert.equal(maxBreath(makeCharacter("x", { level: 4, attributes: { nath: 8 } })), 11);
+  assert.equal(maxBreath(makeCharacter("x", { level: 4, attributes: { vigor: 8 } })), 11);
   assert.equal(breathOf(fresh), 6);
   assert.equal(breathOf({ ...fresh, breath: 2 }), 2);
   // O que não é um número que caiba volta pro lugar.
@@ -153,7 +153,7 @@ test("o golpe de abertura paga o Fôlego, e a recarga dele já conta o primeiro 
       grid,
       units: [
         unitFromCharacter(makeCharacter("A", { breath }), { team: "party", pos: markers.A[0] }),
-        makeUnit("E", "enemy", markers.E[0], { attributes: { il: FIRST }, currentHp: 900, maxHp: 900 }),
+        makeUnit("E", "enemy", markers.E[0], { attributes: { olho: FIRST }, currentHp: 900, maxHp: 900 }),
       ],
       surprised: "enemy",
       opening: { unitId: "A", abilityId: HEAVY, target: markers.E[0] },
@@ -175,7 +175,7 @@ test("o golpe de abertura paga o Fôlego, e a recarga dele já conta o primeiro 
 test("a reação paga como qualquer uso: sem Fôlego pro golpe, quem sai de perto não apanha", () => {
   const leave = (breath: number) => {
     const { encounter } = setup(["AE.."], (at) => [
-      makeUnit("E", "enemy", at("E"), { attributes: { il: FIRST } }),
+      makeUnit("E", "enemy", at("E"), { attributes: { olho: FIRST } }),
       makeUnit("A", "party", at("A")),
     ]);
     const guard = unit(encounter, "A");
@@ -197,7 +197,7 @@ test("a reação paga como qualquer uso: sem Fôlego pro golpe, quem sai de pert
 test("a IA não propõe o que não pode pagar, nem o que está em recarga", () => {
   const { encounter } = duel();
   // De guarda o golpe comum não passa: é o pesado que a IA quer aqui.
-  unit(encounter, "E").statuses.push({ id: "exposed", name: "Sem guarda", attributeBonus: { or: -3 }, turnsLeft: 9 });
+  unit(encounter, "E").statuses.push({ id: "exposed", name: "Sem guarda", attributeBonus: { couro: -3 }, turnsLeft: 9 });
   assert.equal(planTurn(encounter).action?.ability.id, HEAVY);
 
   unit(encounter, "A").breath = 1;
@@ -209,7 +209,7 @@ test("a IA não propõe o que não pode pagar, nem o que está em recarga", () =
 });
 
 test("a ficha entra na luta com o Fôlego que tem e sai com o que sobrou", () => {
-  const character = makeCharacter("A", { breath: 3, attributes: { il: FIRST } });
+  const character = makeCharacter("A", { breath: 3, attributes: { olho: FIRST } });
   const { encounter } = setup(["AE"], (at) => [
     unitFromCharacter(character, { team: "party", pos: at("A") }),
     makeUnit("E", "enemy", at("E"), { currentHp: 900, maxHp: 900 }),

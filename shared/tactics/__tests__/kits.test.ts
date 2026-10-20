@@ -180,7 +180,7 @@ test("subir de nível devolve as Técnicas aprendidas, e a ficha já as tem", ()
 
 test("a esquiva soma na defesa de quem a carrega, e só dificulta o acerto", () => {
   const { encounter } = setup(["AE"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const strike = unit(encounter, "A").abilities.find((ability) => ability.id === "guardiao.attack")!;
@@ -194,7 +194,7 @@ test("Trincado soma em cada golpe recebido, e Ancorado tira — e não sai do lu
   const scene = (seed: number, status?: StatusId) => {
     const { encounter } = setup(
       ["AE.."],
-      (at) => [makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300 })],
+      (at) => [makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }), makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300 })],
       seed,
     );
     if (status) afflict(encounter, "E", status);
@@ -220,8 +220,8 @@ test("o golpe que fura não encontra a armadura, e o Corte do Não-Dito não rol
     const { encounter } = setup(
       ["A...E"],
       (at) => [
-        unitFromCharacter(makeCharacter("A", { characterClass: "rachador", level: 2, attributes: { il: FIRST } }), { team: "party", pos: at("A") }),
-        makeUnit("E", "enemy", at("E"), { currentHp: 900, maxHp: 900, attributes: { or: 8 } }),
+        unitFromCharacter(makeCharacter("A", { characterClass: "rachador", level: 2, attributes: { olho: FIRST } }), { team: "party", pos: at("A") }),
+        makeUnit("E", "enemy", at("E"), { currentHp: 900, maxHp: 900, attributes: { couro: 8 } }),
       ],
       seed,
     );
@@ -232,11 +232,11 @@ test("o golpe que fura não encontra a armadura, e o Corte do Não-Dito não rol
     (seed) => ({ seed, ...scene(seed, "rachador.attack") }),
     ({ events }) => eventsOf(events, "attackRoll")[0].outcome === "hit",
   );
-  // Mesmo dado, mesmo golpe: a diferença é a armadura (metade do Or) que o golpe não encontra.
+  // Mesmo dado, mesmo golpe: a diferença é a armadura (metade do Couro) que o golpe não encontra.
   assert.equal(scene(plain.seed, "rachador.falha_no_padrao").damage, plain.damage + Math.floor(8 / 2));
 
   const { encounter } = setup(["AE"], (at) => [
-    unitFromCharacter(makeCharacter("A", { characterClass: "sombrilico", level: 6, attributes: { il: FIRST } }), { team: "party", pos: at("A") }),
+    unitFromCharacter(makeCharacter("A", { characterClass: "sombrilico", level: 6, attributes: { olho: FIRST } }), { team: "party", pos: at("A") }),
     makeUnit("E", "enemy", at("E"), { currentHp: 900, maxHp: 900 }),
   ]);
   const events = run(encounter, { type: "ability", unitId: "A", abilityId: "sombrilico.corte_do_nao_dito", target: unit(encounter, "E").pos });
@@ -246,7 +246,7 @@ test("o golpe que fura não encontra a armadura, e o Corte do Não-Dito não rol
 
 test("Decaindo fere no começo de cada turno de quem a carrega, pelos turnos que dura, e depois passa", () => {
   const { encounter } = setup(["AE"], (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300 }),
   ]);
   afflict(encounter, "E", "decaying", 2);
@@ -275,7 +275,7 @@ test("quem não tem vida pra perder não decai", () => {
   const { encounter } = setup(["AE"], (at) => {
     const ghost = makeUnit("E", "enemy", at("E"));
     ghost.invulnerable = true;
-    return [makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }), ghost];
+    return [makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }), ghost];
   });
   afflict(encounter, "E", "decaying", 2);
   const events = run(encounter, { type: "endTurn", unitId: "A" });
@@ -289,7 +289,7 @@ test("a rede prende o passo de quem pega, pelos turnos que dura", () => {
       const { encounter } = setup(
         ["A..E"],
         (at) => [
-          unitFromCharacter(makeCharacter("A", { attributes: { il: FIRST } }), { team: "party", pos: at("A"), gifts: ["net_cast"] }),
+          unitFromCharacter(makeCharacter("A", { attributes: { olho: FIRST } }), { team: "party", pos: at("A"), gifts: ["net_cast"] }),
           makeUnit("E", "enemy", at("E")),
         ],
         seed,
@@ -322,7 +322,7 @@ test("o corte do Sombrílico leva Fôlego de quem apanha, até o que ele tem", (
       const { encounter } = setup(
         ["AE"],
         (at) => [
-          unitFromCharacter(makeCharacter("A", { characterClass: "sombrilico", attributes: { il: FIRST } }), { team: "party", pos: at("A") }),
+          unitFromCharacter(makeCharacter("A", { characterClass: "sombrilico", attributes: { olho: FIRST } }), { team: "party", pos: at("A") }),
           makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300, breath: 1 }),
         ],
         seed,
@@ -342,11 +342,11 @@ test("o corte do Sombrílico leva Fôlego de quem apanha, até o que ele tem", (
 
 test("quem está Irreversível não se cura: nem por habilidade, nem por item — e purificar tira a trava", () => {
   const scene = () => {
-    const wounded = makeCharacter("W", { currentHp: 5, attributes: { il: FIRST } });
+    const wounded = makeCharacter("W", { currentHp: 5, attributes: { olho: FIRST } });
     addItemToInventory(wounded, findItemTemplate("item-lagrima-de-eir")!);
     addItemToInventory(wounded, findItemTemplate("item-incenso-purificador-de-althir")!);
     const { encounter } = setup(["HW.E"], (at) => [
-      unitFromCharacter(makeCharacter("H", { characterClass: "luminar", attributes: { il: 50 } }), { team: "party", pos: at("H") }),
+      unitFromCharacter(makeCharacter("H", { characterClass: "luminar", attributes: { olho: 50 } }), { team: "party", pos: at("H") }),
       unitFromCharacter(wounded, { team: "party", pos: at("W") }),
       makeUnit("E", "enemy", at("E")),
     ]);
@@ -371,7 +371,7 @@ test("quem está Irreversível não se cura: nem por habilidade, nem por item �
 });
 
 test("purificar não tira o que a história pôs pra durar", () => {
-  const sick = makeCharacter("W", { attributes: { il: FIRST } });
+  const sick = makeCharacter("W", { attributes: { olho: FIRST } });
   addItemToInventory(sick, findItemTemplate("item-incenso-purificador-de-althir")!);
   const { encounter } = setup(["W.E"], (at) => [unitFromCharacter(sick, { team: "party", pos: at("W") }), makeUnit("E", "enemy", at("E"))]);
   afflict(encounter, "W", "wounded_arm", Infinity);
@@ -386,7 +386,7 @@ test("a Antífona devolve a quem bate o que o golpe tirou, até a vida cheia", (
       const { encounter } = setup(
         ["AE"],
         (at) => [
-          unitFromCharacter(makeCharacter("A", { characterClass: "luminar", level: 4, currentHp: 10, attributes: { il: FIRST } }), {
+          unitFromCharacter(makeCharacter("A", { characterClass: "luminar", level: 4, currentHp: 10, attributes: { olho: FIRST } }), {
             team: "party",
             pos: at("A"),
           }),
@@ -408,9 +408,9 @@ test("a Antífona devolve a quem bate o que o golpe tirou, até a vida cheia", (
 
 test("a Muralha de Prumo põe uma guarda na frente de um aliado, e ela cai quando a vez dele chega", () => {
   const { encounter } = setup(["LA.E"], (at) => [
-    unitFromCharacter(makeCharacter("L", { characterClass: "luminar", level: 2, attributes: { il: FIRST } }), { team: "party", pos: at("L") }),
-    makeUnit("A", "party", at("A"), { attributes: { il: 1 } }),
-    makeUnit("E", "enemy", at("E"), { attributes: { il: 50 } }),
+    unitFromCharacter(makeCharacter("L", { characterClass: "luminar", level: 2, attributes: { olho: FIRST } }), { team: "party", pos: at("L") }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: 1 } }),
+    makeUnit("E", "enemy", at("E"), { attributes: { olho: 50 } }),
   ]);
   run(encounter, { type: "ability", unitId: "L", abilityId: "luminar.muralha_de_prumo", target: unit(encounter, "A").pos });
   assert.ok(unit(encounter, "A").statuses.some((status) => status.guard));
@@ -424,7 +424,7 @@ test("a Muralha de Prumo põe uma guarda na frente de um aliado, e ela cai quand
 test("a IA dá valor ao que os kits fazem: abre a trinca antes de bater, some quando apanha, e não cura quem não se cura", () => {
   // O Rachador da IA usa a ação bônus na Trinca e a ação no golpe, no mesmo alvo.
   const sniper = setup(["A....E"], (at) => [
-    unitFromCharacter(makeCharacter("A", { characterClass: "rachador", attributes: { il: FIRST } }), { team: "enemy", pos: at("A") }),
+    unitFromCharacter(makeCharacter("A", { characterClass: "rachador", attributes: { olho: FIRST } }), { team: "enemy", pos: at("A") }),
     makeUnit("E", "party", at("E"), { currentHp: 300, maxHp: 300 }),
   ]).encounter;
   const shot = planTurn(sniper);
@@ -433,7 +433,7 @@ test("a IA dá valor ao que os kits fazem: abre a trinca antes de bater, some qu
 
   // A esquiva vale o dano que poupa: sem ninguém que o alcance, ficar Despercebido não vale o gesto.
   const safe = setup(["A.......E"], (at) => [
-    unitFromCharacter(makeCharacter("A", { characterClass: "sombrilico", attributes: { il: FIRST } }), { team: "enemy", pos: at("A") }),
+    unitFromCharacter(makeCharacter("A", { characterClass: "sombrilico", attributes: { olho: FIRST } }), { team: "enemy", pos: at("A") }),
     makeUnit("E", "party", at("E")),
   ]).encounter;
   const idle = unit(safe, "A");
@@ -443,7 +443,7 @@ test("a IA dá valor ao que os kits fazem: abre a trinca antes de bater, some qu
 
   // Um curandeiro não gasta a cura em quem a cura não pega.
   const ward = setup(["HW......E"], (at) => [
-    unitFromCharacter(makeCharacter("H", { characterClass: "luminar", attributes: { il: FIRST } }), { team: "enemy", pos: at("H") }),
+    unitFromCharacter(makeCharacter("H", { characterClass: "luminar", attributes: { olho: FIRST } }), { team: "enemy", pos: at("H") }),
     makeUnit("W", "enemy", at("W"), { currentHp: 3 }),
     makeUnit("E", "party", at("E")),
   ]).encounter;

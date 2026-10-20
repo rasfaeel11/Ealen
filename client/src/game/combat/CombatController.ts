@@ -113,7 +113,7 @@ const ERROR_TEXT: Record<CommandError, string> = {
   item_unavailable: "Esse item não está na mochila.",
 };
 
-/** O que uma condição faz a quem a carrega, pelas marcas dela: "Or -3", "esquiva +4", "1d4 de dano por turno"... */
+/** O que uma condição faz a quem a carrega, pelas marcas dela: "Couro -3", "esquiva +4", "1d4 de dano por turno"... */
 export function describeStatus(status: StatusTemplate): string {
   const notes: string[] = [];
   for (const [stat, points] of Object.entries(status.attributeBonus ?? {})) {

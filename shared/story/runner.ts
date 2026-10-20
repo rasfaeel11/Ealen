@@ -50,12 +50,12 @@ import {
  * O texto fala com o jogo por funções que o Ink chama (declaradas com
  * EXTERNAL em client/story/main.ink):
  *
- *   attr("len")         o atributo do personagem
+ *   attr("labia")         o atributo do personagem
  *   order(), people()   o que ele é e o povo dele ("atracao_repulsao", "humano")
  *   level()
  *   has_item("id")
  *   defeated("area:grupo")   se aquele grupo de inimigos já foi vencido
- *   check("ul", 13)     rola um teste AGORA, no meio do texto, e diz se passou
+ *   check("saber", 13)     rola um teste AGORA, no meio do texto, e diz se passou
  *   passed()            se passou o teste da escolha que acabou de ser feita
  *   give_item("id")     põe um item na mochila
  *   take_item("id")     tira um da mochila; diz se havia o que tirar
@@ -92,7 +92,7 @@ import {
  * `start_fight` e `travel` não interrompem o texto: viram acontecimentos
  * (`fight`, `travel`) que a cena cumpre depois da última fala — ver `aftermath`.
  *
- * Uma escolha com a etiqueta `# check: len 14` é um teste anunciado: a caixa
+ * Uma escolha com a etiqueta `# check: labia 14` é um teste anunciado: a caixa
  * mostra a chance antes, o dado rola quando ela é escolhida, e o texto
  * pergunta o resultado com `passed()`.
  *

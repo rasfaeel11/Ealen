@@ -72,9 +72,9 @@ function hurt(arm: Arm, extra: Partial<Damage> = {}): Damage {
   return { kind: "damage", dice: arm.dice, attribute: "primary", ...extra };
 }
 
-/** O golpe pesado: quase o dobro, com metade do Dain por cima. */
+/** O golpe pesado: quase o dobro, com metade do Força por cima. */
 function heavy(arm: Arm): Damage {
-  return hurt(arm, { multiplier: 1.8, bonus: { attribute: "dain", divisor: 2 } });
+  return hurt(arm, { multiplier: 1.8, bonus: { attribute: "forca", divisor: 2 } });
 }
 
 /** De onde e com que acerto sai um golpe de arma num inimigo. */
@@ -102,12 +102,12 @@ const HEAL: Body = {
   cost: "action",
   range: HEAL_RANGE,
   targets: "ally",
-  effects: [{ kind: "heal", dice: D6, attribute: "eir" }],
+  effects: [{ kind: "heal", dice: D6, attribute: "fator" }],
   breath: HEAL_BREATH,
 };
 
 /** A Cura de quem conjura (`magia` §4.3): o mesmo texto de primeiros socorros, pago em mana, e recitado. */
-const CURE: Body = { cost: "action", range: HEAL_RANGE, targets: "ally", effects: [{ kind: "heal", dice: D6, attribute: "eir" }], mana: 2 };
+const CURE: Body = { cost: "action", range: HEAL_RANGE, targets: "ally", effects: [{ kind: "heal", dice: D6, attribute: "fator" }], mana: 2 };
 
 /**
  * O kit de cada classe: as habilidades dela pela chave (as posturas e as
@@ -203,7 +203,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
       targets: "enemy",
       attack: { toHit: 0 },
       effects: [
-        { kind: "damage", dice: D6, attribute: "dain" },
+        { kind: "damage", dice: D6, attribute: "forca" },
         { kind: "status", statusId: "heavy", turns: 2 },
       ],
       breath: 1,

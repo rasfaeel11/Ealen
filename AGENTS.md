@@ -260,11 +260,6 @@ Steam.
 Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar uma task, faça o commit. O push
 é do autor.**
 
-### P0 — a conversão (o jogo não existe sem isto)
-| # | Task | O que é |
-|---|---|---|
-| 9 | **Atributos com nomes do mundo** | Depois da aprovação do autor. |
-
 ### P1 — o conteúdo
 | # | Task | O que é |
 |---|---|---|
@@ -320,6 +315,15 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   turno a mais logo depois da vez de quem está agindo (`bonusTurns`/`interlude`) e vai atrás de quem conjurou
   (`prey`). A deixa `when: burst` dispara na primeira vez. A unidade grande (2x2) não coube: pede ocupação de
   vários quadrados em toda a grade, e ficou de fora. Ele ainda não está em nenhum mapa: os baixios são da task 10.
+- **9. Atributos com nomes do mundo.** As runas Tirán saíram: Força, Fator, Vigor, Olho, Couro, Lábia e Saber, com
+  as chaves sem acento (`forca`, `fator`, `vigor`, `olho`, `couro`, `labia`, `saber`) no código, nos testes, no Ink
+  (`attr`, `check`, `# check:`) e na ficha. O save foi pra versão 6, que troca as chaves das fichas e do item de mochila
+  que soma um atributo.
+- **Revisão das tasks 1 a 8** (2026-10-20). O que estava errado: um comentário apontava pra um arquivo que não existe;
+  dois testes não passavam no typecheck desde antes da conversão; e Endyru ficava na Página pra sempre, com Desarmar e
+  Arremesso chegando pelo nível — o cânone diz que ele chega ao Círculo e que esse repertório é do Círculo (`magia`
+  §3.5). Agora o nível de mago fica na ficha (`mageLevel`), o texto o sobe com `mage_rise`, e as Técnicas com
+  `mage` chegam com ele.
 
 ## 9. Onde isto está no cânone
 

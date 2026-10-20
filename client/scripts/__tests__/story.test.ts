@@ -67,7 +67,7 @@ function makeHost(attribute: number, seed: number): StoryHost {
     characterClass: "luminar",
     level: 1,
     xp: 0,
-    attributes: { dain: attribute, eir: attribute, nath: attribute, il: attribute, or: attribute, len: attribute, ul: attribute },
+    attributes: { forca: attribute, fator: attribute, vigor: attribute, olho: attribute, couro: attribute, labia: attribute, saber: attribute },
     currentHp: 30,
     maxHp: 30,
     currentNodeId: "",

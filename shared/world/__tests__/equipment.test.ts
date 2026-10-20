@@ -42,7 +42,7 @@ function sheet(characterClass: CharacterClass, extra: Partial<Character> = {}): 
     characterClass,
     level: 1,
     xp: 0,
-    attributes: { dain: 5, eir: 5, nath: 5, il: 5, or: 5, len: 5, ul: 5 },
+    attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
     currentHp: 30,
     maxHp: 30,
     currentNodeId: "",
@@ -145,9 +145,9 @@ test("vestir tira do guardado e devolve o que estava no lugar; recusado, não mu
 test("na luta, a armadura entra na defesa e no passo, e o acessório nos atributos", () => {
   const plated = sheet("guardiao", { equipment: { armor: "gear-placa-de-servo", accessory: "gear-conta-de-forja" } });
   assert.equal(gearDefense(plated), 3);
-  assert.equal(gearedAttributes(plated).dain, 7);
+  assert.equal(gearedAttributes(plated).forca, 7);
   // A ficha não muda: o que se veste é somado por cima.
-  assert.equal(plated.attributes.dain, 5);
+  assert.equal(plated.attributes.forca, 5);
 
   const { grid, markers } = gridFromAscii(["AE"]);
   const { encounter } = startEncounter({
@@ -160,7 +160,7 @@ test("na luta, a armadura entra na defesa e no passo, e o acessório nos atribut
   });
   const attacker = findUnit(encounter, "A")!;
   const target = findUnit(encounter, "E")!;
-  assert.equal(target.attributes.dain, 7);
+  assert.equal(target.attributes.forca, 7);
   assert.equal(target.defense, 3);
   assert.equal(target.speed, attacker.speed - 1);
 
@@ -172,7 +172,7 @@ test("na luta, a armadura entra na defesa e no passo, e o acessório nos atribut
 test("fora de luta, o acessório pesa nos testes da história", () => {
   const plain = sheet("luminar");
   const ringed = sheet("luminar", { equipment: { accessory: "gear-sinete-da-companhia" } });
-  const check = { attribute: "len", difficulty: 14 } as const;
+  const check = { attribute: "labia", difficulty: 14 } as const;
   assert.equal(Math.round((checkChance(ringed, check) - checkChance(plain, check)) * 20), 2);
 });
 

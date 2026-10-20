@@ -34,7 +34,7 @@ function duel(rows: string[], actorClass: "rachador" | "guardiao" | "cantor_de_e
   return setup(
     rows,
     (at) => [
-      makeUnit("A", "party", at("A"), { characterClass: actorClass, attributes: { il: FIRST } }),
+      makeUnit("A", "party", at("A"), { characterClass: actorClass, attributes: { olho: FIRST } }),
       makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
     ],
     seed,
@@ -81,7 +81,7 @@ test("golpe que fere mira o destrutível, sempre pega e, quebrando, abre o quadr
 
 test("cura e guarda não miram destrutível", () => {
   const encounter = setup(["Ac.E"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "luminar", attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { characterClass: "luminar", attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const actor = findUnit(encounter, "A")!;
@@ -142,11 +142,11 @@ test("a luta clonada quebra os próprios caixotes, não os da original", () => {
 });
 
 test("a IA arrebenta o barril ao lado de quem ela não consegue ferir de frente", () => {
-  // O Rachador ataca com Il: a vez dele vem de o alvo ser lento, não de ele ser rápido.
+  // O Rachador ataca com Olho: a vez dele vem de o alvo ser lento, não de ele ser rápido.
   const scene = (rows: string[]) =>
     setup(rows, (at) => [
       makeUnit("A", "enemy", at("A"), { characterClass: "rachador" }),
-      makeUnit("E", "party", at("E"), { attributes: { or: 40, il: -100 } }),
+      makeUnit("E", "party", at("E"), { attributes: { couro: 40, olho: -100 } }),
     ]);
 
   const plan = planTurn(scene(["A....bE", "......."]));

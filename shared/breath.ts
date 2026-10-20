@@ -17,12 +17,12 @@ import type { Character } from "./types/character";
  */
 
 const BREATH_BASE = 3;
-/** Quantos pontos de Nath (Vitalidade) dão um de Fôlego. */
+/** Quantos pontos de Vigor dão um de Fôlego. */
 const NATH_PER_BREATH = 2;
 
-/** O Fôlego de quem está descansado: cresce com o nível e com Nath. */
+/** O Fôlego de quem está descansado: cresce com o nível e com Vigor. */
 export function maxBreath(character: Pick<Character, "level" | "attributes">): number {
-  return BREATH_BASE + character.level + Math.floor(character.attributes.nath / NATH_PER_BREATH);
+  return BREATH_BASE + character.level + Math.floor(character.attributes.vigor / NATH_PER_BREATH);
 }
 
 /** O Fôlego que `character` tem agora. Ficha que nunca gastou (ou de antes de ele existir) está cheia. */

@@ -48,7 +48,7 @@ function stage(rows: string[], place: (at: (marker: string) => Pos) => Unit[], e
 }
 
 function mage(pos: Pos, ul = 5): Unit {
-  const unit = unitFromCharacter(makeCharacter("M", { attributes: { il: FIRST, ul } }), { team: "party", pos, magic: PAGE });
+  const unit = unitFromCharacter(makeCharacter("M", { attributes: { olho: FIRST, saber: ul } }), { team: "party", pos, magic: PAGE });
   unit.abilities.push({ ...SHOVE }, { ...NUDGE });
   return unit;
 }
@@ -124,10 +124,10 @@ test("alvo que sumiu: a recitação se perde, e a mana fica", () => {
   assert.equal(findUnit(other, "M")!.mana, 8);
 });
 
-test("apanhar recitando pode quebrar o texto: d20 + Ul contra 10 mais metade do golpe", () => {
+test("apanhar recitando pode quebrar o texto: d20 + Saber contra 10 mais metade do golpe", () => {
   const { encounter } = stage(["ME"], (at) => [
     mage(at("M"), 0),
-    makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { or: 80 } }),
+    makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 80 } }),
   ]);
   const caster = findUnit(encounter, "M")!;
   caster.currentHp = caster.maxHp = 9000;

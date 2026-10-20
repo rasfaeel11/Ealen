@@ -27,7 +27,7 @@ function duel(rows: string[], actorClass: "rachador" | "guardiao" = "rachador", 
   return setup(
     rows,
     (at) => [
-      makeUnit("A", "party", at("A"), { characterClass: actorClass, attributes: { il: FIRST } }),
+      makeUnit("A", "party", at("A"), { characterClass: actorClass, attributes: { olho: FIRST } }),
       makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
     ],
     seed,
@@ -68,7 +68,7 @@ test("a cobertura entra na defesa que a rolagem precisa alcançar", () => {
 
 test("numa área, a cobertura é medida do ponto de impacto, não de quem lançou", () => {
   const { encounter } = setup(["A.....", "...oE.", "......"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const caster = findUnit(encounter, "A")!;
@@ -85,7 +85,7 @@ test("numa área, a cobertura é medida do ponto de impacto, não de quem lanço
 
 function pincer(rows: string[]) {
   return setup(rows, (at) => [
-    makeUnit("A", "party", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("B", "party", at("B")),
     makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
   ]).encounter;
@@ -108,7 +108,7 @@ test("aliado caído não flanqueia, e flanco é só de corpo a corpo", () => {
   assert.equal(edge(fallen, "A", "E").flanked, false);
 
   const { encounter } = setup(["A.EB"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { olho: FIRST } }),
     makeUnit("B", "party", at("B")),
     makeUnit("E", "enemy", at("E")),
   ]);
@@ -136,7 +136,7 @@ test("o flanco entra no total da rolagem", () => {
 
 test("atacar de cima soma no ataque; de baixo, tira o mesmo tanto", () => {
   const { encounter } = setup(["A....E"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { il: FIRST } }),
+    makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E"), { characterClass: "rachador" }),
   ]);
   encounter.grid.tiles[0].elevation = 1;
@@ -190,7 +190,7 @@ test("a chance que attackOdds promete é a que o dado entrega", () => {
 
 test("a IA dá a volta pra flanquear quando custa o mesmo que não dar", () => {
   const { encounter } = setup(["..A..", ".....", ".BE..", "....."], (at) => [
-    makeUnit("A", "enemy", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("B", "enemy", at("B")),
     makeUnit("E", "party", at("E")),
   ]);
@@ -201,7 +201,7 @@ test("a IA dá a volta pra flanquear quando custa o mesmo que não dar", () => {
 
 test("a IA que atira prefere o chão alto", () => {
   const { encounter } = setup(["A.^....E", "........"], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "entropista", attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { characterClass: "entropista", attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E")),
   ]);
   assert.deepEqual(planTurn(encounter).tile, { x: 2, y: 0 });
@@ -209,7 +209,7 @@ test("a IA que atira prefere o chão alto", () => {
 
 test("a IA sob fogo atira de trás da pedra", () => {
   const { encounter } = setup(["A....o...R", "..........", ".........."], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "entropista", attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { characterClass: "entropista", attributes: { olho: FIRST } }),
     makeUnit("R", "party", at("R"), { characterClass: "rachador" }),
   ]);
   const plan = planTurn(encounter);

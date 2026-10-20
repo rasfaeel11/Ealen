@@ -56,7 +56,7 @@ function withProfile(encounter: Encounter, id: string, ai: Partial<AiProfile>): 
 
 test("com o inimigo ao alcance, bate em vez de andar", () => {
   const { encounter } = setup(["AE"], (at) => [
-    makeUnit("A", "enemy", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E")),
   ]);
 
@@ -67,7 +67,7 @@ test("com o inimigo ao alcance, bate em vez de andar", () => {
 
 test("entre dois alvos ao alcance, escolhe o que dá pra derrubar", () => {
   const { encounter } = setup(["XAY"], (at) => [
-    makeUnit("A", "enemy", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("X", "party", at("X")),
     makeUnit("Y", "party", at("Y"), { currentHp: 3 }),
   ]);
@@ -78,7 +78,7 @@ test("entre dois alvos ao alcance, escolhe o que dá pra derrubar", () => {
 
 test("cura o aliado por um fio em vez de bater — a não ser que não ligue pra aliado", () => {
   const { encounter } = setup(["B.AE"], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "luminar", attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { characterClass: "luminar", attributes: { olho: FIRST } }),
     makeUnit("B", "enemy", at("B"), { currentHp: 4 }),
     makeUnit("E", "party", at("E")),
   ]);
@@ -95,7 +95,7 @@ test("cura o aliado por um fio em vez de bater — a não ser que não ligue pra
 
 test("uma área pega dois inimigos juntos, mas não é jogada em cima de um aliado", () => {
   const grouped = setup(["A...X", "....Y"], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "cantor_de_ealen", attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
     makeUnit("X", "party", at("X")),
     makeUnit("Y", "party", at("Y")),
   ]).encounter;
@@ -106,7 +106,7 @@ test("uma área pega dois inimigos juntos, mas não é jogada em cima de um alia
 
   // O mesmo desenho com um aliado no lugar de um dos alvos.
   const mixed = setup(["A...X", "....B"], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "cantor_de_ealen", attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
     makeUnit("X", "party", at("X")),
     makeUnit("B", "enemy", at("B")),
   ]).encounter;
@@ -122,7 +122,7 @@ test("uma área pega dois inimigos juntos, mas não é jogada em cima de um alia
 
 /** Uma luta corpo a corpo de A (da IA, com `itemId` na mochila) contra E. */
 function withItem(itemId: string, rows: string[], hp = 30) {
-  const carrier = makeCharacter("A", { currentHp: hp, attributes: { il: FIRST } });
+  const carrier = makeCharacter("A", { currentHp: hp, attributes: { olho: FIRST } });
   addItemToInventory(carrier, findItemTemplate(itemId)!);
   return setup(rows, (at) => [
     unitFromCharacter(carrier, { team: "enemy", pos: at("A") }),
@@ -169,7 +169,7 @@ test("reforço não é gasto no caminho: só com o inimigo ao alcance", () => {
 
 test("quem luta de longe para no limite do alcance, não em cima do inimigo", () => {
   const { encounter } = setup(["A........E"], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "entropista", attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { characterClass: "entropista", attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E")),
   ]);
 
@@ -197,7 +197,7 @@ test("contorna a parede que a linha reta não atravessa", () => {
 
 test("avançando sob fogo sem alcançar ninguém, gasta a ação se pondo em guarda", () => {
   const { encounter } = setup(["A...........R"], (at) => [
-    makeUnit("A", "enemy", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("R", "party", at("R"), { characterClass: "rachador" }),
   ]);
   withProfile(encounter, "A", { caution: 1 });
@@ -212,7 +212,7 @@ test("avançando sob fogo sem alcançar ninguém, gasta a ação se pondo em gua
 
 test("ninguém se põe em guarda longe de qualquer ameaça", () => {
   const { encounter } = setup(["A..................E"], (at) => [
-    makeUnit("A", "enemy", at("A"), { attributes: { il: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E")),
   ]);
   withProfile(encounter, "A", { caution: 3 });
@@ -225,7 +225,7 @@ test("ninguém se põe em guarda longe de qualquer ameaça", () => {
 test("a cautela decide se vale largar um inimigo pra derrubar outro", () => {
   const scene = () =>
     setup(["AE...", ".....", ".....", ".....", ".....", ".....", ".....", "W...."], (at) => [
-      makeUnit("A", "enemy", at("A"), { attributes: { il: FIRST } }),
+      makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
       makeUnit("E", "party", at("E")),
       makeUnit("W", "party", at("W"), { currentHp: 2 }),
     ]).encounter;

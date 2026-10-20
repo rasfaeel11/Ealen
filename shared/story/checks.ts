@@ -5,11 +5,11 @@ import { ATTRIBUTE_KEYS } from "../types/attributes";
 import type { Character } from "../types/character";
 
 /**
- * Testes de atributo fora de combate — os de Len (persuasão) e Ul (saber)
+ * Testes de atributo fora de combate — os de Lábia (persuasão) e Saber (saber)
  * que o texto de um diálogo chama. A conta é a mesma do ataque: d20 +
  * atributo contra uma dificuldade, com o 20 natural sempre passando e o 1
  * sempre falhando. O atributo é o da ficha com o que ela veste somado (um
- * acessório de Len ajuda a convencer).
+ * acessório de Lábia ajuda a convencer).
  *
  * Régua de dificuldade pra quem escreve (atributo de nível 1 fica entre 3
  * e 8): 10 é fácil, 13 é pra quem tem o atributo, 16 é difícil, 19 é quase
