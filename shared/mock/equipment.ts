@@ -50,6 +50,41 @@ export const EQUIPMENT: EquipmentItem[] = [
     rarity: "common",
     data: { slot: "armor", defense: 2 },
   },
+  // Temperadas pelo ferreiro de Ybytuguá, na receita dele (o segundo nível do cânone, `magia` §7.4). A receita é
+  // absurda e funciona: é entropia disfarçada de tradição de oficina.
+  {
+    id: "gear-espada-reta-temperada",
+    name: "Espada Reta Temperada",
+    description: "A mesma espada reta, temperada na receita do ferreiro de Ybytuguá. O fio entra em couro que antes só riscava.",
+    category: "equipment",
+    rarity: "uncommon",
+    data: { slot: "weapon", dice: { count: 1, sides: 10 }, range: 1, toHit: 1, orders: ["espadachim"] },
+  },
+  {
+    id: "gear-espada-pesada-temperada",
+    name: "Espada Pesada Temperada",
+    description: "A espada pesada, temperada na receita do ferreiro de Ybytuguá. Ainda pesa; agora pesa onde bate.",
+    category: "equipment",
+    rarity: "uncommon",
+    data: { slot: "weapon", dice: { count: 1, sides: 12 }, range: 1, orders: ["espadachim"] },
+  },
+  // --- A gente do rio e de Ymboripe ----------------------------------------
+  {
+    id: "gear-chuco",
+    name: "Chuço",
+    description: "Ponta de ferro-cru num cabo comprido. Arma de quem guarda corrente e cais: segura o outro longe.",
+    category: "equipment",
+    rarity: "common",
+    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 2, toHit: -1, orders: ["espadachim"] },
+  },
+  {
+    id: "gear-besta",
+    name: "Besta",
+    description: "Arco atravessado numa coronha, com manivela. Qualquer um aprende a usar numa tarde; é por isso que os castelos gostam.",
+    category: "equipment",
+    rarity: "common",
+    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 6, orders: ["espadachim"] },
+  },
   // --- Armas de perto -------------------------------------------------------
   {
     id: "gear-lamina-de-mergulho",

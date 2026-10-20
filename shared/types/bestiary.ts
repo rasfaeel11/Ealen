@@ -1,6 +1,7 @@
 import type { StyleId } from "../tactics/styles";
 import type { AiProfile, AiQuirks } from "../tactics/types";
 import type { Character } from "./character";
+import type { Magic } from "../mana";
 import type { Principle } from "./principle";
 
 /** Chance de drop de um item ao vencer a criatura (0 a 1). `itemId` é um consumível (../mock/items.ts) ou uma peça de equipamento (../mock/equipment.ts). */
@@ -49,6 +50,8 @@ export interface BestiaryEntry {
   heft?: number;
   /** Sente mana gasta de uma vez e vem atrás de quem a gastou, com um turno a mais (ver `drawnToMana` em Unit). */
   drawnToMana?: boolean;
+  /** Conjura: o conceito e o nível de mago de quem é gente e lê (ver ../mana.ts). A mana dele vem cheia. */
+  magic?: Magic;
   /**
    * Ids dos consumíveis que ela leva pra luta (repita o id pra levar mais de
    * um). A IA usa quando vale a pena; o que sobrar fica pra quem a vencer.

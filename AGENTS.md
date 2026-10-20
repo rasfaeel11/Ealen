@@ -266,7 +266,7 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 | 10 | **Mapas** | O rio com o castelo de pedágio, Ybytuguá, os baixios, a floresta entre as bacias. |
 | 11 | **O texto** | Ink, ato por ato, depois de o roteiro estar aprovado. |
 | 12 | **Dinheiro e pedágio** | Cobre e prata; pagar o pedágio é uma das três saídas do castelo. |
-| 13 | **Bestiário do resto** | Homens do ducado, gente do castelão e bichos da floresta, cada criatura aprovada como entrada no bestiário da história antes. |
+| 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
 ### P2 e P3
 Arte final, som gravado, balanceamento (`balance:matrix` com as escolas), tutorial, opções e o empacotamento
@@ -319,6 +319,13 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   as chaves sem acento (`forca`, `fator`, `vigor`, `olho`, `couro`, `labia`, `saber`) no código, nos testes, no Ink
   (`attr`, `check`, `# check:`) e na ficha. O save foi pra versão 6, que troca as chaves das fichas e do item de mochila
   que soma um atributo.
+- **13. A gente do mundo no bestiário.** O Ykuruã da primeira ida (`encounter-ykurua-desperto`, o mesmo bicho, sem vida
+  pra perder), a gente do castelo de pedágio (o guarda de chuço, o besteiro e o castelão, primeiro chefe, da Tsvirana) e
+  a de Ymboripe (a espada, do Gryskar; a lança, da Ipojy, que não bate primeiro; o recitador, mago de atração e repulsão
+  na Página, que conjura de verdade: o bestiário ganhou `magic`), e o aventureiro contratado, da Tsvirana. Quem não tem
+  nome aprovado aparece pelo papel. Armas novas: chuço, besta e as duas espadas temperadas do ferreiro. Os dois itens
+  que o jogo usa (os ids do Eälen ficam) agora são o Unguento de Barqueiro e o Pão de Viagem. As criaturas do Eälen
+  ficam no fim do bestiário só pros testes do motor: nenhum mapa as usa.
 - **Revisão das tasks 1 a 8** (2026-10-20). O que estava errado: um comentário apontava pra um arquivo que não existe;
   dois testes não passavam no typecheck desde antes da conversão; e Endyru ficava na Página pra sempre, com Desarmar e
   Arremesso chegando pelo nível — o cânone diz que ele chega ao Círculo e que esse repertório é do Círculo (`magia`

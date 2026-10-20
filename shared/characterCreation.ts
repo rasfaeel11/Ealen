@@ -43,7 +43,7 @@ export function startingMaxHp(attributes: Attributes): number {
   return 20 + attributes.vigor * 4;
 }
 
-/** Mochila inicial de um personagem novo: algumas Lágrimas de Fator pra já dar pra testar o sistema de itens. */
+/** Mochila inicial de Endyru: uns potes de unguento de barqueiro, o que se leva pra descer o rio. */
 export function createStartingInventory(): Inventory<ConsumableItem> {
   const startingItem = MOCK_ITEMS.find((item) => item.id === STARTING_ITEM_ID);
   if (!startingItem) {

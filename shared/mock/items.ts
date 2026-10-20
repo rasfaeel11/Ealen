@@ -12,19 +12,20 @@ import type { ConsumableItem } from "../types/inventory";
  */
 export const MOCK_ITEMS: ConsumableItem[] = [
   {
+    // O id vem do Eälen; o que o jogo mostra é do mundo de agora.
     id: "item-lagrima-de-eir",
-    name: "Lágrima de Fator",
+    name: "Unguento de Barqueiro",
     description:
-      "Uma gota de ressonância pura, cristalizada antes de evaporar. Dissolvida na boca, devolve ao corpo a frequência que a ferida levou embora.",
+      "Gordura de peixe batida com casca amarga, num pote de barro com tampa de cera. Arde mais que o corte, e fecha o corte.",
     category: "consumable",
     rarity: "common",
     data: { effect: { kind: "heal_hp", amount: 15 }, usesRemaining: 1, maxUses: 1 },
   },
   {
     id: "item-pao-de-cinza",
-    name: "Pão de Cinza",
+    name: "Pão de Viagem",
     description:
-      "Ração de peregrino, assada com a brasa que os Entropistas deixam para trás. Tem gosto de fim de fogueira e segura alguém de pé por mais um dia.",
+      "Pão escuro e duro, assado pra durar a descida do rio. Tem gosto de fumaça e segura alguém de pé por mais um dia.",
     category: "consumable",
     rarity: "common",
     data: { effect: { kind: "heal_hp", amount: 8 }, usesRemaining: 2, maxUses: 2 },

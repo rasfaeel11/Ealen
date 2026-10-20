@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { CLASS_COMBAT_ARTS, CLASS_TECHNIQUES, STANCE_ORDER } from "../../combatArts";
 import { addItemToInventory } from "../../inventoryEffects";
 import { applyXpGain, xpToNextLevel } from "../../leveling";
-import { BESTIARY } from "../../mock/bestiary";
+import { BESTIARY, creaturePlacement, spawnCreature } from "../../mock/bestiary";
 import { findItemTemplate } from "../../mock/items";
 import { CLASS_INFO, type CharacterClass } from "../../types/characterClass";
 import {
@@ -450,4 +450,19 @@ test("a IA dá valor ao que os kits fazem: abre a trinca antes de bater, some qu
   assert.equal(planTurn(ward).action?.ability.id, "luminar.heal");
   afflict(ward, "W", "irreversible", 3);
   assert.notEqual(planTurn(ward).action?.ability.id, "luminar.heal");
+});
+
+test("a gente do mundo luta com o que é: humano, da escola dela, com o que veste; o recitador de Ymboripe conjura", () => {
+  const people = Object.entries(BESTIARY).filter(([, entry]) => entry.person && entry.template.race === "humano");
+  assert.ok(people.length >= 7);
+  for (const [id, entry] of people) {
+    assert.ok(entry.template.equipment?.weapon, `${id} luta com uma arma`);
+    assert.equal(entry.principle, undefined, `${id} não é Princípio do Eälen`);
+  }
+
+  const reader = BESTIARY["encounter-recitador-de-ymboripe"];
+  const unit = unitFromCharacter(spawnCreature(reader), { team: "enemy", pos: { x: 0, y: 0 }, ...creaturePlacement(reader, "hero") });
+  assert.deepEqual([unit.manaLimit, unit.concept], [3, "atracao_repulsao"]);
+  assert.ok(unit.mana! > 0);
+  assert.ok(unit.abilities.some((ability) => isRecited(ability)));
 });
