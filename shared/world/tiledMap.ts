@@ -79,7 +79,11 @@ import type { CueEnding } from "../tactics/types";
  *              `party:lish` ou o Nome de um inimigo do grupo. `goal` é o
  *              objetivo que a deixa representa, escrito pro jogador ("Toque o
  *              sino"): fica à vista durante a luta até ela disparar, com a
- *              conta de rodadas (numa de `round`) ou de objetos (numa de `used`)
+ *              conta de rodadas (numa de `round`) ou de objetos (numa de `used`).
+ *              `burst` (`hero` ou `party:chave`) faz esse alguém gastar toda a
+ *              mana de uma vez nessa hora, passando do limite (ver ../mana.ts):
+ *              a pressa que o roteiro impõe. `dismiss` (`party:chave`) tira
+ *              da luta quem acompanha sem lutar: o apoio dele some
  *
  *   `npc`, `enemy`, `trigger`, `exit` e `cue` aceitam ainda `if` e `unless`: o nome
  *   de uma variável (VAR) da história. O objeto só existe enquanto a de `if`
@@ -186,6 +190,10 @@ export interface AreaCue extends AreaCondition {
   apply?: { status: string; turns: number; on: string };
   /** O objetivo que ela representa, como o jogador o lê durante a luta. */
   goal?: string;
+  /** Quem gasta toda a mana de uma vez quando ela dispara (`hero`, `party:chave`): a pressa que o roteiro impõe. */
+  burst?: string;
+  /** Quem acompanha sem lutar e sai da luta quando ela dispara (`party:chave`). */
+  dismiss?: string;
 }
 
 /** Sobre quem cai a condição de uma deixa que não diz: todos os inimigos da luta. */
@@ -447,7 +455,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
         props.push({ id: `prop-${object.id}`, name: object.name ?? "", kind: propKind, tile, gid: object.gid & GID_MASK });
       } else if (kind === "cue") {
         const properties = propertiesOf(object);
-        const { group, dialog, ends, on, goal } = properties;
+        const { group, dialog, ends, on, goal, burst, dismiss } = properties;
         const when = typeof properties.when === "string" ? parseCueWhen(properties.when) : undefined;
         if (typeof group !== "string" || !when) {
           throw new Error(
@@ -470,6 +478,8 @@ export function parseTiledMap(raw: unknown): AreaMap {
           ...(ends === "win" || ends === "stop" ? { ends } : {}),
           ...(apply ? { apply: { ...apply, on: typeof on === "string" && on !== "" ? on : CUE_ON_ENEMIES } } : {}),
           ...(typeof goal === "string" && goal !== "" ? { goal } : {}),
+          ...(typeof burst === "string" && burst !== "" ? { burst } : {}),
+          ...(typeof dismiss === "string" && dismiss !== "" ? { dismiss } : {}),
           ...conditionOf(properties),
         });
       }

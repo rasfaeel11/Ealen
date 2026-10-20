@@ -1074,6 +1074,14 @@ export class CombatController {
         return;
       }
 
+      case "supporterLost": {
+        // A deixa já contou o que houve; aqui some quem era e o apoio que ele dava.
+        sfx("deny");
+        this.hud.setTurnOrder(this.encounter);
+        await this.actor(event.id)?.collapse(420);
+        return;
+      }
+
       case "intentRevealed": {
         const unit = this.unit(event.unit);
         const actor = this.actor(event.unit);

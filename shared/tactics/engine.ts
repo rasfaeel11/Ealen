@@ -406,6 +406,15 @@ function fireCues(encounter: Encounter, events: TacticalEvent[]): boolean {
         if (unit && isAlive(unit)) addStatus(unit, STATUSES[cue.apply.statusId], cue.apply.turns, events);
       }
     }
+    if (cue.burst) {
+      // A pressa do roteiro: tudo de uma vez. Gasto fora do limite que ele tinha, e o corpo e o bicho respondem igual.
+      const unit = findUnit(encounter, cue.burst);
+      if (unit && isAlive(unit) && (unit.mana ?? 0) > 0) spendMana(encounter, unit, unit.mana!, events, true);
+    }
+    if (cue.dismiss && encounter.supporters.some((supporter) => supporter.id === cue.dismiss)) {
+      encounter.supporters = encounter.supporters.filter((supporter) => supporter.id !== cue.dismiss);
+      events.push({ type: "supporterLost", id: cue.dismiss });
+    }
 
     const ends = cueEnding(cue);
     if (!ends) continue;
@@ -578,16 +587,18 @@ function charge(encounter: Encounter, unit: Unit, ability: Ability, inTurn: bool
  * (e, anotada em `marks`, pra sair dela com ele). E quem sente mana gasta de
  * uma vez (`drawnToMana`, do outro lado) vem atrás dele: ganha um turno a mais,
  * na fila (`bonusTurns`), com ele de presa (`prey`). Fora do turno dele (o
- * golpe de abertura, uma reação), conta pro turno que vem.
+ * golpe de abertura, uma reação), conta pro turno que vem. `forced` é o gasto
+ * que uma deixa impõe (`burst` em Cue): cobra do corpo mesmo dentro do limite.
  */
-function spendMana(encounter: Encounter, unit: Unit, amount: number, events: TacticalEvent[]): void {
+function spendMana(encounter: Encounter, unit: Unit, amount: number, events: TacticalEvent[], forced = false): void {
   unit.mana = (unit.mana ?? 0) - amount;
   events.push({ type: "manaSpent", unit: unit.id, amount, remaining: unit.mana });
 
   const before = unit.manaSpent ?? 0;
   unit.manaSpent = before + amount;
   const limit = unit.manaLimit ?? 0;
-  if (before > limit || unit.manaSpent <= limit) return;
+  // O gasto que o roteiro força (`burst` numa deixa) cobra sempre, mesmo que caiba no limite: é o encantamento grande.
+  if (!forced && (before > limit || unit.manaSpent <= limit)) return;
   events.push({ type: "manaBurst", unit: unit.id, spent: unit.manaSpent, limit });
   encounter.bursts = (encounter.bursts ?? 0) + 1;
   for (const hunter of encounter.units) {

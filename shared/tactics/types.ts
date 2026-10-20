@@ -205,6 +205,15 @@ export interface Cue {
   apply?: CueStatus;
   /** Encerra a luta ao disparar. Uma deixa `defeat` sempre encerra: sem isto, vale `stop`. */
   ends?: CueEnding;
+  /**
+   * Quem gasta, nessa hora, toda a mana que tem de uma vez: a pressa que o
+   * roteiro impõe (o encantamento grande de Endyru no ato 3). Passa do limite
+   * como qualquer gasto (`manaBurst`, a marca, o bicho que sente), sem ser
+   * escolha de quem joga. Quem não tem mana, ou já caiu, não gasta nada.
+   */
+  burst?: string;
+  /** Quem acompanha o grupo sem lutar e sai da luta nessa hora (o apoio dele some): o id da ficha. */
+  dismiss?: string;
 }
 
 /**
@@ -453,6 +462,8 @@ export type TacticalEvent =
   | { type: "itemUsed"; unit: string; itemId: string; itemName: string; description: string }
   /** `supporter` (que não luta) deu o apoio dele, chamado por `unit`. O que o apoio fez vem logo depois. */
   | { type: "supportUsed"; supporter: string; supporterName: string; support: SupportId; name: string; unit: string }
+  /** Quem acompanhava o grupo sem lutar saiu da luta por uma deixa (`dismiss`): o apoio dele não está mais lá. */
+  | { type: "supporterLost"; id: string }
   /**
    * O que `unit` pretende fazer na vez dele, pelo que a luta é agora: onde
    * parar (`tile`; o próprio quadrado se não vai andar), que habilidades usar

@@ -186,10 +186,19 @@ export function fightCues(
   enemies: readonly AreaEnemy[],
   party: readonly string[] = [HERO_ID],
 ): Cue[] {
-  return cues.flatMap(({ id, when, ends, apply }): Cue[] => {
+  return cues.flatMap(({ id, when, ends, apply, burst, dismiss }): Cue[] => {
     const status = apply && cueStatus(apply, enemies, party);
+    const burster = burst === undefined ? undefined : cueUnit(burst, enemies);
+    const leaver = dismiss === undefined ? undefined : cueUnit(dismiss, enemies);
     const cue = (resolved: Cue["when"]): Cue[] => [
-      { id, when: resolved, ...(status ? { apply: status } : {}), ...(ends ? { ends } : {}) },
+      {
+        id,
+        when: resolved,
+        ...(status ? { apply: status } : {}),
+        ...(ends ? { ends } : {}),
+        ...(burster ? { burst: burster } : {}),
+        ...(leaver ? { dismiss: leaver } : {}),
+      },
     ];
     switch (when.kind) {
       case "round":

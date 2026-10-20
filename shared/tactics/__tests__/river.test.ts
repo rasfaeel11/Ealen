@@ -157,3 +157,27 @@ test("a deixa `burst` dispara na primeira vez que alguém passa do limite de man
   assert.deepEqual(parseCueWhen("burst"), { kind: "burst" });
   assert.equal(parseCueWhen("burst Endyru"), undefined);
 });
+
+test("uma deixa pode impor a pressa (`burst`): quem ela diz gasta toda a mana de uma vez, e o corpo e o bicho respondem", () => {
+  const { encounter } = stage(["M........Y"], (at) => [mage(at("M")), ykurua(at("Y"))], {
+    cues: [{ id: "pressa", when: { kind: "round", round: 2 }, burst: "M", dismiss: "G" }],
+    supporters: [{ id: "G", name: "Oryndu", support: "read_water" }],
+  });
+  const caster = findUnit(encounter, "M")!;
+  const mana = caster.mana!;
+  // Gastar só um verso cabe no limite e não chama nada.
+  run(encounter, { type: "ability", unitId: "M", abilityId: PULL.id, target: findUnit(encounter, "Y")!.pos });
+  pass(encounter);
+  const events = pass(encounter);
+
+  assert.deepEqual(eventsOf(events, "cue"), [{ type: "cue", id: "pressa" }]);
+  assert.deepEqual(eventsOf(events, "manaSpent"), [{ type: "manaSpent", unit: "M", amount: mana - 1, remaining: 0 }]);
+  assert.equal(eventsOf(events, "manaBurst").length, 1);
+  assert.ok(statusIds(caster).includes("bloodied"));
+  assert.deepEqual(caster.marks, ["bloodied"]);
+  assert.equal(findUnit(encounter, "Y")!.prey, "M");
+  assert.deepEqual(encounter.bonusTurns, ["Y"]);
+  // E quem segurava a margem sai da luta: o apoio dele some.
+  assert.deepEqual(eventsOf(events, "supporterLost"), [{ type: "supporterLost", id: "G" }]);
+  assert.deepEqual(encounter.supporters, []);
+});
