@@ -334,3 +334,18 @@ Nada disto foi gravado. Com a aprovação do autor, o co-autor grava:
 - **`alfabeto.md`:** Ymonhã, Ybytuguá, Ykuruã, Bebe-Cheia e Oryndu na lista de nomes.
 - **`estado.md`:** a decisão do jogo em "Decisões recentes".
 - Ainda sem nome: o ducado de cima.
+
+## 10. Delegação ao Antigravity
+
+O Antigravity CLI (`agy`, o sucessor do Gemini CLI) está disponível pelo subagente `antigravity-delegate`.
+
+- Delegue a ele: leitura e resumo de docs ou logs grandes, pesquisa em muito material, boilerplate, testes
+  repetitivos, conversão de formatos.
+- Não delegue: planejamento, arquitetura, refactors delicados, bugs sutis, mudanças que dependam de entender o
+  projeto inteiro, e a revisão final. Nem texto do jogo ou fato do mundo: o cânone (§1) não passa por ele.
+- Só delegue quando a tarefa for grande e bem isolada. Em tarefa pequena, faça você mesmo: o custo de montar o
+  contexto não compensa.
+- Todo código vindo do Antigravity é rascunho: leia, compare com as convenções do projeto, rode typecheck, lint
+  e testes, e corrija antes de aplicar.
+- Nunca envie segredos ou código sensível ao Antigravity.
+- Ao fim de cada task, diga em poucas palavras o que foi delegado e o que você corrigiu.
