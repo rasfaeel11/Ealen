@@ -3,7 +3,7 @@ import { CONCEPTS, manaLimit, manaOf } from "../mana";
 import { gearedAttributes } from "../equipment";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
-import { castOf, keepsVow } from "../party";
+import { castOf, keepsVow, magicOf } from "../party";
 import { GIFTS, abilitiesFor, engravedAbilities } from "../tactics/abilities";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
 import { reachableTiles } from "../tactics/movement";
@@ -70,7 +70,7 @@ export function fieldUse(ability: Ability): FieldUse | undefined {
 
 /** Quantas gravações cabem nele ao mesmo tempo: o nível de mago. Quem não conjura não grava nada. */
 export function engravingSlots(character: Pick<Character, "id">): number {
-  return castOf(character)?.magic?.level ?? 0;
+  return magicOf(character)?.level ?? 0;
 }
 
 /** As magias de `character` que dá pra gravar: as que custam mana, do kit e as que só ele sabe. */
@@ -96,7 +96,7 @@ type Payer = Pick<Character, "id" | "level" | "attributes" | "breath" | "mana">;
 export function missing(character: Payer, ability: Ability): "breath" | "mana" | undefined {
   if (breathOf(character) < (ability.breath ?? 0)) return "breath";
   if (!ability.mana) return undefined;
-  const magic = castOf(character)?.magic;
+  const magic = magicOf(character);
   return magic !== undefined && manaOf(character, magic) >= ability.mana ? undefined : "mana";
 }
 
@@ -111,7 +111,7 @@ export function canAfford(character: Payer, ability: Ability): boolean {
  * corpo aguenta (ou se não é magia). Quem a põe na história é quem chama.
  */
 export function burstMark(character: Pick<Character, "id">, ability: Ability): StatusId | undefined {
-  const magic = castOf(character)?.magic;
+  const magic = magicOf(character);
   if (!magic || (ability.mana ?? 0) <= manaLimit(magic)) return undefined;
   return CONCEPTS[magic.concept].mark;
 }
@@ -134,7 +134,7 @@ export function mend(caster: Character, ability: Ability, target: Character, rng
   if (target.currentHp >= target.maxHp || !canAfford(caster, ability) || healCap(breathOf(target), hungry) <= 0) return undefined;
 
   if (ability.breath) caster.breath = breathOf(caster) - ability.breath;
-  const magic = castOf(caster)?.magic;
+  const magic = magicOf(caster);
   if (ability.mana && magic) caster.mana = manaOf(caster, magic) - ability.mana;
   let healed = 0;
   for (const effect of ability.effects) {

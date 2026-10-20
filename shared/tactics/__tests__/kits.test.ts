@@ -16,6 +16,7 @@ import {
   isStatusId,
   kitOf,
   learnedAt,
+  learnedAtMage,
   movementOf,
   planTurn,
   unitFromCharacter,
@@ -71,12 +72,23 @@ test("cada classe tem o kit dela: as Artes no nível 1, e as Técnicas chegam co
     const techniques = Object.entries(CLASS_TECHNIQUES[order]);
     assert.equal(techniques.length, TECHNIQUES(order), `${order} tem ${TECHNIQUES(order)} Técnicas`);
     for (const [slug, technique] of techniques) {
-      assert.ok(technique.level > 1, `${order}.${slug} não é do nível 1`);
+      const id = `${order}.${slug}`;
+      if (technique.mage !== undefined) {
+        // A do nível de mago chega com ele, em qualquer nível; e não se "aprende" subindo de nível.
+        const has = (mageLevel: number) =>
+          abilitiesFor(makeCharacter("x", { characterClass: order, level: 1, mageLevel })).some((ability) => ability.id === id);
+        assert.equal(has(technique.mage - 1), false, `${id} antes do nível de mago dela`);
+        assert.equal(has(technique.mage), true, `${id} no nível de mago dela`);
+        assert.ok(learnedAtMage(order, technique.mage).some((ability) => ability.id === id));
+        assert.ok(!learnedAt(order, technique.level).some((ability) => ability.id === id));
+        continue;
+      }
+      assert.ok(technique.level > 1, `${id} não é do nível 1`);
       const has = (level: number) =>
-        abilitiesFor(makeCharacter("x", { characterClass: order, level })).some((ability) => ability.id === `${order}.${slug}`);
-      assert.equal(has(technique.level - 1), false, `${order}.${slug} antes da hora`);
-      assert.equal(has(technique.level), true, `${order}.${slug} no nível dela`);
-      assert.deepEqual(learnedAt(order, technique.level).map((ability) => ability.id), [`${order}.${slug}`]);
+        abilitiesFor(makeCharacter("x", { characterClass: order, level })).some((ability) => ability.id === id);
+      assert.equal(has(technique.level - 1), false, `${id} antes da hora`);
+      assert.equal(has(technique.level), true, `${id} no nível dela`);
+      assert.deepEqual(learnedAt(order, technique.level).map((ability) => ability.id), [id]);
     }
 
     // O kit inteiro: toda chave tem nome e flavor, e toda condição que ele põe existe.
@@ -106,9 +118,10 @@ test("o mago de atração e repulsão paga a magia em mana e a recita; o bordão
   assert.ok(kit.heavy_attack.ability.effects.some((effect) => effect.kind === "push" && effect.distance > 0));
   assert.ok(kit.arremesso.ability.effects.some((effect) => effect.kind === "push" && effect.distance >= 3));
   assert.deepEqual(kit.desarmar.ability.effects.map((effect) => (effect.kind === "status" ? effect.statusId : effect.kind)), ["disarmed"]);
-  // O Círculo custa mais do que uma Página aguenta num turno (o limite de Endyru é 3).
-  assert.ok(kit.arremesso.ability.mana! > 3);
-  assert.deepEqual([kit.desarmar.level, kit.arremesso.level], [2, 3]);
+  // Desarmar e Arremesso são do Círculo (`magia` §3.5): chegam com o nível de mago 4, e o Arremesso gasta o limite
+  // inteiro de um Círculo num turno.
+  assert.deepEqual([kit.desarmar.mage, kit.arremesso.mage], [4, 4]);
+  assert.equal(kit.arremesso.ability.mana, 4);
 
   // O espadachim: a lâmina, e o que pesa custa Fôlego.
   const blade = Object.fromEntries(kitOf({ characterClass: "espadachim" }).map((entry) => [entry.slug, entry.ability]));

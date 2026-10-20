@@ -64,7 +64,7 @@ export interface CastMember {
   gear?: Equipment;
 }
 
-/** Endyru, jovem: estudante de Xerumbetyba, mago de atração e repulsão no nível de Página. Não tem escola de espada. */
+/** Endyru, jovem: estudante de Kuatiarape, mago de atração e repulsão. Começa na Página (o texto o sobe a Círculo). Não tem escola de espada. */
 export const PROTAGONIST: CastMember = {
   name: "Endyru",
   race: "humano",
@@ -116,9 +116,13 @@ export function castOf(character: Pick<Character, "id">): CastMember | undefined
   return isCompanionKey(key) ? COMPANIONS[key] : undefined;
 }
 
-/** O conceito e o nível de mago de quem tem a ficha `character`, se ele conjura (ver ./mana.ts). */
-export function magicOf(character: Pick<Character, "id">): Magic | undefined {
-  return castOf(character)?.magic;
+/**
+ * O conceito e o nível de mago de quem tem a ficha `character`, se ele conjura (ver ./mana.ts): o conceito vem do
+ * elenco; o nível, da ficha (`mageLevel`, que o texto sobe), e na ficha que nunca o guardou, o do elenco.
+ */
+export function magicOf(character: Pick<Character, "id" | "mageLevel">): Magic | undefined {
+  const magic = castOf(character)?.magic;
+  return magic ? { ...magic, level: character.mageLevel ?? magic.level } : undefined;
 }
 
 /** O apoio que a ficha `character` oferece numa luta, se ela é de quem acompanha sem lutar. Undefined em quem luta. */
@@ -167,6 +171,7 @@ function createSheet(id: string, member: CastMember): Character {
     currentHp: maxHp,
     maxHp,
     currentNodeId: MOCK_MAP_NODES[0].id,
+    ...(member.magic ? { mageLevel: member.magic.level } : {}),
     // Quem só acompanha não veste nada pra luta.
     ...(member.support ? {} : { equipment: startingLoadout({ id, characterClass }) }),
   };
@@ -269,7 +274,7 @@ export function restoreParty(hero: Character, members: readonly PartyMember[]): 
   for (const character of [hero, ...members.map((member) => member.character)]) {
     character.currentHp = character.maxHp;
     restoreBreath(character);
-    const magic = castOf(character)?.magic;
+    const magic = magicOf(character);
     if (magic) restoreMana(character, magic);
   }
 }

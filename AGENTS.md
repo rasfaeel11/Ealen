@@ -306,7 +306,7 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   cura custa o dobro. Vale na luta e fora dela. Antes a fome travava a recuperação de Fôlego pela guarda; isso
   deixava o grupo sem Fôlego pro resto da luta (duas IAs empacavam), e a regra do dobro ficou no lugar.
 - **7. O elenco.** Endyru (humano, classe `atracao_repulsao`, Página: Puxão, Bordão, Empurrão, Guarda, Cura;
-  Desarmar no nível 2 e Arremesso no 3, tudo magia recitada e paga em mana), Jarupã (`espadachim`, Gryskar, Fio,
+  Desarmar e Arremesso no Círculo, tudo magia recitada e paga em mana), Jarupã (`espadachim`, Gryskar, Fio,
   espada pesada), Xanduí (`espadachim`, Ipojy, Fio, espada reta) e Oryndu (barqueiro, apoio "Ler a água") no
   lugar de Halmira, Lish, Varel e Gil, em código, testes, Ink, mapa e save (versão 5 refaz as fichas antigas no
   mesmo nível). Saíram o perfil, `unlock_order`, `ClassSelect`, os retratos das Ordens e o prólogo do Eälen (que

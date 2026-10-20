@@ -35,6 +35,12 @@ export interface CombatArt {
  */
 export interface Technique extends CombatArt {
   level: number;
+  /**
+   * O nível de mago que ela pede, além do nível (`Character.mageLevel`, ver
+   * ./mana.ts): o repertório de cada nível de mago (`magia` §3.5). Sem isto,
+   * só o nível conta.
+   */
+  mage?: number;
 }
 
 /** Ordem de exibição das posturas, da mais segura à mais arriscada. */
@@ -227,17 +233,19 @@ export const CLASS_COMBAT_ARTS: Record<CharacterClass, Record<CombatStance, Comb
  * segunda é o que ela faz que ninguém mais faz.
  */
 export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>> = {
-  // O que atração e repulsão faz no Círculo: chega com o nível, e custa mais mana do que uma Página aguenta num turno.
+  // O que atração e repulsão faz no Círculo (`magia` §3.5): chega quando ele chega lá (`mage`), não com o nível.
   atracao_repulsao: {
     desarmar: {
       name: "Desarmar",
       flavor: "Atração na arma, não no corpo: o cabo escorrega da mão de quem a segurava.",
-      level: 2,
+      level: 1,
+      mage: 4,
     },
     arremesso: {
       name: "Arremesso",
       flavor: "Repulsão do tamanho de um círculo: o outro voa três passos e se arrebenta no que encontrar.",
-      level: 3,
+      level: 1,
+      mage: 4,
     },
   },
 

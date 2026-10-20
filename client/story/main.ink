@@ -12,6 +12,8 @@ EXTERNAL attr(name)         // attr("len"): o atributo do personagem
 EXTERNAL order()            // o que o protagonista é: "atracao_repulsao" (Endyru)
 EXTERNAL people()           // o povo dele: "humano"
 EXTERNAL level()
+EXTERNAL mage_level()        // o nível de mago de Endyru: 3 é a Página, 4 o Círculo
+EXTERNAL mage_rise(level)    // mage_rise(4): Endyru chega ao Círculo e aprende o que ele dá. Só sobe
 EXTERNAL has_item(id)
 EXTERNAL defeated(group)    // defeated("clareira:fiapo"): aquele grupo de inimigos já foi vencido?
 EXTERNAL check(name, difficulty)   // rola um teste agora, no meio do texto: {check("ul", 13): ... | ...}

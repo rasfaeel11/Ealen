@@ -12,7 +12,7 @@ import { findUnit, syncCharacterFromUnit, unitFromCharacter } from "../tactics/u
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
 import type { LearnedAbility, LevelUpResult } from "../types/levelUp";
-import { HERO_ID, castOf, companionId, keepsVow, supportOf } from "../party";
+import { HERO_ID, castOf, companionId, keepsVow, magicOf, supportOf } from "../party";
 import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
 
 /**
@@ -248,7 +248,7 @@ export function startAreaEncounter(
   });
   const units = party.map(({ character, tile }) => {
     const cast = castOf(character);
-    return unitFromCharacter(character, { team: "party", pos: tile, style: cast?.style, aura: cast?.aura, gifts: cast?.gifts, magic: cast?.magic });
+    return unitFromCharacter(character, { team: "party", pos: tile, style: cast?.style, aura: cast?.aura, gifts: cast?.gifts, magic: magicOf(character) });
   });
   for (const enemy of enemies) {
     const entry = findBestiaryEntry(enemy.creature);

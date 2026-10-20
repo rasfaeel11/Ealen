@@ -22,6 +22,8 @@ EXTERNAL attr(name)
 EXTERNAL order()
 EXTERNAL people()
 EXTERNAL level()
+EXTERNAL mage_level()
+EXTERNAL mage_rise(level)
 EXTERNAL has_item(id)
 EXTERNAL defeated(group)
 EXTERNAL check(name, difficulty)
@@ -658,4 +660,27 @@ test("a marca da mana que vem de uma luta fica entre lutas, o texto a lê, e o d
   assert.equal(runner.rest(), true);
   assert.equal(runner.rest(), false);
   assert.deepEqual(runner.afflictions(), { "companion:jarupa": ["wounded_arm"] });
+});
+
+const MAGE = compile(`
+=== circulo ===
+Antes, {mage_level()}.
+~ mage_rise(4)
+~ mage_rise(4)
+~ mage_rise(2)
+Depois, {mage_level()}.
+-> END
+`);
+
+test("mage_rise sobe Endyru de nível de mago (só sobe) e anuncia o que ele aprende ali", () => {
+  const host = makeHost();
+  host.character.characterClass = "atracao_repulsao";
+  host.character.mageLevel = 3;
+  const step = new StoryRunner(MAGE, host).start("circulo");
+
+  assert.deepEqual(lines(step.beats), ["Antes, 3.", "Depois, 4."]);
+  const events = step.beats.flatMap((beat) => (beat.kind === "event" ? [beat.event] : []));
+  // Chamado de novo no mesmo nível, ou pra baixo, não faz nada.
+  assert.deepEqual(events, [{ type: "mageRose", level: "Círculo", learned: ["Desarmar", "Arremesso"] }]);
+  assert.equal(host.character.mageLevel, 4);
 });

@@ -116,7 +116,8 @@ const CURE: Body = { cost: "action", range: HEAL_RANGE, targets: "ally", effects
 const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
   // Endyru: atração e repulsão. A magia (o que custa mana) é recitada: sai no começo do turno seguinte e pode
   // quebrar (ver `mana` em Ability). Os números são provisórios: o Puxão é um verso, o Empurrão uma página, e o
-  // Arremesso e o Desarmar são do Círculo — custam mais do que o limite de uma Página num turno.
+  // Arremesso e o Desarmar são do Círculo (só chegam com ele, ver CLASS_TECHNIQUES): o Arremesso custa o limite
+  // inteiro de um Círculo num turno, e qualquer verso a mais no mesmo turno passa dele.
   atracao_repulsao: (arm) => ({
     quick_attack: {
       cost: "bonus",
@@ -415,7 +416,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
 };
 
 /** O nome, o que é no mundo e a partir de que nível se sabe a habilidade `slug` da Ordem. Undefined se a Ordem não a tem (a cura de quem não cura). */
-function artOf(characterClass: CharacterClass, slug: string): (CombatArt & { level: number }) | undefined {
+function artOf(characterClass: CharacterClass, slug: string): (CombatArt & { level: number; mage?: number }) | undefined {
   const technique = CLASS_TECHNIQUES[characterClass][slug];
   if (technique) return technique;
   const art = STANCE_ORDER.includes(slug as CombatStance) ? CLASS_COMBAT_ARTS[characterClass][slug as CombatStance] : null;
@@ -504,6 +505,8 @@ export interface KitAbility {
   /** A chave dela no kit: o fim do id (`guardiao.puxao_de_mare`). */
   slug: string;
   level: number;
+  /** O nível de mago que ela pede, além do nível (ver `mage` em Technique, ../combatArts.ts). */
+  mage?: number;
   ability: Ability;
 }
 
@@ -520,27 +523,34 @@ export function kitOf(character: Fighter): KitAbility[] {
     const art = artOf(characterClass, slug);
     if (!art) return [];
     const ability: Ability = { id: `${characterClass}.${slug}`, name: art.name, flavor: art.flavor, ...body };
-    return [{ slug, level: art.level, ability }];
+    return [{ slug, level: art.level, ...(art.mage !== undefined ? { mage: art.mage } : {}), ability }];
   });
 }
 
 /**
- * As habilidades de um combatente: do kit da Ordem dele, as que o nível já
- * deu. Uma criatura (`arts`) sabe só o que nomeia, com os nomes próprios
- * dela por cima (um Lobo-de-Bruma dá um Bote Silencioso, não uma "Lâmina
- * Não-Vista") — o nível não entra.
+ * As habilidades de um combatente: do kit da Ordem dele, as que o nível (e o
+ * nível de mago, nas que o pedem) já deu. Uma criatura (`arts`) sabe só o que
+ * nomeia, com os nomes próprios dela por cima (um Lobo-de-Bruma dá um Bote
+ * Silencioso, não uma "Lâmina Não-Vista") — o nível não entra.
  */
-export function abilitiesFor(character: Fighter & Pick<Character, "level" | "arts">): Ability[] {
+export function abilitiesFor(character: Fighter & Pick<Character, "level" | "arts" | "mageLevel">): Ability[] {
   const { arts } = character;
-  return kitOf(character).flatMap(({ slug, level, ability }) => {
-    if (arts ? arts[slug] === undefined : level > character.level) return [];
+  return kitOf(character).flatMap(({ slug, level, mage, ability }) => {
+    if (arts ? arts[slug] === undefined : level > character.level || (mage ?? 0) > (character.mageLevel ?? 0)) return [];
     return [{ ...ability, name: arts?.[slug] ?? ability.name }];
   });
 }
 
-/** As Técnicas que a Ordem dá exatamente no nível `level`: o que se aprende ao chegar nele. */
+/** As Técnicas que a Ordem dá exatamente no nível `level`: o que se aprende ao chegar nele. As do nível de mago, não. */
 export function learnedAt(characterClass: CharacterClass, level: number): Ability[] {
   return kitOf({ characterClass })
-    .filter((entry) => entry.level === level && level > 1)
+    .filter((entry) => entry.level === level && level > 1 && entry.mage === undefined)
+    .map((entry) => entry.ability);
+}
+
+/** As Técnicas que a classe dá exatamente no nível de mago `mage`: o que se aprende ao chegar nele. */
+export function learnedAtMage(characterClass: CharacterClass, mage: number): Ability[] {
+  return kitOf({ characterClass })
+    .filter((entry) => entry.mage === mage)
     .map((entry) => entry.ability);
 }

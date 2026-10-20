@@ -289,6 +289,7 @@ function isCharacter(value: unknown): value is Character {
     (value.breath === undefined || isNumber(value.breath)) &&
     // A mana e as gravações também: quem não conjura não tem nenhuma das duas (ver ../mana.ts e ../world/field.ts).
     (value.mana === undefined || isNumber(value.mana)) &&
+    (value.mageLevel === undefined || isNumber(value.mageLevel)) &&
     (value.engraved === undefined || (Array.isArray(value.engraved) && value.engraved.every((id) => typeof id === "string"))) &&
     isObject(attributes) &&
     ATTRIBUTE_KEYS.every((key) => isNumber(attributes[key])) &&

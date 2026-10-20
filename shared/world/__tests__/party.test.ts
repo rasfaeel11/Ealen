@@ -171,8 +171,9 @@ test("o grupo luta junto até o fim; quem cai numa vitória se levanta com 1 de 
   );
   assert.equal(rewards.xpGained, 140);
   assert.equal(rewards.levelUp.leveledUp, true);
-  // O mago aprende o Desarmar no nível 2; o espadachim não aprende Técnica (o golpe-selo é por iniciação).
-  assert.deepEqual(rewards.levelUp.leveledUp && rewards.levelUp.learned?.map((ability) => ability.name), ["Desarmar"]);
+  // Subir de nível não ensina Técnica a ninguém do trio: as do mago chegam com o Círculo (`mage_rise`), e o
+  // espadachim não tem nenhuma (o golpe-selo é por iniciação).
+  assert.deepEqual(rewards.levelUp.leveledUp && rewards.levelUp.learned?.map((ability) => ability.name), []);
   assert.deepEqual(
     rewards.companionLevels.map(({ name, level, learned }) => ({ name, level, learned: learned.map((ability) => ability.name) })),
     [

@@ -2,7 +2,9 @@ import { Story } from "inkjs";
 import { gearedAttributes } from "../equipment";
 import { findItem, giveItem, itemCount, takeItem, type GameItem } from "../inventoryEffects";
 import { applyXpGain } from "../leveling";
-import { HERO_ID, castId, isInParty, joinParty, leaveParty, presentCompanions, type PartyMember } from "../party";
+import { MAGE_LEVELS, mageLevelName } from "../mana";
+import { HERO_ID, castId, isInParty, joinParty, leaveParty, magicOf, presentCompanions, type PartyMember } from "../party";
+import { learnedAtMage } from "../tactics/abilities";
 import { STATUSES, isStatusId, passesWithRest, type StatusId } from "../tactics/statuses";
 import { AREAS } from "../world/areas";
 import type { RngHolder } from "../tactics/rng";
@@ -49,7 +51,7 @@ import {
  * EXTERNAL em client/story/main.ink):
  *
  *   attr("len")         o atributo do personagem
- *   order(), people()   a Ordem e o Povo dele ("luminar", "althirim"...)
+ *   order(), people()   o que ele é e o povo dele ("atracao_repulsao", "humano")
  *   level()
  *   has_item("id")
  *   defeated("area:grupo")   se aquele grupo de inimigos já foi vencido
@@ -58,6 +60,8 @@ import {
  *   give_item("id")     põe um item na mochila
  *   take_item("id")     tira um da mochila; diz se havia o que tirar
  *   grant_xp(30)
+ *   mage_rise(4)             sobe o protagonista a esse nível de mago (4 é o
+ *                            Círculo); só sobe. mage_level() diz o de agora
  *   start_fight("grupo")     quando a conversa acabar, luta com esse grupo
  *                            de inimigos da área em que se está
  *   travel("area", "ponto")  quando a conversa acabar, leva o personagem a
@@ -114,6 +118,8 @@ export type StoryEvent =
   | { type: "item"; item: GameItem; kept: boolean }
   | { type: "itemTaken"; item: GameItem }
   | { type: "xp"; amount: number; levelUp: LevelUpResult }
+  /** O protagonista chegou a um nível de mago novo (`level` é o nome dele, "Círculo") e aprendeu `learned`. */
+  | { type: "mageRose"; level: string; learned: string[] }
   /** A conversa termina em luta com este grupo de inimigos da área atual. */
   | { type: "fight"; group: string }
   /** A conversa termina com o personagem levado a outro lugar. */
@@ -232,6 +238,7 @@ export class StoryRunner {
     story.BindExternalFunction("order", () => host.character.characterClass, true);
     story.BindExternalFunction("people", () => host.character.race, true);
     story.BindExternalFunction("level", () => host.character.level, true);
+    story.BindExternalFunction("mage_level", () => magicOf(host.character)?.level ?? 0, true);
     story.BindExternalFunction("has_item", (id: string) => itemCount(host.character, id) > 0, true);
     story.BindExternalFunction("defeated", (key: string) => host.isDefeated(key), true);
     story.BindExternalFunction("passed", () => this.lastCheckPassed, true);
@@ -260,6 +267,16 @@ export class StoryRunner {
       // O grupo inteiro aprende junto; o que a caixa anuncia é o que houve com o personagem.
       for (const companion of presentCompanions(host.companions)) applyXpGain(companion, amount);
       this.pending.push({ type: "xp", amount, levelUp: applyXpGain(host.character, amount) });
+    });
+    story.BindExternalFunction("mage_rise", (level: number) => {
+      // Só sobe, e só em quem conjura: o nível de mago é o tamanho do texto que ele domina, e ninguém desaprende.
+      const magic = magicOf(host.character);
+      const to = Math.min(MAGE_LEVELS.length, Math.floor(Number(level)));
+      if (!magic || !(to > magic.level)) return;
+      const learned: string[] = [];
+      for (let mage = magic.level + 1; mage <= to; mage++) learned.push(...learnedAtMage(host.character.characterClass, mage).map(({ name }) => name));
+      host.character.mageLevel = to;
+      this.pending.push({ type: "mageRose", level: mageLevelName(to), learned });
     });
     story.BindExternalFunction("join_party", (key: string) => {
       const joined = joinParty(host.companions, String(key), host.character.level);

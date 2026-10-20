@@ -341,8 +341,11 @@ export class SheetPanel {
     this.heading.setText("HABILIDADES");
     const { character } = this;
     const abilities = sheetAbilities(character);
-    // O que a Ordem ainda vai ensinar: à vista, apagado, com o nível em que chega.
-    const ahead = fights(character) && !character.arts ? kitOf(character).filter((entry) => entry.level > character.level) : [];
+    // O que a classe ainda vai ensinar: à vista, apagado, com o nível (ou o nível de mago) em que chega.
+    const known = new Set(abilities.map((ability) => ability.id));
+    const ahead = fights(character) && !character.arts ? kitOf(character).filter((entry) => !known.has(entry.ability.id)) : [];
+    const when = (entry: (typeof ahead)[number]) =>
+      entry.mage !== undefined && entry.mage > (magicOf(character)?.level ?? 0) ? `no ${mageLevelName(entry.mage)}` : `no nível ${entry.level}`;
     this.setMenu(
       [
         ...abilities.map((ability) => {
@@ -353,7 +356,7 @@ export class SheetPanel {
             onSelect: () => this.use(ability),
           };
         }),
-        ...ahead.map((entry) => ({ label: `${entry.ability.name}  ·  no nível ${entry.level}`, disabled: true, onSelect: () => undefined })),
+        ...ahead.map((entry) => ({ label: `${entry.ability.name}  ·  ${when(entry)}`, disabled: true, onSelect: () => undefined })),
       ],
       () => this.host.onClose(),
     );

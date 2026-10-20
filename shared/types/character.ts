@@ -24,6 +24,12 @@ export interface Character {
    * uma vez, numa luta, sem o tempo de recitar; a usada sai daqui.
    */
   engraved?: string[];
+  /**
+   * O nível de mago, 1 a 7 (`magia` §7.1), em quem conjura: Endyru começa na
+   * Página, e quem o sobe é o texto (`mage_rise`, ver ../story/runner.ts).
+   * Ausente = o que o elenco diz (ver magicOf em ../party.ts).
+   */
+  mageLevel?: number;
   /** Ausente = personagem ainda não tem mochila inicializada. */
   inventory?: Inventory<ConsumableItem>;
   /** O que veste: arma, armadura e acessório (ver ../equipment.ts). Lugar ausente = vazio. */
