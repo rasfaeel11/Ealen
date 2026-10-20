@@ -55,12 +55,12 @@ VAR fiscais_fora = false
     -> END
 
 // A deixa de abertura da luta (`when` = round 1, sem `ends`): só fala. É a
-// dica da mania deles — `retaliates` no bestiário: um fiscal só bate em quem
-// já o atacou três turnos seguidos. Até lá fica no caminho e se guarda (e o
-// ataque de oportunidade continua valendo: passar por ele é outra conversa).
+// dica do voto deles — são da Ipojy: não dão o primeiro golpe. Até alguém
+// bater, ficam no caminho e se guardam, sem nem punir quem passa; depois,
+// revidam, e quem os ataca e erra leva o golpe de volta.
 === fiscais_parados ===
 Nenhum dos dois ataca. Ficam no meio da ponte, de bastão baixo, esperando você desistir.
-Fiscal: Empurrão a gente releva. Insistência a gente anota.
+Fiscal: Daqui a gente não começa nada.
 -> END
 
 // O `onDefeat` do grupo.

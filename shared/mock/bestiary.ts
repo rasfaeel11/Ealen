@@ -304,9 +304,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     principle: "harmonia",
     summary: "Fiscal da Companhia: confere o que sobe da água e fecha o caminho de quem não mostra.",
     lore: "Não está ali pra brigar, está ali pra não sair do lugar. Releva o primeiro empurrão e o segundo. Quem insiste descobre que o bastão de aferir também serve pra outra coisa.",
-    // Fica no caminho e se guarda; só bate em quem já o atacou três turnos seguidos.
+    // Fica no caminho e se guarda. Da Ipojy, não dá o primeiro golpe (o voto); depois dele, revida.
     ai: { aggression: 0.8, caution: 1.2 },
-    quirks: { retaliates: 3 },
     drops: [
       { itemId: "item-pao-de-cinza", chance: 0.5 },
       { itemId: "gear-sinete-da-companhia", chance: 0.25 },

@@ -889,11 +889,11 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     assert.ok(flood(map, from).has(beyond));
   });
 
-  test("na estrada, um fiscal só bate em quem já o atacou três turnos seguidos", () => {
+  test("na estrada, um fiscal não dá o primeiro golpe: fica no caminho até alguém bater, e depois revida", () => {
     const { encounter, group } = fight("fiscais", { x: 19, y: 11 }, stout());
     const fiscais = new Set(group.map((enemy) => enemy.id));
     for (const id of fiscais) {
-      assert.deepEqual(findUnit(encounter, id)!.quirks, { retaliates: 3 });
+      assert.equal(findUnit(encounter, id)!.quirks, undefined);
       assert.equal(findUnit(encounter, id)!.style, "ipojy");
     }
 
@@ -904,11 +904,12 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     // E não arredam pé: ficam colados nele, no caminho.
     for (const id of fiscais) assert.equal(distance(findUnit(quiet, id)!.pos, findUnit(quiet, HERO_ID)!.pos), 1);
 
-    // Quem insiste, apanha — mas só depois do terceiro turno seguido batendo. O golpe que a Ipojy devolve a quem
-    // erra é reação, não iniciativa dele: não conta.
+    // O primeiro golpe é do herói; só depois dele um fiscal levanta o bastão por conta própria (o golpe que a
+    // Ipojy devolve a quem erra é reação, não iniciativa: não conta).
     const target = findUnit(encounter, group[0].id)!;
-    const log = play(encounter, (now) => ({ type: "ability", unitId: HERO_ID, abilityId: "guardiao.attack", target: target.pos }), 40);
-    const struck = log.find(
+    const log = play(encounter, () => ({ type: "ability", unitId: HERO_ID, abilityId: "guardiao.attack", target: target.pos }), 40);
+    const first = log.findIndex(({ event }) => event.type === "abilityUsed" && event.unit === HERO_ID);
+    const struck = log.findIndex(
       ({ event }) =>
         event.type === "abilityUsed" &&
         fiscais.has(event.unit) &&
@@ -917,8 +918,8 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
           (ability) => ability.id === event.abilityId && ability.effects.some((effect) => effect.kind === "damage"),
         ),
     );
-    assert.ok(struck, "os fiscais não revidaram nunca");
-    assert.ok((struck.habit?.attackTurns ?? 0) >= 3, `revidaram com ${struck.habit?.attackTurns} turnos de ataque`);
+    assert.ok(first >= 0, "o herói não bateu");
+    assert.ok(struck > first, struck < 0 ? "os fiscais não revidaram nunca" : "um fiscal bateu primeiro");
   });
 
   test("na estrada, os mergulhadores lutam de longe, no Gryskar, e a luta com eles anda até o fim", () => {

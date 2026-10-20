@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { addItemToInventory } from "../../inventoryEffects";
 import { BESTIARY, creaturePlacement, spawnCreature } from "../../mock/bestiary";
 import { findItemTemplate } from "../../mock/items";
+import { PROTAGONIST } from "../../party";
 import type { CharacterClass } from "../../types/characterClass";
 import {
   activeUnit,
@@ -285,7 +286,16 @@ test("toda luta 3 contra 3 jogada pela IA acaba, e o motor aceita tudo que ela p
 });
 
 test("cada criatura do bestiário, com os pesos dela, luta até o fim contra cada Ordem", () => {
-  const classes: CharacterClass[] = ["luminar", "entropista", "cantor_de_ealen", "guardiao", "sombrilico", "rachador"];
+  const classes: CharacterClass[] = [
+    "atracao_repulsao",
+    "espadachim",
+    "luminar",
+    "entropista",
+    "cantor_de_ealen",
+    "guardiao",
+    "sombrilico",
+    "rachador",
+  ];
 
   for (const [creatureId, creature] of Object.entries(BESTIARY)) {
     for (const itemId of creature.carries ?? []) {
@@ -298,6 +308,8 @@ test("cada criatura do bestiário, com os pesos dela, luta até o fim contra cad
           unitFromCharacter(makeCharacter("H", { characterClass, currentHp: 60, maxHp: 60 }), {
             team: "party",
             pos: at("H"),
+            // O mago luta com a magia de Endyru.
+            ...(characterClass === PROTAGONIST.characterClass ? { magic: PROTAGONIST.magic } : {}),
           }),
           unitFromCharacter(spawnCreature(creature), {
             team: "enemy",

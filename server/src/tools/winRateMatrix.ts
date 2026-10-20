@@ -1,6 +1,7 @@
 /**
- * Matriz de taxa de vitória, rodada pelo motor REAL do jogo: cada Ordem, no
- * nível 1, sozinha contra cada criatura do bestiário, numa arena aberta.
+ * Matriz de taxa de vitória, rodada pelo motor REAL do jogo: cada classe (as
+ * do trio e as Ordens do Eälen), no nível 1, sozinha contra cada criatura do
+ * bestiário, numa arena aberta. O mago entra com a magia de Endyru.
  *
  *     npm run balance:matrix --workspace=server
  *     npm run balance:matrix --workspace=server -- 100 lobo     (menos lutas, só uma criatura)
@@ -22,6 +23,7 @@
 import {
   BESTIARY,
   CLASS_INFO,
+  PROTAGONIST,
   applyCommand,
   chooseCommand,
   createStartingAttributes,
@@ -75,7 +77,12 @@ function fight(characterClass: CharacterClass, creatureId: string, seed: number)
   const { encounter } = startEncounter({
     grid: ARENA.grid,
     units: [
-      unitFromCharacter(makePlayer(characterClass), { team: "party", pos: ARENA.markers.P[0] }),
+      // O mago luta com a magia de Endyru: sem ela, não tem mana pra nada além do bordão.
+      unitFromCharacter(makePlayer(characterClass), {
+        team: "party",
+        pos: ARENA.markers.P[0],
+        ...(characterClass === PROTAGONIST.characterClass ? { magic: PROTAGONIST.magic } : {}),
+      }),
       unitFromCharacter(spawnCreature(creature), {
         team: "enemy",
         pos: ARENA.markers.E[0],

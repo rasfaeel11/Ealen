@@ -288,8 +288,8 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
 - **3. O voto da Ipojy.** A luta sabe se alguém já deu o primeiro golpe (`Encounter.opened`). Até lá, quem é da
   Espera não tem alvo pra golpe nenhum, nem dá ataque de oportunidade; depois, ainda não bate em quem está Surpreso.
   Não dá golpe de abertura e não embosca (`keepsVow` no elenco). A IA espelha a regra: antes de a luta abrir, quem é
-  da Ipojy não ameaça ninguém. A mania `retaliates` do fiscal ficou junto, porque o texto provisório da estrada
-  fala dela; sai quando o castelo de pedágio entrar no lugar.
+  da Ipojy não ameaça ninguém. O fiscal provisório perdeu a mania `retaliates` (a tabela da §4 diz que o voto
+  faz o papel dela): sem isso, mago e fiscal na IA ficavam se guardando pra sempre.
 - **4. Mana e custo no corpo.** `shared/mana.ts`: quem tem `magic` no elenco (conceito e nível de mago, Verso a
   Divindade) paga a magia em mana, que fica na ficha e só o descanso devolve. O limite por turno é o nível de mago.
   Passou dele, o motor solta `manaBurst` (a deixa `when: burst` do Ykuruã vai ler isto) e põe a marca do conceito:
