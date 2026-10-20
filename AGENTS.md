@@ -313,7 +313,6 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   mesmo nível). Saíram o perfil, `unlock_order`, `ClassSelect`, os retratos das Ordens e o prólogo do Eälen (que
   mostrava a Ruptura, vestígio da singularidade). O título virou "Três na Estrada". As Ordens do Eälen ficam só nas
   criaturas provisórias. Na clareira, o trio e Oryndu não falam: o texto deles espera o roteiro (task 11).
-  `docs/motor.md` ainda descreve o elenco antigo nas seções de elenco, Ordens destraváveis e cenas: falta atualizar.
 
 ## 9. O que precisa virar cânone na história
 
