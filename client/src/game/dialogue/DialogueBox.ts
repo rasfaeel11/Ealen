@@ -19,6 +19,12 @@ const CHOICE_LINE_HEIGHT = 30;
 const PORTRAIT_X = 60;
 /** Com busto na tela, o texto começa depois dele. */
 const PORTRAIT_INDENT = PORTRAIT_X + PORTRAIT_WIDTH + 16 - (BOX_X + PADDING);
+/** O busto que entra vem deste tanto à esquerda, aparecendo. */
+const PORTRAIT_SLIDE = 60;
+const PORTRAIT_IN_MS = 220;
+const PORTRAIT_OUT_MS = 160;
+/** Quem saiu da vez fica nesta cor: narração e acontecimento escurecem o busto de quem falava. */
+const PORTRAIT_DIM = 0x5a5a5a;
 /** A tecla que abriu a conversa não pode ser a mesma que passa a primeira fala. */
 const INPUT_GRACE_MS = 200;
 
@@ -111,7 +117,11 @@ export class DialogueBox {
   /** Quanto a caixa cresceu pra cima pra caber a fala mais as escolhas. */
   private lift = 0;
   private readonly speaker: Phaser.GameObjects.Text;
-  private readonly portrait: Phaser.GameObjects.Image;
+  /** O busto de quem tem a vez, e o de quem acabou de sair dela (escurecendo e sumindo). */
+  private portrait: Phaser.GameObjects.Image;
+  private leaving: Phaser.GameObjects.Image;
+  /** De quem é o busto na tela (aceso ou escuro), ou null sem busto. */
+  private portraitSpeaker: string | null = null;
   /** Quanto o texto anda pra direita pra não ficar embaixo do busto. */
   private indent = 0;
   private readonly body: Phaser.GameObjects.Text;
@@ -136,7 +146,9 @@ export class DialogueBox {
     private readonly onEvent?: (event: StoryEvent) => (() => void) | void,
   ) {
     this.panel = addHud(addPanel(scene, BOX_X, BOX_Y, BOX_WIDTH, BOX_HEIGHT));
-    this.portrait = addHud(scene.add.image(PORTRAIT_X, GAME_HEIGHT, "__DEFAULT").setOrigin(0, 1).setVisible(false));
+    const bust = () => addHud(scene.add.image(PORTRAIT_X, GAME_HEIGHT, "__DEFAULT").setOrigin(0, 1).setVisible(false));
+    this.leaving = bust();
+    this.portrait = bust();
     this.speaker = addHud(addTitleText(scene, BOX_X + PADDING, BOX_Y + 18, "", { fontSize: "24px" }));
     this.body = addHud(
       addBodyText(scene, BOX_X + PADDING, TEXT_Y, "", {
@@ -185,13 +197,14 @@ export class DialogueBox {
     this.scene.input.keyboard?.off("keydown", this.onKey, this);
     this.scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     this.clearChoices();
-    for (const object of [this.panel, this.portrait, this.speaker, this.body, this.hint]) object.destroy();
+    this.scene.tweens.killTweensOf([this.portrait, this.leaving]);
+    for (const object of [this.panel, this.portrait, this.leaving, this.speaker, this.body, this.hint]) object.destroy();
   }
 
   private showBeat(beat: DialogueBeat): void {
     this.hint.setVisible(true);
     if (beat.kind === "line") {
-      this.showPortrait(beat.speaker);
+      this.showPortrait(beat.speaker ?? null);
       this.speaker.setText(beat.speaker ?? "");
       // Narração vem em itálico e mais apagada: dá pra ver de longe que ninguém está falando.
       this.body
@@ -202,7 +215,7 @@ export class DialogueBox {
     }
     const { text, color } = describeEvent(beat.event) ?? { text: "", color: TEXT_COLORS.ink };
     sfx("notice");
-    this.showPortrait(undefined);
+    this.showPortrait(null);
     this.speaker.setText("");
     this.body.setText(text).setFontStyle("normal").setColor(color);
   }
@@ -211,7 +224,7 @@ export class DialogueBox {
   private showChoices(choices: DialogueChoice[], alone: boolean): void {
     this.hint.setVisible(false);
     if (alone) {
-      this.showPortrait(undefined);
+      this.showPortrait(null);
       this.speaker.setText("");
       this.body.setText("");
     }
@@ -237,18 +250,58 @@ export class DialogueBox {
   }
 
   /**
-   * Põe o busto de quem fala, ou tira (narração, acontecimento, quem não tem
-   * retrato), e leva o texto pro lado que sobra.
+   * Põe o busto de quem fala e leva o texto pro lado que sobra. Quem continua
+   * falando fica parado; quem chega entra deslizando, e o busto de quem falava
+   * escurece e some. Narração e acontecimento (`null`) não tiram ninguém: o
+   * busto de quem falava só escurece. Quem fala sem retrato fala sem busto.
    */
-  private showPortrait(speaker: string | undefined): void {
-    const key = speaker ? portraitKey(speaker) : null;
-    const shown = key !== null && this.scene.textures.exists(key);
-    if (shown) this.portrait.setTexture(key).setDisplaySize(PORTRAIT_WIDTH, this.portraitHeight(key));
-    this.portrait.setVisible(shown);
+  private showPortrait(speaker: string | null): void {
+    if (speaker === null) {
+      if (this.portraitSpeaker !== null) this.portrait.setTint(PORTRAIT_DIM);
+      return;
+    }
+    if (speaker === this.portraitSpeaker) {
+      this.portrait.clearTint();
+      return;
+    }
+
+    if (this.portraitSpeaker !== null) this.dismissPortrait();
+    const key = portraitKey(speaker);
+    const shown = this.scene.textures.exists(key);
+    this.portraitSpeaker = shown ? speaker : null;
+    if (shown) {
+      this.scene.tweens.killTweensOf(this.portrait);
+      this.portrait
+        .setTexture(key)
+        .setDisplaySize(PORTRAIT_WIDTH, this.portraitHeight(key))
+        .clearTint()
+        .setVisible(true)
+        .setAlpha(0)
+        .setX(PORTRAIT_X - PORTRAIT_SLIDE);
+      this.scene.tweens.add({ targets: this.portrait, x: PORTRAIT_X, alpha: 1, duration: PORTRAIT_IN_MS, ease: "Cubic.Out" });
+    }
 
     this.indent = shown ? PORTRAIT_INDENT : 0;
     this.speaker.setX(BOX_X + PADDING + this.indent);
     this.body.setX(BOX_X + PADDING + this.indent).setWordWrapWidth(BOX_WIDTH - PADDING * 2 - this.indent);
+  }
+
+  /** O busto na tela passa pra quem sai: escurece e some, e o lugar fica livre pro próximo. */
+  private dismissPortrait(): void {
+    [this.portrait, this.leaving] = [this.leaving, this.portrait];
+    this.portraitSpeaker = null;
+    const leaving = this.leaving;
+    this.scene.tweens.killTweensOf(leaving);
+    leaving.setTint(PORTRAIT_DIM);
+    // O que chega tem de ficar na frente do que sai.
+    this.portrait.setDepth(leaving.depth);
+    this.scene.children.moveAbove(this.portrait, leaving);
+    this.scene.tweens.add({
+      targets: leaving,
+      alpha: 0,
+      duration: PORTRAIT_OUT_MS,
+      onComplete: () => leaving.setVisible(false),
+    });
   }
 
   /** A altura na tela, mantendo a proporção da arte na largura do busto. */

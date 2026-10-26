@@ -268,12 +268,11 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
-Ordem sugerida: 18, 27, 28, 21, 23, 22, 24, 25, 19, 26, 20, 29, 30. Texto novo de história vai como
+Ordem sugerida: 27, 28, 21, 23, 22, 24, 25, 19, 26, 20, 29, 30. Texto novo de história vai como
 proposta pro autor antes de entrar (§1).
 
 | # | Task | O que é |
 |---|---|---|
-| 18 | **Entrada e troca do retrato** | O busto entra deslizando quando quem fala muda, e fica parado quando a mesma pessoa continua; quem saiu da vez escurece. |
 | 19 | **Expressões por tag** | `# rosto: <nome>` numa linha do Ink troca o quadro do retrato. O runner passa as tags de cada fala no `DialogueBeat`. |
 | 20 | **Retratos de verdade** | Arte do autor: o trio, Oryndu, a conselheira, o castelão, o ferreiro (a cara do demônio confere a ficha do povo). O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
 | 21 | **Por que a pressa no ato 3** | A deixa `final_pressa` continua de roteiro, mas com motivo na cena: a cheia sobe e apaga os círculos da margem, e Endyru, recém-chegado ao Círculo, acha que aguenta a página inteira. Pressa e soberba, não heroísmo. |
@@ -369,6 +368,9 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   Ink (`client/src/game/dialogue/portraits.ts`): `PORTRAITS` recebe a arte final, e até lá o trio, Oryndu e a gente
   que fala pelo papel têm um busto liso provisório, na cor de cada um, sem rosto desenhado. Narração, acontecimento e
   quem não está na lista falam sem busto.
+- **18. Entrada e troca do retrato.** Quando quem fala muda, o busto novo entra deslizando da esquerda, aparecendo,
+  e o de quem falava escurece e some. Quem continua falando fica parado. Narração, acontecimento e escolha sem fala
+  não tiram o busto da tela: o de quem falava só escurece, e acende de novo se a mesma pessoa voltar a falar.
 
 ## 9. Onde isto está no cânone
 
