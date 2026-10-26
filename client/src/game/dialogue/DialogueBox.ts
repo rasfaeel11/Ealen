@@ -53,7 +53,7 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
         : { text: `Pagou ${-event.amount} de ${event.coin}. Na bolsa: ${event.left}.`, color: TEXT_COLORS.item };
     case "mageRose":
       return {
-        text: `Endyru chegou ao .`,
+        text: `Endyru chegou ao ${event.level}.${event.learned.length ? ` Aprendeu ${event.learned.join(" e ")}.` : ""}`,
         color: TEXT_COLORS.goldBright,
       };
     case "itemTaken":
