@@ -268,7 +268,7 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
-Ordem sugerida: 21, 23, 22, 24, 25, 19, 26, 20, 29, 30. Texto novo de história vai como
+Ordem sugerida: 21, 23, 22, 24, 25, 19, 26, 20, 30. Texto novo de história vai como
 proposta pro autor antes de entrar (§1).
 
 | # | Task | O que é |
@@ -281,7 +281,6 @@ proposta pro autor antes de entrar (§1).
 | 24 | **Conversas de estrada** | Três ou quatro conversas curtas do trio e de Oryndu, no descanso ou na travessia: o livro de Endyru, a Gryskar e a Ipojy na mesma escolta, a universidade. |
 | 25 | **O cobre serve pra alguma coisa** | Uma banca no cais de Ybytuguá vende Pão de Viagem e Unguento a cobre; o escrivão aceita a moeda dele. |
 | 26 | **Um dom pra Jarupã e um pra Xanduí** | `GIFTS` está pronto e sem dono; o espadachim sobe de nível sem ganhar botão. Vai como proposta: não pode ser golpe-selo (`magia` §5.6). |
-| 29 | **Voto e Contragolpe legíveis** | O botão travado diz por quê; o Contragolpe tem golpe visível de reação. |
 | 30 | **Sobras do Eälen em `shared/`** | Ordens, raças e itens que só os testes do motor usam. Trocar as fixtures antes de apagar. |
 
 ### P2 e P3
@@ -379,6 +378,11 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   estalo e a água batendo (`burst`). No `manaDrawn`, um som grave e comprido (`rumble`) e uma fila de anéis corre pela
   água do mago até o bicho, antes do turno a mais. Enquanto a marca de atração e repulsão durar na luta, pinga sangue
   do nariz de quem a carrega (de costas não se vê).
+- **29. Voto e Contragolpe legíveis.** Todo botão apagado da barra de luta diz por quê (`why` no `ActionButton`):
+  na linha de explicação, ao passar o mouse, e como aviso, ao clicar ou apertar a tecla. O voto vem primeiro ("O voto
+  da Ipojy: Xanduí não dá o primeiro golpe da luta"; depois, "não se bate em quem está Surpreso"), e então o que falta
+  pagar, a recarga ou a falta de alvo. O mouse em cima de um botão não conta mais como mouse no mapa. No Contragolpe,
+  quem espera clareia em ouro, um corte de luz vai dela até quem errou, e o bote de reação é mais largo e mais rápido.
 
 ## 9. Onde isto está no cânone
 

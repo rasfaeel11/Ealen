@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { activeUnit, isAlive, styleLabel, type Encounter } from "@ealen/shared";
+import { sfx } from "../audio";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { addBodyText, addPanel, drawPanel, addTitleText } from "../ui";
 
@@ -9,6 +10,8 @@ export interface ActionButton {
   /** "Ação", "Bônus"... mostrado depois do nome. */
   tag?: string;
   enabled: boolean;
+  /** Apagado: por quê. Aparece na linha de explicação ao passar o mouse, e como aviso ao clicar ou apertar a tecla. */
+  why?: string;
   selected?: boolean;
   onClick: () => void;
 }
@@ -174,6 +177,12 @@ export class CombatHud {
       if (button.enabled) {
         text.setInteractive({ useHandCursor: true });
         text.on(Phaser.Input.Events.POINTER_DOWN, () => button.onClick());
+      } else if (button.why) {
+        // O botão apagado não faz nada, mas diz por quê.
+        const why = button.why;
+        text.setInteractive();
+        text.on(Phaser.Input.Events.POINTER_OVER, () => this.setDetail(why));
+        text.on(Phaser.Input.Events.POINTER_DOWN, () => this.deny(why));
       }
       return text;
     });
@@ -187,6 +196,12 @@ export class CombatHud {
   press(index: number): void {
     const button = this.buttons[index];
     if (button?.enabled) button.onClick();
+    else if (button?.why) this.deny(button.why);
+  }
+
+  private deny(why: string): void {
+    sfx("deny");
+    this.warn(why);
   }
 
   /** A linha de explicação embaixo das opções. */

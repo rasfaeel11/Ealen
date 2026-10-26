@@ -18,9 +18,11 @@ import {
   findPath,
   findUnit,
   interactTargets,
+  isAlive,
   isBlow,
   isOver,
   isRecited,
+  isSworn,
   pixelOfTile,
   propAt,
   propTemplate,
@@ -405,7 +407,9 @@ export class CombatController {
     return tileOfPixel(this.host.map, point);
   }
 
-  private onPointerMove(pointer: Phaser.Input.Pointer): void {
+  private onPointerMove(pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]): void {
+    // Em cima de um botão a explicação é dele, não do quadrado que está embaixo.
+    if (over.length > 0) return;
     const tile = this.tileUnder(pointer);
     if (this.hover && samePos(this.hover, tile)) return;
     this.hover = tile;
@@ -468,6 +472,25 @@ export class CombatController {
         ...(isBlow(ability) && vowForbids(encounter, unit) ? ["o voto: não bate primeiro"] : []),
       ].join(" · ");
     };
+    // Por que o botão de uma habilidade está apagado: o voto primeiro, depois o que falta pagar, depois o alvo.
+    const why = (ability: Ability): string | undefined => {
+      if (isBlow(ability) && vowForbids(encounter, unit)) {
+        return `O voto da Ipojy: ${unit.name} não dá o primeiro golpe da luta. Espere alguém abrir.`;
+      }
+      const ready = readiness(unit, ability);
+      if (ready === "spent") return ability.cost === "action" ? "A ação deste turno já foi gasta." : "A ação bônus deste turno já foi gasta.";
+      if (ready === "limit") return `${ability.name} já foi usada todas as vezes que esta luta permite.`;
+      if (ready === "recharging") return `${ability.name} está em recarga: volta em ${cooldownLeft(unit, ability)} turno(s).`;
+      if (ready === "breath") return ERROR_TEXT.no_breath;
+      if (ready === "mana") return ERROR_TEXT.no_mana;
+      if (ready === "reciting") return ERROR_TEXT.reciting;
+      if (abilityTargets(encounter, unit, ability).length > 0) return undefined;
+      const surprised = encounter.units.some(
+        (other) => other.team !== unit.team && isAlive(other) && other.statuses.some((status) => status.id === "surprised"),
+      );
+      if (isBlow(ability) && isSworn(unit.style) && surprised) return "O voto da Ipojy: não se bate em quem está Surpreso.";
+      return "Ninguém ao alcance pra isso.";
+    };
     // O botão de mexer existe enquanto esta luta espera que mexam em alguma coisa (uma deixa `used`), ou com algo
     // de mexer ao alcance — um sino do outro lado do mapa não é assunto dela. Acende com quem está colado nele.
     const inReach = interactTargets(encounter, unit);
@@ -479,6 +502,7 @@ export class CombatController {
       {
         label: "Mover",
         enabled: unit.turn.movement > 0,
+        why: "O movimento deste turno acabou.",
         selected: this.selected === null && !this.aim,
         onClick: () => this.select(null),
       },
@@ -486,6 +510,7 @@ export class CombatController {
         label: ability.name,
         tag: price(ability),
         enabled: canPay(ability) && abilityTargets(encounter, unit, ability).length > 0,
+        why: why(ability),
         selected: this.selected?.id === ability.id,
         onClick: () => this.select(ability),
       })),
@@ -495,6 +520,7 @@ export class CombatController {
               label: `${propTemplate(inReach[0] ?? usable[0]).interact}: ${propTemplate(inReach[0] ?? usable[0]).name}`,
               tag: "Ação",
               enabled: unit.turn.action && inReach.length > 0,
+              why: unit.turn.action ? "Chegue perto pra mexer." : "A ação deste turno já foi gasta.",
               selected: this.aim?.kind === "interact",
               onClick: () => this.chooseInteract(),
             },
@@ -505,6 +531,7 @@ export class CombatController {
         label: `${SUPPORTS[supporter.support].name} (${supporter.name})`,
         tag: "1 por rodada",
         enabled: supportTargets(encounter, unit, supporter).length > 0,
+        why: `${supporter.name} não tem o que fazer agora (é uma vez por rodada).`,
         selected: this.aim?.kind === "support" && this.aim.supporter.id === supporter.id,
         onClick: () => this.chooseSupport(supporter),
       })),
@@ -512,6 +539,7 @@ export class CombatController {
         label: `${slot.item.name} ×${slot.quantity}`,
         tag: "Bônus",
         enabled: unit.turn.bonus,
+        why: "A ação bônus deste turno já foi gasta.",
         onClick: () => void this.issue({ type: "useItem", unitId: unit.id, itemId: slot.item.id }),
       })),
       { label: "Encerrar turno (Espaço)", enabled: true, onClick: () => this.endTurn() },
@@ -777,12 +805,12 @@ export class CombatController {
           await this.wait(200);
           return;
         }
-        // Um bote curto na direção do alvo, e de volta.
+        // Um bote curto na direção do alvo, e de volta. A reação (o Contragolpe) é mais larga e mais rápida.
         sfx("swing");
         actor.faceToward(target);
-        const reach = Math.min(1, 6 / Math.hypot(target.x - home.x, target.y - home.y));
+        const reach = Math.min(1, (event.reaction ? 10 : 6) / Math.hypot(target.x - home.x, target.y - home.y));
         const lunge = { x: home.x + (target.x - home.x) * reach, y: home.y + (target.y - home.y) * reach };
-        await this.glide(actor, lunge, 70, false);
+        await this.glide(actor, lunge, event.reaction ? 50 : 70, false);
         await this.glide(actor, home, 90, false);
         return;
       }
@@ -907,7 +935,16 @@ export class CombatController {
       case "styleTrait": {
         // O traço da escola de quem bate: aparece sobre ele, antes do dano que ele engrossa (ou do golpe que ele devolve).
         const text = event.trait === "wave" ? `${event.name} x${(event.hits ?? 0) + 1}` : `${event.name}!`;
-        this.floatOver(event.unit, text, TEXT_COLORS.goldBright, -22, 22);
+        this.floatOver(event.unit, text, TEXT_COLORS.goldBright, -22, event.trait === "counter" ? 28 : 22);
+        if (event.trait === "counter") {
+          // A Espera responde: quem errou vê o golpe vir de volta antes de saber se pega.
+          const actor = this.actor(event.unit);
+          const target = this.actor(event.target);
+          sfx("block");
+          actor?.flash(COLORS.goldBright, 160);
+          if (actor && target) this.slash(this.center(actor), this.center(target));
+          await this.wait(180);
+        }
         const actor = this.unit(event.unit).name;
         const target = this.unit(event.target).name;
         this.hud.log(
@@ -1279,6 +1316,15 @@ export class CombatController {
     if (on && statusId === STATUSES.submerged.id) actor.setImmersion("submerged");
     if (on && statusId === STATUSES.beached.id) actor.setImmersion("beached");
     if (statusId === NOSEBLEED) actor.setBleeding(on);
+  }
+
+  /** Um corte de luz de `from` a `to` que some depressa: o golpe de reação, antes de ele chegar. */
+  private slash(from: PixelPos, to: PixelPos): void {
+    const { scene } = this.host;
+    const line = this.host.addWorld(scene.add.graphics().setDepth(FX_DEPTH));
+    line.lineStyle(2, COLORS.goldBright, 1).lineBetween(from.x, from.y, to.x, to.y);
+    line.lineStyle(1, 0xffffff, 1).lineBetween(from.x, from.y, to.x, to.y);
+    scene.tweens.add({ targets: line, alpha: { from: 1, to: 0 }, duration: 260, ease: "Cubic.easeIn", onComplete: () => line.destroy() });
   }
 
   /** A batida da mana correndo pela água, de `from` a `to`: anéis que se abrem um depois do outro. */
