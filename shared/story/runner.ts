@@ -157,8 +157,25 @@ export function aftermath(steps: readonly DialogueStep[]): Aftermath {
   return result;
 }
 
-/** Uma coisa por vez na caixa: uma fala (ou narração), ou um acontecimento. */
-export type DialogueBeat = { kind: "line"; speaker?: string; text: string } | { kind: "event"; event: StoryEvent };
+/**
+ * Uma coisa por vez na caixa: uma fala (ou narração), ou um acontecimento.
+ * `tags` são as da fala no Ink (`# rosto: riso`), sem o `#`; só vem quando há.
+ */
+export type DialogueBeat =
+  | { kind: "line"; speaker?: string; text: string; tags?: string[] }
+  | { kind: "event"; event: StoryEvent };
+
+const FACE_TAG = /^rosto:\s*(\S.*)$/;
+
+/** O rosto que a fala pede com `# rosto: <nome>`. Undefined se não pede: fica o retrato de sempre. */
+export function faceOf(beat: DialogueBeat): string | undefined {
+  if (beat.kind !== "line") return undefined;
+  for (const tag of beat.tags ?? []) {
+    const match = FACE_TAG.exec(tag.trim());
+    if (match) return match[1].trim();
+  }
+  return undefined;
+}
 
 export interface DialogueChoice {
   /** O que entregar a `choose`. */
@@ -394,7 +411,12 @@ export class StoryRunner {
       if (text === "") continue;
 
       const match = SPEAKER_LINE.exec(text);
-      beats.push(match ? { kind: "line", speaker: match[1], text: match[2] } : { kind: "line", text });
+      const tags = (this.story.currentTags ?? []).map((tag) => tag.trim()).filter((tag) => tag !== "");
+      beats.push({
+        kind: "line",
+        ...(match ? { speaker: match[1], text: match[2] } : { text }),
+        ...(tags.length > 0 ? { tags } : {}),
+      });
     }
     flush();
 

@@ -9,6 +9,7 @@ import {
   chargeSavedClock,
   checkChance,
   clockCondition,
+  faceOf,
   restSavedStory,
   rollCheck,
   unpackStory,
@@ -659,4 +660,24 @@ test("a bolsa: earn põe, pay só tira se tem tudo, money conta; cobre e prata n
   );
   assert.deepEqual(host.character.purse, { cobre: 2 });
   assert.throws(() => new StoryRunner(TOLL, makeHost()).start("moeda_errada"), /moeda que não existe/);
+});
+
+const FACES = compile(`
+=== conversa ===
+Xanduí: Lê pra mim. # rosto: riso
+Xanduí: Bonito.
+O rio corre. # outra
+-> END
+`);
+
+test("as tags de cada fala chegam na fala, e # rosto: diz o rosto de quem fala só nela", () => {
+  const step = new StoryRunner(FACES, makeHost()).start("conversa");
+  const shown = step.beats.filter((beat) => beat.kind === "line");
+
+  assert.deepEqual(shown, [
+    { kind: "line", speaker: "Xanduí", text: "Lê pra mim.", tags: ["rosto: riso"] },
+    { kind: "line", speaker: "Xanduí", text: "Bonito." },
+    { kind: "line", text: "O rio corre.", tags: ["outra"] },
+  ]);
+  assert.deepEqual(shown.map(faceOf), ["riso", undefined, undefined]);
 });

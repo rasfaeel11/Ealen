@@ -1,9 +1,17 @@
 import * as Phaser from "phaser";
 import { sfx } from "../audio";
-import { ATTRIBUTE_NAMES, type Attributes, type DialogueBeat, type DialogueChoice, type DialogueStep, type StoryEvent } from "@ealen/shared";
+import {
+  ATTRIBUTE_NAMES,
+  faceOf,
+  type Attributes,
+  type DialogueBeat,
+  type DialogueChoice,
+  type DialogueStep,
+  type StoryEvent,
+} from "@ealen/shared";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { addBodyText, addPanel, addTitleText } from "../ui";
-import { PORTRAIT_WIDTH, portraitKey } from "./portraits";
+import { PORTRAIT_WIDTH, portraitFor } from "./portraits";
 
 /** Põe um objeto na cena de modo que só a câmera da interface o desenhe. */
 type AddHud = <T extends Phaser.GameObjects.GameObject>(object: T) => T;
@@ -204,7 +212,7 @@ export class DialogueBox {
   private showBeat(beat: DialogueBeat): void {
     this.hint.setVisible(true);
     if (beat.kind === "line") {
-      this.showPortrait(beat.speaker ?? null);
+      this.showPortrait(beat.speaker ?? null, faceOf(beat));
       this.speaker.setText(beat.speaker ?? "");
       // Narração vem em itálico e mais apagada: dá pra ver de longe que ninguém está falando.
       this.body
@@ -254,19 +262,22 @@ export class DialogueBox {
    * falando fica parado; quem chega entra deslizando, e o busto de quem falava
    * escurece e some. Narração e acontecimento (`null`) não tiram ninguém: o
    * busto de quem falava só escurece. Quem fala sem retrato fala sem busto.
+   * `face` é o rosto que a fala pede (`# rosto:`): quem continua falando com
+   * outro rosto troca o quadro ali mesmo, sem sair.
    */
-  private showPortrait(speaker: string | null): void {
+  private showPortrait(speaker: string | null, face?: string): void {
     if (speaker === null) {
       if (this.portraitSpeaker !== null) this.portrait.setTint(PORTRAIT_DIM);
       return;
     }
+    const key = portraitFor(this.scene, speaker, face);
     if (speaker === this.portraitSpeaker) {
+      if (this.portrait.texture.key !== key) this.portrait.setTexture(key).setDisplaySize(PORTRAIT_WIDTH, this.portraitHeight(key));
       this.portrait.clearTint();
       return;
     }
 
     if (this.portraitSpeaker !== null) this.dismissPortrait();
-    const key = portraitKey(speaker);
     const shown = this.scene.textures.exists(key);
     this.portraitSpeaker = shown ? speaker : null;
     if (shown) {

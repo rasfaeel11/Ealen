@@ -268,12 +268,11 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
-Ordem sugerida: 21, 23, 22, 24, 25, 19, 26, 20, 30. Texto novo de história vai como
+Ordem sugerida: 21, 23, 22, 24, 25, 26, 20, 30. Texto novo de história vai como
 proposta pro autor antes de entrar (§1).
 
 | # | Task | O que é |
 |---|---|---|
-| 19 | **Expressões por tag** | `# rosto: <nome>` numa linha do Ink troca o quadro do retrato. O runner passa as tags de cada fala no `DialogueBeat`. |
 | 20 | **Retratos de verdade** | Arte do autor: o trio, Oryndu, a conselheira, o castelão, o ferreiro (a cara do demônio confere a ficha do povo). O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
 | 21 | **Por que a pressa no ato 3** | A deixa `final_pressa` continua de roteiro, mas com motivo na cena: a cheia sobe e apaga os círculos da margem, e Endyru, recém-chegado ao Círculo, acha que aguenta a página inteira. Pressa e soberba, não heroísmo. |
 | 22 | **O papel do recitador** | Hoje é uma confissão selada. Vira peças: página de repulsão, dias da lua e pontos do rio, ordem de pagamento contra o livro do castelão. Quem junta são os personagens. |
@@ -383,6 +382,11 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   da Ipojy: Xanduí não dá o primeiro golpe da luta"; depois, "não se bate em quem está Surpreso"), e então o que falta
   pagar, a recarga ou a falta de alvo. O mouse em cima de um botão não conta mais como mouse no mapa. No Contragolpe,
   quem espera clareia em ouro, um corte de luz vai dela até quem errou, e o bote de reação é mais largo e mais rápido.
+- **19. Expressões por tag.** O runner põe as tags de cada fala do Ink no `DialogueBeat` (`tags`, sem o `#`), e
+  `faceOf` lê o `# rosto: <nome>`. Vale só pra aquela fala: a seguinte, sem tag, volta ao retrato de sempre. Quem
+  continua falando com outro rosto troca o quadro ali mesmo, sem sair e entrar. A arte de cada rosto entra em
+  `PORTRAITS` (`faces`, textura `portrait:<quem>:<rosto>`); rosto pedido sem arte mostra o retrato de sempre, e o
+  provisório, que não tem rosto, não muda.
 
 ## 9. Onde isto está no cânone
 

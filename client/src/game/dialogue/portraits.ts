@@ -22,13 +22,18 @@ export const PORTRAIT_HEIGHT = 400;
 export interface PortraitDef {
   /** Caminho relativo a client/public (ex: "sprites/portraits/xandui.png"). */
   url: string;
+  /**
+   * Os outros rostos, pelo nome que a fala pede no Ink (`# rosto: riso`).
+   * Rosto pedido sem arte aqui mostra o retrato de sempre.
+   */
+  faces?: Record<string, string>;
 }
 
 /**
  * Retratos de arte final, pelo nome de quem fala. Vazio = todo mundo usa o
- * provisório. Exemplo:
+ * provisório (que não tem rosto, então não tem expressão). Exemplo:
  *
- *   Xanduí: { url: "sprites/portraits/xandui.png" },
+ *   Xanduí: { url: "sprites/portraits/xandui.png", faces: { riso: "sprites/portraits/xandui-riso.png" } },
  */
 export const PORTRAITS: Record<string, PortraitDef> = {};
 
@@ -50,8 +55,15 @@ const PLACEHOLDER_COLOR: Record<string, string> = {
   Contratada: "#6a5040",
 };
 
-export function portraitKey(speaker: string): string {
-  return `portrait:${speaker}`;
+/** A textura do retrato de `speaker`; com `face`, a daquele rosto. */
+export function portraitKey(speaker: string, face?: string): string {
+  return face === undefined ? `portrait:${speaker}` : `portrait:${speaker}:${face}`;
+}
+
+/** A textura que mostra `speaker` com `face`: a do rosto, se tem arte; senão a de sempre. */
+export function portraitFor(scene: Phaser.Scene, speaker: string, face?: string): string {
+  const key = portraitKey(speaker, face);
+  return face !== undefined && scene.textures.exists(key) ? key : portraitKey(speaker);
 }
 
 /** Busto provisório em pixels grandes: 64x80, ampliado 5x sem suavização. */
@@ -88,7 +100,10 @@ function drawPlaceholderBust(ctx: CanvasRenderingContext2D, color: string): void
 
 /** Enfileira no loader os retratos de arte final. Chamado no preload da cena de boot. */
 export function preloadPortraits(scene: Phaser.Scene): void {
-  for (const [speaker, def] of Object.entries(PORTRAITS)) scene.load.image(portraitKey(speaker), def.url);
+  for (const [speaker, def] of Object.entries(PORTRAITS)) {
+    scene.load.image(portraitKey(speaker), def.url);
+    for (const [face, url] of Object.entries(def.faces ?? {})) scene.load.image(portraitKey(speaker, face), url);
+  }
 }
 
 /** Gera o provisório de quem ainda não tem arte. Chamado uma vez, no create da cena de boot. */
@@ -102,7 +117,9 @@ export function registerPortraits(scene: Phaser.Scene): void {
     texture.refresh();
     texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
   }
-  for (const speaker of Object.keys(PORTRAITS)) {
-    scene.textures.get(portraitKey(speaker)).setFilter(Phaser.Textures.FilterMode.NEAREST);
+  for (const [speaker, def] of Object.entries(PORTRAITS)) {
+    for (const face of [undefined, ...Object.keys(def.faces ?? {})]) {
+      scene.textures.get(portraitKey(speaker, face)).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    }
   }
 }
