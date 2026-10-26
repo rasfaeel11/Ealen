@@ -33,7 +33,7 @@ import { FIRST, TEST_ITEMS, TEST_KIT, eventsOf, makeCharacter, makeUnit, run, se
  * cura, o golpe que fura a armadura, o que devolve vida e o que leva Fôlego.
  */
 
-const ORDERS = Object.keys(CLASS_INFO) as CharacterClass[];
+const CLASSES = Object.keys(CLASS_INFO) as CharacterClass[];
 
 function unit(encounter: Encounter, id: string) {
   return findUnit(encounter, id)!;
@@ -60,11 +60,11 @@ function seedWhere<T>(scene: (seed: number) => T, check: (result: T) => boolean)
   throw new Error("nenhuma seed serviu");
 }
 
-/** Quantas Técnicas cada classe ensina: duas por Ordem do Eälen e pro mago; o espadachim, nenhuma (o golpe-selo é por iniciação). */
+/** Quantas Técnicas cada classe ensina: duas pro mago (as do Círculo); o espadachim, nenhuma (o golpe-selo é por iniciação). */
 const TECHNIQUES = (order: CharacterClass) => (order === "espadachim" ? 0 : 2);
 
 test("cada classe tem o kit dela: as Artes no nível 1, e as Técnicas chegam com o nível", () => {
-  for (const order of ORDERS) {
+  for (const order of CLASSES) {
     const arts = STANCE_ORDER.filter((stance) => CLASS_COMBAT_ARTS[order][stance] !== null);
     const novice = abilitiesFor(makeCharacter("x", { characterClass: order, level: 1 }));
     assert.deepEqual(novice.map((ability) => ability.id).sort(), arts.map((stance) => `${order}.${stance}`).sort(), order);
@@ -441,7 +441,6 @@ test("a gente do mundo luta com o que é: humano, da escola dela, com o que vest
   assert.ok(people.length >= 7);
   for (const [id, entry] of people) {
     assert.ok(entry.template.equipment?.weapon, `${id} luta com uma arma`);
-    assert.equal(entry.principle, undefined, `${id} não é Princípio do Eälen`);
   }
 
   const reader = BESTIARY["encounter-recitador-de-ymboripe"];

@@ -16,7 +16,7 @@ import type { Equipment, EquipmentItem, EquipmentSlot } from "./types/inventory"
  * - A ARMA dá o dado e o alcance dos golpes de arma, e soma (ou tira) acerto:
  *   `armOf` é a pergunta, e quem a faz é `abilitiesFor`, ao montar o kit — a
  *   luta recebe as habilidades já com os números da arma, e o motor não sabe
- *   que arma existe. De mãos vazias vale o natural da Ordem (`BARE`).
+ *   que arma existe. De mãos vazias vale o 1d6 de perto (`BARE`).
  * - A ARMADURA soma na defesa (`gearDefense`, que vira `Unit.defense`) e,
  *   pesada, tira movimento (`gearSpeed`).
  * - O ACESSÓRIO soma atributos (`gearedAttributes`): na luta, nos testes da
@@ -40,30 +40,18 @@ export interface Arm {
 const D6: Dice = { count: 1, sides: 6 };
 
 /**
- * O que cada Ordem tem de mãos vazias: o dado mais fraco, no alcance do
- * próprio Princípio. É também a arma natural das criaturas.
+ * O que cada classe tem de mãos vazias: o dado mais fraco, de perto. É também
+ * a arma natural das criaturas.
  */
 const BARE: Record<CharacterClass, Arm> = {
   atracao_repulsao: { dice: D6, range: 1, toHit: 0 },
   espadachim: { dice: D6, range: 1, toHit: 0 },
-  luminar: { dice: D6, range: 1, toHit: 0 },
-  guardiao: { dice: D6, range: 1, toHit: 0 },
-  sombrilico: { dice: D6, range: 1, toHit: 0 },
-  rachador: { dice: D6, range: 6, toHit: 0 },
-  cantor_de_ealen: { dice: D6, range: 5, toHit: 0 },
-  entropista: { dice: D6, range: 5, toHit: 0 },
 };
 
-/** Com o que cada Ordem começa. Quem é do elenco pode começar com outra coisa (`gear` em ./party.ts). */
+/** Com o que cada classe começa. Quem é do elenco pode começar com outra coisa (`gear` em ./party.ts). */
 const STARTING_EQUIPMENT: Record<CharacterClass, Equipment> = {
   atracao_repulsao: { weapon: "gear-bordao", armor: "gear-tunica-de-linho" },
   espadachim: { weapon: "gear-espada-reta", armor: "gear-gibao-de-couro" },
-  luminar: { weapon: "gear-espada-de-prumo", armor: "gear-cota-de-escamas" },
-  guardiao: { weapon: "gear-maca-de-lastro", armor: "gear-cota-de-escamas" },
-  sombrilico: { weapon: "gear-adaga-fosca", armor: "gear-manto-de-viagem" },
-  rachador: { weapon: "gear-arco-torto", armor: "gear-manto-de-viagem" },
-  cantor_de_ealen: { weapon: "gear-diapasao-de-haste", armor: "gear-tunica-de-linho" },
-  entropista: { weapon: "gear-ampulheta-rachada", armor: "gear-tunica-de-linho" },
 };
 
 export function startingEquipment(order: CharacterClass): Equipment {
@@ -79,7 +67,7 @@ export function wornItem(character: Wearer, slot: EquipmentSlot): EquipmentItem 
   return item?.data.slot === slot ? item : undefined;
 }
 
-/** Com o que `character` bate: a arma que empunha ou, de mãos vazias, o natural da Ordem. */
+/** Com o que `character` bate: a arma que empunha ou, de mãos vazias, 1d6 de perto. */
 export function armOf(character: Pick<Character, "characterClass" | "equipment">): Arm {
   const weapon = wornItem(character, "weapon")?.data;
   if (weapon?.slot !== "weapon") return BARE[character.characterClass];
@@ -145,7 +133,7 @@ export function storedGear(owner: Pick<Character, "gear">, slot?: EquipmentSlot)
 export type EquipError =
   /** A peça não existe, ou não está guardada. */
   | "not_owned"
-  /** A Ordem de quem ia vestir não sabe usar esta arma. */
+  /** A classe de quem ia vestir não sabe usar esta arma. */
   | "wrong_order";
 
 export type EquipResult = { ok: true; replaced?: EquipmentItem } | { ok: false; reason: EquipError };

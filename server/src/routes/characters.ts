@@ -15,15 +15,8 @@ const router = Router();
 
 router.use(requireAuth);
 
-const VALID_RACES: Race[] = ["althirim", "miraven", "taharim", "kelbar"];
-const VALID_CLASSES: CharacterClass[] = [
-  "luminar",
-  "entropista",
-  "cantor_de_ealen",
-  "guardiao",
-  "sombrilico",
-  "rachador",
-];
+const VALID_RACES: Race[] = ["humano"];
+const VALID_CLASSES: CharacterClass[] = ["atracao_repulsao", "espadachim"];
 
 function isValidAttributes(value: unknown): value is Attributes {
   if (typeof value !== "object" || value === null) return false;

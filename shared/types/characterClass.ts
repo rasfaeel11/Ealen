@@ -4,38 +4,20 @@ import type { Attributes } from "./attributes";
  * O que cada um É numa luta (`magia` §3 e §5 no repositório da história):
  * quem conjura, pelo conceito que conjura — `atracao_repulsao`, o de Endyru —,
  * e quem luta de espada (`espadachim`), cuja escola vem do elenco (ver
- * ../tactics/styles.ts). As seis Ordens do Eälen ficam só nas criaturas
- * provisórias, até o bestiário do mundo entrar no lugar delas.
+ * ../tactics/styles.ts). Bicho do bestiário tira o golpe de corpo de uma
+ * delas: não tem classe própria.
  */
-export type CharacterClass =
-  | "atracao_repulsao"
-  | "espadachim"
-  | "luminar"
-  | "entropista"
-  | "cantor_de_ealen"
-  | "guardiao"
-  | "sombrilico"
-  | "rachador";
+export type CharacterClass = "atracao_repulsao" | "espadachim";
 
 export interface ClassInfo {
   /** Nome completo, como o mundo o chama. */
   name: string;
-  /** Epíteto curto das Ordens do Eälen — o que um membro da Ordem é, em três palavras. */
-  title?: string;
   /** Papel mecânico no combate. */
   role: string;
-  /** A frase que resume a posição filosófica de uma Ordem do Eälen. */
-  creed?: string;
-  /** Atributo(s) que a classe escala primariamente. */
+  /** Atributo(s) que a classe escala primariamente. O primeiro é o do dano (`attribute: "primary"`). */
   primaryAttributes: (keyof Attributes)[];
 }
 
-/**
- * Cada Ordem manipula um Princípio Fundamental da realidade (ver
- * shared/types/principle.ts e LORE.md §4) — não um elemento. Isso importa
- * mecanicamente: quem não manipula um Princípio capaz de restaurar um
- * sistema ao estado anterior simplesmente não tem cura.
- */
 export const CLASS_INFO: Record<CharacterClass, ClassInfo> = {
   atracao_repulsao: {
     name: "Mago de atração e repulsão",
@@ -46,47 +28,5 @@ export const CLASS_INFO: Record<CharacterClass, ClassInfo> = {
     name: "Espadachim",
     role: "Linha de frente",
     primaryAttributes: ["forca", "olho"],
-  },
-  luminar: {
-    name: "Luminar",
-    title: "Cavaleiro da Ordem Perfeita",
-    role: "Tank/Suporte",
-    creed: "O universo tem estrutura. Preservá-la é a única obrigação séria.",
-    primaryAttributes: ["couro", "fator"],
-  },
-  entropista: {
-    name: "Entropista",
-    title: "Acelerador do Inevitável",
-    role: "Debuffer",
-    creed: "Tudo se degrada. Segurar o fim é crueldade disfarçada de virtude.",
-    primaryAttributes: ["fator", "saber"],
-  },
-  cantor_de_ealen: {
-    name: "Cantor de Eälen",
-    title: "Afinador do Mundo",
-    role: "Controle",
-    creed: "Não se reza para o Canto. Afina-se com ele.",
-    primaryAttributes: ["labia", "fator"],
-  },
-  guardiao: {
-    name: "Guardião da Singularidade",
-    title: "Sentinela da Origem",
-    role: "Tank Ofensivo",
-    creed: "Enquanto vocês discutem qual lei é mais bonita, a cicatriz aumenta.",
-    primaryAttributes: ["couro", "forca"],
-  },
-  sombrilico: {
-    name: "Sombrílico",
-    title: "Aquele que Não É Notado",
-    role: "Anti-Mago",
-    creed: "Uma magia precisa ser percebida para funcionar. Eu não.",
-    primaryAttributes: ["olho", "couro"],
-  },
-  rachador: {
-    name: "Rachador da Harmonia",
-    title: "Quebrador de Padrões",
-    role: "Sniper Físico",
-    creed: "Perfeição impede evolução. Toda ordem tem um lugar onde fecha mal.",
-    primaryAttributes: ["olho", "forca"],
   },
 };

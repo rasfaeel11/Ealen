@@ -103,7 +103,7 @@ import { JournalPanel } from "../game/JournalPanel";
 import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
 import { SoundPanel } from "../game/SoundPanel";
-import { classSpriteKey, creatureSpriteKey, type Facing } from "../game/mapSprites";
+import { classSpriteKey, creatureSpriteKey, lookSpriteKey, type Facing } from "../game/mapSprites";
 import type { GameSession } from "../game/session";
 import { Menu, addBodyText, addPanel, addTitleText } from "../game/ui";
 import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
@@ -516,7 +516,7 @@ export default class WorldScene extends Phaser.Scene {
 
     // Quem tem cara (`look`) fica de pé; os outros `npc` são só pontos pra examinar no que o mapa já desenha.
     const standing = this.npcs.filter((npc) => npc.look !== undefined);
-    this.syncActors(this.npcActors, standing, (npc) => classSpriteKey(npc.look as CharacterClass));
+    this.syncActors(this.npcActors, standing, (npc) => lookSpriteKey(npc.look!));
     this.syncActors(this.enemyActors, this.enemies, (enemy) => creatureSpriteKey(enemy.creature));
     // O bicho de rio parado no mapa: meio corpo na água, ou inteiro no seco.
     for (const enemy of this.enemies) {

@@ -232,7 +232,7 @@ export function planTurn(encounter: Encounter): AiPlan {
   return best!;
 }
 
-/** O tipo de uma habilidade de Ordem, tirado do id dela ("guardiao.defend" -> "defend"). */
+/** O tipo de uma habilidade de kit, tirado do id dela ("espadachim.defend" -> "defend"). */
 function stanceOf(abilityId: string | undefined): string | undefined {
   return abilityId === undefined ? undefined : abilityId.slice(abilityId.lastIndexOf(".") + 1);
 }

@@ -9,7 +9,7 @@ import { distance, samePos, stepNeighbors, tileAt, tileIndex, type Pos } from ".
 import { PROPS, isPropId, type PropTemplate } from "../../tactics/props";
 import { isStatusId } from "../../tactics/statuses";
 import type { Character } from "../../types/character";
-import { CLASS_INFO } from "../../types/characterClass";
+import { isLook } from "../tiledMap";
 import {
   AGGRO_RANGE,
   AMBUSH_RANGE,
@@ -149,7 +149,7 @@ for (const [areaId, map] of Object.entries(maps)) {
       assert.ok(neighbors.some((pos) => reachable.has(tileIndex(map.grid, pos))), `não dá pra chegar perto de ${npc.name}`);
       if (npc.look === undefined) continue;
 
-      assert.ok(npc.look in CLASS_INFO, `${npc.name} tem uma cara que não existe: "${npc.look}"`);
+      assert.ok(isLook(npc.look), `${npc.name} tem uma cara que não existe: "${npc.look}"`);
       assert.equal(tileAt(bare[areaId].grid, tile)?.blocksMove, false, `${npc.name} está num quadrado bloqueado`);
       const others = [...Object.values(map.spawns), ...map.enemies].map((point) => tileOfPixel(map, point));
       assert.ok(!others.some((other) => samePos(other, tile)), `${npc.name} está em cima de alguém`);

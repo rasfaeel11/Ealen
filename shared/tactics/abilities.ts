@@ -20,29 +20,19 @@ import type { Ability, Effect } from "./types";
  * - ESPADACHIM (Jarupã, Xanduí): golpe rápido, golpe, golpe pesado (que
  *   custa Fôlego) e guarda. O que diferencia um do outro é a escola.
  *
- * As seis Ordens do Eälen ficam só nas criaturas provisórias:
- *
- * - GUARDIÃO (gravidade): puxa de longe quem ele quer por perto, arremessa,
- *   prende o passo, e se ancora — nada o move.
- * - LUMINAR (ordem): acerta sempre, tira o prumo de quem apanha, põe uma
- *   guarda na frente de um aliado e devolve a si o que tirou do outro.
- * - ENTROPISTA (desgaste): enferruja a guarda, deixa o alvo decaindo, queima
- *   o chão, envelhece a armadura e trava a cura.
- * - CANTOR (frequência): canta em área, gela o chão, abafa o golpe de alguém
- *   e ressoa em dobro.
- * - SOMBRÍLICO (ausência): cada corte leva Fôlego junto, a guarda dele é não
- *   estar lá, e o melhor golpe não tem defesa.
- * - RACHADOR (fratura): abre trincas que o próximo golpe aproveita, fura a
- *   armadura, e se defende ficando torto.
+ * O motor sabe mais do que esses dois kits pedem (área, chão que queima ou
+ * gela, golpe que fura a armadura ou devolve vida, condições de toda sorte):
+ * são peças pras criaturas e os dons que vierem, e os testes as exercitam com
+ * um kit deles.
  *
  * Um GOLPE DE ARMA tira o dado, o alcance e o acerto de com o que a pessoa
- * bate (`Arm`, ver ../equipment.ts): a arma que empunha ou, de mãos vazias, o
- * natural da Ordem. O que não é golpe de arma (o puxão do Guardião, a guarda)
- * tem os próprios números. Tudo se resolve AQUI, ao montar o kit: a luta
- * recebe habilidades prontas, e o motor não sabe que arma existe.
+ * bate (`Arm`, ver ../equipment.ts): a arma que empunha ou, de mãos vazias,
+ * 1d6 de perto. O que não é golpe de arma (a magia, a guarda) tem os próprios
+ * números. Tudo se resolve AQUI, ao montar o kit: a luta recebe habilidades
+ * prontas, e o motor não sabe que arma existe.
  *
- * O que custa Fôlego (ver ../breath.ts) é o que pesa: o golpe pesado, a cura,
- * as Técnicas e o que só uma pessoa sabe. Golpe comum e golpe rápido não
+ * O que custa Fôlego (ver ../breath.ts) é o que pesa: o golpe pesado e o que
+ * só uma pessoa sabe; a magia custa mana. Golpe comum e golpe rápido não
  * cansam, e quem se põe em guarda TOMA fôlego: sempre há o que fazer com ele
  * no zero, e o jeito de tê-lo de volta no meio da luta é gastar a ação do
  * turno nisso.
@@ -56,7 +46,6 @@ const HEAL_RANGE = 4;
 const HEAVY_BREATH = 2;
 /** O golpe pesado não sai em dois turnos seguidos. */
 const HEAVY_COOLDOWN = 1;
-const HEAL_BREATH = 2;
 /** O Fôlego que um turno em guarda devolve. */
 const GUARD_BREATH = 1;
 
@@ -64,10 +53,10 @@ const D6: Dice = { count: 1, sides: 6 };
 const D8: Dice = { count: 1, sides: 8 };
 
 type Damage = Extract<Effect, { kind: "damage" }>;
-/** Uma habilidade do kit, sem o que vem de fora: o id (a Ordem e a chave) e o nome e o flavor (de ../combatArts.ts). */
+/** Uma habilidade do kit, sem o que vem de fora: o id (a classe e a chave) e o nome e o flavor (de ../combatArts.ts). */
 type Body = Omit<Ability, "id" | "name" | "flavor">;
 
-/** O dano de um golpe de arma: o dado dela mais o atributo primário da Ordem. */
+/** O dano de um golpe de arma: o dado dela mais o atributo primário da classe. */
 function hurt(arm: Arm, extra: Partial<Damage> = {}): Damage {
   return { kind: "damage", dice: arm.dice, attribute: "primary", ...extra };
 }
@@ -96,14 +85,6 @@ const GUARD: Body = {
     { kind: "status", statusId: "guarding", turns: 1 },
     { kind: "breath", amount: GUARD_BREATH },
   ],
-};
-
-const HEAL: Body = {
-  cost: "action",
-  range: HEAL_RANGE,
-  targets: "ally",
-  effects: [{ kind: "heal", dice: D6, attribute: "fator" }],
-  breath: HEAL_BREATH,
 };
 
 /** A Cura de quem conjura (`magia` §4.3): o mesmo texto de primeiros socorros, pago em mana, e recitado. */
@@ -175,247 +156,9 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
     },
     defend: GUARD,
   }),
-
-  guardiao: (arm) => ({
-    // Não é a arma, é o peso: de longe, puxa o alvo pra dentro do próprio alcance.
-    quick_attack: {
-      cost: "bonus",
-      range: 3,
-      targets: "enemy",
-      attack: { toHit: 3 },
-      effects: [
-        { kind: "damage", dice: D6, attribute: "primary", multiplier: 0.6 },
-        { kind: "push", distance: -2 },
-      ],
-    },
-    attack: { cost: "action", ...wield(arm), effects: [hurt(arm)], opportunity: punishes(arm) },
-    heavy_attack: {
-      cost: "action",
-      ...wield(arm, -4),
-      effects: [heavy(arm), { kind: "push", distance: 2 }],
-      breath: HEAVY_BREATH,
-      cooldown: HEAVY_COOLDOWN,
-    },
-    defend: GUARD,
-    puxao_de_mare: {
-      cost: "action",
-      range: 4,
-      targets: "enemy",
-      attack: { toHit: 0 },
-      effects: [
-        { kind: "damage", dice: D6, attribute: "forca" },
-        { kind: "status", statusId: "heavy", turns: 2 },
-      ],
-      breath: 1,
-      cooldown: 2,
-    },
-    ancora_da_singularidade: {
-      cost: "bonus",
-      range: 0,
-      targets: "self",
-      effects: [{ kind: "status", statusId: "anchored", turns: 3 }],
-      breath: 2,
-      cooldown: 4,
-    },
-  }),
-
-  luminar: (arm) => ({
-    // Três tempos exatos: quase não erra.
-    quick_attack: { cost: "bonus", ...wield(arm, 5), effects: [hurt(arm, { multiplier: 0.6 })] },
-    attack: { cost: "action", ...wield(arm), effects: [hurt(arm)], opportunity: punishes(arm) },
-    heavy_attack: {
-      cost: "action",
-      ...wield(arm, -4),
-      effects: [heavy(arm), { kind: "status", statusId: "off_balance", turns: 2 }],
-      breath: HEAVY_BREATH,
-      cooldown: HEAVY_COOLDOWN,
-    },
-    defend: GUARD,
-    heal: HEAL,
-    muralha_de_prumo: {
-      cost: "bonus",
-      range: 4,
-      targets: "ally",
-      effects: [{ kind: "status", statusId: "warded", turns: 1 }],
-      breath: 1,
-      cooldown: 1,
-    },
-    antifona_de_aurora: {
-      cost: "action",
-      ...wield(arm),
-      effects: [hurt(arm, { leech: 1 })],
-      breath: 2,
-      cooldown: 2,
-    },
-  }),
-
-  entropista: (arm) => ({
-    // A ferrugem chega antes do golpe: derruba a guarda que estiver de pé.
-    quick_attack: {
-      cost: "bonus",
-      ...wield(arm, 3),
-      effects: [hurt(arm, { multiplier: 0.5 }), { kind: "status", statusId: "rusted", turns: 2 }],
-    },
-    attack: {
-      cost: "action",
-      ...wield(arm),
-      effects: [hurt(arm), { kind: "status", statusId: "decaying", turns: 2 }],
-      opportunity: punishes(arm),
-    },
-    heavy_attack: {
-      cost: "action",
-      ...wield(arm, -4),
-      effects: [heavy(arm)],
-      surface: { id: "fire", rounds: 2 },
-      breath: HEAVY_BREATH,
-      cooldown: HEAVY_COOLDOWN,
-    },
-    defend: GUARD,
-    heal: HEAL,
-    marca_de_decaimento: {
-      cost: "action",
-      range: arm.range,
-      targets: "enemy",
-      effects: [{ kind: "status", statusId: "decay_mark", turns: 3 }],
-      breath: 1,
-      cooldown: 2,
-    },
-    lei_irreversivel: {
-      cost: "action",
-      ...wield(arm),
-      effects: [hurt(arm), { kind: "status", statusId: "irreversible", turns: 3 }],
-      breath: 2,
-      cooldown: 3,
-    },
-  }),
-
-  cantor_de_ealen: (arm) => ({
-    quick_attack: { cost: "bonus", ...wield(arm, 3), effects: [hurt(arm, { multiplier: 0.6 })] },
-    attack: { cost: "action", ...wield(arm), effects: [hurt(arm)], opportunity: punishes(arm) },
-    // O refrão não escolhe ouvido: pega todo mundo em volta do ponto, e o chão fica gelado.
-    heavy_attack: {
-      cost: "action",
-      range: arm.range,
-      targets: "tile",
-      radius: 1,
-      attack: { toHit: -4 + arm.toHit },
-      effects: [heavy(arm)],
-      surface: { id: "frost", rounds: 2 },
-      breath: HEAVY_BREATH,
-      cooldown: HEAVY_COOLDOWN,
-    },
-    defend: GUARD,
-    heal: HEAL,
-    refrao_do_silencio: {
-      cost: "bonus",
-      range: arm.range,
-      targets: "enemy",
-      effects: [{ kind: "status", statusId: "muffled", turns: 2 }],
-      breath: 1,
-      cooldown: 2,
-    },
-    coro_de_uma_voz_so: {
-      cost: "bonus",
-      range: 0,
-      targets: "self",
-      effects: [{ kind: "status", statusId: "chorus", turns: 3 }],
-      breath: 3,
-      limit: 1,
-    },
-  }),
-
-  sombrilico: (arm) => ({
-    quick_attack: { cost: "bonus", ...wield(arm, 3), effects: [hurt(arm, { multiplier: 0.6 })] },
-    // O corte leva o que ninguém estava olhando: o Fôlego de quem apanha.
-    attack: {
-      cost: "action",
-      ...wield(arm),
-      effects: [hurt(arm), { kind: "breath", amount: -1 }],
-      opportunity: punishes(arm),
-    },
-    heavy_attack: {
-      cost: "action",
-      ...wield(arm, -4),
-      effects: [heavy(arm), { kind: "breath", amount: -2 }],
-      breath: HEAVY_BREATH,
-      cooldown: HEAVY_COOLDOWN,
-    },
-    // Não bloqueia: não está lá.
-    defend: {
-      cost: "action",
-      range: 0,
-      targets: "self",
-      effects: [
-        { kind: "status", statusId: "unseen", turns: 1 },
-        { kind: "breath", amount: GUARD_BREATH },
-      ],
-    },
-    // Some até a vez dele chegar, e o golpe que vier depois é crítico. Custa o golpe deste turno.
-    deixar_de_ser_notado: {
-      cost: "action",
-      range: 0,
-      targets: "self",
-      effects: [
-        { kind: "status", statusId: "unseen", turns: 1 },
-        { kind: "status", statusId: "focused", turns: 2 },
-      ],
-      breath: 2,
-      cooldown: 3,
-    },
-    // Sem rolagem: não há o que esquivar no que não se viu. E a armadura não conta.
-    corte_do_nao_dito: {
-      cost: "action",
-      range: arm.range,
-      targets: "enemy",
-      effects: [hurt(arm, { multiplier: 1.2, piercing: true })],
-      breath: 3,
-      cooldown: 2,
-    },
-  }),
-
-  rachador: (arm) => ({
-    // Quase não fere: abre a trinca que o próximo golpe aproveita.
-    quick_attack: {
-      cost: "bonus",
-      ...wield(arm, 3),
-      effects: [hurt(arm, { multiplier: 0.4 }), { kind: "status", statusId: "cracked", turns: 2 }],
-    },
-    attack: { cost: "action", ...wield(arm), effects: [hurt(arm)], opportunity: punishes(arm) },
-    heavy_attack: {
-      cost: "action",
-      ...wield(arm, -4),
-      effects: [heavy(arm), { kind: "status", statusId: "exposed", turns: 2 }],
-      breath: HEAVY_BREATH,
-      cooldown: HEAVY_COOLDOWN,
-    },
-    // Não bloqueia: fica onde o golpe certo não passa.
-    defend: {
-      cost: "action",
-      range: 0,
-      targets: "self",
-      effects: [
-        { kind: "status", statusId: "oblique", turns: 1 },
-        { kind: "breath", amount: GUARD_BREATH },
-      ],
-    },
-    falha_no_padrao: {
-      cost: "action",
-      ...wield(arm, 2),
-      effects: [hurt(arm, { piercing: true })],
-      breath: 1,
-      cooldown: 1,
-    },
-    simetria_quebrada: {
-      cost: "action",
-      ...wield(arm),
-      effects: [hurt(arm), { kind: "status", statusId: "broken_symmetry", turns: 3 }],
-      breath: 2,
-      cooldown: 3,
-    },
-  }),
 };
 
-/** O nome, o que é no mundo e a partir de que nível se sabe a habilidade `slug` da Ordem. Undefined se a Ordem não a tem (a cura de quem não cura). */
+/** O nome, o que é no mundo e a partir de que nível se sabe a habilidade `slug` da classe. Undefined se a classe não a tem (a cura do espadachim). */
 function artOf(characterClass: CharacterClass, slug: string): (CombatArt & { level: number; mage?: number }) | undefined {
   const technique = CLASS_TECHNIQUES[characterClass][slug];
   if (technique) return technique;
@@ -500,7 +243,7 @@ export function engravedAbilities(own: readonly Ability[], engraved: readonly st
   });
 }
 
-/** Uma habilidade do kit de uma Ordem, com o nível em que se aprende. */
+/** Uma habilidade do kit de uma classe, com o nível em que se aprende. */
 export interface KitAbility {
   /** A chave dela no kit: o fim do id (`guardiao.puxao_de_mare`). */
   slug: string;
@@ -513,7 +256,7 @@ export interface KitAbility {
 type Fighter = Pick<Character, "characterClass" | "equipment">;
 
 /**
- * O kit inteiro da Ordem de `character`, na ordem em que aparece (as Artes,
+ * O kit inteiro da classe de `character`, na ordem em que aparece (as Artes,
  * depois as Técnicas), montado sobre com o que ele bate. Não olha o nível:
  * é o que a ficha usa pra mostrar o que ainda vem.
  */
@@ -528,10 +271,10 @@ export function kitOf(character: Fighter): KitAbility[] {
 }
 
 /**
- * As habilidades de um combatente: do kit da Ordem dele, as que o nível (e o
+ * As habilidades de um combatente: do kit da classe dele, as que o nível (e o
  * nível de mago, nas que o pedem) já deu. Uma criatura (`arts`) sabe só o que
- * nomeia, com os nomes próprios dela por cima (um Lobo-de-Bruma dá um Bote
- * Silencioso, não uma "Lâmina Não-Vista") — o nível não entra.
+ * nomeia, com os nomes próprios dela por cima (o Ykuruã dá uma Bocada, não
+ * um "Golpe") — o nível não entra.
  */
 export function abilitiesFor(character: Fighter & Pick<Character, "level" | "arts" | "mageLevel">): Ability[] {
   const { arts } = character;
@@ -541,7 +284,7 @@ export function abilitiesFor(character: Fighter & Pick<Character, "level" | "art
   });
 }
 
-/** As Técnicas que a Ordem dá exatamente no nível `level`: o que se aprende ao chegar nele. As do nível de mago, não. */
+/** As Técnicas que a classe dá exatamente no nível `level`: o que se aprende ao chegar nele. As do nível de mago, não. */
 export function learnedAt(characterClass: CharacterClass, level: number): Ability[] {
   return kitOf({ characterClass })
     .filter((entry) => entry.level === level && level > 1 && entry.mage === undefined)

@@ -1,5 +1,6 @@
 import { FLOOR, type Grid, type Pos, type Tile } from "../tactics/grid";
 import type { CueEnding } from "../tactics/types";
+import { CLASS_INFO } from "../types/characterClass";
 
 /**
  * Lê um mapa do Tiled (.tmj) e tira dele o que é REGRA: onde dá pra pisar,
@@ -41,8 +42,8 @@ import type { CueEnding } from "../tactics/types";
  *     `npc`    ponto; alguém (ou algo) com quem se fala. O Nome é o que
  *              aparece na caixa; a propriedade `dialog` é o trecho (knot)
  *              da história em client/story que a conversa abre. Com `look`
- *              (o id de uma Ordem, por enquanto) é um personagem de pé, que
- *              ocupa o quadrado; sem `look` é só um ponto pra examinar
+ *              (uma classe, ou uma das caras de NPC_LOOKS) é um personagem
+ *              de pé, que ocupa o quadrado; sem `look` é só um ponto pra examinar
  *              (uma inscrição, um altar) no que o mapa já desenha
  *     `prop`   um destrutível: um TILE posto como objeto (Insert Tile, não
  *              pintado numa camada), com a propriedade `kind` (id em PROPS,
@@ -159,10 +160,23 @@ export interface AreaNpc extends AreaCondition {
   name: string;
   /** O trecho (knot) da história que a conversa abre. */
   dialog: string;
-  /** Com que cara aparece no mapa: o id de uma Ordem. Ausente = não aparece, é só um ponto pra examinar. */
+  /** Com que cara aparece no mapa (ver isLook). Ausente = não aparece, é só um ponto pra examinar. */
   look?: string;
   x: number;
   y: number;
+}
+
+/**
+ * As caras de quem aparece de pé no mapa sem lutar e sem ser do elenco: a
+ * gente de Ybytuguá, pelo papel. Quem luta (ou se parece com quem luta) usa a
+ * da classe (`espadachim`, `atracao_repulsao`). O desenho de cada uma é do
+ * client (client/src/game/mapSprites.ts).
+ */
+export const NPC_LOOKS = ["conselheira", "escrivao", "mestre_da_guilda", "ferreiro", "familia", "mercador"] as const;
+
+/** `look` é uma cara que existe: uma classe, ou uma de NPC_LOOKS. */
+export function isLook(look: string): boolean {
+  return look in CLASS_INFO || (NPC_LOOKS as readonly string[]).includes(look);
 }
 
 /** Quando uma deixa dispara, como o mapa escreve: com NOMES, que só viram ids na hora da luta (ver fightCues em ./encounters.ts). */

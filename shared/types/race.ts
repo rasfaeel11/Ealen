@@ -4,10 +4,11 @@ import type { Attributes } from "./attributes";
  * Os povos de quem está no jogo.
  * - Humano: o povo do trio (ver a ficha `humanos` no repositório da história).
  * - Bicho: as criaturas do bestiário do mundo, que não são povo nenhum.
- * - Os quatro do Eälen (Althirim, Miraven, Taharim, Kelbar) ficam só nas
- *   criaturas provisórias, até o bestiário do mundo entrar no lugar delas.
+ *
+ * Demônios, elfos, dragões e meio-elfos (`biblia` §3.4) entram quando uma
+ * cena pedir uma ficha deles: o ferreiro demônio, hoje, é só um `npc` de mapa.
  */
-export type Race = "humano" | "bicho" | "althirim" | "miraven" | "taharim" | "kelbar";
+export type Race = "humano" | "bicho";
 
 /**
  * Modificadores de atributo por raça (+1/-1), aplicados sobre os
@@ -16,8 +17,15 @@ export type Race = "humano" | "bicho" | "althirim" | "miraven" | "taharim" | "ke
 export const RACE_MODIFIERS: Record<Race, Partial<Attributes>> = {
   humano: {},
   bicho: {},
-  althirim: { saber: 1, forca: -1 },
-  miraven: { fator: 1, forca: -1 },
-  taharim: { forca: 1, fator: -1 },
-  kelbar: { labia: 1, couro: -1 },
+};
+
+export interface RaceInfo {
+  name: string;
+  /** Onde o povo vive. */
+  homeland?: string;
+}
+
+export const RACE_INFO: Record<Race, RaceInfo> = {
+  humano: { name: "Humano", homeland: "Yrandupe" },
+  bicho: { name: "Bicho" },
 };

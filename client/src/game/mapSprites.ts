@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { BESTIARY, CLASS_INFO, type CharacterClass, type Principle } from "@ealen/shared";
+import { BESTIARY, CLASS_INFO, NPC_LOOKS, type CharacterClass } from "@ealen/shared";
 
 /**
  * Sprites de quem está no mapa — personagens e criaturas, andando ou
@@ -9,7 +9,7 @@ import { BESTIARY, CLASS_INFO, type CharacterClass, type Principle } from "@eale
  * (baixo, esquerda, direita, cima), quatro quadros de caminhada em cada,
  * com o PRIMEIRO quadro da linha servindo de "parado". Enquanto não há
  * arte, o jogo desenha um provisório com esse mesmo layout: um boneco por
- * Ordem, um vulto por criatura (e um boneco pra criatura que é gente).
+ * classe e por cara de NPC, um vulto por criatura (e um boneco pra criatura que é gente).
  *
  * Pra trocar pela arte final: salve a folha em client/public/sprites/ e
  * registre em MAP_SHEETS, com a chave de quem ela representa. O pé fica no
@@ -25,22 +25,27 @@ const FRAMES_PER_FACING = 4;
 const WALK_FRAME_RATE = 8;
 
 export interface MapSheetDef {
-  /** Caminho relativo a client/public (ex: "sprites/luminar.png"). */
+  /** Caminho relativo a client/public (ex: "sprites/espadachim.png"). */
   url: string;
   frameWidth: number;
   frameHeight: number;
 }
 
 /**
- * Folhas de arte final, por chave (ver classSpriteKey e creatureSpriteKey).
- * Vazio = todo mundo usa o provisório. Exemplo:
+ * Folhas de arte final, por chave (ver classSpriteKey, lookSpriteKey e
+ * creatureSpriteKey). Vazio = todo mundo usa o provisório. Exemplo:
  *
- *   "class:luminar": { url: "sprites/luminar.png", frameWidth: 24, frameHeight: 32 },
+ *   "class:espadachim": { url: "sprites/espadachim.png", frameWidth: 24, frameHeight: 32 },
  */
 export const MAP_SHEETS: Record<string, MapSheetDef> = {};
 
 export function classSpriteKey(characterClass: CharacterClass): string {
   return `class:${characterClass}`;
+}
+
+/** A folha de quem está de pé no mapa com a cara `look` (ver isLook): a da classe, ou a da gente pelo papel. */
+export function lookSpriteKey(look: string): string {
+  return look in CLASS_INFO ? classSpriteKey(look as CharacterClass) : `look:${look}`;
 }
 
 /** `creatureId` é a chave da criatura no bestiário. */
@@ -69,24 +74,19 @@ export function standingFrame(facing: Facing): number {
 const CLASS_COLOR: Record<CharacterClass, string> = {
   atracao_repulsao: "#5f86c8",
   espadachim: "#b08a4a",
-  luminar: "#e8c47a",
-  entropista: "#b0623a",
-  cantor_de_ealen: "#5fb8b0",
-  guardiao: "#7a5cc0",
-  sombrilico: "#56607a",
-  rachador: "#c0455a",
 };
 
-const PRINCIPLE_COLOR: Record<Principle, string> = {
-  singularidade: "#7a5cc0",
-  harmonia: "#e8c47a",
-  entropia: "#b0623a",
-  fratura: "#c0455a",
-  ealen: "#5fb8b0",
-  ausencia: "#56607a",
+/** A roupa provisória da gente de Ybytuguá, pelo papel: a mesma cor do busto dela na caixa (../dialogue/portraits.ts). */
+const LOOK_COLOR: Record<(typeof NPC_LOOKS)[number], string> = {
+  conselheira: "#7a6a8a",
+  escrivao: "#6a5f50",
+  mestre_da_guilda: "#4f6a6a",
+  ferreiro: "#7a4a3a",
+  familia: "#7a6050",
+  mercador: "#8a7a4a",
 };
 
-/** O vulto de criatura sem Princípio (o bicho do mundo da série). */
+/** O vulto das criaturas do bestiário: a cor do lodo. */
 const CREATURE_COLOR = "#5a7a5e";
 /** O lodo seco do bicho de rio fora da água. */
 const DRY_MUD = "#8a7c5e";
@@ -237,7 +237,7 @@ export function preloadMapSheets(scene: Phaser.Scene): void {
 }
 
 /**
- * Garante que toda Ordem e toda criatura do bestiário tenha textura e
+ * Garante que toda classe, toda cara de NPC e toda criatura do bestiário tenha textura e
  * animações de caminhada: usa a folha carregada quando existe, senão gera
  * o provisório. Chamado uma vez, no create da cena de boot.
  */
@@ -246,9 +246,9 @@ export function registerMapSprites(scene: Phaser.Scene): void {
   for (const characterClass of Object.keys(CLASS_INFO) as CharacterClass[]) {
     placeholders[classSpriteKey(characterClass)] = { draw: humanoid(CLASS_COLOR[characterClass]) };
   }
+  for (const look of NPC_LOOKS) placeholders[lookSpriteKey(look)] = { draw: humanoid(LOOK_COLOR[look]) };
   for (const [creatureId, entry] of Object.entries(BESTIARY)) {
-    // Bicho do mundo da série não é Princípio nenhum: a cor do lodo.
-    const color = entry.principle ? PRINCIPLE_COLOR[entry.principle] : CREATURE_COLOR;
+    const color = CREATURE_COLOR;
     const spriteKey = creatureSpriteKey(creatureId);
     if (!entry.river) {
       placeholders[spriteKey] = { draw: entry.person ? humanoid(color) : creature(color) };

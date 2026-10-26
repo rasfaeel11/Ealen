@@ -64,7 +64,7 @@ const statusIds = (unit: Unit) => unit.statuses.map((status) => status.id);
 const pass = (encounter: Encounter) => run(encounter, { type: "endTurn", unitId: activeUnit(encounter)!.id });
 
 test("o Ykuruã está no bestiário como bicho de rio, pesado e atraído pela mana", () => {
-  assert.deepEqual([YKURUA.template.name, YKURUA.river, YKURUA.heft, YKURUA.drawnToMana, YKURUA.principle], ["Ykuruã", true, 1, true, undefined]);
+  assert.deepEqual([YKURUA.template.name, YKURUA.template.race, YKURUA.river, YKURUA.heft, YKURUA.drawnToMana], ["Ykuruã", "bicho", true, 1, true]);
   const unit = ykurua({ x: 0, y: 0 });
   assert.deepEqual([unit.river, unit.heft, unit.drawnToMana, unit.style], [true, 1, true, "baluarte"]);
 });

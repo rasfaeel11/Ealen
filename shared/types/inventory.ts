@@ -38,7 +38,7 @@ export const EQUIPMENT_SLOTS: EquipmentSlot[] = ["weapon", "armor", "accessory"]
  * O que uma peça faz, por lugar:
  * - a ARMA dá o dado e o alcance dos golpes de arma de quem a empunha (ver
  *   `abilitiesFor` em ../tactics/abilities.ts), e pode somar ou tirar acerto.
- *   Com `orders`, só essas Ordens sabem usá-la;
+ *   Com `orders`, só essas classes sabem usá-la;
  * - a ARMADURA soma na defesa (o número que a rolagem de ataque precisa
  *   alcançar) e, pesada, tira quadrados de movimento;
  * - o ACESSÓRIO soma atributos — na luta e nos testes da história.

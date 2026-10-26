@@ -63,8 +63,8 @@ function makeHost(attribute: number, seed: number): StoryHost {
   const character: Character = {
     id: "hero",
     name: "Herói",
-    race: "althirim",
-    characterClass: "luminar",
+    race: "humano",
+    characterClass: "atracao_repulsao",
     level: 1,
     xp: 0,
     attributes: { forca: attribute, fator: attribute, vigor: attribute, olho: attribute, couro: attribute, labia: attribute, saber: attribute },

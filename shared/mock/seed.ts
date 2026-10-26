@@ -1,9 +1,9 @@
-import type { Character, MapNode } from "../types";
+import type { MapNode } from "../types";
 
 /**
- * Conteúdo de Talys: o mapa da jornada e alguns
- * personagens de exemplo. Ainda em memória — quando virar tabela no
- * Supabase, o formato continua o mesmo.
+ * O mapa da jornada do Eälen, em nós: é o que o servidor opcional (../../server)
+ * ainda serve em `/map`. O jogo não o usa (anda pelos mapas do Tiled); fica até
+ * o servidor ser revisto, e não é cânone de Três na Estrada.
  *
  * O mapa é uma trilha com uma bifurcação de folga: dois nós de lenda
  * (Mirante e Santuário) ficam fora do caminho crítico, pra quem quiser
@@ -99,44 +99,5 @@ export const MOCK_MAP_NODES: MapNode[] = [
     connections: ["node-fenda-de-prumo"],
     encounterType: "combat",
     encounterId: "encounter-coro-mudo",
-  },
-];
-
-export const MOCK_CHARACTERS: Character[] = [
-  {
-    id: "char-faelan",
-    name: "Faelan Orwen",
-    race: "althirim",
-    characterClass: "luminar",
-    level: 5,
-    xp: 340,
-    attributes: { forca: 3, fator: 6, vigor: 7, olho: 5, couro: 8, labia: 4, saber: 7 },
-    currentHp: 52,
-    maxHp: 60,
-    currentNodeId: "node-portas-de-tiran",
-  },
-  {
-    id: "char-mira",
-    name: "Mira Duskveil",
-    race: "kelbar",
-    characterClass: "sombrilico",
-    level: 3,
-    xp: 120,
-    attributes: { forca: 5, fator: 5, vigor: 5, olho: 8, couro: 3, labia: 7, saber: 5 },
-    currentHp: 34,
-    maxHp: 38,
-    currentNodeId: "node-vau-de-bruma",
-  },
-  {
-    id: "char-toran",
-    name: "Toran Ashgrave",
-    race: "taharim",
-    characterClass: "rachador",
-    level: 7,
-    xp: 610,
-    attributes: { forca: 8, fator: 3, vigor: 6, olho: 9, couro: 5, labia: 4, saber: 4 },
-    currentHp: 58,
-    maxHp: 64,
-    currentNodeId: "node-fenda-de-prumo",
   },
 ];

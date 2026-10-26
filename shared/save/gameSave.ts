@@ -2,7 +2,7 @@ import { ATTRIBUTE_KEYS, type Attributes } from "../types/attributes";
 import type { Character } from "../types/character";
 import type { Equipment } from "../types/inventory";
 import { CLASS_INFO } from "../types/characterClass";
-import { RACE_INFO } from "../types/principle";
+import { RACE_INFO } from "../types/race";
 import { STARTING_STASH, castSheet, fights, startingLoadout, type PartyMember } from "../party";
 import { packStory, unpackStory } from "../story/memory";
 import { AREAS } from "../world/areas";

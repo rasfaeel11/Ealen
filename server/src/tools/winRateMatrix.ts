@@ -1,14 +1,14 @@
 /**
- * Matriz de taxa de vitória, rodada pelo motor REAL do jogo: cada classe (as
- * do trio e as Ordens do Eälen), no nível 1, sozinha contra cada criatura do
+ * Matriz de taxa de vitória, rodada pelo motor REAL do jogo: cada classe do
+ * trio, no nível 1, sozinha contra cada criatura do
  * bestiário, numa arena aberta. O mago entra com a magia de Endyru.
  *
  *     npm run balance:matrix --workspace=server
- *     npm run balance:matrix --workspace=server -- 100 lobo     (menos lutas, só uma criatura)
+ *     npm run balance:matrix --workspace=server -- 100 ymboripe (menos lutas, só umas criaturas)
  *
  * Os dois lados são jogados pela IA do jogo (chooseCommand) — a criatura
  * com os pesos, o estilo, as manias, a mochila e o que ela veste no bestiário, o herói com os
- * pesos padrão, o equipamento de começo da Ordem e sem item. Um jogador de verdade joga melhor que a IA: os números não medem
+ * pesos padrão, o equipamento de começo da classe e sem item. Um jogador de verdade joga melhor que a IA: os números não medem
  * dificuldade, servem pra comparar ANTES e DEPOIS de mexer em atributos,
  * habilidades, no bestiário ou na própria IA.
  *
@@ -38,8 +38,8 @@ import {
   type CharacterClass,
 } from "@ealen/shared";
 
-// `npm run balance:matrix --workspace=server -- 100 lobo` roda 100 lutas por célula, só contra as criaturas
-// cujo id tem "lobo": é o jeito rápido de conferir uma mudança num lugar só.
+// `npm run balance:matrix --workspace=server -- 100 ymboripe` roda 100 lutas por célula, só contra as criaturas
+// cujo id tem "ymboripe": é o jeito rápido de conferir uma mudança num lugar só.
 const [countArg, filterArg] = process.argv.slice(2);
 const N = Number(countArg) > 0 ? Math.floor(Number(countArg)) : 300;
 /** Uma luta que passe disto não vai acabar: é contada como derrota e como empate eterno. */
@@ -48,12 +48,12 @@ const MAX_COMMANDS = 2000;
 const ARENA = gridFromAscii(["............", "............", "P..........E", "............", "............"]);
 
 function makePlayer(characterClass: CharacterClass): Character {
-  const attributes = createStartingAttributes("althirim", characterClass);
+  const attributes = createStartingAttributes("humano", characterClass);
   const maxHp = startingMaxHp(attributes);
   return {
     id: "hero",
     name: "Herói",
-    race: "althirim",
+    race: "humano",
     characterClass,
     level: 1,
     xp: 0,
@@ -61,7 +61,7 @@ function makePlayer(characterClass: CharacterClass): Character {
     currentHp: maxHp,
     maxHp,
     currentNodeId: "n",
-    // Vestido como quem começa naquela Ordem: é com a arma e a armadura dela que o kit foi pensado.
+    // Vestido como quem começa naquela classe: é com a arma e a armadura dela que o kit foi pensado.
     equipment: startingEquipment(characterClass),
   };
 }
@@ -102,7 +102,7 @@ function fight(characterClass: CharacterClass, creatureId: string, seed: number)
 const creatures = Object.keys(BESTIARY).filter((id) => !filterArg || id.includes(filterArg));
 const classes = Object.keys(CLASS_INFO) as CharacterClass[];
 
-const header = ["Ordem".padEnd(28), ...creatures.map((id) => BESTIARY[id].template.name.slice(0, 14).padEnd(15))].join("");
+const header = ["Classe".padEnd(28), ...creatures.map((id) => BESTIARY[id].template.name.slice(0, 14).padEnd(15))].join("");
 console.log(header);
 let endless = 0;
 for (const characterClass of classes) {
@@ -122,6 +122,6 @@ for (const characterClass of classes) {
   });
   console.log([CLASS_INFO[characterClass].name.padEnd(28), ...cells].join(""));
 }
-console.log(`\n(nivel 1, povo althirim, ${N} combates por celula, os dois lados jogados pela IA do jogo)`);
+console.log(`\n(nivel 1, humano, ${N} combates por celula, os dois lados jogados pela IA do jogo)`);
 console.log(`lutas que nao acabaram: ${endless}`);
 console.log("niveis das criaturas:", creatures.map((id) => `${BESTIARY[id].template.name}=${BESTIARY[id].template.level}`).join(", "));

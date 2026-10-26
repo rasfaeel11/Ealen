@@ -2,7 +2,6 @@ import type { StyleId } from "../tactics/styles";
 import type { AiProfile, AiQuirks } from "../tactics/types";
 import type { Character } from "./character";
 import type { Magic } from "../mana";
-import type { Principle } from "./principle";
 
 /** Chance de drop de um item ao vencer a criatura (0 a 1). `itemId` é um consumível (../mock/items.ts) ou uma peça de equipamento (../mock/equipment.ts). */
 export interface LootDrop {
@@ -13,8 +12,8 @@ export interface LootDrop {
 /**
  * Uma entrada do bestiário: a ficha de combate da criatura mais o que o
  * códice conta sobre ela. Criaturas reaproveitam o shape de `Character` —
- * têm atributos Tirán, Ordem e HP como qualquer um —, dizem em
- * `template.arts` o que sabem do kit da Ordem e com que nome, e podem vestir
+ * têm atributos, classe e HP como qualquer um —, dizem em
+ * `template.arts` o que sabem do kit da classe e com que nome, e podem vestir
  * (`template.equipment`).
  */
 export interface BestiaryEntry {
@@ -22,8 +21,6 @@ export interface BestiaryEntry {
   template: Character;
   /** Símbolo exibido no lugar do retrato da criatura na tela de combate. */
   glyph: string;
-  /** Princípio fundamental do qual a criatura do Eälen é efeito colateral. Bicho do mundo da série não tem. */
-  principle?: Principle;
   /** Uma linha: o que é, pro sumário do códice. */
   summary: string;
   /** Duas ou três frases: de onde veio e como se comporta. */
@@ -32,7 +29,7 @@ export interface BestiaryEntry {
   ai?: Partial<AiProfile>;
   /** Manias de comportamento (ver AiQuirks). Em `mirrors`, "hero" é a protagonista. */
   quirks?: AiQuirks;
-  /** É gente, não um Princípio solto: no mapa usa o boneco, não o vulto. */
+  /** É gente, não bicho: no mapa usa o boneco, não o vulto. */
   person?: boolean;
   /** A escola de espada de quem é gente, ou o Baluarte de uma criatura, e a proficiência nela (ver ../tactics/styles.ts). */
   style?: { id: StyleId; grade: number };
