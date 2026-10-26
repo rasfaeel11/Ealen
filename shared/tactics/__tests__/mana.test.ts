@@ -108,7 +108,7 @@ test("passou do limite num turno: vem o manaBurst e a marca do conceito, uma vez
   assert.deepEqual(eventsOf(run(encounter, { type: "ability", unitId: "M", abilityId: SHOVE.id, target: enemy.pos }), "manaBurst"), []);
 
   // Sangue e tremor: a mão erra mais.
-  const strike = caster.abilities.find((ability) => ability.id === "guardiao.attack")!;
+  const strike = caster.abilities.find((ability) => ability.id === "espadachim.attack")!;
   const edge = attackEdge(encounter, caster, strike, enemy);
   const clean = structuredClone(caster);
   clean.statuses = [];

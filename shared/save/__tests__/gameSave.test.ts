@@ -21,8 +21,8 @@ function makeCharacter(): Character {
   return {
     id: "hero",
     name: "Herói",
-    race: "althirim",
-    characterClass: "luminar",
+    race: "humano",
+    characterClass: "atracao_repulsao",
     level: 3,
     xp: 40,
     attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
@@ -158,7 +158,7 @@ test("o resumo diz quem é, onde está e há quanto tempo joga", () => {
   save.playTimeMs = 2 * 3_600_000 + 5 * 60_000 + 999;
   const summary = summarizeSave(save);
   assert.equal(summary.name, "Herói");
-  assert.equal(summary.className, "Luminar");
+  assert.equal(summary.className, "Mago de atração e repulsão");
   assert.equal(summary.level, 3);
   assert.equal(summary.areaName, "Ybytuguá");
   assert.equal(summary.playTime, "2h 05min");
@@ -181,7 +181,8 @@ test("save da versão 2 ganha um grupo vazio, e companheiro com a ficha estragad
 });
 
 test("save da versão 4, do elenco do Eälen, vira o do elenco de agora: mesmo nível, mesma mochila, o que vestia guardado", () => {
-  const halmira: Character = {
+  // Fichas como o save antigo as guardava: raças, Ordens e peças do Eälen que o jogo de hoje não tem.
+  const halmira = {
     ...makeCharacter(),
     name: "Halmira",
     race: "miraven",
@@ -200,7 +201,7 @@ test("save da versão 4, do elenco do Eälen, vira o do elenco de agora: mesmo n
     afflictions: { "companion:lish": ["wounded_arm"], hero: ["wounded_arm"] },
   });
   const old = {
-    ...newGame(halmira),
+    ...newGame(halmira as unknown as Character),
     version: 4,
     companions: [
       { character: lish, present: true },

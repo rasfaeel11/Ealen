@@ -21,8 +21,8 @@ import { FIRST, eventsOf, makeCharacter, makeUnit, run, setup } from "./helpers"
  * sozinho (ver ../../breath.ts), e a recarga, contada em turnos de quem a usou.
  */
 
-const HEAVY = "guardiao.heavy_attack";
-const GUARD = "guardiao.defend";
+const HEAVY = "espadachim.heavy_attack";
+const GUARD = "espadachim.defend";
 
 function unit(encounter: Encounter, id: string) {
   return findUnit(encounter, id)!;
@@ -80,7 +80,7 @@ test("o golpe pesado cobra Fôlego antes de sair, e o golpe comum não cansa", (
   assert.equal(unit(encounter, "A").breath, 4);
 
   nextRound(encounter);
-  const plain = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: unit(encounter, "E").pos });
+  const plain = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: unit(encounter, "E").pos });
   assert.deepEqual(eventsOf(plain, "breathSpent"), []);
   assert.equal(unit(encounter, "A").breath, 4);
 });

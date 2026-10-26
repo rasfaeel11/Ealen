@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import "./catalog";
 import { findBestiaryEntry } from "../../mock/bestiary";
 import { COMPANIONS, HERO_ID, companionId } from "../../party";
 import { activeUnit, applyCommand, chooseCommand, findUnit, isOver, type Encounter } from "../../tactics";
@@ -249,8 +250,8 @@ for (const [areaId, map] of Object.entries(maps)) {
   const hero: Character = {
     id: "hero",
     name: "Herói",
-    race: "althirim",
-    characterClass: "guardiao",
+    race: "humano",
+    characterClass: "espadachim",
     level: 1,
     xp: 0,
     attributes: { forca: 8, fator: 3, vigor: 7, olho: 4, couro: 6, labia: 5, saber: 5 },
@@ -302,24 +303,24 @@ for (const [areaId, map] of Object.entries(maps)) {
 
   test("a criatura entra na luta com o que carrega, e o que ela não usou fica pra quem vence", () => {
     const map = fixtures.estrada;
-    const servo = { ...map.enemies[0], id: "servo", creature: "encounter-servo-enferrujado" };
-    const tile = tileOfPixel(map, servo);
-    const { encounter } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: { x: tile.x - 3, y: tile.y } }], [servo], 5);
+    const brute = { ...map.enemies[0], id: "bruto", creature: "encounter-teste-bruto" };
+    const tile = tileOfPixel(map, brute);
+    const { encounter } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: { x: tile.x - 3, y: tile.y } }], [brute], 5);
 
-    const unit = encounter.units.find((candidate) => candidate.id === "servo")!;
+    const unit = encounter.units.find((candidate) => candidate.id === "bruto")!;
     assert.deepEqual(
       unit.inventory?.slots.map((slot) => slot.item.id),
-      ["item-balsamo-de-pedra-de-taharim"],
+      ["item-pao-de-cinza"],
     );
     // O molde do bestiário não ganha mochila: cada luta monta a sua.
-    assert.equal(findBestiaryEntry("encounter-servo-enferrujado")!.template.inventory, undefined);
+    assert.equal(findBestiaryEntry("encounter-teste-bruto")!.template.inventory, undefined);
 
     const carried = unusedItems(encounter, "enemy");
-    assert.deepEqual(carried.map((item) => item.id), ["item-balsamo-de-pedra-de-taharim"]);
+    assert.deepEqual(carried.map((item) => item.id), ["item-pao-de-cinza"]);
 
     const character = structuredClone(hero);
     const rewards = grantEncounterRewards(character, [], { rngState: 1 }, carried);
-    assert.deepEqual(rewards.loot.map((item) => item.id), ["item-balsamo-de-pedra-de-taharim"]);
+    assert.deepEqual(rewards.loot.map((item) => item.id), ["item-pao-de-cinza"]);
     assert.equal(character.inventory?.slots[0].quantity, 1);
 
     unit.inventory!.slots = [];
@@ -330,13 +331,14 @@ for (const [areaId, map] of Object.entries(maps)) {
     const character = structuredClone(hero);
     const rewards = grantEncounterRewards(
       character,
-      ["encounter-lobo-de-bruma", "encounter-lobo-de-bruma", "encounter-servo-enferrujado"],
+      ["encounter-teste-cacador", "encounter-teste-cacador", "encounter-teste-bruto"],
       { rngState: 1 },
     );
 
     assert.equal(rewards.xpGained, 30 + 30 + 40);
     assert.equal(rewards.levelUp.leveledUp && rewards.levelUp.newLevel, 2);
-    assert.deepEqual(rewards.levelUp.learned?.map((ability) => ability.name), ["Puxão de Maré"]);
+    // Espadachim não aprende Técnica subindo de nível.
+    assert.deepEqual(rewards.levelUp.learned ?? [], []);
     assert.equal(character.level, 2);
     // O que se gasta foi pra mochila; o que se veste, pro guardado.
     const carried = (character.inventory?.slots ?? []).reduce((sum, slot) => sum + slot.quantity, 0);
@@ -412,7 +414,7 @@ function room(extra: Partial<AreaMap> = {}): AreaMap {
 const at = (x: number, y: number) => ({ x: x * 16 + 8, y: y * 16 + 8 });
 
 function enemy(id: string, x: number, y: number, extra: Partial<AreaEnemy> = {}): AreaEnemy {
-  return { id, name: id, creature: "encounter-lobo-de-bruma", group: id, passive: false, ...at(x, y), ...extra };
+  return { id, name: id, creature: "encounter-teste-cacador", group: id, passive: false, ...at(x, y), ...extra };
 }
 
 test("os objetos do Tiled chegam com condição, gatilho e inimigo passivo; e o mapa sai sem gente na grade", () => {
@@ -427,7 +429,7 @@ test("os objetos do Tiled chegam com condição, gatilho e inimigo passivo; e o 
       {
         type: "objectgroup",
         objects: [
-          { id: 1, name: "Guarda", type: "npc", x: 24, y: 24, properties: [property("dialog", "guarda"), property("look", "guardiao"), property("if", "guarda_chegou")] },
+          { id: 1, name: "Guarda", type: "npc", x: 24, y: 24, properties: [property("dialog", "guarda"), property("look", "espadachim"), property("if", "guarda_chegou")] },
           { id: 2, name: "Chefe", type: "enemy", x: 40, y: 8, properties: [property("creature", "x"), property("group", "chefe"), property("passive", true), property("dialog", "chefe"), property("onDefeat", "chefe_caiu"), property("unless", "chefe_fugiu")] },
           { id: 3, name: "lobo", type: "enemy", x: 8, y: 40, properties: [property("creature", "x")] },
           { id: 4, name: "cena", type: "trigger", x: 0, y: 0, width: 32, height: 16, properties: [property("dialog", "cena")] },
@@ -500,7 +502,7 @@ test("gente de pé ocupa o quadrado, e devolve o chão que havia quando sai", ()
 test("ocupa quadrado quem tem cara e o inimigo passivo; fala-se com npc e com passivo que tenha o que dizer", () => {
   const map = room();
   const npcs = [
-    { id: "npc-1", name: "Guarda", dialog: "guarda", look: "guardiao", ...at(2, 2) },
+    { id: "npc-1", name: "Guarda", dialog: "guarda", look: "espadachim", ...at(2, 2) },
     { id: "npc-2", name: "Inscrição", dialog: "inscricao", ...at(4, 2) },
   ];
   const enemies = [
@@ -600,8 +602,9 @@ test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda
   const hero: Character = {
     id: "hero",
     name: "Herói",
-    race: "althirim",
-    characterClass: "rachador",
+    race: "humano",
+    characterClass: "espadachim",
+    equipment: { weapon: "gear-besta" },
     level: 1,
     xp: 0,
     attributes: { forca: 6, fator: 3, vigor: 6, olho: 8, couro: 4, labia: 5, saber: 5 },
@@ -750,8 +753,8 @@ test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa
   const hero: Character = {
     id: HERO_ID,
     name: "Herói",
-    race: "althirim",
-    characterClass: "guardiao",
+    race: "humano",
+    characterClass: "espadachim",
     level: 1,
     xp: 0,
     attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
@@ -800,8 +803,8 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
   const hero = (): Character => ({
     id: HERO_ID,
     name: "Herói",
-    race: "althirim",
-    characterClass: "guardiao",
+    race: "humano",
+    characterClass: "espadachim",
     level: 1,
     xp: 0,
     attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
@@ -836,7 +839,7 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
   let immune = 0;
   for (let i = 0; i < 400 && !isOver(stalled.encounter); i++) {
     const unit = activeUnit(stalled.encounter)!;
-    const strike = { type: "ability", unitId: unit.id, abilityId: "guardiao.attack", target: collector(stalled.encounter).pos } as const;
+    const strike = { type: "ability", unitId: unit.id, abilityId: "espadachim.attack", target: collector(stalled.encounter).pos } as const;
     let result = applyCommand(stalled.encounter, unit.team === "party" ? strike : chooseCommand(stalled.encounter));
     if (!result.ok) result = applyCommand(stalled.encounter, { type: "endTurn", unitId: unit.id });
     assert.equal(result.ok, true);
@@ -853,8 +856,8 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
   const stout = (currentHp = 500): Character => ({
     id: HERO_ID,
     name: "Herói",
-    race: "althirim",
-    characterClass: "guardiao",
+    race: "humano",
+    characterClass: "espadachim",
     level: 1,
     xp: 0,
     attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
@@ -917,7 +920,7 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     // O primeiro golpe é do herói; só depois dele um fiscal levanta o bastão por conta própria (o golpe que a
     // Ipojy devolve a quem erra é reação, não iniciativa: não conta).
     const target = findUnit(encounter, group[0].id)!;
-    const log = play(encounter, () => ({ type: "ability", unitId: HERO_ID, abilityId: "guardiao.attack", target: target.pos }), 40);
+    const log = play(encounter, () => ({ type: "ability", unitId: HERO_ID, abilityId: "espadachim.attack", target: target.pos }), 40);
     const first = log.findIndex(({ event }) => event.type === "abilityUsed" && event.unit === HERO_ID);
     const struck = log.findIndex(
       ({ event }) =>
@@ -945,11 +948,11 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     assert.equal(encounter.winner, "party");
   });
 
-  test("na estrada, Taevel devolve o tipo da última ação da protagonista", () => {
-    const { encounter, group } = fight("taevel", { x: 10, y: 17 }, stout());
-    const taevel = findUnit(encounter, group[0].id)!;
-    assert.deepEqual(taevel.quirks, { mirrors: HERO_ID });
-    assert.equal(taevel.style, "tsvirana");
+  test("na estrada, o Espelho devolve o tipo da última ação da protagonista", () => {
+    const { encounter, group } = fight("espelho", { x: 10, y: 17 }, stout());
+    const espelho = findUnit(encounter, group[0].id)!;
+    assert.deepEqual(espelho.quirks, { mirrors: HERO_ID });
+    assert.equal(espelho.style, "tsvirana");
 
     const script = ["defend", "defend", "attack", "attack", "defend"];
     let turn = 0;
@@ -959,15 +962,15 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
         const hero = findUnit(now, HERO_ID)!;
         if (!hero.turn.action) return { type: "endTurn", unitId: HERO_ID };
         const stance = script[turn++ % script.length];
-        return { type: "ability", unitId: HERO_ID, abilityId: `guardiao.${stance}`, target: stance === "defend" ? hero.pos : taevel.pos };
+        return { type: "ability", unitId: HERO_ID, abilityId: `espadachim.${stance}`, target: stance === "defend" ? hero.pos : espelho.pos };
       },
       60,
     );
 
     const stanceOf = (id: string | undefined) => id?.slice(id.lastIndexOf(".") + 1);
     const answers = log.flatMap(({ event, habit }) => {
-      if (event.type !== "abilityUsed" || event.unit !== taevel.id || event.reaction) return [];
-      const ability = taevel.abilities.find((candidate) => candidate.id === event.abilityId)!;
+      if (event.type !== "abilityUsed" || event.unit !== espelho.id || event.reaction) return [];
+      const ability = espelho.abilities.find((candidate) => candidate.id === event.abilityId)!;
       return ability.cost === "action" && habit?.last !== undefined ? [[stanceOf(habit.last), stanceOf(ability.id)]] : [];
     });
     assert.ok(answers.length >= 4, `só ${answers.length} respostas`);
@@ -975,10 +978,10 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     assert.deepEqual([...new Set(answers.map(([hers]) => hers))].sort(), ["attack", "defend"]);
   });
 
-  test("na estrada, a luta com Taevel não se perde: ela para no lugar da derrota", () => {
-    const { encounter, events, cues } = fight("taevel", { x: 10, y: 17 }, stout(3));
+  test("na estrada, a luta com o Espelho não se perde: ela para no lugar da derrota", () => {
+    const { encounter, events, cues } = fight("espelho", { x: 10, y: 17 }, stout(3));
     const mercy = cues.find((cue) => cue.when.kind === "defeat");
-    assert.ok(mercy, "a luta com Taevel deveria ter uma deixa no lugar da derrota");
+    assert.ok(mercy, "a luta com o Espelho deveria ter uma deixa no lugar da derrota");
 
     const log = [...events, ...play(encounter, (now) => ({ type: "endTurn", unitId: activeUnit(now)!.id })).map(({ event }) => event)];
     assert.equal(findUnit(encounter, HERO_ID)!.currentHp, 0);

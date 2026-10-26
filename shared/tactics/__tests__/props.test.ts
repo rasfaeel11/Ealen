@@ -17,7 +17,14 @@ import {
   type PropId,
   type Unit,
 } from "../index";
-import { FIRST, eventsOf, makeUnit, run } from "./helpers";
+import { FIRST, TEST_KIT, eventsOf, makeUnit, run, type UnitOverrides } from "./helpers";
+
+/** Com o que A luta no duelo: a besta (de longe), as mãos (de perto), ou a área de gelo do kit de teste. */
+const LOADOUT: Record<"besta" | "mãos" | "gelo", UnitOverrides> = {
+  besta: { equipment: { weapon: "gear-besta" } },
+  mãos: {},
+  gelo: { kit: [TEST_KIT.gelo] },
+};
 
 const PROP_MARKERS: Record<string, PropId> = { c: "crate", b: "barrel" };
 
@@ -30,11 +37,11 @@ function setup(rows: string[], place: (at: (marker: string) => Pos) => Unit[], s
   return startEncounter({ grid, units: place((marker) => markers[marker][0]), props, seed }).encounter;
 }
 
-function duel(rows: string[], actorClass: "rachador" | "guardiao" | "cantor_de_ealen" = "rachador", seed = 1) {
+function duel(rows: string[], loadout: "besta" | "mãos" | "gelo" = "besta", seed = 1) {
   return setup(
     rows,
     (at) => [
-      makeUnit("A", "party", at("A"), { characterClass: actorClass, attributes: { olho: FIRST } }),
+      makeUnit("A", "party", at("A"), { ...LOADOUT[loadout], attributes: { olho: FIRST } }),
       makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
     ],
     seed,
@@ -53,12 +60,12 @@ test("golpe que fere mira o destrutível, sempre pega e, quebrando, abre o quadr
   const encounter = duel(["A...cE"]);
   const actor = findUnit(encounter, "A")!;
   const crate = { x: 4, y: 0 };
-  const attack = actor.abilities.find((ability) => ability.id === "rachador.attack")!;
+  const attack = actor.abilities.find((ability) => ability.id === "espadachim.attack")!;
   assert.ok(abilityTargets(encounter, actor, attack).some((pos) => samePos(pos, crate)));
 
   let broken = false;
   for (let turn = 0; turn < 6 && !broken; turn++) {
-    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "rachador.attack", target: crate });
+    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: crate });
     // Objeto não se esquiva: não há rolagem de ataque, e o dano entra inteiro.
     assert.equal(eventsOf(events, "attackRoll").length, 0);
     assert.equal(eventsOf(events, "propDamaged").length, 1);
@@ -81,7 +88,7 @@ test("golpe que fere mira o destrutível, sempre pega e, quebrando, abre o quadr
 
 test("cura e guarda não miram destrutível", () => {
   const encounter = setup(["Ac.E"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "luminar", attributes: { olho: FIRST } }),
+    makeUnit("A", "party", at("A"), { kit: [TEST_KIT.cura], attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const actor = findUnit(encounter, "A")!;
@@ -98,7 +105,7 @@ test("o barril arrebentado derrama chamas em volta, e elas queimam quem está al
   const encounter = duel(["A....b.", "......E"]);
   const barrel = { x: 5, y: 0 };
 
-  const events = run(encounter, { type: "ability", unitId: "A", abilityId: "rachador.attack", target: barrel });
+  const events = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: barrel });
   assert.deepEqual(
     events.map((event) => event.type),
     ["abilityUsed", "propDamaged", "propDestroyed", "surfaceCreated"],
@@ -114,11 +121,11 @@ test("o barril arrebentado derrama chamas em volta, e elas queimam quem está al
 });
 
 test("uma área quebra os destrutíveis do raio junto com quem estiver nele", () => {
-  const encounter = duel(["A.....", "...bE.", "......"], "cantor_de_ealen");
+  const encounter = duel(["A.....", "...bE.", "......"], "gelo");
   const events = run(encounter, {
     type: "ability",
     unitId: "A",
-    abilityId: "cantor_de_ealen.heavy_attack",
+    abilityId: TEST_KIT.gelo.id,
     target: { x: 4, y: 1 },
   });
 
@@ -132,9 +139,9 @@ test("uma área quebra os destrutíveis do raio junto com quem estiver nele", ()
 });
 
 test("a luta clonada quebra os próprios caixotes, não os da original", () => {
-  const encounter = duel(["Ab...E"], "guardiao");
+  const encounter = duel(["Ab...E"], "mãos");
   const copy = structuredClone(encounter);
-  run(copy, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: { x: 1, y: 0 } });
+  run(copy, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: { x: 1, y: 0 } });
 
   assert.equal(tileAt(copy.grid, { x: 1, y: 0 })!.blocksMove, false);
   assert.equal(tileAt(encounter.grid, { x: 1, y: 0 })!.blocksMove, true);
@@ -142,10 +149,10 @@ test("a luta clonada quebra os próprios caixotes, não os da original", () => {
 });
 
 test("a IA arrebenta o barril ao lado de quem ela não consegue ferir de frente", () => {
-  // O Rachador ataca com Olho: a vez dele vem de o alvo ser lento, não de ele ser rápido.
+  // A vez de quem atira vem de o alvo ser lento, não de ele ser rápido.
   const scene = (rows: string[]) =>
     setup(rows, (at) => [
-      makeUnit("A", "enemy", at("A"), { characterClass: "rachador" }),
+      makeUnit("A", "enemy", at("A"), { equipment: { weapon: "gear-besta" } }),
       makeUnit("E", "party", at("E"), { attributes: { couro: 40, olho: -100 } }),
     ]);
 

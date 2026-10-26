@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import "./catalog";
 import {
   addGear,
   armOf,
@@ -38,7 +39,7 @@ function sheet(characterClass: CharacterClass, extra: Partial<Character> = {}): 
   return {
     id: "alguem",
     name: "Alguém",
-    race: "althirim",
+    race: "humano",
     characterClass,
     level: 1,
     xp: 0,
@@ -67,7 +68,7 @@ test("o catálogo não repete id nem pisa nos consumíveis, e todo mundo que ves
   assert.equal(new Set(ids).size, ids.length);
   for (const id of ids) assert.equal(MOCK_ITEMS.some((item) => item.id === id), false, `${id} também é consumível`);
 
-  for (const order of ORDERS) assertWearable(`a Ordem ${order}`, order, startingEquipment(order));
+  for (const order of ORDERS) assertWearable(`a classe ${order}`, order, startingEquipment(order));
   assertWearable("Endyru", PROTAGONIST.characterClass, PROTAGONIST.gear ?? {});
   for (const [key, member] of Object.entries(COMPANIONS)) assertWearable(key, member.characterClass, member.gear ?? {});
   for (const id of STARTING_STASH) assert.ok(findEquipment(id), `o guardado de começo tem ${id}, que não existe`);
@@ -78,30 +79,28 @@ test("o catálogo não repete id nem pisa nos consumíveis, e todo mundo que ves
   }
 });
 
-test("a arma dá o dado, o alcance e o acerto dos golpes de arma; de mãos vazias vale o natural da Ordem", () => {
-  const bare = sheet("guardiao");
-  assert.deepEqual(armOf(bare), { dice: { count: 1, sides: 6 }, range: 1, toHit: 0 });
-  assert.equal(armOf(sheet("rachador")).range, 6);
+test("a arma dá o dado, o alcance e o acerto dos golpes de arma; de mãos vazias vale 1d6 de perto", () => {
+  for (const order of ["atracao_repulsao", "espadachim"] as const) {
+    assert.deepEqual(armOf(sheet(order)), { dice: { count: 1, sides: 6 }, range: 1, toHit: 0 });
+  }
 
-  const hooked = sheet("guardiao", { equipment: { weapon: "gear-gancho-de-coleta" } });
-  const strike = abilitiesFor(hooked).find((ability) => ability.id === "guardiao.attack")!;
+  const hooked = sheet("espadachim", { equipment: { weapon: "gear-teste-gancho" } });
+  const strike = abilitiesFor(hooked).find((ability) => ability.id === "espadachim.attack")!;
   assert.equal(strike.range, 2);
   assert.equal(strike.attack?.toHit, -1);
   assert.deepEqual(strike.effects[0], { kind: "damage", dice: { count: 1, sides: 8 }, attribute: "primary" });
   // Um passo além do braço ainda pune quem sai de perto.
   assert.equal(strike.opportunity, true);
 
-  // O golpe pesado é de arma também (-4 dele, -1 dela); o puxão do Guardião não é: fica como era.
-  const heavy = abilitiesFor(hooked).find((ability) => ability.id === "guardiao.heavy_attack")!;
+  // O golpe pesado é de arma também (-4 dele, -1 dela); o Puxão do mago é magia, não arma: fica como era.
+  const heavy = abilitiesFor(hooked).find((ability) => ability.id === "espadachim.heavy_attack")!;
   assert.equal(heavy.attack?.toHit, -5);
-  const pull = (who: Character) => abilitiesFor(who).find((ability) => ability.id === "guardiao.quick_attack")!;
-  assert.deepEqual(pull(hooked), pull(bare));
+  const pull = (who: Character) => abilitiesFor(who).find((ability) => ability.id === "atracao_repulsao.quick_attack")!;
+  assert.deepEqual(pull(sheet("atracao_repulsao", { equipment: { weapon: "gear-teste-gancho" } })), pull(sheet("atracao_repulsao")));
 
-  // Um Rachador com faca luta de perto; com o arco, de longe e com o dado dele.
-  const knife = abilitiesFor(sheet("rachador", { equipment: { weapon: "gear-lamina-de-mergulho" } }));
-  assert.equal(knife.find((ability) => ability.id === "rachador.attack")!.range, 1);
-  const bow = abilitiesFor(sheet("rachador", { equipment: startingEquipment("rachador") }));
-  assert.equal(bow.find((ability) => ability.id === "rachador.attack")!.range, 6);
+  // Com a besta, o espadachim luta de longe e com o dado dela.
+  const bow = abilitiesFor(sheet("espadachim", { equipment: { weapon: "gear-besta" } }));
+  assert.equal(bow.find((ability) => ability.id === "espadachim.attack")!.range, 6);
 });
 
 test("vestir tira do guardado e devolve o que estava no lugar; recusado, não muda nada", () => {
@@ -109,15 +108,15 @@ test("vestir tira do guardado e devolve o que estava no lugar; recusado, não mu
   assert.deepEqual(owner.equipment, PROTAGONIST.gear);
   assert.deepEqual(owner.gear, [...STARTING_STASH]);
 
-  addGear(owner, "gear-gancho-de-coleta");
-  const swapped = equip(owner, owner, "gear-gancho-de-coleta");
+  addGear(owner, "gear-teste-gancho");
+  const swapped = equip(owner, owner, "gear-teste-gancho");
   assert.ok(swapped.ok);
   assert.equal(swapped.replaced?.id, "gear-bordao");
-  assert.equal(wornItem(owner, "weapon")?.id, "gear-gancho-de-coleta");
+  assert.equal(wornItem(owner, "weapon")?.id, "gear-teste-gancho");
   assert.deepEqual(owner.gear, ["gear-bordao"]);
 
   // O que não está guardado não se veste — nem o que já está no corpo.
-  assert.deepEqual(equip(owner, owner, "gear-gancho-de-coleta"), { ok: false, reason: "not_owned" });
+  assert.deepEqual(equip(owner, owner, "gear-teste-gancho"), { ok: false, reason: "not_owned" });
   assert.deepEqual(equip(owner, owner, "gear-nao-existe"), { ok: false, reason: "not_owned" });
 
   // Arma de espadachim no mago: a peça continua guardada.
@@ -143,7 +142,7 @@ test("vestir tira do guardado e devolve o que estava no lugar; recusado, não mu
 });
 
 test("na luta, a armadura entra na defesa e no passo, e o acessório nos atributos", () => {
-  const plated = sheet("guardiao", { equipment: { armor: "gear-placa-de-servo", accessory: "gear-conta-de-forja" } });
+  const plated = sheet("espadachim", { equipment: { armor: "gear-teste-placa", accessory: "gear-teste-anel-de-forca" } });
   assert.equal(gearDefense(plated), 3);
   assert.equal(gearedAttributes(plated).forca, 7);
   // A ficha não muda: o que se veste é somado por cima.
@@ -154,7 +153,7 @@ test("na luta, a armadura entra na defesa e no passo, e o acessório nos atribut
     grid,
     seed: 1,
     units: [
-      unitFromCharacter(sheet("guardiao", { id: "A" }), { team: "party", pos: markers.A[0] }),
+      unitFromCharacter(sheet("espadachim", { id: "A" }), { team: "party", pos: markers.A[0] }),
       unitFromCharacter({ ...plated, id: "E" }, { team: "enemy", pos: markers.E[0] }),
     ],
   });
@@ -164,21 +163,21 @@ test("na luta, a armadura entra na defesa e no passo, e o acessório nos atribut
   assert.equal(target.defense, 3);
   assert.equal(target.speed, attacker.speed - 1);
 
-  const strike = attacker.abilities.find((ability) => ability.id === "guardiao.attack")!;
+  const strike = attacker.abilities.find((ability) => ability.id === "espadachim.attack")!;
   const { defense } = attackTotals(attacker, strike, target, attackEdge(encounter, attacker, strike, target));
   assert.equal(defense, 10 + 5 + 3);
 });
 
 test("fora de luta, o acessório pesa nos testes da história", () => {
-  const plain = sheet("luminar");
-  const ringed = sheet("luminar", { equipment: { accessory: "gear-sinete-da-companhia" } });
+  const plain = sheet("espadachim");
+  const ringed = sheet("espadachim", { equipment: { accessory: "gear-teste-anel-de-labia" } });
   const check = { attribute: "labia", difficulty: 14 } as const;
   assert.equal(Math.round((checkChance(ringed, check) - checkChance(plain, check)) * 20), 2);
 });
 
 test("equipamento é item como os outros pra história e pro espólio: entra no guardado, e só de lá sai", () => {
   const owner = createProtagonist();
-  const plate = findItem("gear-placa-de-servo")!;
+  const plate = findItem("gear-teste-placa")!;
   assert.equal(plate.category, "equipment");
   assert.equal(giveItem(owner, plate), true);
   assert.equal(itemCount(owner, plate.id), 1);
@@ -195,22 +194,23 @@ test("equipamento é item como os outros pra história e pro espólio: entra no 
   assert.equal(takeItem(owner, "item-lagrima-de-eir"), true);
   assert.equal(itemCount(owner, "item-lagrima-de-eir"), 1);
 
-  // O lobo às vezes deixa a presa: quando deixa, ela vai pro guardado, não pra mochila.
+  // O caçador às vezes deixa o anel: quando deixa, ele vai pro guardado, não pra mochila.
+  const ring = "gear-teste-anel-de-forca";
   for (let seed = 1; seed < 200; seed++) {
     const winner = createProtagonist();
-    const rewards = grantEncounterRewards(winner, ["encounter-lobo-de-bruma"], { rngState: seed });
-    if (!rewards.loot.some((item) => item.id === "gear-presa-de-bruma")) continue;
-    assert.equal(gearCount(winner, "gear-presa-de-bruma"), 1);
-    assert.equal(winner.inventory?.slots.some((slot) => slot.item.id === "gear-presa-de-bruma"), false);
+    const rewards = grantEncounterRewards(winner, ["encounter-teste-cacador"], { rngState: seed });
+    if (!rewards.loot.some((item) => item.id === ring)) continue;
+    assert.equal(gearCount(winner, ring), 1);
+    assert.equal(winner.inventory?.slots.some((slot) => slot.item.id === ring), false);
     return;
   }
-  assert.fail("em 200 lutas o lobo nunca deixou a presa");
+  assert.fail("em 200 lutas o caçador nunca deixou o anel");
 });
 
 test("cada um do elenco começa com o que é dele; quem não é do elenco, com o que a classe dá", () => {
   assert.deepEqual(startingLoadout({ id: HERO_ID, characterClass: "atracao_repulsao" }), PROTAGONIST.gear);
   assert.deepEqual(joinParty([], "xandui", 1)!.equipment, { weapon: "gear-espada-reta", armor: "gear-gibao-de-couro" });
-  assert.deepEqual(startingLoadout({ id: "ninguem", characterClass: "rachador" }), startingEquipment("rachador"));
+  assert.deepEqual(startingLoadout({ id: "ninguem", characterClass: "espadachim" }), startingEquipment("espadachim"));
   // Quem só acompanha não veste nada pra luta.
   assert.equal(joinParty([], "oryndu", 1)!.equipment, undefined);
 });
@@ -243,7 +243,7 @@ test("save de antes do equipamento ganha o de começo; peça que o catálogo nã
   assert.ok(again.ok);
   assert.equal(wornItem(again.save.character, "weapon"), undefined);
 
-  // Id que não existe mais: o lugar vale como vazio, e a ficha luta com o natural da Ordem.
+  // Id que não existe mais: o lugar vale como vazio, e a ficha luta de mãos vazias.
   const stale = newGame(createProtagonist());
   stale.character.equipment = { weapon: "gear-que-saiu-do-jogo" };
   stale.character.gear = ["gear-que-saiu-do-jogo"];

@@ -24,13 +24,13 @@ import {
   type StatusId,
   type TacticalEvent,
 } from "../index";
-import { FIRST, eventsOf, makeCharacter, makeUnit, run, setup } from "./helpers";
+import { FIRST, TEST_ITEMS, TEST_KIT, eventsOf, makeCharacter, makeUnit, run, setup } from "./helpers";
 
 /**
- * Os kits das Ordens (../abilities.ts) e as peças de regra que eles pedem ao
- * motor: esquiva, dano recebido a mais ou a menos, dano por turno, passo
- * preso, quem não sai do lugar, quem não se cura, o golpe que fura a
- * armadura, o que devolve vida e o que leva Fôlego.
+ * Os kits das classes (../abilities.ts) e as peças de regra do motor que eles
+ * (ou o kit de teste, ver TEST_KIT) exercitam: esquiva, dano recebido a mais
+ * ou a menos, dano por turno, passo preso, quem não sai do lugar, quem não se
+ * cura, o golpe que fura a armadura, o que devolve vida e o que leva Fôlego.
  */
 
 const ORDERS = Object.keys(CLASS_INFO) as CharacterClass[];
@@ -130,27 +130,7 @@ test("o mago de atração e repulsão paga a magia em mana e a recita; o bordão
   assert.equal(blade.heavy_attack.breath, 2);
 });
 
-test("as posturas não são mais as mesmas em toda Ordem: cada kit faz o que o Princípio dele faz", () => {
-  const kit = (order: CharacterClass, slug: string) =>
-    kitOf({ characterClass: order }).find((entry) => entry.slug === slug)!.ability;
-  const puts = (order: CharacterClass, slug: string) =>
-    kit(order, slug).effects.flatMap((effect) => (effect.kind === "status" ? [effect.statusId] : []));
-
-  // O golpe rápido: o Guardião puxa de longe, o Entropista enferruja, o Rachador trinca.
-  assert.equal(kit("guardiao", "quick_attack").range, 3);
-  assert.ok(kit("guardiao", "quick_attack").effects.some((effect) => effect.kind === "push" && effect.distance < 0));
-  assert.deepEqual(puts("entropista", "quick_attack"), ["rusted"]);
-  assert.deepEqual(puts("rachador", "quick_attack"), ["cracked"]);
-  // A guarda: a do Sombrílico e a do Rachador não bloqueiam, tiram do caminho.
-  assert.deepEqual(puts("guardiao", "defend"), ["guarding"]);
-  assert.deepEqual(puts("sombrilico", "defend"), ["unseen"]);
-  assert.deepEqual(puts("rachador", "defend"), ["oblique"]);
-  // O golpe do Sombrílico leva Fôlego; o pesado do Cantor é uma área.
-  assert.ok(kit("sombrilico", "attack").effects.some((effect) => effect.kind === "breath" && effect.amount < 0));
-  assert.equal(kit("cantor_de_ealen", "heavy_attack").radius, 1);
-});
-
-test("uma criatura sabe só o que nomeia, com o nome dela — e o bestiário não nomeia o que a Ordem não tem", () => {
+test("uma criatura sabe só o que nomeia, com o nome dela — e o bestiário não nomeia o que a classe não tem", () => {
   for (const [key, entry] of Object.entries(BESTIARY)) {
     const { template } = entry;
     const named = Object.entries(template.arts ?? {});
@@ -160,22 +140,24 @@ test("uma criatura sabe só o que nomeia, com o nome dela — e o bestiário nã
       assert.equal(abilities.find((ability) => ability.id === `${template.characterClass}.${slug}`)?.name, name, `${key}.${slug}`);
     }
   }
-  // O nível não entra: o Lobo (nível 3) não ganha a Técnica do nível 6 só por ser Sombrílico.
-  const wolf = BESTIARY["encounter-lobo-de-bruma"].template;
-  assert.equal(abilitiesFor({ ...wolf, level: 9 }).some((ability) => ability.id.endsWith("corte_do_nao_dito")), false);
+  // O nível não entra: o recitador (Página) não ganha o Desarmar, que é do Círculo, por mais nível que tenha.
+  const reader = BESTIARY["encounter-recitador-de-ymboripe"].template;
+  assert.equal(abilitiesFor({ ...reader, level: 9 }).some((ability) => ability.id.endsWith("desarmar")), false);
 });
 
-test("subir de nível devolve as Técnicas aprendidas, e a ficha já as tem", () => {
-  const hero = makeCharacter("x", { characterClass: "guardiao", level: 1 });
-  const first = applyXpGain(hero, xpToNextLevel(1));
-  assert.deepEqual(first.learned?.map((ability) => ability.name), ["Puxão de Maré"]);
-  assert.ok(abilitiesFor(hero).some((ability) => ability.id === "guardiao.puxao_de_mare"));
+test("subir de nível não ensina Técnica a ninguém do mundo: o mago aprende pelo nível de mago", () => {
+  // O espadachim só tem o golpe-selo, por iniciação (`magia` §5.6): subir de nível não dá botão.
+  const blade = makeCharacter("x", { level: 1 });
+  assert.deepEqual(applyXpGain(blade, xpToNextLevel(1) + xpToNextLevel(2) + xpToNextLevel(3)).learned, []);
+  assert.equal(blade.level, 4);
 
-  // O nível 3 do Guardião não ensina nada; do 3 ao 5 de uma vez, vem a do 5.
-  assert.deepEqual(applyXpGain(hero, xpToNextLevel(2)).learned, []);
-  const jump = applyXpGain(hero, xpToNextLevel(3) + xpToNextLevel(4));
-  assert.equal(hero.level, 5);
-  assert.deepEqual(jump.learned?.map((ability) => ability.id), ["guardiao.ancora_da_singularidade"]);
+  // O de atração e repulsão também não: o que é do Círculo chega quando ele chega ao Círculo.
+  const mage = makeCharacter("y", { characterClass: "atracao_repulsao", level: 1, mageLevel: 3 });
+  assert.deepEqual(applyXpGain(mage, xpToNextLevel(1)).learned, []);
+  assert.deepEqual(learnedAtMage("atracao_repulsao", 4).map((ability) => ability.id), [
+    "atracao_repulsao.desarmar",
+    "atracao_repulsao.arremesso",
+  ]);
 });
 
 test("a esquiva soma na defesa de quem a carrega, e só dificulta o acerto", () => {
@@ -183,7 +165,7 @@ test("a esquiva soma na defesa de quem a carrega, e só dificulta o acerto", () 
     makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
-  const strike = unit(encounter, "A").abilities.find((ability) => ability.id === "guardiao.attack")!;
+  const strike = unit(encounter, "A").abilities.find((ability) => ability.id === "espadachim.attack")!;
   const before = attackOdds(encounter, unit(encounter, "A"), strike, unit(encounter, "E")).hit;
   afflict(encounter, "E", "unseen");
   const after = attackOdds(encounter, unit(encounter, "A"), strike, unit(encounter, "E")).hit;
@@ -194,18 +176,21 @@ test("Trincado soma em cada golpe recebido, e Ancorado tira — e não sai do lu
   const scene = (seed: number, status?: StatusId) => {
     const { encounter } = setup(
       ["AE.."],
-      (at) => [makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }), makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300 })],
+      (at) => [
+        makeUnit("A", "party", at("A"), { kit: [TEST_KIT.empurrao], attributes: { olho: FIRST } }),
+        makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300 }),
+      ],
       seed,
     );
     if (status) afflict(encounter, "E", status);
-    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.heavy_attack", target: unit(encounter, "E").pos });
+    const events = run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.empurrao.id, target: unit(encounter, "E").pos });
     return { encounter, events, damage: damageOn(events, "E") };
   };
   const plain = seedWhere(
     (seed) => ({ seed, ...scene(seed) }),
     ({ events }) => eventsOf(events, "attackRoll")[0].outcome === "hit",
   );
-  // O golpe pesado do Guardião arremessa.
+  // O golpe pesado que empurra arremessa.
   assert.equal(eventsOf(plain.events, "pushed").length, 1);
 
   assert.equal(scene(plain.seed, "cracked").damage, plain.damage + STATUSES.cracked.damageTaken);
@@ -215,12 +200,12 @@ test("Trincado soma em cada golpe recebido, e Ancorado tira — e não sai do lu
   assert.deepEqual(unit(anchored.encounter, "E").pos, { x: 1, y: 0 });
 });
 
-test("o golpe que fura não encontra a armadura, e o Corte do Não-Dito não rola ataque", () => {
+test("o golpe que fura não encontra a armadura, e o corte sem rolagem não rola ataque", () => {
   const scene = (seed: number, abilityId: string) => {
     const { encounter } = setup(
       ["A...E"],
       (at) => [
-        unitFromCharacter(makeCharacter("A", { characterClass: "rachador", level: 2, attributes: { olho: FIRST } }), { team: "party", pos: at("A") }),
+        makeUnit("A", "party", at("A"), { kit: [TEST_KIT.tiro, TEST_KIT.furo], attributes: { olho: FIRST } }),
         makeUnit("E", "enemy", at("E"), { currentHp: 900, maxHp: 900, attributes: { couro: 8 } }),
       ],
       seed,
@@ -229,17 +214,17 @@ test("o golpe que fura não encontra a armadura, e o Corte do Não-Dito não rol
     return { events, damage: damageOn(events, "E") };
   };
   const plain = seedWhere(
-    (seed) => ({ seed, ...scene(seed, "rachador.attack") }),
+    (seed) => ({ seed, ...scene(seed, TEST_KIT.tiro.id) }),
     ({ events }) => eventsOf(events, "attackRoll")[0].outcome === "hit",
   );
   // Mesmo dado, mesmo golpe: a diferença é a armadura (metade do Couro) que o golpe não encontra.
-  assert.equal(scene(plain.seed, "rachador.falha_no_padrao").damage, plain.damage + Math.floor(8 / 2));
+  assert.equal(scene(plain.seed, TEST_KIT.furo.id).damage, plain.damage + Math.floor(8 / 2));
 
   const { encounter } = setup(["AE"], (at) => [
-    unitFromCharacter(makeCharacter("A", { characterClass: "sombrilico", level: 6, attributes: { olho: FIRST } }), { team: "party", pos: at("A") }),
+    makeUnit("A", "party", at("A"), { kit: [TEST_KIT.corte], attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E"), { currentHp: 900, maxHp: 900 }),
   ]);
-  const events = run(encounter, { type: "ability", unitId: "A", abilityId: "sombrilico.corte_do_nao_dito", target: unit(encounter, "E").pos });
+  const events = run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.corte.id, target: unit(encounter, "E").pos });
   assert.equal(eventsOf(events, "attackRoll").length, 0);
   assert.ok(damageOn(events, "E") > 0);
 });
@@ -316,18 +301,18 @@ test("a rede prende o passo de quem pega, pelos turnos que dura", () => {
   assert.equal(foe.turn.movement, foe.speed);
 });
 
-test("o corte do Sombrílico leva Fôlego de quem apanha, até o que ele tem", () => {
+test("o golpe que sufoca leva Fôlego de quem apanha, até o que ele tem", () => {
   const hit = seedWhere(
     (seed) => {
       const { encounter } = setup(
         ["AE"],
         (at) => [
-          unitFromCharacter(makeCharacter("A", { characterClass: "sombrilico", attributes: { olho: FIRST } }), { team: "party", pos: at("A") }),
+          makeUnit("A", "party", at("A"), { kit: [TEST_KIT.sufoco], attributes: { olho: FIRST } }),
           makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300, breath: 1 }),
         ],
         seed,
       );
-      const events = run(encounter, { type: "ability", unitId: "A", abilityId: "sombrilico.heavy_attack", target: unit(encounter, "E").pos });
+      const events = run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.sufoco.id, target: unit(encounter, "E").pos });
       return { encounter, events };
     },
     ({ events }) => eventsOf(events, "damage").length > 0,
@@ -344,9 +329,9 @@ test("quem está Irreversível não se cura: nem por habilidade, nem por item �
   const scene = () => {
     const wounded = makeCharacter("W", { currentHp: 5, attributes: { olho: FIRST } });
     addItemToInventory(wounded, findItemTemplate("item-lagrima-de-eir")!);
-    addItemToInventory(wounded, findItemTemplate("item-incenso-purificador-de-althir")!);
+    addItemToInventory(wounded, TEST_ITEMS.purificar);
     const { encounter } = setup(["HW.E"], (at) => [
-      unitFromCharacter(makeCharacter("H", { characterClass: "luminar", attributes: { olho: 50 } }), { team: "party", pos: at("H") }),
+      makeUnit("H", "party", at("H"), { kit: [TEST_KIT.cura], attributes: { olho: 50 } }),
       unitFromCharacter(wounded, { team: "party", pos: at("W") }),
       makeUnit("E", "enemy", at("E")),
     ]);
@@ -359,42 +344,39 @@ test("quem está Irreversível não se cura: nem por habilidade, nem por item �
   assert.equal(eventsOf(drunk, "heal").length, 0);
   assert.deepEqual(eventsOf(drunk, "healDenied").map((event) => event.target), ["W"]);
   run(sealed, { type: "endTurn", unitId: "W" });
-  const sung = run(sealed, { type: "ability", unitId: "H", abilityId: "luminar.heal", target: unit(sealed, "W").pos });
+  const sung = run(sealed, { type: "ability", unitId: "H", abilityId: TEST_KIT.cura.id, target: unit(sealed, "W").pos });
   assert.equal(eventsOf(sung, "heal").length, 0);
   assert.equal(eventsOf(sung, "healDenied").length, 1);
   assert.equal(unit(sealed, "W").currentHp, 5);
 
   const cleansed = scene();
-  const events = run(cleansed, { type: "useItem", unitId: "W", itemId: "item-incenso-purificador-de-althir" });
+  const events = run(cleansed, { type: "useItem", unitId: "W", itemId: TEST_ITEMS.purificar.id });
   assert.ok(eventsOf(events, "statusExpired").some((event) => event.statusId === "irreversible"));
   assert.ok(unit(cleansed, "W").currentHp > 5);
 });
 
 test("purificar não tira o que a história pôs pra durar", () => {
   const sick = makeCharacter("W", { attributes: { olho: FIRST } });
-  addItemToInventory(sick, findItemTemplate("item-incenso-purificador-de-althir")!);
+  addItemToInventory(sick, TEST_ITEMS.purificar);
   const { encounter } = setup(["W.E"], (at) => [unitFromCharacter(sick, { team: "party", pos: at("W") }), makeUnit("E", "enemy", at("E"))]);
   afflict(encounter, "W", "wounded_arm", Infinity);
   afflict(encounter, "W", "muffled", 2);
-  run(encounter, { type: "useItem", unitId: "W", itemId: "item-incenso-purificador-de-althir" });
+  run(encounter, { type: "useItem", unitId: "W", itemId: TEST_ITEMS.purificar.id });
   assert.deepEqual(unit(encounter, "W").statuses.map((status) => status.id), ["wounded_arm"]);
 });
 
-test("a Antífona devolve a quem bate o que o golpe tirou, até a vida cheia", () => {
+test("o golpe que drena devolve a quem bate o que o golpe tirou, até a vida cheia", () => {
   const hit = seedWhere(
     (seed) => {
       const { encounter } = setup(
         ["AE"],
         (at) => [
-          unitFromCharacter(makeCharacter("A", { characterClass: "luminar", level: 4, currentHp: 10, attributes: { olho: FIRST } }), {
-            team: "party",
-            pos: at("A"),
-          }),
+          makeUnit("A", "party", at("A"), { kit: [TEST_KIT.dreno], currentHp: 10, attributes: { olho: FIRST } }),
           makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300 }),
         ],
         seed,
       );
-      const events = run(encounter, { type: "ability", unitId: "A", abilityId: "luminar.antifona_de_aurora", target: unit(encounter, "E").pos });
+      const events = run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.dreno.id, target: unit(encounter, "E").pos });
       return { encounter, events };
     },
     ({ events }) => eventsOf(events, "damage").length > 0,
@@ -406,13 +388,13 @@ test("a Antífona devolve a quem bate o que o golpe tirou, até a vida cheia", (
   assert.equal(unit(hit.encounter, "A").currentHp, 10 + healed[0].amount);
 });
 
-test("a Muralha de Prumo põe uma guarda na frente de um aliado, e ela cai quando a vez dele chega", () => {
+test("a guarda posta na frente de um aliado cai quando a vez dele chega", () => {
   const { encounter } = setup(["LA.E"], (at) => [
-    unitFromCharacter(makeCharacter("L", { characterClass: "luminar", level: 2, attributes: { olho: FIRST } }), { team: "party", pos: at("L") }),
+    makeUnit("L", "party", at("L"), { kit: [TEST_KIT.muralha], attributes: { olho: FIRST } }),
     makeUnit("A", "party", at("A"), { attributes: { olho: 1 } }),
     makeUnit("E", "enemy", at("E"), { attributes: { olho: 50 } }),
   ]);
-  run(encounter, { type: "ability", unitId: "L", abilityId: "luminar.muralha_de_prumo", target: unit(encounter, "A").pos });
+  run(encounter, { type: "ability", unitId: "L", abilityId: TEST_KIT.muralha.id, target: unit(encounter, "A").pos });
   assert.ok(unit(encounter, "A").statuses.some((status) => status.guard));
   // É a ação bônus: o golpe do turno continua de pé.
   assert.equal(unit(encounter, "L").turn.action, true);
@@ -422,34 +404,36 @@ test("a Muralha de Prumo põe uma guarda na frente de um aliado, e ela cai quand
 });
 
 test("a IA dá valor ao que os kits fazem: abre a trinca antes de bater, some quando apanha, e não cura quem não se cura", () => {
-  // O Rachador da IA usa a ação bônus na Trinca e a ação no golpe, no mesmo alvo.
+  // Quem atira usa a ação bônus na Trinca e a ação no golpe, no mesmo alvo.
   const sniper = setup(["A....E"], (at) => [
-    unitFromCharacter(makeCharacter("A", { characterClass: "rachador", attributes: { olho: FIRST } }), { team: "enemy", pos: at("A") }),
+    makeUnit("A", "enemy", at("A"), { kit: [TEST_KIT.trinca, TEST_KIT.tiro], attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E"), { currentHp: 300, maxHp: 300 }),
   ]).encounter;
+  // Parado: o golpe rápido de perto não entra na conta, só o que alcança daqui.
+  unit(sniper, "A").turn.movement = 0;
   const shot = planTurn(sniper);
-  assert.equal(shot.bonus?.ability.id, "rachador.quick_attack");
+  assert.equal(shot.bonus?.ability.id, TEST_KIT.trinca.id);
   assert.ok(shot.action && shot.action.ability.effects.some((effect) => effect.kind === "damage"));
 
   // A esquiva vale o dano que poupa: sem ninguém que o alcance, ficar Despercebido não vale o gesto.
   const safe = setup(["A.......E"], (at) => [
-    unitFromCharacter(makeCharacter("A", { characterClass: "sombrilico", attributes: { olho: FIRST } }), { team: "enemy", pos: at("A") }),
+    makeUnit("A", "enemy", at("A"), { kit: [TEST_KIT.sumir], attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E")),
   ]).encounter;
   const idle = unit(safe, "A");
   idle.turn.movement = 0;
   idle.breath = idle.maxBreath;
-  assert.notEqual(planTurn(safe).action?.ability.id, "sombrilico.defend");
+  assert.notEqual(planTurn(safe).action?.ability.id, TEST_KIT.sumir.id);
 
   // Um curandeiro não gasta a cura em quem a cura não pega.
   const ward = setup(["HW......E"], (at) => [
-    unitFromCharacter(makeCharacter("H", { characterClass: "luminar", attributes: { olho: FIRST } }), { team: "enemy", pos: at("H") }),
+    makeUnit("H", "enemy", at("H"), { kit: [TEST_KIT.cura], attributes: { olho: FIRST } }),
     makeUnit("W", "enemy", at("W"), { currentHp: 3 }),
     makeUnit("E", "party", at("E")),
   ]).encounter;
-  assert.equal(planTurn(ward).action?.ability.id, "luminar.heal");
+  assert.equal(planTurn(ward).action?.ability.id, TEST_KIT.cura.id);
   afflict(ward, "W", "irreversible", 3);
-  assert.notEqual(planTurn(ward).action?.ability.id, "luminar.heal");
+  assert.notEqual(planTurn(ward).action?.ability.id, TEST_KIT.cura.id);
 });
 
 test("a gente do mundo luta com o que é: humano, da escola dela, com o que veste; o recitador de Ymboripe conjura", () => {

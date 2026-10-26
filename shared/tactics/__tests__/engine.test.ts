@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { addItemToInventory } from "../../inventoryEffects";
 import { findItemTemplate } from "../../mock/items";
+import { TEST_ITEMS, TEST_KIT } from "./helpers";
 import {
   activeUnit,
   applyCommand,
@@ -109,16 +110,16 @@ test("corpo a corpo não alcança de longe, e tiro não atravessa parede", () =>
     makeUnit("E", "enemy", at("E")),
   ]);
   assert.deepEqual(
-    applyCommand(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: { x: 4, y: 0 } }),
+    applyCommand(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: { x: 4, y: 0 } }),
     { ok: false, reason: "invalid_target" },
   );
 
   const sniper = setup(["A.#.E"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { olho: FIRST } }),
+    makeUnit("A", "party", at("A"), { kit: [TEST_KIT.tiro], attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]).encounter;
   assert.deepEqual(
-    applyCommand(sniper, { type: "ability", unitId: "A", abilityId: "rachador.attack", target: { x: 4, y: 0 } }),
+    applyCommand(sniper, { type: "ability", unitId: "A", abilityId: "teste.tiro", target: { x: 4, y: 0 } }),
     { ok: false, reason: "invalid_target" },
   );
 });
@@ -135,7 +136,7 @@ test("um ataque gasta a ação; o golpe rápido cabe na ação bônus do mesmo t
       seed,
     );
     const target = { x: 1, y: 0 };
-    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target });
+    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target });
 
     const [roll] = eventsOf(events, "attackRoll");
     const damage = eventsOf(events, "damage");
@@ -148,12 +149,12 @@ test("um ataque gasta a ação; o golpe rápido cabe na ação bônus do mesmo t
       assert.equal(unit(encounter, "E").currentHp, 200);
     }
 
-    assert.deepEqual(applyCommand(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target }), {
+    assert.deepEqual(applyCommand(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target }), {
       ok: false,
       reason: "resource_spent",
     });
     assert.equal(
-      applyCommand(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.quick_attack", target }).ok,
+      applyCommand(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.quick_attack", target }).ok,
       true,
     );
   }
@@ -164,11 +165,11 @@ test("sair de perto de um inimigo corpo a corpo provoca um ataque de oportunidad
   const { encounter } = setup(["...AE", "....F"], (at) => [
     makeUnit("A", "party", at("A"), { attributes: { olho: FIRST }, currentHp: 500, maxHp: 500 }),
     makeUnit("E", "enemy", at("E")),
-    makeUnit("F", "enemy", at("F"), { characterClass: "rachador" }),
+    makeUnit("F", "enemy", at("F"), { equipment: { weapon: "gear-besta" } }),
   ]);
   const events = run(encounter, { type: "move", unitId: "A", to: { x: 0, y: 0 } });
 
-  // Só o Guardião reage: o Rachador luta de longe e não ameaça quem passa.
+  // Só quem bate de perto reage: o da besta luta de longe e não ameaça quem passa.
   const reactions = eventsOf(events, "abilityUsed");
   assert.deepEqual(
     reactions.map((event) => [event.unit, event.reaction]),
@@ -179,13 +180,13 @@ test("sair de perto de um inimigo corpo a corpo provoca um ataque de oportunidad
   assert.deepEqual(unit(encounter, "A").pos, { x: 0, y: 0 });
 });
 
-test("o Guardião arremessa o alvo, e a parede segura o arremesso", () => {
+test("o golpe que empurra arremessa o alvo, e a parede segura o arremesso", () => {
   let pushes = 0;
   for (const seed of SEEDS) {
     const { encounter } = setup(
       ["AE.#"],
       (at) => [
-        makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
+        makeUnit("A", "party", at("A"), { kit: [TEST_KIT.empurrao], attributes: { olho: FIRST } }),
         makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
       ],
       seed,
@@ -193,7 +194,7 @@ test("o Guardião arremessa o alvo, e a parede segura o arremesso", () => {
     const events = run(encounter, {
       type: "ability",
       unitId: "A",
-      abilityId: "guardiao.heavy_attack",
+      abilityId: "teste.empurrao",
       target: { x: 1, y: 0 },
     });
 
@@ -209,7 +210,7 @@ test("o Guardião arremessa o alvo, e a parede segura o arremesso", () => {
 
 test("área acerta todo mundo no raio, aliado inclusive", () => {
   const { encounter } = setup(["A...E", "....F", "....B"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
+    makeUnit("A", "party", at("A"), { kit: [TEST_KIT.gelo], attributes: { olho: FIRST } }),
     makeUnit("B", "party", at("B")),
     makeUnit("E", "enemy", at("E")),
     makeUnit("F", "enemy", at("F")),
@@ -217,7 +218,7 @@ test("área acerta todo mundo no raio, aliado inclusive", () => {
   const events = run(encounter, {
     type: "ability",
     unitId: "A",
-    abilityId: "cantor_de_ealen.heavy_attack",
+    abilityId: "teste.gelo",
     target: { x: 4, y: 1 },
   });
 
@@ -237,7 +238,7 @@ test("a guarda reduz o dano e cai no começo do próprio turno seguinte", () => 
   const raised = run(encounter, {
     type: "ability",
     unitId: "A",
-    abilityId: "guardiao.defend",
+    abilityId: "espadachim.defend",
     target: { x: 0, y: 0 },
   });
   assert.equal(eventsOf(raised, "statusApplied")[0].statusId, "guarding");
@@ -246,7 +247,7 @@ test("a guarda reduz o dano e cai no começo do próprio turno seguinte", () => 
   const strike = run(encounter, {
     type: "ability",
     unitId: "E",
-    abilityId: "guardiao.attack",
+    abilityId: "espadachim.attack",
     target: { x: 0, y: 0 },
   });
   const landed = ["hit", "crit"].includes(eventsOf(strike, "attackRoll")[0].outcome);
@@ -262,7 +263,7 @@ test("a guarda reduz o dano e cai no começo do próprio turno seguinte", () => 
 test("item custa a ação bônus, cura e sai da mochila", () => {
   const character = makeCharacter("A", { currentHp: 10, attributes: { olho: FIRST } });
   addItemToInventory(character, findItemTemplate("item-lagrima-de-eir")!);
-  addItemToInventory(character, findItemTemplate("item-oleo-da-coruja-de-miraven")!);
+  addItemToInventory(character, TEST_ITEMS.foco);
 
   const { encounter } = setup(["AE"], (at) => [
     unitFromCharacter(character, { team: "party", pos: at("A") }),
@@ -275,7 +276,7 @@ test("item custa a ação bônus, cura e sai da mochila", () => {
   assert.equal(unit(encounter, "A").inventory!.slots.length, 1);
   assert.equal(character.currentHp, 10, "a ficha salva não é tocada pela luta");
 
-  assert.deepEqual(applyCommand(encounter, { type: "useItem", unitId: "A", itemId: "item-oleo-da-coruja-de-miraven" }), {
+  assert.deepEqual(applyCommand(encounter, { type: "useItem", unitId: "A", itemId: TEST_ITEMS.foco.id }), {
     ok: false,
     reason: "resource_spent",
   });
@@ -287,17 +288,17 @@ test("item custa a ação bônus, cura e sai da mochila", () => {
 
 test("Foco garante o crítico do próximo ataque e se gasta nele", () => {
   const character = makeCharacter("A", { attributes: { olho: FIRST } });
-  addItemToInventory(character, findItemTemplate("item-oleo-da-coruja-de-miraven")!);
+  addItemToInventory(character, TEST_ITEMS.foco);
 
   const { encounter } = setup(["AE"], (at) => [
     unitFromCharacter(character, { team: "party", pos: at("A") }),
     makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
   ]);
-  run(encounter, { type: "useItem", unitId: "A", itemId: "item-oleo-da-coruja-de-miraven" });
+  run(encounter, { type: "useItem", unitId: "A", itemId: TEST_ITEMS.foco.id });
   const events = run(encounter, {
     type: "ability",
     unitId: "A",
-    abilityId: "guardiao.attack",
+    abilityId: "espadachim.attack",
     target: { x: 1, y: 0 },
   });
 
@@ -313,12 +314,12 @@ function arena(seed: number) {
   return setup(
     ARENA,
     (at) => [
-      makeUnit("A", "party", at("A"), { characterClass: "guardiao" }),
-      makeUnit("B", "party", at("B"), { characterClass: "cantor_de_ealen" }),
-      makeUnit("C", "party", at("C"), { characterClass: "rachador" }),
-      makeUnit("E", "enemy", at("E"), { characterClass: "luminar" }),
-      makeUnit("F", "enemy", at("F"), { characterClass: "entropista" }),
-      makeUnit("G", "enemy", at("G"), { characterClass: "sombrilico" }),
+      makeUnit("A", "party", at("A"), { kit: [TEST_KIT.puxao, TEST_KIT.empurrao] }),
+      makeUnit("B", "party", at("B"), { kit: [TEST_KIT.gelo] }),
+      makeUnit("C", "party", at("C"), { equipment: { weapon: "gear-besta" } }),
+      makeUnit("E", "enemy", at("E"), { kit: [TEST_KIT.cura, TEST_KIT.dreno] }),
+      makeUnit("F", "enemy", at("F"), { kit: [TEST_KIT.fogo] }),
+      makeUnit("G", "enemy", at("G"), { kit: [TEST_KIT.sumir, TEST_KIT.sufoco] }),
     ],
     seed,
   );
@@ -441,10 +442,10 @@ test("o golpe de abertura acontece antes da primeira rodada e não gasta nada do
     grid,
     units: [
       makeUnit("E", "enemy", markers.E[0], { attributes: { olho: FIRST }, currentHp: 500, maxHp: 500 }),
-      makeUnit("A", "party", markers.A[0], { characterClass: "rachador" }),
+      makeUnit("A", "party", markers.A[0], { kit: [TEST_KIT.tiro] }),
     ],
     surprised: "enemy",
-    opening: { unitId: "A", abilityId: "rachador.attack", target: markers.E[0] },
+    opening: { unitId: "A", abilityId: "teste.tiro", target: markers.E[0] },
     seed: 1,
   });
 
@@ -467,7 +468,7 @@ test("quem luta de perto corre até o quadrado da investida e bate de lá", () =
       makeUnit("E", "enemy", markers.E[0], { currentHp: 500, maxHp: 500 }),
     ],
     surprised: "enemy",
-    opening: { unitId: "A", abilityId: "guardiao.attack", target: markers.E[0], from: { x: 5, y: 0 } },
+    opening: { unitId: "A", abilityId: "espadachim.attack", target: markers.E[0], from: { x: 5, y: 0 } },
     seed: 1,
   });
 
@@ -489,9 +490,9 @@ test("golpe de abertura que não vale não acontece: a luta começa sem ele", ()
 
   // Longe demais pra espada, quadrado aonde não se chega num turno, habilidade que ele não tem.
   for (const opening of [
-    { abilityId: "guardiao.attack" },
-    { abilityId: "guardiao.attack", from: { x: 9, y: 0 } },
-    { abilityId: "rachador.attack" },
+    { abilityId: "espadachim.attack" },
+    { abilityId: "espadachim.attack", from: { x: 9, y: 0 } },
+    { abilityId: "teste.tiro" },
   ]) {
     const { encounter, events } = start(opening);
     assert.deepEqual(eventsOf(events, "abilityUsed"), []);
@@ -508,7 +509,7 @@ test("um golpe de abertura que derruba o último inimigo acaba a luta antes de e
       grid,
       units: [makeUnit("A", "party", markers.A[0]), makeUnit("E", "enemy", markers.E[0], { currentHp: 1 })],
       surprised: "enemy",
-      opening: { unitId: "A", abilityId: "guardiao.attack", target: markers.E[0] },
+      opening: { unitId: "A", abilityId: "espadachim.attack", target: markers.E[0] },
       seed,
     });
     if (encounter.winner === "party") {

@@ -161,14 +161,14 @@ test("quebrar o destrutível marcado dispara a deixa dele", () => {
     ["A...cE"],
     [{ id: "quebrou", when: { kind: "broken", prop: "caixote" }, ends: "win" }],
     (at) => [
-      makeUnit("A", "party", at("A"), { characterClass: "rachador", attributes: { olho: FIRST } }),
+      makeUnit("A", "party", at("A"), { equipment: { weapon: "gear-besta" }, attributes: { olho: FIRST } }),
       makeUnit("E", "enemy", at("E"), { currentHp: 500, maxHp: 500 }),
     ],
   );
 
   const log: TacticalEvent[] = [];
   for (let turn = 0; turn < 6 && !isOver(encounter); turn++) {
-    log.push(...run(encounter, { type: "ability", unitId: "A", abilityId: "rachador.attack", target: { x: 4, y: 0 } }));
+    log.push(...run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: { x: 4, y: 0 } }));
     if (isOver(encounter)) break;
     run(encounter, { type: "endTurn", unitId: "A" });
     run(encounter, { type: "endTurn", unitId: "E" });

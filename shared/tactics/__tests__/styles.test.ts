@@ -24,7 +24,7 @@ import {
   type TacticalEvent,
   type Unit,
 } from "../index";
-import { FIRST, eventsOf, makeCharacter, makeUnit, run } from "./helpers";
+import { FIRST, TEST_KIT, eventsOf, makeCharacter, makeUnit, run } from "./helpers";
 
 /**
  * As escolas: o triângulo na rolagem de ataque, o traço de cada uma no golpe,
@@ -97,7 +97,7 @@ test("a vantagem de escola entra na rolagem de ataque, pros dois lados, e só en
     styled(makeUnit("B", "party", at("B")), "ipojy"),
   ]);
   const [lish, guard, ally] = encounter.units;
-  const strike = lish.abilities.find((ability) => ability.id === "guardiao.attack")!;
+  const strike = lish.abilities.find((ability) => ability.id === "espadachim.attack")!;
 
   const edge = attackEdge(encounter, lish, strike, guard);
   assert.equal(edge.style, 1);
@@ -124,7 +124,7 @@ test("Onda do Gryskar: cada golpe seguido no mesmo alvo soma no dano do próximo
   for (let turn = 0; turn < 40; turn++) {
     const { events, damage, other } = compare(
       encounter,
-      { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: enemy.pos },
+      { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: enemy.pos },
       (copy) => delete findUnit(copy, "A")!.style,
     );
     const [roll] = eventsOf(events, "attackRoll");
@@ -157,7 +157,7 @@ test("Onda do Gryskar: trocar de alvo recomeça a conta, e área não é insist�
   ]);
   const hero = findUnit(encounter, "A")!;
   hero.streak = { target: "E", hits: 3 };
-  const events = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: findUnit(encounter, "F")!.pos });
+  const events = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: findUnit(encounter, "F")!.pos });
   const [roll] = eventsOf(events, "attackRoll");
   assert.equal(eventsOf(events, "styleTrait").length, 0);
   assert.deepEqual(hero.streak, roll.outcome === "fumble" ? undefined : { target: "F", hits: 1 });
@@ -169,11 +169,11 @@ test("Rachadura da Tsvirana: o dano dobra em quem acabou de repetir a ação do 
     makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 0 } }),
   ]);
   const enemy = findUnit(encounter, "E")!;
-  enemy.habit = { last: "guardiao.attack", repeated: true, attackTurns: 2 };
+  enemy.habit = { last: "espadachim.attack", repeated: true, attackTurns: 2 };
 
   const { events, damage, other } = compare(
     encounter,
-    { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: enemy.pos },
+    { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: enemy.pos },
     (copy) => (findUnit(copy, "E")!.habit!.repeated = false),
   );
   const [roll] = eventsOf(events, "attackRoll");
@@ -196,20 +196,20 @@ test("o motor anota o que cada um faz com a ação: repetir, variar e bater em s
     pass(encounter);
   };
 
-  turn("guardiao.defend");
-  assert.deepEqual(hero.habit, { last: "guardiao.defend", repeated: false, attackTurns: 0 });
-  turn("guardiao.defend");
+  turn("espadachim.defend");
+  assert.deepEqual(hero.habit, { last: "espadachim.defend", repeated: false, attackTurns: 0 });
+  turn("espadachim.defend");
   assert.equal(habit().repeated, true);
   // Um turno sem ação não repete nada, e quebra a sequência.
   turn();
   assert.deepEqual(hero.habit, { last: undefined, repeated: false, attackTurns: 0 });
-  turn("guardiao.defend");
+  turn("espadachim.defend");
   assert.equal(habit().repeated, false);
 
   // Golpe atrás de golpe conta os turnos seguidos batendo; a guarda zera.
   run(encounter, { type: "move", unitId: "A", to: { x: 3, y: 0 } });
   const strike = () => {
-    run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: findUnit(encounter, "E")!.pos });
+    run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: findUnit(encounter, "E")!.pos });
     pass(encounter);
     pass(encounter);
   };
@@ -218,7 +218,7 @@ test("o motor anota o que cada um faz com a ação: repetir, variar e bater em s
   strike();
   assert.equal(habit().attackTurns, 2);
   assert.equal(habit().repeated, true);
-  turn("guardiao.defend");
+  turn("espadachim.defend");
   assert.equal(habit().attackTurns, 0);
 });
 
@@ -229,7 +229,7 @@ test("Muralha: o Baluarte de criatura tira um tanto fixo de cada golpe, depois d
   ]);
   const { events, damage, other } = compare(
     encounter,
-    { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: findUnit(encounter, "E")!.pos },
+    { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: findUnit(encounter, "E")!.pos },
     (copy) => delete findUnit(copy, "E")!.style,
   );
   if (eventsOf(events, "attackRoll")[0].outcome === "fumble") return;
@@ -246,7 +246,7 @@ test("Contragolpe da Ipojy: quem a ataca e erra leva o golpe de volta, na reaç�
 
   let countered = 0;
   for (let turn = 0; turn < 20; turn++) {
-    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: enemy.pos });
+    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: enemy.pos });
     const [roll] = eventsOf(events, "attackRoll");
     const traits = eventsOf(events, "styleTrait");
     if (roll.outcome === "crit") {
@@ -259,15 +259,15 @@ test("Contragolpe da Ipojy: quem a ataca e erra leva o golpe de volta, na reaç�
       assert.deepEqual(
         used.map((event) => [event.unit, event.abilityId, event.reaction]),
         [
-          ["A", "guardiao.attack", false],
-          ["E", "guardiao.attack", true],
+          ["A", "espadachim.attack", false],
+          ["E", "espadachim.attack", true],
         ],
       );
       assert.ok(events.indexOf(traits[0]) < events.indexOf(used[1]));
       assert.equal(enemy.turn.reaction, false);
 
       // Sem reação, o segundo erro da rodada passa sem resposta.
-      const again = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.quick_attack", target: enemy.pos });
+      const again = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.quick_attack", target: enemy.pos });
       assert.deepEqual(eventsOf(again, "styleTrait"), []);
     }
     pass(encounter);
@@ -278,17 +278,17 @@ test("Contragolpe da Ipojy: quem a ataca e erra leva o golpe de volta, na reaç�
 
 test("Contragolpe da Ipojy: não alcança quem errou de longe, e não vem de quem não é da Espera", () => {
   const { encounter } = stage(["A..E", "F..."], (at) => [
-    makeUnit("A", "party", at("A"), { ...TOUGH, attributes: { olho: FIRST } }),
+    makeUnit("A", "party", at("A"), { ...TOUGH, kit: [TEST_KIT.puxao], attributes: { olho: FIRST } }),
     styled(makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 200 } }), "ipojy"),
     styled(makeUnit("F", "enemy", at("F"), { ...TOUGH, attributes: { couro: 200 } }), "gryskar"),
   ]);
   // O puxão de três quadrados erra de longe: o golpe dela é de perto e não chega.
-  const far = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.quick_attack", target: findUnit(encounter, "E")!.pos });
+  const far = run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.puxao.id, target: findUnit(encounter, "E")!.pos });
   if (eventsOf(far, "attackRoll")[0].outcome !== "crit") assert.deepEqual(eventsOf(far, "styleTrait"), []);
   assert.equal(findUnit(encounter, "E")!.turn.reaction, true);
 
   // Colado, mas noutra escola: errar não custa nada.
-  const near = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: findUnit(encounter, "F")!.pos });
+  const near = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: findUnit(encounter, "F")!.pos });
   assert.deepEqual(eventsOf(near, "styleTrait"), []);
 });
 
@@ -299,8 +299,8 @@ test("Voto da Ipojy: quem é da Espera não abre a luta — só bate depois que 
   ]);
   const xandui = findUnit(encounter, "I")!;
   const enemy = findUnit(encounter, "E")!;
-  const strike = xandui.abilities.find((ability) => ability.id === "guardiao.attack")!;
-  const guard = xandui.abilities.find((ability) => ability.id === "guardiao.defend")!;
+  const strike = xandui.abilities.find((ability) => ability.id === "espadachim.attack")!;
+  const guard = xandui.abilities.find((ability) => ability.id === "espadachim.defend")!;
 
   // Ninguém bateu ainda: golpe nenhum tem alvo, e o motor recusa. Guardar-se não é golpe.
   assert.equal(encounter.opened, undefined);
@@ -313,7 +313,7 @@ test("Voto da Ipojy: quem é da Espera não abre a luta — só bate depois que 
   pass(encounter);
 
   // O outro lado bate (acerte ou erre): a luta abriu, e agora ela responde.
-  run(encounter, { type: "ability", unitId: "E", abilityId: "guardiao.attack", target: xandui.pos });
+  run(encounter, { type: "ability", unitId: "E", abilityId: "espadachim.attack", target: xandui.pos });
   assert.equal(encounter.opened, true);
   pass(encounter);
   assert.deepEqual(abilityTargets(encounter, xandui, strike), [enemy.pos]);
@@ -332,10 +332,10 @@ test("Voto da Ipojy: não embosca — quem ainda está Surpreso não é alvo del
   );
   const xandui = findUnit(encounter, "I")!;
   const enemy = findUnit(encounter, "E")!;
-  const strike = xandui.abilities.find((ability) => ability.id === "guardiao.attack")!;
+  const strike = xandui.abilities.find((ability) => ability.id === "espadachim.attack")!;
 
   // Jarupã abre a luta; o inimigo ainda está pego de surpresa, e ela não bate em quem não esperava.
-  run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.attack", target: enemy.pos });
+  run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: enemy.pos });
   assert.equal(encounter.opened, true);
   pass(encounter);
   assert.equal(activeUnit(encounter)!.id, "I");
@@ -371,7 +371,7 @@ test("Voto da Ipojy: quem é da Espera não dá golpe de abertura — a luta com
       styled(makeUnit("I", "party", at("I"), { attributes: { olho: FIRST } }), "ipojy"),
       makeUnit("E", "enemy", at("E"), TOUGH),
     ],
-    { surprised: "enemy", opening: { unitId: "I", abilityId: "guardiao.attack", target: { x: 2, y: 0 }, from: { x: 1, y: 0 } } },
+    { surprised: "enemy", opening: { unitId: "I", abilityId: "espadachim.attack", target: { x: 2, y: 0 }, from: { x: 1, y: 0 } } },
   );
   assert.deepEqual(eventsOf(events, "abilityUsed"), []);
   assert.deepEqual(eventsOf(events, "moved"), []);
@@ -425,7 +425,7 @@ test("condição que já chega com alguém dura a luta toda, e a de braço ferid
   const enemy = findUnit(encounter, "E")!;
   assert.deepEqual(eventsOf(events, "statusApplied").map((event) => [event.target, event.name]), [["A", "Braço ferido"]]);
 
-  const strike = hero.abilities.find((ability) => ability.id === "guardiao.attack")!;
+  const strike = hero.abilities.find((ability) => ability.id === "espadachim.attack")!;
   const edge = attackEdge(encounter, hero, strike, enemy);
   const healthy = structuredClone(hero);
   healthy.statuses = [];
@@ -456,14 +456,14 @@ test("quem só revida não bate em quem ainda não o provocou o bastante", () =>
 test("quem espelha repete o tipo da última ação de quem ele copia", () => {
   const { encounter } = stage(["AE"], (at) => [
     makeUnit("A", "party", at("A")),
-    Object.assign(makeUnit("E", "enemy", at("E"), { characterClass: "sombrilico", attributes: { olho: FIRST } }), { quirks: { mirrors: "A" } }),
+    Object.assign(makeUnit("E", "enemy", at("E"), { attributes: { olho: FIRST } }), { quirks: { mirrors: "A" } }),
   ]);
   const hero = findUnit(encounter, "A")!;
 
-  hero.habit = { last: "guardiao.defend", repeated: false, attackTurns: 0 };
-  assert.equal(planTurn(encounter).action?.ability.id, "sombrilico.defend");
-  hero.habit = { last: "guardiao.heavy_attack", repeated: false, attackTurns: 1 };
-  assert.equal(planTurn(encounter).action?.ability.id, "sombrilico.heavy_attack");
+  hero.habit = { last: "espadachim.defend", repeated: false, attackTurns: 0 };
+  assert.equal(planTurn(encounter).action?.ability.id, "espadachim.defend");
+  hero.habit = { last: "espadachim.heavy_attack", repeated: false, attackTurns: 1 };
+  assert.equal(planTurn(encounter).action?.ability.id, "espadachim.heavy_attack");
   // Sem nada pra copiar (ela ainda não agiu), luta como qualquer um.
   hero.habit = { last: undefined, repeated: false, attackTurns: 0 };
   assert.ok(planTurn(encounter).action);

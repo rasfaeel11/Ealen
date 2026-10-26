@@ -127,7 +127,7 @@ test("alvo que sumiu: a recitação se perde, e a mana fica", () => {
 test("apanhar recitando pode quebrar o texto: d20 + Saber contra 10 mais metade do golpe", () => {
   const { encounter } = stage(["ME"], (at) => [
     mage(at("M"), 0),
-    makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 80 } }),
+    makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 80, forca: 80 } }),
   ]);
   const caster = findUnit(encounter, "M")!;
   caster.currentHp = caster.maxHp = 9000;
@@ -135,7 +135,7 @@ test("apanhar recitando pode quebrar o texto: d20 + Saber contra 10 mais metade 
   pass(encounter);
 
   // Um golpe de mais de 60: nem um 20 natural segura o texto.
-  const hit = run(encounter, { type: "ability", unitId: "E", abilityId: "guardiao.attack", target: caster.pos });
+  const hit = run(encounter, { type: "ability", unitId: "E", abilityId: "espadachim.attack", target: caster.pos });
   const [damage] = eventsOf(hit, "damage");
   assert.ok(damage.amount > 60, `o golpe deu ${damage.amount}`);
   assert.deepEqual(eventsOf(hit, "recitationBroken"), [

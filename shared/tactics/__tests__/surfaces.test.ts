@@ -11,7 +11,7 @@ import {
   type Pos,
   type SurfaceId,
 } from "../index";
-import { FIRST, eventsOf, makeUnit, run, setup } from "./helpers";
+import { FIRST, TEST_KIT, eventsOf, makeUnit, run, setup } from "./helpers";
 
 function lay(encounter: Encounter, id: SurfaceId, ...tiles: Pos[]): void {
   for (const pos of tiles) encounter.surfaces.push({ pos, id, roundsLeft: 3 });
@@ -28,12 +28,12 @@ function duel(rows: string[], overrides: Parameters<typeof makeUnit>[3] = {}, se
   ).encounter;
 }
 
-test("o Entropista deixa o chão do alvo em chamas, acerte ou erre, e elas queimam quem começa o turno ali", () => {
+test("o fogo deixa o chão do alvo em chamas, acerte ou erre, e elas queimam quem começa o turno ali", () => {
   for (const seed of [1, 2, 3, 4, 5, 6]) {
-    const encounter = duel(["A....E"], { characterClass: "entropista", attributes: { olho: FIRST } }, seed);
+    const encounter = duel(["A....E"], { kit: [TEST_KIT.fogo], attributes: { olho: FIRST } }, seed);
     const target = { x: 5, y: 0 };
 
-    const cast = run(encounter, { type: "ability", unitId: "A", abilityId: "entropista.heavy_attack", target });
+    const cast = run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.fogo.id, target });
     const [created] = eventsOf(cast, "surfaceCreated");
     assert.deepEqual({ id: created.surfaceId, tiles: created.tiles, rounds: created.rounds }, { id: "fire", tiles: [target], rounds: 2 });
     // O chão pegou fogo DEPOIS do golpe: o alvo não queima na hora.
@@ -51,8 +51,8 @@ test("o Entropista deixa o chão do alvo em chamas, acerte ou erre, e elas queim
 });
 
 test("a superfície dura as rodadas dela e some", () => {
-  const encounter = duel(["A....E"], { characterClass: "entropista", attributes: { olho: FIRST } });
-  run(encounter, { type: "ability", unitId: "A", abilityId: "entropista.heavy_attack", target: { x: 5, y: 0 } });
+  const encounter = duel(["A....E"], { kit: [TEST_KIT.fogo], attributes: { olho: FIRST } });
+  run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.fogo.id, target: { x: 5, y: 0 } });
 
   run(encounter, { type: "endTurn", unitId: "A" });
   const second = run(encounter, { type: "endTurn", unitId: "E" });
@@ -119,15 +119,15 @@ test("a geada prende o passo: entrar nela custa o dobro", () => {
   assert.equal(costs.has(5), false);
 });
 
-test("a área do Cantor deixa geada em todo o raio, menos onde ninguém pisa", () => {
+test("a área de gelo deixa geada em todo o raio, menos onde ninguém pisa", () => {
   const { encounter } = setup(["A.....", "....E.", "....#."], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
+    makeUnit("A", "party", at("A"), { kit: [TEST_KIT.gelo], attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const events = run(encounter, {
     type: "ability",
     unitId: "A",
-    abilityId: "cantor_de_ealen.heavy_attack",
+    abilityId: TEST_KIT.gelo.id,
     target: { x: 4, y: 1 },
   });
 
@@ -162,12 +162,12 @@ test("quem cai ao começar o turno nas chamas perde a vez — e a luta, se era o
 test("ser arremessado pra dentro das chamas queima", () => {
   let pushed = 0;
   for (let seed = 1; seed <= 12; seed++) {
-    const encounter = duel(["AE..."], {}, seed);
+    const encounter = duel(["AE..."], { kit: [TEST_KIT.empurrao], attributes: { olho: FIRST } }, seed);
     lay(encounter, "fire", { x: 3, y: 0 });
     const events = run(encounter, {
       type: "ability",
       unitId: "A",
-      abilityId: "guardiao.heavy_attack",
+      abilityId: TEST_KIT.empurrao.id,
       target: { x: 1, y: 0 },
     });
     if (eventsOf(events, "pushed").length === 0) continue;

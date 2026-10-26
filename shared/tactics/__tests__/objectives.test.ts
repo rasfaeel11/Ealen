@@ -20,7 +20,7 @@ import {
   type TacticalEvent,
   type Unit,
 } from "../index";
-import { FIRST, eventsOf, makeUnit, run } from "./helpers";
+import { FIRST, TEST_KIT, eventsOf, makeUnit, run } from "./helpers";
 
 /**
  * O que uma luta com roteiro pede além das deixas de sempre: objeto em que se
@@ -76,7 +76,7 @@ test("mexer num objeto pede estar colado nele, custa a ação e só vale uma vez
 test("mexer sem a ação do turno é recusado, e o objeto continua por usar", () => {
   const { encounter } = staged(["As.......E"], pair);
   const [bell] = encounter.props;
-  run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.defend", target: { x: 0, y: 0 } });
+  run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.defend", target: { x: 0, y: 0 } });
   assert.deepEqual(applyCommand(encounter, { type: "interact", unitId: "A", target: bell.pos }), { ok: false, reason: "resource_spent" });
   assert.equal(bell.used, undefined);
 });
@@ -92,19 +92,19 @@ test("só o grupo do jogador mexe em objeto", () => {
 
 test("o que não se quebra não é alvo de golpe nenhum, nem em área", () => {
   const { encounter } = staged(["Asc.....E"], (at) => [
-    makeUnit("A", "party", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
+    makeUnit("A", "party", at("A"), { kit: [TEST_KIT.gelo], equipment: { weapon: "gear-besta" }, attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E")),
   ]);
   const hero = activeUnit(encounter)!;
   const [bell, crate] = encounter.props;
 
-  const strike = hero.abilities.find((ability) => ability.id === "cantor_de_ealen.attack")!;
+  const strike = hero.abilities.find((ability) => ability.id === "espadachim.attack")!;
   const targets = abilityTargets(encounter, hero, strike);
   assert.ok(targets.some((pos) => pos.x === crate.pos.x), "o caixote é alvo");
   assert.ok(!targets.some((pos) => pos.x === bell.pos.x), "o sino não é");
 
-  // A área do Cantor cai em cima dos dois: só o caixote sente.
-  const blast = hero.abilities.find((ability) => ability.id === "cantor_de_ealen.heavy_attack")!;
+  // A área cai em cima dos dois: só o caixote sente.
+  const blast = hero.abilities.find((ability) => ability.id === TEST_KIT.gelo.id)!;
   assert.deepEqual(affectedProps(encounter, blast, bell.pos), [crate]);
   run(encounter, { type: "ability", unitId: "A", abilityId: blast.id, target: bell.pos });
   assert.equal(bell.hp, 1);
@@ -136,20 +136,20 @@ test("quem não tem vida não perde nenhuma: o golpe vira `immune`, e condição
     const enemy = makeUnit("E", "enemy", at("E"));
     enemy.invulnerable = true;
     // Força alto: só um 1 natural erra.
-    return [makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 60, couro: 60 } }), enemy];
+    return [makeUnit("A", "party", at("A"), { kit: [TEST_KIT.empurrao], attributes: { olho: FIRST, forca: 60, couro: 60 } }), enemy];
   };
   // Procura uma seed em que o golpe pesado (dano + empurrão) pega.
   for (let seed = 1; seed < 30; seed++) {
     const { encounter } = staged(["AE......"], ghost, [], seed);
     const enemy = encounter.units.find((unit) => unit.id === "E")!;
-    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "guardiao.heavy_attack", target: enemy.pos });
+    const events = run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.empurrao.id, target: enemy.pos });
     const [roll] = eventsOf(events, "attackRoll");
     if (roll.outcome !== "hit" && roll.outcome !== "crit") continue;
 
     assert.deepEqual(eventsOf(events, "immune"), [{ type: "immune", target: "E" }]);
     assert.equal(eventsOf(events, "damage").length, 0);
     assert.equal(enemy.currentHp, enemy.maxHp);
-    assert.equal(eventsOf(events, "pushed").length, 1, "o empurrão do Guardião ainda pega");
+    assert.equal(eventsOf(events, "pushed").length, 1, "o empurrão ainda pega");
     assert.equal(isOver(encounter), false);
     return;
   }
@@ -160,11 +160,11 @@ test("chão que fere não fere quem não tem vida", () => {
   const { encounter } = staged(["A...E..."], (at) => {
     const enemy = makeUnit("E", "enemy", at("E"));
     enemy.invulnerable = true;
-    return [makeUnit("A", "party", at("A"), { characterClass: "entropista", attributes: { olho: FIRST } }), enemy];
+    return [makeUnit("A", "party", at("A"), { kit: [TEST_KIT.fogo], attributes: { olho: FIRST } }), enemy];
   });
   const enemy = encounter.units.find((unit) => unit.id === "E")!;
-  // As Chamas do Entropista ficam no chão dele, acerte ou erre.
-  run(encounter, { type: "ability", unitId: "A", abilityId: "entropista.heavy_attack", target: enemy.pos });
+  // O fogo fica no chão do alvo, acerte ou erre.
+  run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.fogo.id, target: enemy.pos });
   assert.equal(encounter.surfaces.length, 1);
   const events = pass(encounter);
   assert.equal(activeUnit(encounter)!.id, "E");
@@ -200,7 +200,7 @@ test("a deixa que traz uma condição a aplica ao disparar, em quem está de pé
   const before = effectiveAttribute(enemy, "couro");
 
   pass(encounter);
-  run(encounter, { type: "ability", unitId: "E", abilityId: "guardiao.defend", target: enemy.pos });
+  run(encounter, { type: "ability", unitId: "E", abilityId: "espadachim.defend", target: enemy.pos });
   assert.ok(enemy.statuses.some((status) => status.guard));
   const events = pass(encounter);
 

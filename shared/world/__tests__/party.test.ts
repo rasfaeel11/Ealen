@@ -3,6 +3,7 @@ import { maxBreath } from "../../breath";
 import { maxMana } from "../../mana";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import "./catalog";
 import {
   PROTAGONIST,
   createProtagonist,
@@ -162,7 +163,7 @@ test("o grupo luta junto até o fim; quem cai numa vitória se levanta com 1 de 
 
   const rewards = grantEncounterRewards(
     hero,
-    ["encounter-lobo-de-bruma", "encounter-lobo-de-bruma", "encounter-servo-enferrujado", "encounter-servo-enferrujado"],
+    ["encounter-teste-cacador", "encounter-teste-cacador", "encounter-teste-bruto", "encounter-teste-bruto"],
     { rngState: 1 },
     [],
     company,
@@ -247,7 +248,7 @@ test("a escola, a aura e a magia vêm do elenco e do bestiário, a cada luta", (
   const [jarupa, xandui] = presentCompanions(members);
 
   const group = map.enemies.filter((enemy) => enemy.group === "salao");
-  const servant = group.find((enemy) => enemy.creature === "encounter-servo-enferrujado")!;
+  const servant = group.find((enemy) => enemy.creature === "encounter-teste-bruto")!;
   const heroTile = { x: 17, y: 20 };
   const party = placeParty(map, hero, heroTile, [jarupa, xandui].map((character) => ({ character, at: pixelOfTile(map, heroTile) })));
   const { encounter, events } = startAreaEncounter(map, party, group, 9, props, undefined, [], [], {

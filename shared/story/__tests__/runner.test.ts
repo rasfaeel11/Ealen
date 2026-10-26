@@ -63,8 +63,8 @@ function makeHost(overrides: Partial<Character["attributes"]> = {}, defeated: st
     character: {
       id: "hero",
       name: "Herói",
-      race: "althirim",
-      characterClass: "luminar",
+      race: "humano",
+      characterClass: "atracao_repulsao",
       level: 1,
       xp: 0,
       attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5, ...overrides },
@@ -87,7 +87,7 @@ VAR portao_aberto = false
 
 === guarda ===
 {guarda == 1: Um homem barra o portão.}
-Guarda: Alto lá{order() == "luminar":, portador de luz}.
+Guarda: Alto lá{order() == "atracao_repulsao":, estudante}.
 {defeated("estrada:lobos"): Guarda: Ouvi dizer que a estrada está limpa.}
 + [Pedir passagem. # check: labia 14]
     {passed():
@@ -112,7 +112,7 @@ test("uma fala 'Nome: texto' sai com quem fala; o resto é narração; e o texto
 
   assert.deepEqual(lines(step.beats), [
     "Um homem barra o portão.",
-    "Guarda> Alto lá, portador de luz.",
+    "Guarda> Alto lá, estudante.",
     "Guarda> Ouvi dizer que a estrada está limpa.",
   ]);
   assert.deepEqual(
@@ -121,7 +121,7 @@ test("uma fala 'Nome: texto' sai com quem fala; o resto é narração; e o texto
   );
 
   const other = makeHost();
-  other.character.characterClass = "rachador";
+  other.character.characterClass = "espadachim";
   assert.deepEqual(lines(new StoryRunner(GUARD, other).start("guarda").beats), [
     "Um homem barra o portão.",
     "Guarda> Alto lá.",
@@ -187,7 +187,7 @@ test("o estado salvo leva as flags, as visitas e as escolhas já gastas pra pró
   assert.equal(second.flag("portao_aberto"), true);
   const step = second.start("guarda");
   // Terceira visita: sem a narração de chegada, e sem a oferta de ajuda (era de uma vez só).
-  assert.deepEqual(lines(step.beats), ["Guarda> Alto lá, portador de luz."]);
+  assert.deepEqual(lines(step.beats), ["Guarda> Alto lá, estudante."]);
   assert.deepEqual(
     step.choices.map((choice) => choice.text),
     ["Pedir passagem.", "Ir embora."],
@@ -563,7 +563,7 @@ const ARM = compile(`
 -> END
 
 === ninguem ===
-~ afflict("taevel", "wounded_arm")
+~ afflict("fulano", "wounded_arm")
 -> END
 
 === nada ===

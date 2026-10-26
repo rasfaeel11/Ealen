@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import "./catalog";
 import { breathOf, maxBreath } from "../../breath";
 import { addItemToInventory, findInventorySlot } from "../../inventoryEffects";
 import { findItemTemplate } from "../../mock/items";
-import { HERO_ID, createProtagonist, joinParty } from "../../party";
-import { activeUnit, findUnit, kitOf } from "../../tactics";
+import { manaOf } from "../../mana";
+import { HERO_ID, createProtagonist, joinParty, magicOf } from "../../party";
+import { activeUnit, findUnit, kitOf, type Ability } from "../../tactics";
+import { TEST_ITEMS } from "../../tactics/__tests__/helpers";
 import { distance, tileAt } from "../../tactics/grid";
 import type { Character } from "../../types/character";
 import {
@@ -57,14 +60,14 @@ function room(side = 14): AreaMap {
 }
 
 function enemy(id: string, x: number, y: number, extra: Partial<AreaEnemy> = {}): AreaEnemy {
-  return { id, name: id, creature: "encounter-lobo-de-bruma", group: id, passive: false, x: x * 16 + 8, y: y * 16 + 8, ...extra };
+  return { id, name: id, creature: "encounter-teste-cacador", group: id, passive: false, x: x * 16 + 8, y: y * 16 + 8, ...extra };
 }
 
 function sheet(id: string, characterClass: Character["characterClass"], extra: Partial<Character> = {}): Character {
   return {
     id,
     name: id,
-    race: "althirim",
+    race: "humano",
     characterClass,
     level: 1,
     xp: 0,
@@ -79,12 +82,27 @@ function sheet(id: string, characterClass: Character["characterClass"], extra: P
 const ability = (character: Character, stance: string) =>
   sheetAbilities(character).find((candidate) => candidate.id.endsWith(`.${stance}`))!;
 
+/** Uma cura de teste paga em Fôlego por quem a faz (a do jogo, a de Endyru, é paga em mana). */
+const BREATH_HEAL: Ability = {
+  id: "teste.cura",
+  name: "Cura",
+  flavor: "",
+  cost: "action",
+  range: 4,
+  targets: "ally",
+  effects: [{ kind: "heal", dice: { count: 1, sides: 6 }, attribute: "fator" }],
+  breath: 2,
+};
+
+/** Quem atira: espadachim de besta. */
+const ARCHER = { equipment: { weapon: "gear-besta" } };
+
 test("fora de luta, golpe abre luta, cura remenda o grupo e guarda não serve pra nada", () => {
-  const guardian = sheet(HERO_ID, "guardiao");
-  assert.equal(fieldUse(ability(guardian, "attack")), "opening");
-  assert.equal(fieldUse(ability(guardian, "heavy_attack")), "opening");
-  assert.equal(fieldUse(ability(guardian, "defend")), undefined);
-  assert.equal(fieldUse(ability(sheet("l", "luminar"), "heal")), "mend");
+  const blade = sheet(HERO_ID, "espadachim");
+  assert.equal(fieldUse(ability(blade, "attack")), "opening");
+  assert.equal(fieldUse(ability(blade, "heavy_attack")), "opening");
+  assert.equal(fieldUse(ability(blade, "defend")), undefined);
+  assert.equal(fieldUse(BREATH_HEAL), "mend");
 
   // A ficha mostra o kit e o que ficou gravado no descanso: a magia recitada não abre luta, a gravada abre.
   const endyru = createProtagonist();
@@ -95,7 +113,7 @@ test("fora de luta, golpe abre luta, cura remenda o grupo e guarda não serve pr
   const circle = sheetAbilities(endyru).find((candidate) => candidate.engraved)!;
   assert.equal(circle.name, "Puxão (gravada)");
   assert.equal(fieldUse(circle), "opening");
-  assert.equal(sheetAbilities(sheet("ninguem", "guardiao")).some((candidate) => candidate.id.startsWith("gift.")), false);
+  assert.equal(sheetAbilities(sheet("ninguem", "espadachim")).some((candidate) => candidate.id.startsWith("gift.")), false);
 });
 
 test("fora de luta a magia custa mana; quem não conjura não paga nenhuma, e o que passa do limite de uma vez marca", () => {
@@ -115,37 +133,46 @@ test("fora de luta a magia custa mana; quem não conjura não paga nenhuma, e o 
 });
 
 test("a cura fora de luta usa a conta do motor, não passa da vida cheia e não rola o dado à toa", () => {
-  const healer = sheet("l", "luminar", { attributes: { forca: 6, fator: 5, vigor: 6, olho: 8, couro: 4, labia: 5, saber: 5 } });
-  const hurt = sheet("h", "guardiao", { currentHp: 10 });
+  const healer = createProtagonist();
+  const heal = ability(healer, "heal");
+  const hurt = sheet("h", "espadachim", { currentHp: 10 });
   const rng = { rngState: 7 };
 
-  const healed = mend(healer, ability(healer, "heal"), hurt, rng)!;
-  // Fator (5) + 1d6.
-  assert.ok(healed >= 6 && healed <= 11, `curou ${healed}`);
+  const healed = mend(healer, heal, hurt, rng)!;
+  // Fator + 1d6.
+  const { fator } = healer.attributes;
+  assert.ok(healed >= fator + 1 && healed <= fator + 6, `curou ${healed}`);
   assert.equal(hurt.currentHp, 10 + healed);
 
-  const almost = sheet("a", "guardiao", { currentHp: 38 });
-  assert.equal(mend(healer, ability(healer, "heal"), almost, rng), 2);
+  const almost = sheet("a", "espadachim", { currentHp: 38 });
+  assert.equal(mend(healer, heal, almost, rng), 2);
   assert.equal(almost.currentHp, 40);
 
   const before = rng.rngState;
-  assert.equal(mend(healer, ability(healer, "heal"), almost, rng), undefined, "quem está inteiro não gasta a cura");
+  assert.equal(mend(healer, heal, almost, rng), undefined, "quem está inteiro não gasta a cura");
   assert.equal(mend(healer, ability(healer, "attack"), hurt, rng), undefined, "golpe não cura");
   assert.equal(rng.rngState, before);
 });
 
-test("fora de luta a habilidade custa o mesmo Fôlego: a cura cobra de quem a faz, e sem ele não sai", () => {
-  const healer = sheet("l", "luminar");
-  const heal = ability(healer, "heal");
+test("fora de luta a cura custa o mesmo que na luta, a quem a faz: a mana de Endyru, ou o Fôlego; e sem ele não sai", () => {
+  const endyru = createProtagonist();
+  const cure = ability(endyru, "heal");
+  const mana = manaOf(endyru, magicOf(endyru)!);
+  assert.ok(mend(endyru, cure, sheet("h", "espadachim", { currentHp: 5 }), { rngState: 3 })! > 0);
+  assert.equal(endyru.mana, mana - cure.mana!);
+  assert.equal(breathOf(endyru), maxBreath(endyru), "a cura de Endyru não custa Fôlego a ele");
+
+  const healer = sheet("l", "espadachim");
+  const heal = BREATH_HEAL;
   const full = maxBreath(healer);
   const rng = { rngState: 3 };
 
-  const hurt = sheet("h", "guardiao", { currentHp: 5 });
+  const hurt = sheet("h", "espadachim", { currentHp: 5 });
   assert.ok(mend(healer, heal, hurt, rng)! > 0);
   assert.equal(breathOf(healer), full - heal.breath!);
 
   // Quem está inteiro não gasta o Fôlego de ninguém.
-  assert.equal(mend(healer, heal, sheet("a", "guardiao"), rng), undefined);
+  assert.equal(mend(healer, heal, sheet("a", "espadachim"), rng), undefined);
   assert.equal(breathOf(healer), full - heal.breath!);
 
   healer.breath = heal.breath! - 1;
@@ -156,8 +183,8 @@ test("fora de luta a habilidade custa o mesmo Fôlego: a cura cobra de quem a fa
   assert.equal(healer.breath, heal.breath! - 1);
 
   // Sem Fôlego pro golpe pesado não há em quem abrir a luta com ele; com o golpe comum, há.
-  const hero = sheet("hero", "rachador", { breath: 0 });
-  const wolf = enemy("lobo", 7, 2);
+  const hero = sheet("hero", "espadachim", { breath: 0 });
+  const wolf = enemy("cacador", 7, 2);
   assert.deepEqual(openingStrikes(room(), hero, { x: 2, y: 2 }, ability(hero, "heavy_attack"), [wolf]), []);
   assert.equal(openingStrikes(room(), hero, { x: 2, y: 2 }, ability(hero, "attack"), [wolf]).length, 1);
 });
@@ -166,7 +193,7 @@ test("item que cura se usa em qualquer um do grupo; o que é de luta fica pra lu
   const hero = createProtagonist();
   hero.inventory = { slots: [], maxSlots: 12 };
   const tear = findItemTemplate("item-lagrima-de-eir")!;
-  const balm = findItemTemplate("item-balsamo-de-pedra-de-taharim")!;
+  const balm = TEST_ITEMS.couro;
   addItemToInventory(hero, tear);
   addItemToInventory(hero, tear);
   addItemToInventory(hero, balm);
@@ -197,18 +224,18 @@ test("item que cura se usa em qualquer um do grupo; o que é de luta fica pra lu
 test("quem luta de perto corre até o alvo pra abrir a luta; quem atira abre de onde está, ou do mais perto que der", () => {
   const map = room();
   const heroTile = { x: 1, y: 1 };
-  const melee = sheet(HERO_ID, "guardiao");
-  const archer = sheet(HERO_ID, "rachador");
+  const melee = sheet(HERO_ID, "espadachim");
+  const archer = sheet(HERO_ID, "espadachim", ARCHER);
 
   // A 7 quadrados: seis passos e o golpe.
-  const wolf = enemy("lobo", 8, 1);
+  const wolf = enemy("cacador", 8, 1);
   const [charge] = openingStrikes(map, melee, heroTile, ability(melee, "attack"), [wolf]);
   assert.equal(charge.enemy, wolf);
   assert.deepEqual(charge.target, { x: 8, y: 1 });
   assert.equal(distance(charge.from, charge.target), 1);
   assert.equal(distance(charge.from, heroTile), 6);
 
-  // A 9: ainda dá pra emboscar, mas a espada não chega; a flecha, andando três, chega.
+  // A 9: ainda dá pra emboscar, mas a espada não chega; o virote, andando três, chega.
   const far = enemy("longe", 10, 1);
   assert.deepEqual(openingStrikes(map, melee, heroTile, ability(melee, "attack"), [far]), []);
   const [shot] = openingStrikes(map, archer, heroTile, ability(archer, "attack"), [far]);
@@ -227,7 +254,7 @@ test("quem luta de perto corre até o alvo pra abrir a luta; quem atira abre de 
 
   // Do mais próximo pro mais distante; e parede no meio tira o alvo de quem atira.
   const both = openingStrikes(map, archer, heroTile, ability(archer, "attack"), [far, wolf]);
-  assert.deepEqual(both.map((strike) => strike.enemy.id), ["lobo", "longe"]);
+  assert.deepEqual(both.map((strike) => strike.enemy.id), ["cacador", "longe"]);
   for (let y = 0; y < map.grid.height; y++) {
     const tile = tileAt(map.grid, { x: 5, y })!;
     tile.blocksMove = true;
@@ -241,7 +268,7 @@ test("o golpe dado de fora abre a luta numa estrada do Tiled: o lobo apanha ante
   const props = standAreaProps(map);
   const group = map.enemies.filter((candidate) => candidate.group === "lobos");
   const wolfTile = tileOfPixel(map, group[0]);
-  const hero = sheet(HERO_ID, "rachador");
+  const hero = sheet(HERO_ID, "espadachim", ARCHER);
   const heroTile = { x: wolfTile.x - 7, y: wolfTile.y };
   assert.equal(aggroedGroup(map, group, heroTile), undefined);
 

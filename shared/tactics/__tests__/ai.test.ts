@@ -21,7 +21,18 @@ import {
   type TacticalEvent,
   type TeamId,
 } from "../index";
-import { FIRST, eventsOf, makeCharacter, makeUnit, run, setup } from "./helpers";
+import type { ConsumableItem } from "../../types/inventory";
+import {
+  FIRST,
+  TEST_ITEMS,
+  TEST_KIT,
+  eventsOf,
+  makeCharacter,
+  makeUnit,
+  run,
+  setup,
+  type UnitOverrides,
+} from "./helpers";
 
 type Brain = (encounter: Encounter) => Command;
 
@@ -78,35 +89,35 @@ test("entre dois alvos ao alcance, escolhe o que dá pra derrubar", () => {
 
 test("cura o aliado por um fio em vez de bater — a não ser que não ligue pra aliado", () => {
   const { encounter } = setup(["B.AE"], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "luminar", attributes: { olho: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { kit: [TEST_KIT.cura], attributes: { olho: FIRST } }),
     makeUnit("B", "enemy", at("B"), { currentHp: 4 }),
     makeUnit("E", "party", at("E")),
   ]);
 
   const caring = planTurn(encounter);
-  assert.equal(caring.action?.ability.id, "luminar.heal");
+  assert.equal(caring.action?.ability.id, "teste.cura");
   assert.deepEqual(caring.action?.target, findUnit(encounter, "B")!.pos);
 
   withProfile(encounter, "A", { support: 0 });
   const callous = planTurn(encounter);
-  assert.notEqual(callous.action?.ability.id, "luminar.heal");
+  assert.notEqual(callous.action?.ability.id, "teste.cura");
   assert.deepEqual(callous.action?.target, findUnit(encounter, "E")!.pos);
 });
 
 test("uma área pega dois inimigos juntos, mas não é jogada em cima de um aliado", () => {
   const grouped = setup(["A...X", "....Y"], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { kit: [TEST_KIT.gelo], attributes: { olho: FIRST } }),
     makeUnit("X", "party", at("X")),
     makeUnit("Y", "party", at("Y")),
   ]).encounter;
 
   const blast = planTurn(grouped).action!;
-  assert.equal(blast.ability.id, "cantor_de_ealen.heavy_attack");
+  assert.equal(blast.ability.id, "teste.gelo");
   assert.equal(affectedUnits(grouped, blast.ability, blast.target).length, 2);
 
   // O mesmo desenho com um aliado no lugar de um dos alvos.
   const mixed = setup(["A...X", "....B"], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "cantor_de_ealen", attributes: { olho: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { kit: [TEST_KIT.gelo], attributes: { olho: FIRST } }),
     makeUnit("X", "party", at("X")),
     makeUnit("B", "enemy", at("B")),
   ]).encounter;
@@ -120,10 +131,10 @@ test("uma área pega dois inimigos juntos, mas não é jogada em cima de um alia
 
 // --- Usar a mochila ---------------------------------------------------------
 
-/** Uma luta corpo a corpo de A (da IA, com `itemId` na mochila) contra E. */
-function withItem(itemId: string, rows: string[], hp = 30) {
+/** Uma luta corpo a corpo de A (da IA, com `item` na mochila) contra E. */
+function withItem(item: ConsumableItem, rows: string[], hp = 30) {
   const carrier = makeCharacter("A", { currentHp: hp, attributes: { olho: FIRST } });
-  addItemToInventory(carrier, findItemTemplate(itemId)!);
+  addItemToInventory(carrier, item);
   return setup(rows, (at) => [
     unitFromCharacter(carrier, { team: "enemy", pos: at("A") }),
     makeUnit("E", "party", at("E")),
@@ -131,20 +142,20 @@ function withItem(itemId: string, rows: string[], hp = 30) {
 }
 
 test("ferido, bebe a poção antes de bater; inteiro, guarda", () => {
-  const hurt = withItem("item-lagrima-de-eir", ["AE"], 10);
+  const hurt = withItem(findItemTemplate("item-lagrima-de-eir")!, ["AE"], 10);
   assert.deepEqual(chooseCommand(hurt), { type: "useItem", unitId: "A", itemId: "item-lagrima-de-eir" });
 
   const events = playTurn(hurt);
   assert.equal(eventsOf(events, "itemUsed").length, 1);
   assert.ok(eventsOf(events, "attackRoll").length > 0, "bebeu e esqueceu de atacar");
 
-  const scratched = withItem("item-lagrima-de-eir", ["AE"], 25);
+  const scratched = withItem(findItemTemplate("item-lagrima-de-eir")!, ["AE"], 25);
   assert.equal(planTurn(scratched).item, undefined);
   assert.equal(findUnit(scratched, "A")!.inventory!.slots.length, 1);
 });
 
 test("o Foco é bebido ANTES do golpe, e o golpe sai crítico", () => {
-  const encounter = withItem("item-oleo-da-coruja-de-miraven", ["AE"]);
+  const encounter = withItem(TEST_ITEMS.foco, ["AE"]);
   const events = playTurn(encounter);
 
   const used = events.findIndex((event) => event.type === "itemUsed");
@@ -154,10 +165,10 @@ test("o Foco é bebido ANTES do golpe, e o golpe sai crítico", () => {
 });
 
 test("reforço não é gasto no caminho: só com o inimigo ao alcance", () => {
-  const far = withItem("item-balsamo-de-pedra-de-taharim", ["A..................E"]);
+  const far = withItem(TEST_ITEMS.couro, ["A..................E"]);
   assert.equal(eventsOf(playTurn(far), "itemUsed").length, 0);
 
-  const close = withItem("item-balsamo-de-pedra-de-taharim", ["AE"]);
+  const close = withItem(TEST_ITEMS.couro, ["AE"]);
   assert.equal(chooseCommand(close).type, "useItem");
   // Já reforçado, não bebe outro igual.
   findUnit(close, "A")!.inventory!.slots[0].quantity += 1;
@@ -169,12 +180,12 @@ test("reforço não é gasto no caminho: só com o inimigo ao alcance", () => {
 
 test("quem luta de longe para no limite do alcance, não em cima do inimigo", () => {
   const { encounter } = setup(["A........E"], (at) => [
-    makeUnit("A", "enemy", at("A"), { characterClass: "entropista", attributes: { olho: FIRST } }),
+    makeUnit("A", "enemy", at("A"), { equipment: { weapon: "gear-besta" }, attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E")),
   ]);
 
   const plan = planTurn(encounter);
-  assert.equal(distance(plan.tile, findUnit(encounter, "E")!.pos), 5);
+  assert.equal(distance(plan.tile, findUnit(encounter, "E")!.pos), 6);
   assert.ok(plan.action, "chegou ao alcance e não atacou");
 });
 
@@ -198,13 +209,13 @@ test("contorna a parede que a linha reta não atravessa", () => {
 test("avançando sob fogo sem alcançar ninguém, gasta a ação se pondo em guarda", () => {
   const { encounter } = setup(["A...........R"], (at) => [
     makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
-    makeUnit("R", "party", at("R"), { characterClass: "rachador" }),
+    makeUnit("R", "party", at("R"), { equipment: { weapon: "gear-besta" } }),
   ]);
   withProfile(encounter, "A", { caution: 1 });
 
   const plan = planTurn(encounter);
   assert.equal(distance(plan.tile, findUnit(encounter, "R")!.pos), 6);
-  assert.equal(plan.action?.ability.id, "guardiao.defend");
+  assert.equal(plan.action?.ability.id, "espadachim.defend");
 
   const events = playTurn(encounter);
   assert.equal(eventsOf(events, "statusApplied")[0]?.statusId, "guarding");
@@ -225,7 +236,7 @@ test("ninguém se põe em guarda longe de qualquer ameaça", () => {
 test("a cautela decide se vale largar um inimigo pra derrubar outro", () => {
   const scene = () =>
     setup(["AE...", ".....", ".....", ".....", ".....", ".....", ".....", "W...."], (at) => [
-      makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
+      makeUnit("A", "enemy", at("A"), { kit: [TEST_KIT.puxao], attributes: { olho: FIRST } }),
       makeUnit("E", "party", at("E")),
       makeUnit("W", "party", at("W"), { currentHp: 2 }),
     ]).encounter;
@@ -252,16 +263,26 @@ test("a cautela decide se vale largar um inimigo pra derrubar outro", () => {
 
 const ARENA = ["A.....#....E", "B...o......F", "C.....#..~.G"];
 
-function arena(seed: number) {
+/** Com o que cada um da arena luta: o espadachim de base mais o kit de teste (ou a arma) de cada um. */
+const LOADOUTS: Record<string, UnitOverrides> = {
+  A: { kit: [TEST_KIT.puxao, TEST_KIT.empurrao] },
+  B: { kit: [TEST_KIT.gelo] },
+  C: { equipment: { weapon: "gear-besta" } },
+  E: { kit: [TEST_KIT.cura, TEST_KIT.dreno] },
+  F: { kit: [TEST_KIT.fogo] },
+  G: { kit: [TEST_KIT.sumir, TEST_KIT.sufoco] },
+};
+
+function arena(seed: number, loadoutOf = (id: string) => LOADOUTS[id]) {
   return setup(
     ARENA,
     (at) => [
-      makeUnit("A", "party", at("A"), { characterClass: "guardiao" }),
-      makeUnit("B", "party", at("B"), { characterClass: "cantor_de_ealen" }),
-      makeUnit("C", "party", at("C"), { characterClass: "rachador" }),
-      makeUnit("E", "enemy", at("E"), { characterClass: "luminar" }),
-      makeUnit("F", "enemy", at("F"), { characterClass: "entropista" }),
-      makeUnit("G", "enemy", at("G"), { characterClass: "sombrilico" }),
+      makeUnit("A", "party", at("A"), loadoutOf("A")),
+      makeUnit("B", "party", at("B"), loadoutOf("B")),
+      makeUnit("C", "party", at("C"), loadoutOf("C")),
+      makeUnit("E", "enemy", at("E"), loadoutOf("E")),
+      makeUnit("F", "enemy", at("F"), loadoutOf("F")),
+      makeUnit("G", "enemy", at("G"), loadoutOf("G")),
     ],
     seed,
   ).encounter;
@@ -285,17 +306,8 @@ test("toda luta 3 contra 3 jogada pela IA acaba, e o motor aceita tudo que ela p
   }
 });
 
-test("cada criatura do bestiário, com os pesos dela, luta até o fim contra cada Ordem", () => {
-  const classes: CharacterClass[] = [
-    "atracao_repulsao",
-    "espadachim",
-    "luminar",
-    "entropista",
-    "cantor_de_ealen",
-    "guardiao",
-    "sombrilico",
-    "rachador",
-  ];
+test("cada criatura do bestiário, com os pesos dela, luta até o fim contra cada classe", () => {
+  const classes: CharacterClass[] = ["atracao_repulsao", "espadachim"];
 
   for (const [creatureId, creature] of Object.entries(BESTIARY)) {
     for (const itemId of creature.carries ?? []) {
@@ -331,17 +343,9 @@ test("a IA vence a linha de base bem mais do que perde, com as mesmas peças dos
 
   for (let seed = 1; seed <= 30; seed++) {
     for (const smartTeam of ["party", "enemy"] as const) {
-      const encounter = arena(seed);
-      // Lados espelhados: as mesmas três Ordens de cada lado.
-      const mirror: Record<string, CharacterClass> = { E: "guardiao", F: "cantor_de_ealen", G: "rachador" };
-      const mirrored = setup(
-        ARENA,
-        (at) =>
-          encounter.units.map((unit) =>
-            makeUnit(unit.id, unit.team, at(unit.id), { characterClass: mirror[unit.id] ?? unit.characterClass }),
-          ),
-        seed,
-      ).encounter;
+      // Lados espelhados: as mesmas três cargas de cada lado.
+      const mirror: Record<string, string> = { E: "A", F: "B", G: "C" };
+      const mirrored = arena(seed, (id) => LOADOUTS[mirror[id] ?? id]);
 
       play(mirrored, {
         party: smartTeam === "party" ? chooseCommand : basicCommand,
