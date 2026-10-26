@@ -3,6 +3,7 @@ import { sfx } from "../audio";
 import { ATTRIBUTE_NAMES, type Attributes, type DialogueBeat, type DialogueChoice, type DialogueStep, type StoryEvent } from "@ealen/shared";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { addBodyText, addPanel, addTitleText } from "../ui";
+import { PORTRAIT_WIDTH, portraitKey } from "./portraits";
 
 /** Põe um objeto na cena de modo que só a câmera da interface o desenhe. */
 type AddHud = <T extends Phaser.GameObjects.GameObject>(object: T) => T;
@@ -14,6 +15,10 @@ const BOX_Y = GAME_HEIGHT - BOX_HEIGHT - 24;
 const PADDING = 28;
 const TEXT_Y = BOX_Y + 58;
 const CHOICE_LINE_HEIGHT = 30;
+/** O busto encosta na borda de baixo da tela, à esquerda, e entra na caixa por cima. */
+const PORTRAIT_X = 60;
+/** Com busto na tela, o texto começa depois dele. */
+const PORTRAIT_INDENT = PORTRAIT_X + PORTRAIT_WIDTH + 16 - (BOX_X + PADDING);
 /** A tecla que abriu a conversa não pode ser a mesma que passa a primeira fala. */
 const INPUT_GRACE_MS = 200;
 
@@ -94,7 +99,7 @@ function choiceLabel(choice: DialogueChoice, position: number): string {
 
 /**
  * A caixa de diálogo: quem fala em cima, a fala no meio, as escolhas
- * embaixo. Mostra uma coisa por vez — fala, narração ou acontecimento — e só
+ * embaixo, e o busto de quem fala à esquerda (ver portraits.ts). Mostra uma coisa por vez — fala, narração ou acontecimento — e só
  * oferece as escolhas depois da última. Não sabe nada de história: recebe um
  * trecho pronto (`DialogueStep`) e devolve o que foi escolhido.
  *
@@ -106,6 +111,9 @@ export class DialogueBox {
   /** Quanto a caixa cresceu pra cima pra caber a fala mais as escolhas. */
   private lift = 0;
   private readonly speaker: Phaser.GameObjects.Text;
+  private readonly portrait: Phaser.GameObjects.Image;
+  /** Quanto o texto anda pra direita pra não ficar embaixo do busto. */
+  private indent = 0;
   private readonly body: Phaser.GameObjects.Text;
   private readonly hint: Phaser.GameObjects.Text;
   private choiceTexts: Phaser.GameObjects.Text[] = [];
@@ -128,6 +136,7 @@ export class DialogueBox {
     private readonly onEvent?: (event: StoryEvent) => (() => void) | void,
   ) {
     this.panel = addHud(addPanel(scene, BOX_X, BOX_Y, BOX_WIDTH, BOX_HEIGHT));
+    this.portrait = addHud(scene.add.image(PORTRAIT_X, GAME_HEIGHT, "__DEFAULT").setOrigin(0, 1).setVisible(false));
     this.speaker = addHud(addTitleText(scene, BOX_X + PADDING, BOX_Y + 18, "", { fontSize: "24px" }));
     this.body = addHud(
       addBodyText(scene, BOX_X + PADDING, TEXT_Y, "", {
@@ -176,12 +185,13 @@ export class DialogueBox {
     this.scene.input.keyboard?.off("keydown", this.onKey, this);
     this.scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     this.clearChoices();
-    for (const object of [this.panel, this.speaker, this.body, this.hint]) object.destroy();
+    for (const object of [this.panel, this.portrait, this.speaker, this.body, this.hint]) object.destroy();
   }
 
   private showBeat(beat: DialogueBeat): void {
     this.hint.setVisible(true);
     if (beat.kind === "line") {
+      this.showPortrait(beat.speaker);
       this.speaker.setText(beat.speaker ?? "");
       // Narração vem em itálico e mais apagada: dá pra ver de longe que ninguém está falando.
       this.body
@@ -192,6 +202,7 @@ export class DialogueBox {
     }
     const { text, color } = describeEvent(beat.event) ?? { text: "", color: TEXT_COLORS.ink };
     sfx("notice");
+    this.showPortrait(undefined);
     this.speaker.setText("");
     this.body.setText(text).setFontStyle("normal").setColor(color);
   }
@@ -200,6 +211,7 @@ export class DialogueBox {
   private showChoices(choices: DialogueChoice[], alone: boolean): void {
     this.hint.setVisible(false);
     if (alone) {
+      this.showPortrait(undefined);
       this.speaker.setText("");
       this.body.setText("");
     }
@@ -214,7 +226,7 @@ export class DialogueBox {
     const top = Math.max(TEXT_Y - this.lift + text, BOX_Y + BOX_HEIGHT - 20 - choices.length * CHOICE_LINE_HEIGHT);
     this.choiceTexts = choices.map((choice, position) => {
       const text = this.addHud(
-        addBodyText(this.scene, BOX_X + PADDING, top + position * CHOICE_LINE_HEIGHT, "", { fontSize: "20px" }),
+        addBodyText(this.scene, BOX_X + PADDING + this.indent, top + position * CHOICE_LINE_HEIGHT, "", { fontSize: "20px" }),
       );
       text.setInteractive({ useHandCursor: true });
       text.on(Phaser.Input.Events.POINTER_OVER, () => this.focus(position));
@@ -222,6 +234,27 @@ export class DialogueBox {
       return text;
     });
     this.focus(0);
+  }
+
+  /**
+   * Põe o busto de quem fala, ou tira (narração, acontecimento, quem não tem
+   * retrato), e leva o texto pro lado que sobra.
+   */
+  private showPortrait(speaker: string | undefined): void {
+    const key = speaker ? portraitKey(speaker) : null;
+    const shown = key !== null && this.scene.textures.exists(key);
+    if (shown) this.portrait.setTexture(key).setDisplaySize(PORTRAIT_WIDTH, this.portraitHeight(key));
+    this.portrait.setVisible(shown);
+
+    this.indent = shown ? PORTRAIT_INDENT : 0;
+    this.speaker.setX(BOX_X + PADDING + this.indent);
+    this.body.setX(BOX_X + PADDING + this.indent).setWordWrapWidth(BOX_WIDTH - PADDING * 2 - this.indent);
+  }
+
+  /** A altura na tela, mantendo a proporção da arte na largura do busto. */
+  private portraitHeight(key: string): number {
+    const source = this.scene.textures.get(key).getSourceImage();
+    return (PORTRAIT_WIDTH * source.height) / source.width;
   }
 
   private clearChoices(): void {

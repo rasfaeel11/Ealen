@@ -268,12 +268,11 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
-Ordem sugerida: 17, 18, 27, 28, 21, 23, 22, 24, 25, 19, 26, 20, 29, 30. Texto novo de história vai como
+Ordem sugerida: 18, 27, 28, 21, 23, 22, 24, 25, 19, 26, 20, 29, 30. Texto novo de história vai como
 proposta pro autor antes de entrar (§1).
 
 | # | Task | O que é |
 |---|---|---|
-| 17 | **Retrato na caixa** | Busto grande de quem fala, à moda de Hades: no canto de baixo da caixa, passando da borda de cima. Registro de retratos pelo nome de quem fala (como `MAP_SHEETS`), com provisório desenhado em código até a arte. Narração e quem não tem retrato ficam sem. |
 | 18 | **Entrada e troca do retrato** | O busto entra deslizando quando quem fala muda, e fica parado quando a mesma pessoa continua; quem saiu da vez escurece. |
 | 19 | **Expressões por tag** | `# rosto: <nome>` numa linha do Ink troca o quadro do retrato. O runner passa as tags de cada fala no `DialogueBeat`. |
 | 20 | **Retratos de verdade** | Arte do autor: o trio, Oryndu, a conselheira, o castelão, o ferreiro (a cara do demônio confere a ficha do povo). O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
@@ -365,6 +364,11 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   `mage` chegam com ele.
 - **16. O aviso do Círculo.** A caixa anunciava `mageRose` como "Endyru chegou ao ."; agora diz o nível e o que
   ele aprendeu ("Endyru chegou ao Círculo. Aprendeu Desarmar e Arremesso.").
+- **17. Retrato na caixa.** Quem fala ganha um busto grande no canto de baixo, à esquerda, que entra na caixa por
+  cima e encosta na borda da tela; o nome, a fala e as escolhas andam pra direita dele. A chave é o nome como está no
+  Ink (`client/src/game/dialogue/portraits.ts`): `PORTRAITS` recebe a arte final, e até lá o trio, Oryndu e a gente
+  que fala pelo papel têm um busto liso provisório, na cor de cada um, sem rosto desenhado. Narração, acontecimento e
+  quem não está na lista falam sem busto.
 
 ## 9. Onde isto está no cânone
 
