@@ -267,6 +267,28 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 | 15 | **Retoque dos mapas no Tiled** | Os quatro mapas saíram de um gerador, com os placeholders; o desenho de verdade é do autor (o contrato do Tiled está em `docs/motor.md`). |
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
+### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
+Ordem sugerida: 16, 17, 18, 27, 28, 21, 23, 22, 24, 25, 19, 26, 20, 29, 30. Texto novo de história vai como
+proposta pro autor antes de entrar (§1).
+
+| # | Task | O que é |
+|---|---|---|
+| 16 | **O aviso do Círculo** | A caixa de diálogo anuncia `mageRose` como "Endyru chegou ao ." — sem o nível e sem o que ele aprendeu. |
+| 17 | **Retrato na caixa** | Busto grande de quem fala, à moda de Hades: no canto de baixo da caixa, passando da borda de cima. Registro de retratos pelo nome de quem fala (como `MAP_SHEETS`), com provisório desenhado em código até a arte. Narração e quem não tem retrato ficam sem. |
+| 18 | **Entrada e troca do retrato** | O busto entra deslizando quando quem fala muda, e fica parado quando a mesma pessoa continua; quem saiu da vez escurece. |
+| 19 | **Expressões por tag** | `# rosto: <nome>` numa linha do Ink troca o quadro do retrato. O runner passa as tags de cada fala no `DialogueBeat`. |
+| 20 | **Retratos de verdade** | Arte do autor: o trio, Oryndu, a conselheira, o castelão, o ferreiro (a cara do demônio confere a ficha do povo). O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
+| 21 | **Por que a pressa no ato 3** | A deixa `final_pressa` continua de roteiro, mas com motivo na cena: a cheia sobe e apaga os círculos da margem, e Endyru, recém-chegado ao Círculo, acha que aguenta a página inteira. Pressa e soberba, não heroísmo. |
+| 22 | **O papel do recitador** | Hoje é uma confissão selada. Vira peças: página de repulsão, dias da lua e pontos do rio, ordem de pagamento contra o livro do castelão. Quem junta são os personagens. |
+| 23 | **Os contratados antes da luta** | Umas falas antes de cair: espadachins que assinaram sem ler o que escoltavam. Ninguém diz o espelho. |
+| 24 | **Conversas de estrada** | Três ou quatro conversas curtas do trio e de Oryndu, no descanso ou na travessia: o livro de Endyru, a Gryskar e a Ipojy na mesma escolta, a universidade. |
+| 25 | **O cobre serve pra alguma coisa** | Uma banca no cais de Ybytuguá vende Pão de Viagem e Unguento a cobre; o escrivão aceita a moeda dele. |
+| 26 | **Um dom pra Jarupã e um pra Xanduí** | `GIFTS` está pronto e sem dono; o espadachim sobe de nível sem ganhar botão. Vai como proposta: não pode ser golpe-selo (`magia` §5.6). |
+| 27 | **O Ykuruã grande na tela** | Sprite maior que o quadrado (48x32 ou mais), com 1 quadrado na regra. Na água, meio corpo submerso; em seco, inteiro e rachado. Só `client/`. |
+| 28 | **O estouro aparece** | No `manaBurst`: tremor de tela, onda na água do mago até o bicho, som grave antes do turno a mais, sangue no nariz. |
+| 29 | **Voto e Contragolpe legíveis** | O botão travado diz por quê; o Contragolpe tem golpe visível de reação. |
+| 30 | **Sobras do Eälen em `shared/`** | Ordens, raças e itens que só os testes do motor usam. Trocar as fixtures antes de apagar. |
+
 ### P2 e P3
 Arte final, som gravado, balanceamento (`balance:matrix` com as escolas), tutorial, opções e o empacotamento
 seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
