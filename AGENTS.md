@@ -268,7 +268,7 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
-Ordem sugerida: 27, 28, 21, 23, 22, 24, 25, 19, 26, 20, 29, 30. Texto novo de história vai como
+Ordem sugerida: 21, 23, 22, 24, 25, 19, 26, 20, 29, 30. Texto novo de história vai como
 proposta pro autor antes de entrar (§1).
 
 | # | Task | O que é |
@@ -281,8 +281,6 @@ proposta pro autor antes de entrar (§1).
 | 24 | **Conversas de estrada** | Três ou quatro conversas curtas do trio e de Oryndu, no descanso ou na travessia: o livro de Endyru, a Gryskar e a Ipojy na mesma escolta, a universidade. |
 | 25 | **O cobre serve pra alguma coisa** | Uma banca no cais de Ybytuguá vende Pão de Viagem e Unguento a cobre; o escrivão aceita a moeda dele. |
 | 26 | **Um dom pra Jarupã e um pra Xanduí** | `GIFTS` está pronto e sem dono; o espadachim sobe de nível sem ganhar botão. Vai como proposta: não pode ser golpe-selo (`magia` §5.6). |
-| 27 | **O Ykuruã grande na tela** | Sprite maior que o quadrado (48x32 ou mais), com 1 quadrado na regra. Na água, meio corpo submerso; em seco, inteiro e rachado. Só `client/`. |
-| 28 | **O estouro aparece** | No `manaBurst`: tremor de tela, onda na água do mago até o bicho, som grave antes do turno a mais, sangue no nariz. |
 | 29 | **Voto e Contragolpe legíveis** | O botão travado diz por quê; o Contragolpe tem golpe visível de reação. |
 | 30 | **Sobras do Eälen em `shared/`** | Ordens, raças e itens que só os testes do motor usam. Trocar as fixtures antes de apagar. |
 
@@ -371,6 +369,16 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
 - **18. Entrada e troca do retrato.** Quando quem fala muda, o busto novo entra deslizando da esquerda, aparecendo,
   e o de quem falava escurece e some. Quem continua falando fica parado. Narração, acontecimento e escolha sem fala
   não tiram o busto da tela: o de quem falava só escurece, e acende de novo se a mesma pessoa voltar a falar.
+- **27. O Ykuruã grande na tela.** O bicho de rio (`river` no bestiário) tem quadro de 48x32 e continua num
+  quadrado só na regra; sombra, anel da vez e barra de vida do `MapActor` saem do tamanho do quadro. Submerso, metade
+  do corpo some abaixo da linha d'água, com uma ondulação no lugar da sombra; Em seco, a folha troca pela seca, mais
+  clara e de couro rachado (`drySpriteKey`: arte final registra `creature:<id>:seco` em `MAP_SHEETS`; sem ela, fica a
+  normal). Na luta, quem troca é a condição (`statusApplied` de Submerso ou Em seco); fora dela, o quadrado de água
+  onde o bicho está no mapa. O provisório é um monte de lodo com conchas, boca larga e olhos pequenos.
+- **28. O estouro aparece.** No `manaBurst`, a tela treme, o mago clareia e a água abre um anel em volta dele, com um
+  estalo e a água batendo (`burst`). No `manaDrawn`, um som grave e comprido (`rumble`) e uma fila de anéis corre pela
+  água do mago até o bicho, antes do turno a mais. Enquanto a marca de atração e repulsão durar na luta, pinga sangue
+  do nariz de quem a carrega (de costas não se vê).
 
 ## 9. Onde isto está no cânone
 

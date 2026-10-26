@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import {
+  CONCEPTS,
   COVER_DEFENSE,
   FLANK_TO_HIT,
   HEAL_PER_BREATH,
@@ -98,6 +99,10 @@ const COLOR_ALLY = 0x7fb069;
 const COLOR_USE = 0xe0b85a;
 /** A cor de cada superfície no chão. */
 const SURFACE_COLOR: Record<SurfaceId, number> = { fire: 0xe8792b, frost: 0x9fd8e8 };
+/** A água que a mana gasta de uma vez sacode, do mago até o bicho que a sente. */
+const COLOR_WATER = 0x9fd8e8;
+/** A marca de atração e repulsão é sangue pelo nariz: quem a carrega pinga. */
+const NOSEBLEED: string = CONCEPTS.atracao_repulsao.mark;
 
 const ERROR_TEXT: Record<CommandError, string> = {
   battle_over: "A luta já acabou.",
@@ -246,6 +251,8 @@ export class CombatController {
     // Quem não tem vida pra perder não mostra barra de vida.
     for (const unit of encounter.units) {
       if (!unit.invulnerable) host.actors.get(unit.id)?.setHp(unit.currentHp, unit.maxHp);
+      // O que já vem no corpo: o bicho na água ou em seco, a marca de uma luta anterior.
+      for (const status of unit.statuses) this.wear(unit.id, status.id, true);
     }
     this.goals = encounter.cues.flatMap((cue) => {
       const goal = host.goals?.find((candidate) => candidate.cue === cue.id);
@@ -280,6 +287,7 @@ export class CombatController {
     for (const actor of this.host.actors.values()) {
       actor.hideHp();
       actor.setTurn(false);
+      actor.setBleeding(false);
     }
     scene.tweens.killTweensOf(this.ground);
     this.ground.destroy();
@@ -804,21 +812,34 @@ export class CombatController {
         return;
       }
 
-      case "manaDrawn":
-        // O bicho sentiu a mana e vem: o turno a mais dele vem quando a vez de quem age acabar.
-        sfx("notice");
+      case "manaDrawn": {
+        // O bicho sentiu a mana e vem: a água leva a batida até ele, e o turno a mais dele vem quando a vez de quem age acabar.
+        const caster = this.actor(event.caster);
+        const beast = this.actor(event.unit);
+        sfx("rumble");
+        if (caster && beast) await this.waterWave(caster.pos, beast.pos);
+        beast?.flash(COLOR_WATER, 160);
         this.floatOver(event.unit, "Sentiu a mana", TEXT_COLORS.danger, -30, 20);
         this.hud.log(`${this.unit(event.unit).name} sente a mana de ${this.unit(event.caster).name} e vem atrás.`);
-        await this.wait(240);
+        await this.wait(320);
         return;
+      }
 
-      case "manaBurst":
-        // Mana demais de uma vez: o corpo cobra na hora. A marca vem logo depois, como condição.
-        sfx("sting");
+      case "manaBurst": {
+        // Mana demais de uma vez: o corpo cobra na hora, e o chão sente. A marca vem logo depois, como condição.
+        const actor = this.actor(event.unit);
+        sfx("burst");
+        this.host.scene.cameras.main.shake(320, 0.008);
+        if (actor) {
+          actor.flash(0xffffff, 140);
+          this.ring(actor.pos, COLOR_WATER);
+          this.spark(this.center(actor), COLOR_WATER, 14);
+        }
         this.floatOver(event.unit, "Passou do limite", TEXT_COLORS.danger, -30, 22);
         this.hud.log(`${this.unit(event.unit).name} gasta mana demais de uma vez (${event.spent}, e o corpo aguenta ${event.limit}).`);
-        await this.wait(260);
+        await this.wait(380);
         return;
+      }
 
       case "breathRecovered":
         this.hud.log(`${this.unit(event.unit).name} toma fôlego (+${event.amount}).`);
@@ -965,6 +986,7 @@ export class CombatController {
 
       case "statusApplied": {
         const actor = this.actor(event.target);
+        this.wear(event.target, event.statusId, true);
         if (actor) this.ring(actor.pos, COLORS.guard);
         sfx("status");
         this.floatOver(event.target, event.name, TEXT_COLORS.guard, -22);
@@ -975,6 +997,7 @@ export class CombatController {
       }
 
       case "statusExpired":
+        this.wear(event.target, event.statusId, false);
         this.hud.setTurnOrder(this.encounter);
         return;
 
@@ -1243,6 +1266,41 @@ export class CombatController {
       ease: "Cubic.easeOut",
       onComplete: () => ring.destroy(),
     });
+  }
+
+  /**
+   * O que uma condição muda no corpo de quem a carrega: o bicho de rio
+   * Submerso ou Em seco, o sangue da marca. A que sai não desfaz a água: a
+   * do chão novo entra logo depois.
+   */
+  private wear(unitId: string, statusId: string, on: boolean): void {
+    const actor = this.actor(unitId);
+    if (!actor) return;
+    if (on && statusId === STATUSES.submerged.id) actor.setImmersion("submerged");
+    if (on && statusId === STATUSES.beached.id) actor.setImmersion("beached");
+    if (statusId === NOSEBLEED) actor.setBleeding(on);
+  }
+
+  /** A batida da mana correndo pela água, de `from` a `to`: anéis que se abrem um depois do outro. */
+  private async waterWave(from: PixelPos, to: PixelPos): Promise<void> {
+    const { scene } = this.host;
+    const steps = Math.max(3, Math.round(Math.hypot(to.x - from.x, to.y - from.y) / 10));
+    const gap = 45;
+    for (let i = 0; i <= steps; i++) {
+      const at = { x: from.x + ((to.x - from.x) * i) / steps, y: from.y + ((to.y - from.y) * i) / steps };
+      scene.time.delayedCall(i * gap, () => {
+        const ripple = this.host.addWorld(scene.add.ellipse(at.x, at.y - 1, 10, 4).setStrokeStyle(1, COLOR_WATER, 1).setDepth(FX_DEPTH));
+        scene.tweens.add({
+          targets: ripple,
+          scale: { from: 0.6, to: 2.2 },
+          alpha: { from: 0.9, to: 0 },
+          duration: 480,
+          ease: "Cubic.easeOut",
+          onComplete: () => ripple.destroy(),
+        });
+      });
+    }
+    await this.wait(steps * gap + 200);
   }
 
   /** Texto que sobe da cabeça de alguém. */

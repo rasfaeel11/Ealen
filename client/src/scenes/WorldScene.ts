@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import {
   AREAS,
+  BESTIARY,
   FOLLOW_GAP,
   HUNGER,
   STARTING_AREA,
@@ -61,6 +62,7 @@ import {
   syncPartyFromEncounter,
   syncUnitInventory,
   talkers,
+  tileAt,
   tileOfPixel,
   trailPoint,
   unusedItems,
@@ -516,6 +518,12 @@ export default class WorldScene extends Phaser.Scene {
     const standing = this.npcs.filter((npc) => npc.look !== undefined);
     this.syncActors(this.npcActors, standing, (npc) => classSpriteKey(npc.look as CharacterClass));
     this.syncActors(this.enemyActors, this.enemies, (enemy) => creatureSpriteKey(enemy.creature));
+    // O bicho de rio parado no mapa: meio corpo na água, ou inteiro no seco.
+    for (const enemy of this.enemies) {
+      if (!BESTIARY[enemy.creature]?.river) continue;
+      const wet = tileAt(this.map.grid, tileOfPixel(this.map, enemy))?.water === true;
+      this.enemyActors.get(enemy.id)?.setImmersion(wet ? "submerged" : "beached");
+    }
     this.syncParty();
     this.occupy();
   }

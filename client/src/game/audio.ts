@@ -233,6 +233,16 @@ const SFX = {
   immune: { tones: [{ freq: 220, to: 207, dur: 0.4, gain: 0.1, attack: 0.05 }, { freq: 311, to: 293, dur: 0.4, gain: 0.07, attack: 0.05 }] },
   heal: { tones: [{ freq: 523, dur: 0.2, gain: 0.08 }, { freq: 659, dur: 0.2, gain: 0.08, delay: 0.07 }, { freq: 784, dur: 0.32, gain: 0.08, delay: 0.14 }] },
   status: { tones: [{ freq: 392, to: 311, wave: "triangle", dur: 0.22, gain: 0.08 }] },
+  /** Mana demais de uma vez: um estalo seco e a água batendo. */
+  burst: {
+    tones: [{ freq: 520, to: 90, wave: "sawtooth", dur: 0.22, gain: 0.07 }, { freq: 80, to: 38, dur: 0.6, gain: 0.45, delay: 0.04 }],
+    noises: [{ dur: 0.18, gain: 0.25, filter: "highpass", freq: 2600 }, { dur: 0.7, gain: 0.18, filter: "lowpass", freq: 700, to: 120, attack: 0.05, delay: 0.08 }],
+  },
+  /** O bicho sentiu e vem: grave e comprido, antes do turno a mais dele. */
+  rumble: {
+    tones: [{ freq: 55, to: 41, dur: 1.1, gain: 0.5, attack: 0.25 }, { freq: 82, to: 62, wave: "triangle", dur: 0.9, gain: 0.12, attack: 0.3, delay: 0.1 }],
+    noises: [{ dur: 1.0, gain: 0.12, filter: "lowpass", freq: 260, to: 90, attack: 0.3 }],
+  },
   /** Uma condição ou o chão ferindo alguém. */
   sting: { tones: [{ freq: 300, to: 180, wave: "sawtooth", dur: 0.14, gain: 0.05 }], noises: [{ dur: 0.12, gain: 0.08, filter: "bandpass", freq: 2000, q: 2 }] },
   surface: { noises: [{ dur: 0.45, gain: 0.1, filter: "bandpass", freq: 700, to: 2200, q: 0.7, attack: 0.1 }] },
