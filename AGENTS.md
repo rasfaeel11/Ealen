@@ -293,7 +293,6 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 |---|---|---|
 | 31 | **A voz do `jogo.md` em todo o texto** | Passar as falas dos cinco `.ink` pelo guia de diálogos (`jogo.md` §6). Jarupã não lê e não tem vergonha disso (sai o "Eu sei ler o principal"), dá regra de estrada inventada na hora e chama ferida de "raso". Xanduí fala metade, confere correia enquanto os outros discutem, tem a última palavra e repete termo de juiz de ouvido ("Quebra de contrato"). Endyru dá o número exato e corrige os outros até o ato 3; depois, corta a frase no meio. Oryndu bate o remo, chama de "rapaz", fala de lodo, corda e vento. Vocabulário do mundo (Verso, medida, palmo, fôlego, lua). Regra da ponte: a última fala antes de cada luta aponta pra mecânica dela. |
 | 35 | **Os saqueadores do dique** (Luta 2, opcional) | Mercenários dispensados de uma caravana roubando o armazém de cordas e óleo da guilda. Luta curta em lugar fechado: posição, o empurrão de Endyru contra parede e caixote, o triângulo. Pede um pedaço de mapa (o armazém) e a gente no bestiário (pelo papel, sem nome). |
-| 37 | **A estrada pela floresta** (cena 2.1) | No lugar das conversas de estrada da antiga 24, as do roteiro: no acampamento, Endyru ensina por que o círculo fecha exato, e Jarupã usa o giz pra marcar placar de dados e ganha três cobres dele. A tabuleta de fronteira caída: Xanduí a vira de cabeça pra baixo, "Madeira boa. Endyru, vê se o nome do duque tá escrito direito aí", e Endyru lê sem notar. A Luta 4, batedores da Tsvirana pagos pelo ducado (o aventureiro contratado do bestiário serve), e depois a Cura em Jarupã, que cai sentado comendo meio pão duro: "Magia de estudante é igual imposto...". |
 | 38 | **Jurendy e o castelão na ponte** (cena 2.2) | Junta as antigas 22 e 23 e muda o ato 2. Na clareira da beira do afluente, com ponte de pedra e barranco, o mago da corte, Jurendy, ex-colega rico de Endyru em Kuatiarape, toma o lugar do recitador sem nome, e o castelão e os escudeiros seguram a ponte: chefe de duas frentes. Antes da luta, Jurendy faz a conta de Ymboripe como quem explica uma conta, sem vilania ("Daqui a duas semanas eles mesmos abrem o portão..."). Na luta, puxá-lo do barranco quebra a recitação. Jurendy foge ou se rende. No bolso do castelão, a carta de conselheiros de Ybytuguá negociando a rendição se o rio continuar fechado até a lua cheia; Xanduí resume ("Então a gente mata o bicho antes da lua cheia..."). O castelo por terra perde a luta; o livro de contas sai ou vira uma peça a mais. |
 | 39 | **O preparo na margem** (cena 3.1) | Antes da luta final, um preparo no mapa: Endyru grava círculos de atração em quadrados da margem seca (o círculo gravado ganha lugar no mapa; hoje é só o texto pronto, task 5), Jarupã põe barris de óleo e estacas, e o sinal com Oryndu se combina. Ativado na luta, o círculo puxa o bicho na direção dele. A fala de Oryndu ("Puxa um palmo, deixa a moça segurar o bote...") e a de Endyru ("Eu faço essa conta desde os quatorze anos."). Ir sem preparar continua possível. |
 | 40 | **A cheia sobe na luta** | O relógio da Cheia dentro do combate: de tantas em tantas rodadas, a água toma o degrau mais baixo do mapa (pela elevação). O quadrado vira água (o bicho que estiver nele fica Submerso) e o círculo gravado que ficar embaixo se apaga. Regra e evento no motor; o client anima a água chegando. |
@@ -452,10 +451,16 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   contrato) tem cinza de giz e pedra queimada, e vai pro diário. Antes da luta, Jarupã ("Bate na cabeça, cai"), Xanduí
   ("Quando a água cansar, você me avisa") e Oryndu apontando a saída: na água ele bebe o golpe. Na saída, Oryndu tira do
   lodo a estaca com o ferro de Ymboripe e um círculo de atração aberto ("Não precisava fechar. Só precisava gritar."),
-  e a conselheira a recebe como "mais que um pau" não basta. A pista de Ymboripe começa no fim do ato 1; a leitura
+  e a conselheira responde que o conselho precisa de mais que um pau. A pista de Ymboripe começa no fim do ato 1; a leitura
   ouvida pela guilda ficou de reforço. Ficaram de fora a passarela que o bicho parte e o recuo até a barcaça como
   objeto: o destrutível não tem `if`/`unless`, e o barco não pode estar de pé no ato 3. O objetivo continua o de
   aguentar até Oryndu tirar o grupo.
+- **37. A estrada pela floresta.** Um acampamento antes do vau (`acampamento`, gatilho de uma vez): o círculo que não
+  fecha "por um dedo", o giz que vira placar de dados e três cobres de Endyru que vão pro lado de Jarupã, e Xanduí, de
+  costas pro fogo, com a última palavra. A tabuleta de fronteira caída (`tabuleta`): Xanduí a endireita de cabeça pra
+  baixo e pede que Endyru veja se o nome do duque está certo; ele torce o pescoço e lê. Os contratados viraram os
+  batedores da Tsvirana pagos pelo ducado, e depois da luta vem a Cura em Jarupã: o talho "raso", o pão duro comido de
+  uma mordida e o imposto que abre outro buraco na barriga.
 
 ## 9. Onde isto está no cânone
 

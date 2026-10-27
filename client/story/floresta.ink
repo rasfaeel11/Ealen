@@ -2,6 +2,8 @@
 // resposta: homens do ducado de cima, Ymboripe, andam conjurando grande no rio, de propósito, pra acordar o Ykuruã e
 // matar o comércio de Ybytuguá. Cidade sem comércio aceita senhor. É política humana, explicada no próprio ato.
 
+VAR visto_tabuleta = false
+
 // Um `trigger` em quem chega pelo sul, vindo de Ybytuguá: a primeira vez.
 === floresta_chegada ===
 Entre uma bacia e outra, a floresta não é de senhor nenhum. A trilha some e volta, e ninguém cuida dela.
@@ -40,13 +42,55 @@ Oryndu: O bicho não acordou. Acordaram ele.
 ~ note("papel", "O papel do recitador, com o selo de Ymboripe: ler na cheia, nos baixios e rio acima, até Ybytuguá pedir senhor. Pagamento com o castelão da corrente.")
 -> END
 
-// Os aventureiros contratados vencidos (onDefeat).
+// Os batedores contratados vencidos (onDefeat): a Tsvirana, paga pelo ducado. Depois, a Cura em Jarupã.
 === contratados_caem ===
 O que ainda está de pé larga a espada e levanta as mãos.
-Contratada: Escolta. Assinei escolta numa Mesa rio acima. O papel não dizia de quê.
+Contratada: Batedora. Assinei numa Mesa rio acima. O papel não dizia pra quem.
 Endyru: E você não leu?
 Contratada: Leram pra mim.
-Jarupã: Escolta de leitor de rio. Agora você sabe.
+Jarupã: Agora você sabe.
+Ela some no mato sem a espada. Jarupã senta numa raiz e olha a canela: um talho comprido, aberto, sangrando na bota.
+Jarupã: Raso. Não apareceu osso, é raso.
+Xanduí: Tá enchendo a bota.
+Endyru se ajoelha e põe a mão em cima do talho. Diz a cura baixo, devagar, a medida do corte em dedos. A carne fecha embaixo da mão dele como barro secando.
+Jarupã fica branco. Cai sentado de vez, suando frio, puxa o pão duro da mochila e come metade de uma mordida só.
+Jarupã: Magia de estudante é igual imposto. Tira de um buraco e abre outro na barriga.
+Endyru: A cura acelera o corpo. Quem paga é o...
+Jarupã: Eu sei quem paga. Tô pagando.
+-> END
+
+// Uma noite de acampamento antes do vau: o giz e os dados (um `trigger` de uma vez só).
+=== acampamento ===
+Acampam antes do vau, com o fogo baixo pra não chamar ninguém. Endyru risca um círculo de giz numa pedra chata, pra mostrar.
+Endyru: Olha. Se a linha não fecha, a medida não fecha. Fica um buraco aqui, de um dedo, e tudo que eu puser dentro escapa por ele.
+Jarupã: Por um dedo.
+Endyru: Por um dedo.
+Jarupã pega o giz da mão dele, apaga o círculo com a palma e risca quatro tracinhos na pedra.
+Jarupã: Placar. Dados. Você é o primeiro tracinho.
+{pay("cobre", 3):
+    Três rodadas depois, os tracinhos são todos de Jarupã, e três cobres de Endyru estão do lado do fogo, do lado de Jarupã.
+    Jarupã: Por um dedo.
+- else:
+    Endyru não tem com que apostar. Jarupã joga sozinho, contra o próprio placar, e perde.
+}
+Xanduí, deitada de costas pro fogo, sem abrir os olhos:
+Xanduí: Fecha o círculo, estudante. Senão escapa.
+-> END
+
+// Uma tabuleta de fronteira caída na trilha. Xanduí a vira; Endyru lê.
+=== tabuleta ===
+Uma tabuleta de fronteira caída na trilha, ainda presa por um prego ao toco onde estava pregada.
+{in_party("xandui") && not visto_tabuleta:
+    ~ visto_tabuleta = true
+    Xanduí para na frente dela, olha séria, e endireita a tábua no toco. Fica de cabeça pra baixo.
+    Xanduí: Madeira boa. Endyru, vê se o nome do duque tá escrito direito aí.
+    Endyru torce o pescoço e lê.
+}
+Endyru: "Passagem fechada por ordem do duque de Ymboripe. Quem passar paga com o que leva."
+{in_party("jarupa"):
+    Jarupã: A gente não leva nada.
+    Xanduí: Então passa.
+}
 -> END
 
 // Um marco na encruzilhada.
