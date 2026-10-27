@@ -216,6 +216,8 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   // Ato 1: a escolta acaba no cais, e o trio se forma na Mesa.
   play("chegada_ybytugua");
   assert.deepEqual(present(), ["Oryndu"]);
+  play("quadro");
+  assert.equal(runner.flag("leu_edital"), true);
   play("conselheira", "Aceitar");
   assert.equal(runner.flag("contrato"), true);
   assert.deepEqual(present(), ["Jarupã", "Oryndu", "Xanduí"]);

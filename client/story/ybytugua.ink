@@ -11,7 +11,7 @@ VAR contrato = false
 VAR prova = false
 VAR ato3 = false
 VAR temperadas = false
-VAR virou_aviso = false
+VAR leu_edital = false
 
 // Um `trigger` no cais: a primeira vez que o barco encosta.
 === chegada_ybytugua ===
@@ -52,14 +52,17 @@ Mercador: Ybytuguá está morrendo, rapaz. Eu não vou morrer junto.
     - contrato:
         Conselheira: Os baixios ficam a leste, depois do portão. O resto do pagamento sai no relatório.
         -> END
-    - else:
+    - leu_edital:
         -> oferta
+    - else:
+        Conselheira: O contrato está no quadro. Quem lê, lê. Quem não lê, paga o escrivão.
+        -> END
 }
 
 = oferta
-Uma mulher de mangas arregaçadas e dedos de tinta atende sozinha a mesa comprida do conselho. Atrás dela, cadeiras vazias.
-Conselheira: Contrato da cheia. Barco de carga afunda nos baixios abaixo da cidade, um por semana. Na língua dos portos, o Bebe-Cheia. Acordou cedo.
-Conselheira: Vinte de prata. Dois na assinatura, o resto no relatório. O conselho quer o relatório escrito: quem assina tem de saber ler.
+Uma mulher de mangas arregaçadas e dedos de tinta atende sozinha a mesa comprida do conselho. Atrás dela, cadeiras vazias. Jarupã e Xanduí chegam junto, um de cada lado de Endyru, como quem já é companhia.
+Conselheira: O contrato da cheia. Leram?
+Xanduí: Ele leu.
 -> oferta_escolhas
 
 = oferta_escolhas
@@ -69,7 +72,7 @@ Conselheira: Vinte de prata. Dois na assinatura, o resto no relatório. O consel
     Conselheira: E o contrato continua no quadro.
     -> oferta_escolhas
 * [Dizer que você puxa o bicho da água sozinho.]
-    Endyru: Eu sou Página, de atração e repulsão. Eu puxo ele pra areia.
+    Endyru: Eu sou Página, de atração e repulsão. Do raso até a areia são uns vinte passos. Eu puxo ele.
     Conselheira: Um bicho do tamanho de um barco de carga. Sozinho.
     Endyru: Hoje.
     Ela olha pra ele do jeito que se olha pra quem vai entrar no quadro como "o contrato continua".
@@ -78,26 +81,19 @@ Conselheira: Vinte de prata. Dois na assinatura, o resto no relatório. O consel
     -> trio
 
 = trio
-Antes que Endyru termine de dizer que aceita, Xanduí já está do lado dele.
-Xanduí: Ele vai com a gente.
-Jarupã: Vai?
-Xanduí: O contrato pede quem lê. A minha letra não serve pra conselho.
-Jarupã: A minha também não. Nunca serviu pra nada.
-Conselheira: Então leiam. Quem assina responde.
-Ela empurra o papel pela mesa. Xanduí empurra o papel pra Endyru.
-Xanduí: Lê alto, estudante. Você lê bonito.
-Endyru: "O conselho de guildas de Ybytuguá contrata a companhia abaixo. O contratado responde pelo bicho dos baixios, e pelo que lhe der causa, até a cheia baixar. Vinte de prata, dois na assinatura, dezoito contra o relatório escrito."
+Conselheira: Então assinem. Quem assina responde.
+Ela empurra o livro de registro pela mesa. Xanduí empurra o livro pra Endyru, sem olhar pra página.
 Jarupã: E a parte de quem fica?
 Endyru: Isso é costume. Não está no papel.
 Jarupã: Então escreve.
-Endyru escreve na margem, em letra miúda, a parte de quem fica. Jarupã olha o papel e acena, satisfeito.
+Endyru escreve na margem, em letra miúda, a parte de quem fica. Jarupã olha o papel de cabeça erguida e acena, satisfeito.
 O escrivão da Mesa pede o nome da companhia. Jarupã diz um. Xanduí diz outro. Endyru escreve um terceiro, e ninguém reclama.
 Escrivão da Mesa: Nível declarado?
 Endyru: Página. Atração e repulsão.
-Jarupã: Gryskar, segundo grau. Ela é Ipojy, segundo também.
-Escrivão da Mesa: Fiança. Três de prata. Contrato largado no meio perde a fiança.
-Jarupã conta a prata da escolta em cima da mesa, moeda por moeda, e faz cara de quem foi assaltado de dia.
-Endyru assina. A conselheira põe duas moedas de prata em cima da assinatura, ainda molhada.
+Jarupã: Gryskar, Fio. Ela é Ipojy, Fio também. Dá Corpo, somando.
+Escrivão da Mesa: Não soma.
+Conselheira: Soma hoje. Fiança dispensada. O conselho tem pressa.
+Endyru assina pelo próprio punho. A conselheira põe duas moedas de prata em cima da assinatura, ainda molhada.
 ~ earn("prata", 2)
 ~ join_party("jarupa")
 ~ join_party("xandui")
@@ -137,22 +133,49 @@ Conselheira: A guilda dos barqueiros diz muita coisa. Pergunte a ela. E pergunte
 -> END
 
 === quadro ===
-O quadro de contratos tem um aviso só, pregado por cima de outros mais velhos e mais amarelos.
-{in_party("xandui") && not virou_aviso:
-    ~ virou_aviso = true
-    Xanduí arranca o aviso do prego pra ver de perto. Segura um tempo, de cabeça pra baixo, e passa pra Endyru.
-    Xanduí: Lê aí. Você lê bonito.
+{
+    - contrato:
+        O edital da cheia continua pregado, com o lacre do conselho e o nome da companhia escrito embaixo, na letra de Endyru.
+        -> END
+    - leu_edital:
+        Endyru: "Contrato de Corpo. Matar ou expulsar o Ykuruã dos baixios do sul."
+        -> END
+    - not chegou:
+        Um quadro de contratos cheio de papel amarelo, e um edital grande por cima de todos, com lacre de cera.
+        -> END
 }
-Endyru: "Contrato da cheia. O conselho de guildas paga vinte de prata a quem livrar os baixios do bicho. Quem assina tem de saber ler."
+No quadro, por cima de papéis pequenos e amarelos, um edital grande com lacre de cera do Conselho das Guildas. Embaixo dele, o escrivão da Mesa espera, com a mão aberta.
+Escrivão da Mesa: Uma moeda e eu leio.
+Jarupã já está com a mão na bolsa. Xanduí segura o pulso dele.
+Ela olha o edital de longe, com a cabeça inclinada, como quem avalia se um bicho morde. Depois aponta Endyru com o queixo.
+Xanduí: Pra que dar moeda pra escrivão se o menino lê bonito? Lê aí pra gente, estudante.
+Endyru: "Contrato de Corpo. O Conselho das Guildas de Ybytuguá paga vinte de prata a quem matar ou expulsar o Ykuruã dos baixios do sul. Dois na assinatura, dezoito contra o relatório. Fiança dispensada por urgência."
+Endyru: "A companhia contratada terá ao menos um letrado, que assine o livro da Mesa pelo próprio punho e entregue ao conselho relatório escrito do estado dos baixios, como exigem as guildas de seguro."
+Jarupã: Assina lá, Xanduí.
+Xanduí cruza os braços. Não pisca.
+Xanduí: Minha letra é grande, Jarupã. Não cabe nessas linhazinhas de conselho. E escrivão de cidade livre implica com letra de mulher da estrada.
+Xanduí: Chama o estudante. Três divide melhor que dois.
+Endyru faz a conta. Sozinho, um Página não passa na Mesa por um contrato de Corpo. Os dois, sem quem assine, não passam da porta.
+Endyru: A conselheira é ali.
+~ leu_edital = true
 -> END
 
 === jarupa_mesa ===
-Jarupã: Contrato de bicho paga melhor que escolta de sal. Fala com a mulher do conselho, estudante. A gente está esperando alguém que leia.
-Jarupã: Não eu. Eu sei ler o principal.
+{leu_edital:
+    Jarupã: Vai lá, estudante. Assina bonito.
+- else:
+    Jarupã: Contrato de bicho paga melhor que escolta de sal. Tem um edital no quadro do tamanho de uma porta.
+    Jarupã: Eu não leio. Nunca precisei. O que importa alguém sempre fala alto.
+}
 -> END
 
 === xandui_mesa ===
-Xanduí: A conselheira não fecha com quem não lê. Fala com ela.
+Xanduí confere a fivela da bainha. Não levanta os olhos.
+{leu_edital:
+    Xanduí: A conselheira. Ali.
+- else:
+    Xanduí: O quadro, estudante.
+}
 -> END
 
 // A guilda dos barqueiros: o que a gente do rio sabe (referencias/bestiario.md §1.4).
@@ -168,6 +191,10 @@ Um velho remenda uma rede no chão da guilda, com a rede inteira em cima das per
 * [Perguntar do bicho.]
     Mestre da guilda: O Bebe-Cheia. Dorme no lodo dos baixios o ano inteiro e acorda com a cheia. Na água ninguém vence ele. Na areia ele seca e racha.
     Mestre da guilda: Na cheia, ninguém conjura no rio. Barqueiro usa verso pra puxar a rede e mais nada.
+    -> perguntas
+* [Perguntar quem guia até os baixios.]
+    Mestre da guilda: Ninguém desta guilda. Os barcos estão no seco, e ficam no seco.
+    Mestre da guilda: Quem espera a cheia baixar vive até a seca.
     -> perguntas
 * [Perguntar como se sabe se ele está embaixo.]
     Mestre da guilda: Bate o remo no casco. Devagar. Ele responde ou não responde.
@@ -233,6 +260,12 @@ Mulher da família: A gente vai rio acima. Pra onde tem senhor, e muro, e ningu�
 === barco_ybytugua ===
 {ato2:
     -> subir
+}
+{contrato && not ato2:
+    Oryndu passa a mão no leme. Tem uma rachadura do tamanho de um palmo, da corrente do pedágio.
+    Oryndu: Conserto de leme custa o que eu não tenho. Levo vocês até os baixios pela parte do contrato que fica comigo.
+    Oryndu: No rio, ninguém conjura alto. Essa é a parte que fica com vocês.
+    -> END
 }
 Oryndu: O barco fica aqui. Agora o trabalho é a pé.
 -> END

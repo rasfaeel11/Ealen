@@ -292,7 +292,6 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 | # | Task | O que é |
 |---|---|---|
 | 31 | **A voz do `jogo.md` em todo o texto** | Passar as falas dos cinco `.ink` pelo guia de diálogos (`jogo.md` §6). Jarupã não lê e não tem vergonha disso (sai o "Eu sei ler o principal"), dá regra de estrada inventada na hora e chama ferida de "raso". Xanduí fala metade, confere correia enquanto os outros discutem, tem a última palavra e repete termo de juiz de ouvido ("Quebra de contrato"). Endyru dá o número exato e corrige os outros até o ato 3; depois, corta a frase no meio. Oryndu bate o remo, chama de "rapaz", fala de lodo, corda e vento. Vocabulário do mundo (Verso, medida, palmo, fôlego, lua). Regra da ponte: a última fala antes de cada luta aponta pra mecânica dela. |
-| 33 | **A Mesa do roteiro** (cena 1.1) | O edital com lacre do Conselho ("Contrato de Corpo", fiança dispensada por urgência) e o leitor de quadro que cobra uma moeda. Jarupã vai pagar; Xanduí segura a mão dele, olha o edital de longe com a cabeça inclinada e aponta o estudante. Endyru lê a exigência das guildas de seguro (assinar pelo próprio punho e entregar relatório). "Assina lá, Xanduí." / "Minha letra é grande, Jarupã...". Endyru entende que sem as espadas não passa do nível Corpo. Na guilda, Oryndu aceita levar o grupo porque precisa pagar o leme estragado no pedágio, com a condição de ninguém conjurar alto. O aviso de cabeça pra baixo sai do quadro (vai pra task 37). |
 | 34 | **O ferreiro do roteiro** | A placa de duas linhas (a letra dos portos embaixo, as runas em cima) e a receita do `jogo.md`: banha de bagre cego, três pregos de barco que afundou com carga paga, trinta marretadas. A cena do bagre que "não desviou da rede" e da conta que parou no doze. Endyru reconhece a métrica de um Verso de entropia no compasso da bigorna e não explica além disso. A receita da unha do pé sai. Ele vende Temperado e Gravado (a banca da task 25 pode ser aqui). |
 | 35 | **Os saqueadores do dique** (Luta 2, opcional) | Mercenários dispensados de uma caravana roubando o armazém de cordas e óleo da guilda. Luta curta em lugar fechado: posição, o empurrão de Endyru contra parede e caixote, o triângulo. Pede um pedaço de mapa (o armazém) e a gente no bestiário (pelo papel, sem nome). |
 | 36 | **A primeira ida do roteiro** (cena 1.3) | Os destroços da barcaça de grãos; num rochedo da margem, cinza de giz e pedra queimada de encantamento (objeto que se examina, vai pro diário). Jarupã bate na água e a espada não pega; o bicho sente a mana de Endyru e parte a passarela de madeira (destrutível, deixa `broken`). O objetivo vira recuar até a barcaça em poucas rodadas (deixa `used` na barcaça, com `goal`), com Oryndu lendo a água. Na saída, Oryndu tira do lodo a estaca com o ferro de Ymboripe e um círculo de atração riscado às pressas: a resposta começa no fim do ato 1. A "leitura na margem" contada pela guilda vira reforço ou sai. |
@@ -438,6 +437,13 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   grita com a água". Antes da luta, "Deixa que eu abro" e a trava do guincho. O guincho é um objeto que se mexe
   (`winch` em `PROPS`): soltá-lo é a deixa `used` que vence a luta, e o barco desce a corredeira sob virotes direto
   pra Ybytuguá. No cais, o mercador paga metade em cobre porque o sal molhou: a escolta chega à cidade sem dinheiro.
+- **33. A Mesa do roteiro.** O trio se forma no quadro: o edital com lacre ("Contrato de Corpo", fiança dispensada por
+  urgência), o escrivão que lê por uma moeda, Xanduí segurando o pulso de Jarupã e olhando o edital de longe, de cabeça
+  inclinada, "Lê aí pra gente, estudante", a exigência das guildas de seguro, "Assina lá, Xanduí" e a letra grande
+  demais pras linhazinhas do conselho (`leu_edital`). A conselheira só oferece depois, e a fiança cai: o conselho tem
+  pressa. Jarupã agora diz que não lê e nunca precisou. Na guilda, ninguém guia ("Quem espera a cheia baixar vive até
+  a seca"); no barco, Oryndu leva o grupo pelo leme rachado na corrente e põe a condição. O aviso de cabeça pra baixo
+  saiu do quadro e espera a tabuleta da floresta (task 37).
 
 ## 9. Onde isto está no cânone
 
