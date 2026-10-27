@@ -256,3 +256,8 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.equal(runner.clock(), null);
   assert.equal(host.character.purse?.prata, 4, "seis da pilha dele, menos duas pra parte de quem fica");
 });
+
+test("a luta final dos baixios tem cheia: a água sobe dentro dela", () => {
+  const final = maps.baixios.enemies.find((enemy) => enemy.group === "final");
+  assert.deepEqual(final?.flood, { every: 3, rises: 2 });
+});

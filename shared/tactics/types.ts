@@ -214,6 +214,21 @@ export interface Cue {
   burst?: string;
   /** Quem acompanha o grupo sem lutar e sai da luta nessa hora (o apoio dele some): o id da ficha. */
   dismiss?: string;
+  /** A água sobe um anel nessa hora (ver Flood), conte ou não pro relógio da cheia da luta. */
+  rise?: boolean;
+}
+
+/**
+ * A cheia dentro da luta: de `every` em `every` rodadas (na 1 + every, na
+ * 1 + 2·every...), a água come um anel da margem — todo chão seco, que não
+ * barra o passo, vizinho de água vira água — até `rises` vezes. O bicho de rio
+ * que estiver ali volta a ficar Submerso. `risen` conta as que já vieram
+ * (as das deixas com `rise` também).
+ */
+export interface Flood {
+  every: number;
+  rises: number;
+  risen: number;
 }
 
 /**
@@ -362,6 +377,13 @@ export interface Encounter {
   winner?: TeamId;
   /** Uma deixa parou a luta sem vencedor. Como `winner`, encerra tudo (ver isOver em ./units.ts). */
   stopped?: boolean;
+  /** A cheia desta luta, se ela tem uma (ver Flood). */
+  flood?: Flood;
+  /**
+   * A água já subiu nesta luta, e a grade é uma cópia da do mapa: o que a
+   * cheia alaga fica na luta e não vai pro mapa da área.
+   */
+  ownGrid?: boolean;
 }
 
 /** O que um combatente pede pra fazer. Só quem está no turno pode pedir. */
@@ -466,6 +488,8 @@ export type TacticalEvent =
   | { type: "supportUsed"; supporter: string; supporterName: string; support: SupportId; name: string; unit: string }
   /** Quem acompanhava o grupo sem lutar saiu da luta por uma deixa (`dismiss`): o apoio dele não está mais lá. */
   | { type: "supporterLost"; id: string }
+  /** A água subiu: estes quadrados, que eram secos, agora são água (ver Flood). */
+  | { type: "waterRose"; tiles: Pos[] }
   /**
    * O que `unit` pretende fazer na vez dele, pelo que a luta é agora: onde
    * parar (`tile`; o próprio quadrado se não vai andar), que habilidades usar

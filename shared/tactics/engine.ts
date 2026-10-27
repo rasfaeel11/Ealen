@@ -97,6 +97,8 @@ export interface EncounterSetup {
   lasting?: Record<string, readonly StatusId[]>;
   /** O golpe que ABRE a luta, dado de fora dela por quem a começou (ver Opening). */
   opening?: Opening;
+  /** A cheia da luta: de quantas em quantas rodadas a água sobe, e quantas vezes no máximo (ver Flood em ./types.ts). */
+  flood?: { every: number; rises: number };
   seed: number;
 }
 
@@ -137,6 +139,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     cues: [...(setup.cues ?? [])],
     supporters: (setup.supporters ?? []).map((supporter) => ({ ...supporter, ready: true })),
     rngState: setup.seed >>> 0,
+    ...(setup.flood ? { flood: { ...setup.flood, risen: 0 } } : {}),
   };
 
   const rolls = encounter.units.map((unit, index) => ({
@@ -258,6 +261,8 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
         // Rodada nova: quem apoia pode ser chamado de novo.
         for (const supporter of encounter.supporters) supporter.ready = true;
         tickSurfaces(encounter, events);
+        const { flood } = encounter;
+        if (flood && flood.risen < flood.rises && (encounter.round - 1) % flood.every === 0) riseWater(encounter, events);
         // Uma deixa de rodada pode parar a luta aqui, antes de a vez de alguém começar.
         if (fireCues(encounter, events)) return;
       }
@@ -412,6 +417,7 @@ function fireCues(encounter: Encounter, events: TacticalEvent[]): boolean {
       const unit = findUnit(encounter, cue.burst);
       if (unit && isAlive(unit) && (unit.mana ?? 0) > 0) spendMana(encounter, unit, unit.mana!, events, true);
     }
+    if (cue.rise) riseWater(encounter, events);
     if (cue.dismiss && encounter.supporters.some((supporter) => supporter.id === cue.dismiss)) {
       encounter.supporters = encounter.supporters.filter((supporter) => supporter.id !== cue.dismiss);
       events.push({ type: "supporterLost", id: cue.dismiss });
@@ -1025,6 +1031,41 @@ function dry(unit: Unit, events: TacticalEvent[]): void {
   unit.dryTurns = (unit.dryTurns ?? 0) + 1;
   if (unit.dryTurns >= CRACK_TURNS && !unit.statuses.some((status) => status.id === STATUSES.cracked_hide.id)) {
     addStatus(unit, STATUSES.cracked_hide, Infinity, events);
+  }
+}
+
+/**
+ * A água sobe um anel: todo quadrado seco que não barra o passo e encosta
+ * (de lado, não na diagonal) em água vira água, e custa o passo de água (2).
+ * Destrutível de pé barra o passo: o chão dele fica seco. Na primeira vez, a
+ * luta passa a ter a própria grade (`ownGrid`), pra cheia não alagar o mapa
+ * da área. O bicho de rio que estava ali volta a ficar Submerso.
+ */
+function riseWater(encounter: Encounter, events: TacticalEvent[]): void {
+  if (encounter.flood) encounter.flood.risen += 1;
+  const { grid } = encounter;
+  const wet = (x: number, y: number) => x >= 0 && y >= 0 && x < grid.width && y < grid.height && grid.tiles[y * grid.width + x].water === true;
+  const tiles: Pos[] = [];
+  for (let y = 0; y < grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      const tile = grid.tiles[y * grid.width + x];
+      if (tile.water || tile.blocksMove) continue;
+      if (wet(x - 1, y) || wet(x + 1, y) || wet(x, y - 1) || wet(x, y + 1)) tiles.push({ x, y });
+    }
+  }
+  if (tiles.length === 0) return;
+  if (!encounter.ownGrid) {
+    encounter.grid = { ...grid, tiles: [...grid.tiles] };
+    encounter.ownGrid = true;
+  }
+  for (const pos of tiles) {
+    const index = pos.y * grid.width + pos.x;
+    const tile = encounter.grid.tiles[index];
+    encounter.grid.tiles[index] = { ...tile, water: true, moveCost: Math.max(tile.moveCost, 2) };
+  }
+  events.push({ type: "waterRose", tiles });
+  for (const unit of encounter.units) {
+    if (tiles.some((pos) => samePos(pos, unit.pos))) soak(encounter, unit, events);
   }
 }
 

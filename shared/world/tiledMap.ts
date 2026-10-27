@@ -38,7 +38,9 @@ import { CLASS_INFO } from "../types/characterClass";
  *              história: dá pra FALAR com ele enquanto está de pé, e o Nome
  *              do objeto é o que aparece na caixa; só vale em quem é
  *              `passive`) e `onDefeat` (o trecho que abre quando o grupo
- *              dele é vencido)
+ *              dele é vencido). E `flood` ("3 2"): a luta do grupo dele tem
+ *              cheia — a água come um anel da margem de 3 em 3 rodadas, até
+ *              2 vezes (ver Flood em ../tactics/types.ts)
  *     `npc`    ponto; alguém (ou algo) com quem se fala. O Nome é o que
  *              aparece na caixa; a propriedade `dialog` é o trecho (knot)
  *              da história em client/story que a conversa abre. Com `look`
@@ -84,7 +86,8 @@ import { CLASS_INFO } from "../types/characterClass";
  *              `burst` (`hero` ou `party:chave`) faz esse alguém gastar toda a
  *              mana de uma vez nessa hora, passando do limite (ver ../mana.ts):
  *              a pressa que o roteiro impõe. `dismiss` (`party:chave`) tira
- *              da luta quem acompanha sem lutar: o apoio dele some
+ *              da luta quem acompanha sem lutar: o apoio dele some. `rise`
+ *              (bool) faz a água subir um anel nessa hora
  *
  *   `npc`, `enemy`, `trigger`, `exit` e `cue` aceitam ainda `if` e `unless`: o nome
  *   de uma variável (VAR) da história. O objeto só existe enquanto a de `if`
@@ -135,6 +138,8 @@ export interface AreaEnemy extends AreaCondition {
   dialog?: string;
   /** O trecho da história que se abre quando o grupo dele é vencido. */
   onDefeat?: string;
+  /** A luta do grupo dele tem cheia: a água sobe de `every` em `every` rodadas, até `rises` vezes (ver Flood no motor). */
+  flood?: { every: number; rises: number };
   x: number;
   y: number;
 }
@@ -208,6 +213,8 @@ export interface AreaCue extends AreaCondition {
   burst?: string;
   /** Quem acompanha sem lutar e sai da luta quando ela dispara (`party:chave`). */
   dismiss?: string;
+  /** A água sobe um anel quando ela dispara (ver Flood no motor). */
+  rise?: boolean;
 }
 
 /** Sobre quem cai a condição de uma deixa que não diz: todos os inimigos da luta. */
@@ -318,6 +325,16 @@ function propertiesOf(source: { properties?: TiledProperty[] }): Record<string, 
   return Object.fromEntries((source.properties ?? []).map((property) => [property.name, property.value]));
 }
 
+/** A propriedade `flood` de um inimigo: "3 2" é a água subindo de 3 em 3 rodadas, até 2 vezes. */
+function floodOf(name: string, flood: unknown): { flood?: { every: number; rises: number } } {
+  if (flood === undefined || flood === "") return {};
+  const match = typeof flood === "string" ? /^\s*(\d+)\s+(\d+)\s*$/.exec(flood) : null;
+  const every = match ? Number(match[1]) : 0;
+  const rises = match ? Number(match[2]) : 0;
+  if (every < 1 || rises < 1) throw new Error(`Inimigo "${name}": "flood" é de quantas em quantas rodadas a água sobe e quantas vezes ("3 2").`);
+  return { flood: { every, rises } };
+}
+
 /** As propriedades `if` e `unless` de um objeto, quando ele as tem. */
 function conditionOf(properties: Record<string, unknown>): AreaCondition {
   const condition: AreaCondition = {};
@@ -425,6 +442,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
           passive: properties.passive === true,
           dialog: typeof dialog === "string" ? dialog : undefined,
           onDefeat: typeof onDefeat === "string" ? onDefeat : undefined,
+          ...floodOf(object.name ?? "", properties.flood),
           x: object.x,
           y: object.y,
           ...conditionOf(properties),
@@ -494,6 +512,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
           ...(typeof goal === "string" && goal !== "" ? { goal } : {}),
           ...(typeof burst === "string" && burst !== "" ? { burst } : {}),
           ...(typeof dismiss === "string" && dismiss !== "" ? { dismiss } : {}),
+          ...(properties.rise === true ? { rise: true } : {}),
           ...conditionOf(properties),
         });
       }

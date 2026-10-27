@@ -210,3 +210,43 @@ test("uma deixa pode impor a pressa (`burst`): quem ela diz gasta toda a mana de
   assert.deepEqual(eventsOf(events, "supporterLost"), [{ type: "supporterLost", id: "G" }]);
   assert.deepEqual(encounter.supporters, []);
 });
+
+test("a cheia: de tantas em tantas rodadas a água come um anel da margem, e o bicho que estava ali volta pra água", () => {
+  const { grid } = gridFromAscii(["M..Yw"]);
+  const mapGrid = grid;
+  const { encounter } = startEncounter({
+    grid,
+    units: [mage({ x: 0, y: 0 }), ykurua({ x: 3, y: 0 })],
+    seed: 4,
+    flood: { every: 1, rises: 1 },
+  });
+  const beast = findUnit(encounter, "Y")!;
+  assert.deepEqual(statusIds(beast), ["beached"]);
+
+  // A rodada 2 começa: a água sobe uma vez, só no quadrado que encostava nela.
+  const events = [...pass(encounter), ...pass(encounter)];
+  assert.deepEqual(eventsOf(events, "waterRose"), [{ type: "waterRose", tiles: [{ x: 3, y: 0 }] }]);
+  assert.equal(encounter.grid.tiles[3].water, true);
+  assert.equal(encounter.grid.tiles[3].moveCost, 2);
+  assert.equal(encounter.grid.tiles[2].water, undefined);
+  assert.deepEqual(statusIds(beast), ["submerged"]);
+  // A luta alagou a cópia dela: o mapa da área continua seco.
+  assert.equal(mapGrid.tiles[3].water, undefined);
+
+  // Uma vez só: na rodada 3 a água não sobe mais.
+  const later = [...pass(encounter), ...pass(encounter)];
+  assert.deepEqual(eventsOf(later, "waterRose"), []);
+  assert.equal(encounter.flood?.risen, 1);
+});
+
+test("uma deixa com `rise` faz a água subir na hora em que dispara, e conta na cheia", () => {
+  const { grid } = gridFromAscii(["M...w"]);
+  const { encounter } = startEncounter({
+    grid,
+    units: [mage({ x: 0, y: 0 }), ykurua({ x: 2, y: 0 })],
+    seed: 4,
+    cues: [{ id: "chuva", when: { kind: "round", round: 2 }, rise: true }],
+  });
+  const events = [...pass(encounter), ...pass(encounter)];
+  assert.deepEqual(eventsOf(events, "waterRose")[0]?.tiles, [{ x: 3, y: 0 }]);
+});

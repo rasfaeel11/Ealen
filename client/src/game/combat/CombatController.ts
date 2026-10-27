@@ -101,6 +101,8 @@ const COLOR_ALLY = 0x7fb069;
 const COLOR_USE = 0xe0b85a;
 /** A cor de cada superfície no chão. */
 const SURFACE_COLOR: Record<SurfaceId, number> = { fire: 0xe8792b, frost: 0x9fd8e8 };
+/** A água que a cheia trouxe pra dentro da luta: barrenta, como a do Ymonhã. */
+const FLOOD_COLOR = 0x4f6f6a;
 /** A água que a mana gasta de uma vez sacode, do mago até o bicho que a sente. */
 const COLOR_WATER = 0x9fd8e8;
 /** A marca de atração e repulsão é sangue pelo nariz: quem a carrega pinga. */
@@ -211,6 +213,8 @@ export class CombatController {
   /** As superfícies no chão, como os eventos as foram deixando — não como o motor já as tem no fim da jogada. */
   private readonly ground: Phaser.GameObjects.Graphics;
   private readonly surfaces = new Map<string, { pos: Pos; id: SurfaceId }>();
+  /** O chão que a cheia alagou nesta luta (`waterRose`): o mapa desenha seco, a luta o pinta de água por cima. */
+  private readonly flooded: Pos[] = [];
   private readonly overlay: Phaser.GameObjects.Graphics;
   private readonly cursor: Phaser.GameObjects.Graphics;
   /** Os quadrados que o inimigo da vez está prestes a atingir. */
@@ -603,6 +607,7 @@ export class CombatController {
   /** O que está no chão é uma mancha por superfície, não um quadrado por quadrado. */
   private drawSurfaces(): void {
     this.ground.clear();
+    drawArea(this.ground, this.flooded, this.host.map.tileSize, FLOOD_COLOR, 0.55, 0.8);
     for (const id of Object.keys(SURFACE_COLOR) as SurfaceId[]) {
       const tiles = [...this.surfaces.values()].filter((surface) => surface.id === id).map((surface) => surface.pos);
       drawArea(this.ground, tiles, this.host.map.tileSize, SURFACE_COLOR[id], 0.4, 0.7);
@@ -1133,6 +1138,14 @@ export class CombatController {
         await this.wait(260);
         return;
       }
+
+      case "waterRose":
+        this.flooded.push(...event.tiles);
+        this.drawSurfaces();
+        sfx("rumble");
+        this.hud.log("A água sobe.");
+        await this.wait(380);
+        return;
 
       case "supporterLost": {
         // A deixa já contou o que houve; aqui some quem era e o apoio que ele dava.

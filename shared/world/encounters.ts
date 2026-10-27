@@ -186,7 +186,7 @@ export function fightCues(
   enemies: readonly AreaEnemy[],
   party: readonly string[] = [HERO_ID],
 ): Cue[] {
-  return cues.flatMap(({ id, when, ends, apply, burst, dismiss }): Cue[] => {
+  return cues.flatMap(({ id, when, ends, apply, burst, dismiss, rise }): Cue[] => {
     const status = apply && cueStatus(apply, enemies, party);
     const burster = burst === undefined ? undefined : cueUnit(burst, enemies);
     const leaver = dismiss === undefined ? undefined : cueUnit(dismiss, enemies);
@@ -198,6 +198,7 @@ export function fightCues(
         ...(ends ? { ends } : {}),
         ...(burster ? { burst: burster } : {}),
         ...(leaver ? { dismiss: leaver } : {}),
+        ...(rise ? { rise } : {}),
       },
     ];
     switch (when.kind) {
@@ -271,7 +272,8 @@ export function startAreaEncounter(
       }),
     );
   }
-  return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, lasting, opening, seed });
+  const flood = enemies.find((enemy) => enemy.flood)?.flood;
+  return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, lasting, opening, seed, ...(flood ? { flood } : {}) });
 }
 
 /**
