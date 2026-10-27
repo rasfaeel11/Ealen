@@ -22,6 +22,19 @@ em `jogo.md` e nas fichas e referências da §9). Fato novo continua indo pro au
 - Vethrun não aparece.
 - Nenhum Sem-Ferrugem aparece.
 
+## Decisões do co-autor (2026-10-27, com a autorização do autor)
+
+- Endyru chega ao Círculo na margem, no ato 2, como já está. No ato 3, a pressa é a de quem acabou de chegar
+  lá e acha que aguenta a página inteira: o estouro passa do limite do Círculo. O `jogo.md` foi acertado.
+- Na despedida, a tela mostra Endyru olhando a mão de Xanduí na lombada, abrindo a boca e calando. Não diz que
+  ele entendeu: ninguém no jogo descobre o segredo (§1.1); quem percebe é o jogador.
+- Nomes: o castelão é **Mbyraku**, o castelo de pedágio é o **Castelo da Volta**, o mago do duque é **Jurendy**
+  (ex-colega de Endyru em Kuatiarape, filho de gente com dinheiro) e o ferreiro demônio é **Thrykar**. O
+  `jogo.md` sugeria Thrymkel, mas nome de demônio macho termina em -r, -ar, -vald ou -grim (`alfabeto.md`).
+  A conselheira, o mercador e o mestre da guilda continuam pelo papel.
+- O repositório da história não está nesta máquina: estes nomes e o Jurendy ainda precisam ser gravados lá
+  (task 14).
+
 ## 1. De onde vem o cânone
 
 O mundo mora no repositório da história (`historiav2`, gerido pelo lore-pack). **Ele manda; o jogo obedece.**
@@ -266,7 +279,7 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P1 — o conteúdo
 | # | Task | O que é |
 |---|---|---|
-| 14 | **Nomes pro autor** | Quem aparece pelo papel e pode ganhar nome: o castelão, a conselheira, o mercador, o ferreiro (nome de demônio), o mestre da guilda, o recitador. O `jogo.md` já sugere Mbyraku (o castelão), Thrymkel (o ferreiro), Jurendy (o mago do duque, task 38) e o Castelo da Volta; continuam sugestão até o autor gravar. |
+| 14 | **Gravar os nomes na história** | Mbyraku, Castelo da Volta, Jurendy (e o fato de ser ex-colega de Endyru) e Thrykar foram decididos (ver Decisões do co-autor) e já valem pro jogo; falta gravar as fichas e a lista de nomes no repositório da história, que não está nesta máquina. |
 | 15 | **Retoque dos mapas no Tiled** | Os quatro mapas saíram de um gerador, com os placeholders; o desenho de verdade é do autor (o contrato do Tiled está em `docs/motor.md`). |
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
@@ -274,7 +287,7 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, e o jogo ainda não. As tasks
 21 a 24 da análise de 2026-10-26 entraram aqui (21 na 41, 22 e 23 na 38, 24 na 37). Ordem sugerida: 31, 32,
 33, 34, 36, 37, 38, 40, 42, 39, 41, 43, 44, 45, 35, 46. As tasks de motor (40, 41, 42, 46) testam a regra no
-`shared/` antes de a cena usar. O que o `jogo.md` marca como sugestão de nome espera a task 14.
+`shared/` antes de a cena usar. Os nomes do `jogo.md` estão decididos (ver Decisões do co-autor).
 
 | # | Task | O que é |
 |---|---|---|
@@ -285,10 +298,10 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 | 35 | **Os saqueadores do dique** (Luta 2, opcional) | Mercenários dispensados de uma caravana roubando o armazém de cordas e óleo da guilda. Luta curta em lugar fechado: posição, o empurrão de Endyru contra parede e caixote, o triângulo. Pede um pedaço de mapa (o armazém) e a gente no bestiário (pelo papel, sem nome). |
 | 36 | **A primeira ida do roteiro** (cena 1.3) | Os destroços da barcaça de grãos; num rochedo da margem, cinza de giz e pedra queimada de encantamento (objeto que se examina, vai pro diário). Jarupã bate na água e a espada não pega; o bicho sente a mana de Endyru e parte a passarela de madeira (destrutível, deixa `broken`). O objetivo vira recuar até a barcaça em poucas rodadas (deixa `used` na barcaça, com `goal`), com Oryndu lendo a água. Na saída, Oryndu tira do lodo a estaca com o ferro de Ymboripe e um círculo de atração riscado às pressas: a resposta começa no fim do ato 1. A "leitura na margem" contada pela guilda vira reforço ou sai. |
 | 37 | **A estrada pela floresta** (cena 2.1) | No lugar das conversas de estrada da antiga 24, as do roteiro: no acampamento, Endyru ensina por que o círculo fecha exato, e Jarupã usa o giz pra marcar placar de dados e ganha três cobres dele. A tabuleta de fronteira caída: Xanduí a vira de cabeça pra baixo, "Madeira boa. Endyru, vê se o nome do duque tá escrito direito aí", e Endyru lê sem notar. A Luta 4, batedores da Tsvirana pagos pelo ducado (o aventureiro contratado do bestiário serve), e depois a Cura em Jarupã, que cai sentado comendo meio pão duro: "Magia de estudante é igual imposto...". |
-| 38 | **Jurendy e o castelão na ponte** (cena 2.2) | Junta as antigas 22 e 23 e muda o ato 2. Na clareira da beira do afluente, com ponte de pedra e barranco, o mago da corte (Jurendy, sugestão: ex-colega rico de Endyru em Kuatiarape, fato novo pro autor) toma o lugar do recitador sem nome, e o castelão e os escudeiros seguram a ponte: chefe de duas frentes. Antes da luta, Jurendy faz a conta de Ymboripe como quem explica uma conta, sem vilania ("Daqui a duas semanas eles mesmos abrem o portão..."). Na luta, puxá-lo do barranco quebra a recitação. Jurendy foge ou se rende. No bolso do castelão, a carta de conselheiros de Ybytuguá negociando a rendição se o rio continuar fechado até a lua cheia; Xanduí resume ("Então a gente mata o bicho antes da lua cheia..."). O castelo por terra perde a luta; o livro de contas sai ou vira uma peça a mais. |
+| 38 | **Jurendy e o castelão na ponte** (cena 2.2) | Junta as antigas 22 e 23 e muda o ato 2. Na clareira da beira do afluente, com ponte de pedra e barranco, o mago da corte, Jurendy, ex-colega rico de Endyru em Kuatiarape, toma o lugar do recitador sem nome, e o castelão e os escudeiros seguram a ponte: chefe de duas frentes. Antes da luta, Jurendy faz a conta de Ymboripe como quem explica uma conta, sem vilania ("Daqui a duas semanas eles mesmos abrem o portão..."). Na luta, puxá-lo do barranco quebra a recitação. Jurendy foge ou se rende. No bolso do castelão, a carta de conselheiros de Ybytuguá negociando a rendição se o rio continuar fechado até a lua cheia; Xanduí resume ("Então a gente mata o bicho antes da lua cheia..."). O castelo por terra perde a luta; o livro de contas sai ou vira uma peça a mais. |
 | 39 | **O preparo na margem** (cena 3.1) | Antes da luta final, um preparo no mapa: Endyru grava círculos de atração em quadrados da margem seca (o círculo gravado ganha lugar no mapa; hoje é só o texto pronto, task 5), Jarupã põe barris de óleo e estacas, e o sinal com Oryndu se combina. Ativado na luta, o círculo puxa o bicho na direção dele. A fala de Oryndu ("Puxa um palmo, deixa a moça segurar o bote...") e a de Endyru ("Eu faço essa conta desde os quatorze anos."). Ir sem preparar continua possível. |
 | 40 | **A cheia sobe na luta** | O relógio da Cheia dentro do combate: de tantas em tantas rodadas, a água toma o degrau mais baixo do mapa (pela elevação). O quadrado vira água (o bicho que estiver nele fica Submerso) e o círculo gravado que ficar embaixo se apaga. Regra e evento no motor; o client anima a água chegando. |
-| 41 | **A virada pela metade da vida** (cena 3.2) | No lugar da antiga 21. A deixa `final_pressa` sai da rodada 3 e vai pra quando o Ykuruã chega à metade da vida (deixa nova no motor, `when: hp Nome 50`), com a chuva apertando, a água subindo um degrau (task 40), o braço de Jarupã sangrando e a lua da rendição amanhã. Endyru força um Círculo inteiro de uma vez (`burst`), o barco parte (`dismiss`), e ele tenta recitar pra puxar Oryndu: o cântico começa e quebra na segunda linha, e Jarupã só puxa o remo. Na fase 2, a marca também baixa o limite de mana e facilita a quebra da recitação (`jogo.md` §4.2 e §7; hoje é só -2 no acerto). Decidir com o autor: o `jogo.md` põe Endyru ainda na Página na luta final e no Círculo no fecho; hoje ele sobe na margem do ato 2. |
+| 41 | **A virada pela metade da vida** (cena 3.2) | No lugar da antiga 21. A deixa `final_pressa` sai da rodada 3 e vai pra quando o Ykuruã chega à metade da vida (deixa nova no motor, `when: hp Nome 50`), com a chuva apertando, a água subindo um degrau (task 40), o braço de Jarupã sangrando e a lua da rendição amanhã. Endyru força um Círculo inteiro de uma vez (`burst`), o barco parte (`dismiss`), e ele tenta recitar pra puxar Oryndu: o cântico começa e quebra na segunda linha, e Jarupã só puxa o remo. Na fase 2, a marca também baixa o limite de mana e facilita a quebra da recitação (`jogo.md` §4.2 e §7; hoje é só -2 no acerto). Endyru já é Círculo aqui (ver Decisões do co-autor): o estouro passa do limite dele. |
 | 42 | **O couro seca devagar** | Em seco, a Muralha do Ykuruã cai um degrau por rodada em terra (o couro seca ao vento e racha), e volta inteira se ele voltar pra água. Esperar vira mecânica: o bicho puxado e segurado na pedra fica mais fraco a cada rodada. Hoje ele perde a Muralha toda no primeiro quadrado seco. Conferir no `balance:matrix`. |
 | 43 | **O silêncio na margem** (cena 4.1) | O `final_fim` do roteiro: o bicho morto na pedra, cheirando a lodo e ferro; Jarupã amarra o remo quebrado de Oryndu nas costas sem piada; Xanduí limpa a espada num tufo de capim, aperta o ombro de Endyru uma vez, curto, e sobe o barranco; Endyru abre a boca pra justificar a medida e fecha. Ninguém diz nada. |
 | 44 | **A unificação na parede** (cena 4.2) | Mostrar em vez de contar: o relatório escrito devagar (a mão ainda treme), a prata contada no balcão, guardas de Ymboripe que entram sem desembainhar e pregam um edital por cima do quadro da Mesa, o estandarte trocando na torre. A conselheira deixa de anunciar a anexação. |

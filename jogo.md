@@ -135,7 +135,7 @@ Estrutura para **2 a 4 horas de jogo**, dividida em **Abertura + 3 Atos + Fecho*
   - De repente, um sino de ferro bate na margem. Uma **corrente grossa de elos forjados** sobe da água, esticada por um guincho entre um fortim de madeira e pedra (**o Castelo da Volta**, senhorio menor na divisa da bacia) e um pilar na outra margem.
 
 #### Cena 0.2 — O Pedágio Dobrado (Luta 1)
-- **O conflito:** Cobradores do castelão **Mbyraku** `[sugestão de nome humano]` abordam o barco no píer da corrente. O pedágio de passagem dobrou "por causa do perigo da cheia". O mercador de sal não tem como pagar; se não pagarem, a guarda confisca a carga e o barco de Oryndu.
+- **O conflito:** Cobradores do castelão **Mbyraku** abordam o barco no píer da corrente. O pedágio de passagem dobrou "por causa do perigo da cheia". O mercador de sal não tem como pagar; se não pagarem, a guarda confisca a carga e o barco de Oryndu.
 - **A escolha / gancho:**
   - Endyru tenta citar o tratado fluvial das cidades livres (teste de **Saber / Lábia**). O sargento do pedágio cospe na água: papel de Kuatiarape ali só serve para acender cachimbo.
   - Endyru perde a paciência e começa a recitar um encantamento grande para rebentar a corrente. Oryndu segura o braço dele na hora: **"Não no rio, rapaz. Na cheia ninguém grita com a água."**
@@ -163,8 +163,8 @@ Estrutura para **2 a 4 horas de jogo**, dividida em **Abertura + 3 Atos + Fecho*
 
 #### Cena 1.2 — Pistas na Cidade (Preparação antes dos Baixios)
 O jogador explora Ybytuguá antes de descer aos baixios:
-1. **A Forja de Thrymkel `[sugestão de nome demônio]`:**
-   - Uma forja baixa perto do dique. Duas placas na porta: embaixo, na letra dos portos, `FERRO E COURO`; em cima, em runas, *"Thrymkel. Conserta o que você estragou. Não faço fiado."*
+1. **A Forja de Thrykar:**
+   - Uma forja baixa perto do dique. Duas placas na porta: embaixo, na letra dos portos, `FERRO E COURO`; em cima, em runas, *"Thrykar. Conserta o que você estragou. Não faço fiado."*
    - O ferreiro demônio vende equipamento **Temperado** e **Gravado** e oferece uma receita absurda para endurecer lâmina e couraça contra dente de bicho d'água: *"Banha de bagre velho, três pregos de barco afundado e trinta marretadas cantando pra sogra morrer."* Endyru reconhece a métrica: é um Verso de entropia cantado no compasso da bigorna.
 2. **A Guilda dos Barqueiros (Oryndu):**
    - Os barqueiros velhos puxaram os barcos para o seco e se recusam a guiar aventureiros: *"Quem espera a cheia baixar vive até a seca."*
@@ -177,7 +177,7 @@ O jogador explora Ybytuguá antes de descer aos baixios:
 - **O combate:**
   - O grupo encontra os destroços de uma barcaça de grãos. Mas, estranhamente, há **cinza de giz e pedra queimada de encantamento** num rochedo da margem — alguém andou conjurando ali antes.
   - O **Ykuruã** emerge do canal central (`invulnerable` dentro da água profunda).
-  - Jarupã tenta bater na água e a espada mal arranha o lodo do couro. Endyru recita um arremesso de pedra; o bicho sente a mana, vira a cabeça cega direto para Endyru e avança como uma onda, partindo a passarela de madeira.
+  - Jarupã tenta bater na água e a espada mal arranha o lodo do couro. Endyru recita um Empurrão na água; o bicho sente a mana, vira a cabeça cega direto para Endyru e avança como uma onda, partindo a passarela de madeira.
   - Oryndu grita da barcaça: **"Pra trás! Na água ele bebe o golpe! Saiam pro junco alto!"**
   - Objetivo da luta: **sobreviver e recuar até a barcaça em X turnos** enquanto Oryndu lê a água (`annotate`) mostrando onde o bicho vai dar o bote.
 - **A descoberta:** Saindo dos baixios, Oryndu mostra um pedaço de estaca tirado do lodo: tem o ferro marcado de **Ymboripe (o ducado de cima)** e restos de um círculo de atração riscado às pressas para fazer barulho de mana na água.
@@ -199,7 +199,7 @@ O jogador explora Ybytuguá antes de descer aos baixios:
 #### Cena 2.2 — Os Conjuradores do Duque (Lutas 5 e 6)
 - **Onde:** Uma clareira na beira de um afluente que desce direto para os baixios.
 - **O que eles encontram:**
-  - Um destacamento de **Ymboripe**, liderado por um mago da corte ducal — um ex-colega rico de Endyru da universidade de Kuatiarape, **Jurendy** `[sugestão de nome humano]` — escoltado por guardas pesados e pelo próprio castelão **Mbyraku** (do castelo de pedágio da abertura).
+  - Um destacamento de **Ymboripe**, liderado por um mago da corte ducal — um ex-colega rico de Endyru da universidade de Kuatiarape, **Jurendy** — escoltado por guardas pesados e pelo próprio castelão **Mbyraku** (do castelo de pedágio da abertura).
   - Eles não estão atacando Ybytuguá com exército: a cada duas noites, o mago do duque desce à beira do rio e descarrega um Círculo bruto de repulsão na água, só pelo estrondo de mana, para atiçar o Ykuruã lá embaixo.
   - **O diálogo antes da luta:**
     - Jurendy reconhece Endyru e ri da roupa de estrada dele: lembra que Endyru largou a bancada de Kuatiarape por falta de duas moedas de prata, enquanto ele ganhou cargo no ducado de Pytumã.
@@ -230,7 +230,7 @@ O jogador explora Ybytuguá antes de descer aos baixios:
 - **O Ponto de Virada (Deixa de Roteiro Obrigatória — O Preço):**
   - Quando o Ykuruã está com metade da vida e quase saindo para a pedra seca, a chuva aperta, a água sobe um degrau e o bicho ameaça escorregar de volta para o canal fundo.
   - Jarupã está com o braço sangrando; a lua da rendição da cidade é amanhã; Endyru vê que puxar com Verso pequeno vai levar mais três fôlegos.
-  - **A pressa vence.** Endyru ignora o aviso de Oryndu, larga a medida segura e **encurta/força um Círculo inteiro de uma vez só** (`when: burst`), além do seu limite de Página, gritando o verbo para arrancar o monstro da água num único puxão.
+  - **A pressa vence.** Endyru ignora o aviso de Oryndu, larga a medida segura e **encurta/força um Círculo inteiro de uma vez só** (`when: burst`), muito além do que o Círculo recém-alcançado aguenta num turno, gritando o verbo para arrancar o monstro da água num único puxão.
   - **O que acontece em cena:**
     1. O sangue jorra pelo nariz de Endyru na hora e as duas mãos dele começam a tremer (**Marca da mana exaurida**).
     2. O puxão arranca metade do Ykuruã do lodo, mas o estouro de mana reverbera pela água inteira como um sino debaixo do rio.
@@ -251,7 +251,7 @@ O jogador explora Ybytuguá antes de descer aos baixios:
 
 #### Cena 4.2 — Uma Semana Depois: O Papel Assinado
 - **Onde:** A Mesa dos Contratos de Ybytuguá.
-- O comércio do rio voltou; as barcaças estão descendo. O Conselho das Guildas paga a bolsa de prata prometida e recebe o relatório escrito por Endyru (que agora domina o nível **Círculo**, mas escreve devagar porque o resto do tremor ainda está passando dos dedos).
+- O comércio do rio voltou; as barcaças estão descendo. O Conselho das Guildas paga a bolsa de prata prometida e recebe o relatório escrito por Endyru (que chegou ao **Círculo** no ato 2, mas escreve devagar porque o resto do tremor ainda está passando dos dedos).
 - Enquanto eles contam a prata no balcão, guardas com a insígnia de **Ymboripe** entram na prefeitura sem desembainhar espada e pregam um edital novo por cima do quadro da Mesa:
   - **Ybytuguá assinou o tratado de anexação com o duque Pytumã mesmo assim.** Os conselheiros já tinham fechado o acordo; o Ykuruã morto só serviu para que as guildas entrassem no reino novo com o porto limpo e valorizado.
 - A cidade livre deixa de ser livre na caneta, sem um grito. O trio vê o estandarte mudar na torre e sabe que não há nada a fazer sobre isso.
@@ -263,7 +263,7 @@ O jogador explora Ybytuguá antes de descer aos baixios:
 - Antes de se separarem, Jarupã entrega a Xanduí um presente que comprou no mercado de Ybytuguá com a parte dele: um **pequeno almanaque de bolso / salvo-conduto encadernado em couro**, *"porque tem figura bonita na capa e nome de cidade grande, pra quando a gente for rico"*.
 - Xanduí pega o livrinho, passa o polegar na capa sem abrir, guarda no bolso de dentro do gibão e diz:
   - **Xanduí:** *"Vou ler no barco, que sacode menos."*
-- Endyru percebe, naquele último segundo, pelo jeito como ela segurou a lombada pelo lado cortado das folhas, que Xanduí nunca leu uma letra na vida. Ele abre a boca — e cala de novo. Sorri, diz que quando eles cansarem da estrada a porta dele na costa vai ter carneiro, e cada um segue para um lado.
+- Endyru olha a mão dela na lombada, do lado cortado das folhas. Abre a boca — e cala de novo. A tela não diz o que ele viu (§1.1.5: ninguém no jogo descobre; quem percebe é o jogador). Sorri, diz que quando eles cansarem da estrada a porta dele na costa vai ter carneiro, e cada um segue para um lado.
 - **Fim do jogo.** Sem texto de epílogo explicando quem é Karuã ou Exandy.
 
 ---
@@ -327,10 +327,10 @@ O jogador explora Ybytuguá antes de descer aos baixios:
   - *"Na cheia ninguém conjura no rio, rapaz. Verso de puxar rede o bicho não escuta, que é do tamanho de um peixe pulando. Palavra grande bate no fundo igual pedra."*
   - *"Você está olhando a água de cima. Água de cima corre todo dia igual. Olha o junco da beira: o caranguejo subiu três palmos na haste desde ontem. Tem coisa grande deitada no canal."*
 
-#### FERREIROS E NPCs DEMÔNIOS (ex.: Thrymkel)
+#### FERREIROS E NPCs DEMÔNIOS (ex.: Thrykar)
 - **Como falam:** Literais ao extremo, secos, sem metáfora poética. A graça vem de tratarem o absurdo como óbvio.
 - **Exemplos de falas certas para Demônios:**
-  - *(Placa da porta):* *"Thrymkel. Ferro. Se quebrou sozinho, fui eu que fiz e eu conserto. Se você quebrou batendo em pedra, é o dobro."*
+  - *(Placa da porta):* *"Thrykar. Ferro. Se quebrou sozinho, fui eu que fiz e eu conserto. Se você quebrou batendo em pedra, é o dobro."*
   - *(Sobre receita de forja):*
     > — Banha de bagre cego — disse o ferreiro, e bateu. — Três pregos de barco que afundou com carga paga. — Bateu. — Se a carga era roubada, o ferro entorta.
     > — Como o senhor sabe se o bagre era cego? — perguntou Endyru.
@@ -382,7 +382,7 @@ O motor parte do repositório do Eälen (`client/` em Phaser 3 + Vite, `shared/`
 ### P1 — Conteúdo, Mapas e Diálogos (`ink/` e `maps/`)
 9. **Mapas Tiled:**
    - Barcaça e Píer da Corrente (Castelo da Volta).
-   - Porto e Cidade Livre de Ybytuguá (Mesa dos Contratos, Forja de Thrymkel, Dique dos Barqueiros).
+   - Porto e Cidade Livre de Ybytuguá (Mesa dos Contratos, Forja de Thrykar, Dique dos Barqueiros).
    - Baixios do Ymonhã (água funda, lodo raso, língua de pedra seca).
    - Floresta e Barranco entre as Bacias (acampamento, ponte do afluente).
 10. **Roteiro em Ink:** escrever as cenas das seções §5.1 a §5.4 seguindo estritamente o Guia de Diálogos da §6.
