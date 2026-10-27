@@ -107,8 +107,14 @@ Conselheira: A cheia sobe todo dia. Ela não espera contrato.
 
 = espera
 Conselheira: Vocês voltaram dos baixios andando. Já é mais do que o grupo de rio acima.
-Endyru: Ele não acordou sozinho. O barqueiro diz que nunca acordou assim, tão cedo.
-Conselheira: A guilda dos barqueiros diz muita coisa. Pergunte a ela. E pergunte rápido.
+{estaca:
+    Endyru põe a estaca em cima da mesa comprida, com o ferro virado pra ela.
+    Endyru: Ele não acordou sozinho. Estava no lodo, a vinte passos do canal.
+    Conselheira: Ferro de Ymboripe tem em todo cais do Ymonhã. O conselho precisa de mais que um pau.
+- else:
+    Endyru: Ele não acordou sozinho. O barqueiro diz que nunca acordou assim, tão cedo.
+}
+Conselheira: A guilda dos barqueiros sabe o que sobe e desce o rio. Pergunte a ela. E pergunte rápido.
 -> END
 
 = chamado

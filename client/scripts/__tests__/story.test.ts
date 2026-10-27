@@ -232,6 +232,7 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   // A primeira ida não se vence: a deixa da rodada 3 encerra a luta e abre o ato 2.
   assert.deepEqual(play("primeira_ida", "Entrar na água"), { fight: "primeira" });
   play("primeira_oryndu");
+  assert.equal(runner.flag("estaca"), true);
   assert.equal(runner.flag("ato2"), true);
 
   // Ato 2: a margem (o Círculo), a leitura na floresta, o papel, o castelão e o livro.

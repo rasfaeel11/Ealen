@@ -10,6 +10,7 @@
 VAR ato2 = false
 VAR circulo = false
 VAR ykurua_morto = false
+VAR estaca = false
 
 // Um `trigger` em quem chega pela estrada de Ybytuguá: a primeira vez.
 === baixios_chegada ===
@@ -33,19 +34,23 @@ Oryndu: Bato.
     Oryndu: Está embaixo. Acordado.
     Endyru: Então é agora.
     Oryndu: Não é.
-    Endyru já está com o pé na água.
-    ~ start_fight("primeira")
-    -> END
+    -> entra
 + [Entrar na água agora.]
     Oryndu: Pressa no rio é coisa de forasteiro.
-    Endyru já está com o pé na água.
-    ~ start_fight("primeira")
-    -> END
+    -> entra
+
+= entra
+Endyru já está com o pé na água. Jarupã passa por ele com a espada pesada na mão.
+Jarupã: Bicho é bicho. Bate na cabeça, cai.
+Xanduí: Vai lá. Bate na água. Quando a água cansar, você me avisa.
+Oryndu: Se ele vier, todo mundo pra areia. Na água ele bebe o golpe.
+~ start_fight("primeira")
+-> END
 
 // As deixas da primeira luta: a rodada 3 e o lugar da derrota. Oryndu tira o grupo da água.
 === primeira_oryndu ===
 Oryndu entra no raso com a vara do barco, até a cintura, e puxa Endyru pela gola pra trás.
-Oryndu: Pra areia! Todo mundo pra areia!
+Oryndu: Pra trás! Na água ele bebe o golpe! Saiam pro junco alto!
 Jarupã sai de costas, com a espada na frente. Xanduí sai por último, sem dar as costas pro redemoinho.
 -> fora
 
@@ -55,6 +60,13 @@ Na areia, ninguém fala por um tempo. A água do raso volta a ficar parada, como
 Oryndu: Na água, ninguém vence ele. Ninguém.
 Oryndu: E ele não acordava assim. Não tão cedo. Não tão bravo.
 ~ note("baixios", "Nos baixios, na água, nada que se faz ao Ykuruã pega. Oryndu diz que ele não acordava assim, tão cedo.")
+Na volta, pela beira, Oryndu para, enfia a mão no lodo até o cotovelo e puxa um pedaço de estaca, comprido como um braço.
+Na cabeça da estaca, um ferro batido com letras cavadas. Em volta, na madeira, um círculo de atração riscado a faca, torto.
+Endyru: "Ymboripe." Está no ferro.
+Endyru: E o círculo está errado. Não fecha.
+Oryndu: Não precisava fechar. Só precisava gritar.
+~ estaca = true
+~ note("estaca", "Uma estaca no lodo dos baixios, com ferro de Ymboripe e um círculo de atração riscado às pressas, aberto.")
 ~ grant_xp(50)
 -> END
 
@@ -128,5 +140,14 @@ Oryndu: Na cheia, barco fica em terra.
 -> END
 
 === naufragio ===
-Um barco de carga com o fundo aberto de baixo pra cima, como uma casca. Ninguém tirou a carga. Ninguém vai tirar.
+Uma barcaça de grãos com o fundo aberto de baixo pra cima, como uma casca. O grão inchou na água e escorre pelas tábuas. Ninguém tirou a carga. Ninguém vai tirar.
+-> END
+
+// Um rochedo na margem: alguém conjurou ali antes do grupo.
+=== rochedo ===
+Num rochedo da margem, um arco de cinza branca, e em volta dele a pedra queimada, rachada em lascas finas, como pedra que esquentou rápido demais.
+Endyru passa o dedo na cinza.
+Endyru: Giz. De riscar círculo.
+Oryndu: Barqueiro não risca nada na pedra.
+~ note("giz", "Num rochedo dos baixios, cinza de giz em arco e a pedra queimada em volta.")
 -> END
