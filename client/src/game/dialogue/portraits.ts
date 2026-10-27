@@ -49,7 +49,7 @@ const PLACEHOLDER_COLOR: Record<string, string> = {
   "Mestre da guilda": "#4f6a6a",
   Mercador: "#8a7a4a",
   "Escrivão da Mesa": "#6a5f50",
-  "Guarda do pedágio": "#5f5a52",
+  "Sargento do pedágio": "#5f5a52",
   "Guarda do portão": "#5f5a52",
   "Mulher da família": "#7a6050",
   Contratada: "#6a5040",

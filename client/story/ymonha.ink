@@ -14,41 +14,54 @@ VAR castelao_vencido = false
 ~ join_party("oryndu")
 ~ join_party("jarupa")
 ~ join_party("xandui")
-O barco de Oryndu desce o Ymonhã carregado de sacos de sal, com um mercador sentado em cima deles, dois espadachins de escolta na proa e um estudante na popa, contando nove moedas de cobre pela terceira vez.
+O barco de Oryndu desce o Ymonhã carregado de sacos de sal. Atrás dos sacos, onde a margem não o vê, vai sentado o mercador. Na proa, a escolta: ele amola uma espada pesada; ela confere as correias da bainha. Na popa, um estudante conta nove moedas de cobre pela terceira vez.
+Oryndu bate o cabo do remo no casco. Uma batida seca. Espera. Escuta.
+Endyru: Furou?
+Oryndu: Estou medindo o fundo. A cheia subiu três dedos antes da lua certa.
+Xanduí: O que tanto você escreve aí, estudante?
+Endyru: A medida da linha entre dois corpos. Quanto um puxa o outro, a quantos passos, e com que...
+Jarupã: Ah. Empurrar coisa.
+Um sino de ferro bate na margem.
 Uma corrente sobe da água na frente do barco, pingando lodo, de uma margem à outra.
 Um virote crava no costado, a um palmo da mão de Endyru.
 Oryndu: Segura.
-O barco bate na corrente e para. Na margem norte, um castelo de pedra; no cais dele, dois guardas de chuço e um besteiro na sombra do muro.
-Guarda do pedágio: Pedágio. Dois de prata pelo barco. Três de cobre por cabeça.
+O barco bate na corrente e para. Na margem norte, o Castelo da Volta: pedra embaixo, madeira em cima. No cais, um guincho com a corrente enrolada, dois guardas de chuço, um besteiro na sombra do muro e um sargento com uma tábua de preços.
+Sargento do pedágio: Pedágio. Dois de prata pelo barco. Três de cobre por cabeça.
+De trás dos sacos, sem se levantar:
 Mercador: Era um de prata na lua passada.
-Guarda do pedágio: Era.
-Jarupã: Eu acho que dá pra discutir isso com eles.
-Xanduí: Discute você. Eu não começo.
+Sargento do pedágio: Na lua passada não tinha cheia. Rio cheio é rio perigoso. Perigo se paga.
+Jarupã: Escuta o Jarupã, que eu já passei por três pedágios desses só neste inverno. Guarda de corrente só sabe contar até cinco.
+Xanduí: Então conta você. Eu não começo.
 -> escolhas
 
 = escolhas
 * {money("cobre") >= 3} [Pagar a sua cabeça. O mercador que pague o barco.]
     Mercador: Dois de prata. Por um rio que era de todo mundo.
-    Ele paga, contando devagar, pra o guarda ver que dói.
+    Ele paga, contando devagar, pra o sargento ver que dói.
     ~ pay("cobre", 3)
     Endyru paga a cabeça dele. A da escolta, o mercador paga junto, resmungando que escolta devia vir com a cabeça incluída.
     -> passa
+* [Citar o tratado fluvial das cidades livres.]
+    Endyru: O tratado das cidades livres do Ymonhã, artigo sétimo. Pedágio de margem não sobe na cheia sem aviso de uma lua inteira, pregado em...
+    O sargento cospe na água.
+    Sargento do pedágio: Papel de Kuatiarape aqui só serve pra acender cachimbo.
+    -> escolhas
 * [Ler a tábua do pedágio e discutir. # check: labia 13]
     A tábua está pregada no poste do cais. O preço de cima foi raspado e reescrito a carvão; o selo do senhor da margem está embaixo do preço velho, não do novo.
     {passed():
         Endyru: O selo está no preço de antes. Esse aí do carvão quem escreveu foi o senhor?
-        O guarda olha pra tábua. Não sabe ler; sabe que um rapaz que lê alto no cais, na frente de barqueiro, é problema.
-        Guarda do pedágio: Um de prata pelo barco. E some daqui.
+        O sargento olha pra tábua. Não sabe ler; sabe que um rapaz que lê alto no cais, na frente de barqueiro, é problema.
+        Sargento do pedágio: Um de prata pelo barco. E some daqui.
         O mercador paga antes que alguém mude de ideia.
         -> passa
     - else:
         Endyru: O selo está no preço de antes, e esse aí do carvão...
-        Guarda do pedágio: Quem lê aqui é o castelão. Paga ou volta.
+        Sargento do pedágio: Quem lê aqui é o castelão. Paga ou volta.
         -> escolhas
     }
 + [Recitar o Empurrão na corrente e arrancá-la do poste.]
     Endyru abre o livro na página. A mão de Oryndu fecha em cima da dele, molhada e fria.
-    Oryndu: Não no rio, rapaz.
+    Oryndu: Não no rio, rapaz. Na cheia ninguém grita com a água.
     Endyru: É uma página só.
     Oryndu: É a cheia.
     Ele não solta até Endyru fechar o livro.
@@ -57,7 +70,9 @@ Xanduí: Discute você. Eu não começo.
     Jarupã: Deixa comigo.
     Xanduí põe a mão no punho da espada e não tira a espada.
     Xanduí: Eu não começo.
-    Jarupã: Eu sei. Por isso eu começo.
+    Jarupã: Eu sei. Deixa que eu abro.
+    Oryndu olha o guincho no cais: um tambor de madeira com a corrente enrolada e uma trava de ferro em cima.
+    Oryndu: Solta aquela trava e a corrente desce sozinha. Com a mão, rapaz. Sem verso.
     ~ start_fight("pedagio")
     -> END
 
@@ -70,6 +85,17 @@ Lá no alto do muro, um homem de cota de escamas olha o barco passar e não desc
 // A deixa `burst` da luta do pedágio: alguém gastou mana demais de uma vez.
 === pedagio_pressa ===
 Oryndu: Não no rio, rapaz!
+-> END
+
+// A deixa `used` do guincho: soltou a trava, a corrente desce e o barco escapa rio abaixo, sob virotes.
+=== pedagio_guincho ===
+~ pedagio_resolvido = true
+A trava salta. O tambor gira solto, e a corrente afunda de uma vez, arrastando lodo.
+Oryndu: Pro barco. Agora.
+Virotes batem no costado enquanto o barco pega a correnteza. Um passa entre Jarupã e o mercador e crava num saco de sal.
+Jarupã: Raso. Pegou no sal.
+O barco desce a corredeira abaixo do castelo de lado, raspando pedra, e só endireita depois da curva.
+~ travel("ybytugua", "cais")
 -> END
 
 // O grupo do pedágio vencido (onDefeat).

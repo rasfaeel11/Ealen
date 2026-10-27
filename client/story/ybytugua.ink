@@ -17,9 +17,13 @@ VAR virou_aviso = false
 === chegada_ybytugua ===
 ~ chegou = true
 O cais de Ybytuguá está cheio de barcos fora d'água, virados de casco pra cima no barro. Ninguém descarrega nada. Uma família amarra trouxa em cima de trouxa num carrinho de mão.
-O mercador paga a escolta ali mesmo, em cima dos sacos de sal, e não espera troco nem despedida.
-Jarupã: Escolta de sal até Ybytuguá. Feita. Agora a gente vê se a cidade tem trabalho de verdade.
-Xanduí: Na Mesa. Diz que o conselho paga em prata.
+O mercador desce do barco primeiro, abre um saco com a faca e enfia a mão. O sal sai em pedra, empapado de rio.
+Mercador: Molhou. Metade da carga é pedra agora. Metade da escolta, então.
+Ele põe três moedas de cobre na mão de Jarupã e já está subindo a rua do cais com os sacos que ainda servem antes de Jarupã fechar a mão.
+Jarupã: Metade de quê? Era prata.
+Xanduí: Era.
+Jarupã: Três de cobre. Não paga a cerveja de hoje.
+Xanduí: Então hoje não tem cerveja. Diz que o conselho paga em prata. Na Mesa.
 Jarupã: A gente se vê lá, estudante. Se o contrato for bom, a gente não se vê.
 ~ leave_party("jarupa")
 ~ leave_party("xandui")
@@ -28,7 +32,7 @@ Oryndu: O barco fica aqui. Eu fico com o barco.
 -> END
 
 === mercador ===
-Mercador: Um de prata na lua passada. Dois nesta. Na próxima, o castelão cobra o barco inteiro.
+Mercador: Um de prata na lua passada. Dois nesta. E o rio ainda molha o sal de graça.
 Mercador: Ybytuguá está morrendo, rapaz. Eu não vou morrer junto.
 -> END
 

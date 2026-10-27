@@ -39,6 +39,7 @@ export interface PropTemplate {
 export const PROPS = {
   crate: { id: "crate", name: "Caixote", hp: 8, cover: true },
   bell: { id: "bell", name: "Sino de bronze", hp: 1, interact: "Tocar", unbreakable: true },
+  winch: { id: "winch", name: "Guincho da corrente", hp: 1, interact: "Soltar", unbreakable: true },
   barrel: { id: "barrel", name: "Barril de óleo", hp: 4, spill: { surface: "fire", rounds: 2, radius: 1 } },
 } satisfies Record<string, PropTemplate>;
 
