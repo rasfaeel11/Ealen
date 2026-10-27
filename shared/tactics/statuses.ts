@@ -20,6 +20,10 @@ export interface StatusTemplate {
   breaksGuard?: boolean;
   /** Somado à rolagem de ataque do portador (negativo = penalidade). */
   toHit?: number;
+  /** Somado ao limite de mana por turno do portador (ver ../mana.ts): o corpo marcado aguenta menos de uma vez. */
+  manaLimit?: number;
+  /** Somado à rolagem de quem apanha recitando pra não perder o texto (negativo = o texto quebra mais fácil). */
+  focus?: number;
   /** O portador perde o turno em que ela está ativa: a vez começa, a condição conta e a vez passa. */
   skipsTurn?: boolean;
   /** Esquiva: somado à DEFESA do portador — o número que a rolagem de quem o ataca precisa alcançar. Não tira dano de golpe que pega. */
@@ -72,7 +76,7 @@ export const STATUSES = {
   /** Quem foi pego de surpresa (ver `surprised` em EncounterSetup): perde o primeiro turno. */
   surprised: { id: "surprised", name: "Surpreso", skipsTurn: true },
   /** A marca da mana de atração e repulsão (ver ../mana.ts): sangue pelo nariz e tremor na mão. Passa com o descanso. */
-  bloodied: { id: "bloodied", name: "Sangue e tremor", toHit: -2, untilRest: true },
+  bloodied: { id: "bloodied", name: "Sangue e tremor", toHit: -2, manaLimit: -1, focus: -3, untilRest: true },
   // --- O bicho de rio na água e na terra (ver soak em ./engine.ts): quem as põe e tira é o chão. ---
   /** Na água: só a ponta das costas à vista. Rápido, a Muralha alta, e se refaz a cada turno. */
   submerged: { id: "submerged", name: "Submerso", speed: 2, wall: 6, regen: 6 },

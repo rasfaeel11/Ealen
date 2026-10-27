@@ -4,6 +4,7 @@ import { BESTIARY, creaturePlacement, spawnCreature } from "../../mock/bestiary"
 import { parseCueWhen } from "../../world/tiledMap";
 import {
   CRACK_TURNS,
+  STATUSES,
   activeUnit,
   standProp,
   findUnit,
@@ -285,4 +286,35 @@ test("a água que sobe apaga o círculo que alcança, e alaga o chão dele", () 
   assert.equal(circle.hp, 0);
   assert.equal(encounter.grid.tiles[3].water, true);
   assert.equal(encounter.grid.tiles[3].blocksMove, false);
+});
+
+test("a deixa `hurt` dispara quando alguém chega à parte da vida que ela diz", () => {
+  assert.deepEqual(parseCueWhen("hurt Ykuruã 50"), { kind: "hurt", who: "Ykuruã", share: 50 });
+  assert.equal(parseCueWhen("hurt Ykuruã"), undefined);
+  assert.equal(parseCueWhen("hurt Ykuruã 100"), undefined);
+
+  const { encounter } = stage(["M..www"], (at) => [mage(at("M")), ykurua({ x: 5, y: 0 })], {
+    cues: [{ id: "metade", when: { kind: "hurt", unit: "Y", share: 50 } }],
+  });
+  const beast = findUnit(encounter, "Y")!;
+  beast.currentHp = Math.floor(beast.maxHp / 2) + 1;
+  assert.deepEqual(eventsOf(pass(encounter), "cue"), []);
+  beast.currentHp = Math.floor(beast.maxHp / 2);
+  // O bicho se refaz na água no começo do turno dele; a deixa dispara antes, quando a vez de M acaba.
+  const events = run(encounter, { type: "endTurn", unitId: activeUnit(encounter)!.id });
+  assert.deepEqual(eventsOf(events, "cue").map((event) => event.id), ["metade"]);
+});
+
+test("a marca de sangue e tremor baixa o limite de mana: o que cabia num turno passa a estourar", () => {
+  const MID: Ability = { ...PULL, id: "test.mid", name: "Meio", mana: 3 };
+  const clean = stage(["M......Y"], (at) => [mage(at("M")), ykurua(at("Y"))]).encounter;
+  findUnit(clean, "M")!.abilities.push({ ...MID });
+  assert.deepEqual(eventsOf(run(clean, { type: "ability", unitId: "M", abilityId: MID.id, target: findUnit(clean, "Y")!.pos }), "manaBurst"), []);
+
+  const marked = stage(["M......Y"], (at) => [mage(at("M")), ykurua(at("Y"))]).encounter;
+  const caster = findUnit(marked, "M")!;
+  caster.abilities.push({ ...MID });
+  caster.statuses.push({ ...STATUSES.bloodied, turnsLeft: Infinity });
+  const burst = eventsOf(run(marked, { type: "ability", unitId: "M", abilityId: MID.id, target: findUnit(marked, "Y")!.pos }), "manaBurst");
+  assert.deepEqual(burst.map((event) => [event.spent, event.limit]), [[3, 2]]);
 });

@@ -217,6 +217,11 @@ export function fightCues(
         const fighting = unit !== undefined && (party.includes(unit) || enemies.some((enemy) => enemy.id === unit));
         return fighting ? cue({ kind: "down", unit }) : [];
       }
+      case "hurt": {
+        const unit = cueUnit(when.who, enemies);
+        const fighting = unit !== undefined && (party.includes(unit) || enemies.some((enemy) => enemy.id === unit));
+        return fighting ? cue({ kind: "hurt", unit, share: when.share }) : [];
+      }
       case "broken": {
         const prop = map.props.find((candidate) => candidate.name === when.prop);
         return prop ? cue({ kind: "broken", prop: prop.id }) : [];

@@ -172,6 +172,8 @@ export interface AiQuirks {
 export type CueWhen =
   | { kind: "round"; round: number }
   | { kind: "down"; unit: string }
+  /** Quando `unit` está com `share`% da vida ou menos (caído também conta). */
+  | { kind: "hurt"; unit: string; share: number }
   | { kind: "broken"; prop: string }
   | { kind: "used"; props: string[] }
   | { kind: "defeat" }

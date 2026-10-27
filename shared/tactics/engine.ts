@@ -385,6 +385,10 @@ function isDue(encounter: Encounter, when: CueWhen): boolean {
       const unit = findUnit(encounter, when.unit);
       return unit !== undefined && !isAlive(unit);
     }
+    case "hurt": {
+      const unit = findUnit(encounter, when.unit);
+      return unit !== undefined && unit.currentHp * 100 <= unit.maxHp * when.share;
+    }
     case "broken":
       return encounter.props.some((prop) => prop.id === when.prop && prop.hp <= 0);
     case "used":
@@ -603,7 +607,7 @@ function spendMana(encounter: Encounter, unit: Unit, amount: number, events: Tac
 
   const before = unit.manaSpent ?? 0;
   unit.manaSpent = before + amount;
-  const limit = unit.manaLimit ?? 0;
+  const limit = Math.max(0, (unit.manaLimit ?? 0) + unit.statuses.reduce((sum, status) => sum + (status.manaLimit ?? 0), 0));
   // O gasto que o roteiro força (`burst` numa deixa) cobra sempre, mesmo que caiba no limite: é o encantamento grande.
   if (!forced && (before > limit || unit.manaSpent <= limit)) return;
   events.push({ type: "manaBurst", unit: unit.id, spent: unit.manaSpent, limit });
@@ -961,7 +965,8 @@ function dealDamage(encounter: Encounter, target: Unit, amount: number, events: 
   target.currentHp = Math.max(0, target.currentHp - amount);
   events.push({ type: "damage", target: target.id, amount, remainingHp: target.currentHp });
   if (target.currentHp > 0) {
-    if (target.reciting && rollDie(encounter, 20) + effectiveAttribute(target, "saber") < RECITE_FOCUS + Math.floor(amount / 2)) {
+    const focus = target.statuses.reduce((sum, status) => sum + (status.focus ?? 0), 0);
+    if (target.reciting && rollDie(encounter, 20) + effectiveAttribute(target, "saber") + focus < RECITE_FOCUS + Math.floor(amount / 2)) {
       breakRecitation(target, "hit", events);
     }
     return;

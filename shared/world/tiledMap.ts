@@ -61,6 +61,8 @@ import { CLASS_INFO } from "../types/characterClass";
  *              uma luta com roteiro. Propriedades `group` (o grupo de inimigos
  *              de cuja luta ela é) e `when` (quando dispara, uma vez por luta):
  *                `round 3`        ao começar a rodada 3
+ *                `hurt Nome 50`   quando quem `down` chamaria assim chega à
+ *                                 metade da vida (ou ao tanto por cento dito)
  *                `down Nome`      quando cai o inimigo desse grupo cujo objeto
  *                                 tem esse Nome; `down hero` é a protagonista,
  *                                 `down party:lish` um companheiro
@@ -189,6 +191,8 @@ export type AreaCueWhen =
   | { kind: "round"; round: number }
   /** O Nome de um inimigo do grupo, `hero` ou `party:chave`. */
   | { kind: "down"; who: string }
+  /** Quando quem é chamado assim (como em `down`) chega a `share`% da vida ou menos. */
+  | { kind: "hurt"; who: string; share: number }
   /** O Nome de um destrutível da área. */
   | { kind: "broken"; prop: string }
   /** Os Nomes dos objetos da área em que é preciso mexer — todos. */
@@ -227,6 +231,11 @@ export function parseCueWhen(text: string): AreaCueWhen | undefined {
   if (kind === "round") return /^[1-9]\d*$/.test(rest) ? { kind, round: Number(rest) } : undefined;
   if (rest === "") return undefined;
   if (kind === "down") return { kind, who: rest };
+  if (kind === "hurt") {
+    const [, who, share] = /^(.+?)\s+(\d+)$/.exec(rest) ?? [];
+    const percent = Number(share);
+    return who !== undefined && percent >= 1 && percent <= 99 ? { kind, who, share: percent } : undefined;
+  }
   if (kind === "broken") return { kind, prop: rest };
   if (kind === "used") {
     const props = rest.split(",").map((name) => name.trim());
@@ -498,7 +507,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
         const when = typeof properties.when === "string" ? parseCueWhen(properties.when) : undefined;
         if (typeof group !== "string" || !when) {
           throw new Error(
-            `Deixa "${object.name ?? ""}" precisa das propriedades "group" e "when" (round N, down Nome, broken Nome, used Nome, defeat ou burst).`,
+            `Deixa "${object.name ?? ""}" precisa das propriedades "group" e "when" (round N, down Nome, hurt Nome 50, broken Nome, used Nome, defeat ou burst).`,
           );
         }
         const wantsApply = typeof properties.apply === "string" && properties.apply !== "";

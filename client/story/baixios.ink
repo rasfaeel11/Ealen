@@ -126,16 +126,26 @@ Oryndu: Eu seguro a margem com o barco. Vocês puxam. Devagar.
     ~ start_fight("final")
     -> END
 
-// A deixa da rodada 3 da luta final: a pressa de Endyru (burst) e o barco de Oryndu (dismiss).
-// A luta continua depois daqui: o trecho só fala.
+// A deixa da luta final quando o Ykuruã chega à metade da vida (`hurt`): a chuva aperta e a água sobe (`rise`), e
+// Endyru, recém-chegado ao Círculo, acha que aguenta a página inteira. A pressa (burst) e o barco de Oryndu
+// (dismiss) são do roteiro, não escolha de quem joga. A luta continua depois daqui: o trecho só fala.
 === final_pressa ===
-Três rodadas puxando um bicho do tamanho de um barco, um verso de cada vez, e ele ainda tem metade do corpo na água.
-Endyru abre o livro na página inteira e lê alto, de uma vez, tudo, rápido, pra acabar com isso.
-O Ykuruã para de puxar contra o raso. Vira, devagar, na direção da voz.
+O bicho está com meio corpo na pedra quando a chuva aperta. A água sobe um degrau de uma vez, e ele começa a escorregar de volta pro canal.
+Jarupã está com o braço aberto até o cotovelo, segurando a espada com a outra mão.
+{prova:
+    A lua da carta é amanhã.
+}
+Endyru conta: com verso pequeno, um palmo por vez, são mais três fôlegos. Três fôlegos ele não tem.
+Ele larga a medida. Abre o livro na página inteira e grita o verbo de uma vez, tudo, pra arrancar o bicho da água num puxão só.
+O sangue desce do nariz na hora. As duas mãos começam a tremer.
+O puxão arranca metade do Ykuruã do lodo. E o estouro bate na água inteira, como um sino tocado debaixo do rio.
+O bicho para de puxar contra a pedra. Gira o corpo no raso, cego, na direção de onde a mana gritou.
 Entre ele e Endyru está o barco de Oryndu, segurando a margem.
-O barco sobe de lado e vira.
-A vara fica cravada no lodo, sozinha.
-Endyru sente o sangue descer do nariz e não consegue parar a mão.
+A cauda acerta o barco de lado. O bote vem atrás. O barco parte ao meio.
+Oryndu cai na correnteza, embaixo das tábuas.
+Endyru começa a recitar pra puxá-lo da água. A mão treme. O sangue entra na boca. O texto quebra na segunda linha, e texto quebrado não volta do meio.
+Jarupã corre até a beira e mete o braço bom na água. Puxa o remo, partido.
+Oryndu não sobe mais.
 -> END
 
 // O Ykuruã vencido (onDefeat do grupo final).
