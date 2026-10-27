@@ -293,7 +293,6 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 |---|---|---|
 | 31 | **A voz do `jogo.md` em todo o texto** | Passar as falas dos cinco `.ink` pelo guia de diálogos (`jogo.md` §6). Jarupã não lê e não tem vergonha disso (sai o "Eu sei ler o principal"), dá regra de estrada inventada na hora e chama ferida de "raso". Xanduí fala metade, confere correia enquanto os outros discutem, tem a última palavra e repete termo de juiz de ouvido ("Quebra de contrato"). Endyru dá o número exato e corrige os outros até o ato 3; depois, corta a frase no meio. Oryndu bate o remo, chama de "rapaz", fala de lodo, corda e vento. Vocabulário do mundo (Verso, medida, palmo, fôlego, lua). Regra da ponte: a última fala antes de cada luta aponta pra mecânica dela. |
 | 35 | **Os saqueadores do dique** (Luta 2, opcional) | Mercenários dispensados de uma caravana roubando o armazém de cordas e óleo da guilda. Luta curta em lugar fechado: posição, o empurrão de Endyru contra parede e caixote, o triângulo. Pede um pedaço de mapa (o armazém) e a gente no bestiário (pelo papel, sem nome). |
-| 43 | **O silêncio na margem** (cena 4.1) | O `final_fim` do roteiro: o bicho morto na pedra, cheirando a lodo e ferro; Jarupã amarra o remo quebrado de Oryndu nas costas sem piada; Xanduí limpa a espada num tufo de capim, aperta o ombro de Endyru uma vez, curto, e sobe o barranco; Endyru abre a boca pra justificar a medida e fecha. Ninguém diz nada. |
 | 44 | **A unificação na parede** (cena 4.2) | Mostrar em vez de contar: o relatório escrito devagar (a mão ainda treme), a prata contada no balcão, guardas de Ymboripe que entram sem desembainhar e pregam um edital por cima do quadro da Mesa, o estandarte trocando na torre. A conselheira deixa de anunciar a anexação. |
 | 45 | **A bifurcação** (cena 4.3) | A despedida na saída da cidade: a estrada pra Kuatiarape e a do leste, pra costa (Tanguratyba, Itamoguá). Endyru separa a prata da universidade e da passagem (a escola da costa que precisa de professor de fundamentos). Jarupã dá a Xanduí o almanaque encadernado em couro, "pra quando a gente for rico"; ela passa o polegar na capa, segura a lombada pelo lado das folhas e guarda: "Vou ler no barco, que sacode menos." Endyru abre a boca, cala, sorri, e fala do carneiro na porta dele. A cópia do relatório sai. A tela mostra o gesto e o silêncio e nunca diz que Endyru entendeu (§1.1: ninguém no jogo percebe). |
 | 46 | **De Fio a Corpo** | O `jogo.md` põe Jarupã e Xanduí indo de Fio a Corpo; hoje a aura não sobe. Um `aura_rise` como o `mage_rise`, numa cena (sugestão: depois da ponte, task 38), que sobe o teto da proficiência pra 3. Junto com a task 26, se o autor aprovar os dons. |
@@ -492,6 +491,10 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   a cauda parte o barco, e a recitação pra puxar Oryndu quebra na segunda linha; Jarupã puxa só o remo. A marca de sangue e
   tremor agora também baixa o limite de mana em 1 e tira 3 de quem tenta segurar a recitação apanhando: na fase 2, o
   atalho estoura de novo e chama o bicho de novo. Endyru já é Círculo aqui, como decidido.
+- **43. O silêncio na margem.** O `final_fim` é o do roteiro: o bicho morto na pedra, cheirando a lodo e ferro; Jarupã
+  volta do raso com o remo partido de Oryndu e o amarra nas costas, sem piada; Xanduí limpa a espada no capim, aperta o
+  ombro de Endyru uma vez e sobe o barranco; Endyru abre a boca e fecha. Saíram o corpo achado de manhã e o relatório
+  escrito na areia (o relatório é da Mesa, na task 44).
 
 ## 9. Onde isto está no cânone
 

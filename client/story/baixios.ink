@@ -148,12 +148,15 @@ Jarupã corre até a beira e mete o braço bom na água. Puxa o remo, partido.
 Oryndu não sobe mais.
 -> END
 
-// O Ykuruã vencido (onDefeat do grupo final).
+// O Ykuruã vencido (onDefeat do grupo final): o silêncio na margem (jogo.md cena 4.1). Ninguém comemora, ninguém
+// dá sermão. Nasce ali o hábito de Endyru: ter a frase pronta sobre o que a pressa custa e guardá-la.
 === final_fim ===
-O Ykuruã morre na areia, com o couro rachado como lodo seco, e a água do raso escorre de dentro da boca dele por muito tempo.
-Jarupã entra no raso atrás do barco virado. Xanduí segura a corda na margem. Endyru fica na areia, com sangue no queixo e as mãos tremendo.
-Acham Oryndu de manhã, rio abaixo, preso no remo.
-Ninguém diz nada a Endyru. Ele escreve o relatório na margem mesmo, com a mão que treme, antes que a água leve as letras da areia.
+O Ykuruã está morto na pedra, enorme, com o couro rachado como lodo seco. Cheira a lodo e a ferro.
+Ninguém comemora.
+Jarupã entra no raso até a cintura, atrás das tábuas do barco, e volta com o remo partido de Oryndu. Amarra o remo nas costas com a correia da bainha. Não faz piada.
+Xanduí limpa a espada reta num tufo de capim. Olha as mãos de Endyru, que ainda tremem, e o nariz sujo de sangue seco. Não diz nada. Aperta o ombro dele uma vez, curto, como quem confere se uma corda ainda aguenta, e sobe o barranco.
+Endyru olha a água barrenta levando as tábuas rio abaixo. Abre a boca.
+Fecha.
 ~ leave_party("oryndu")
 ~ ykurua_morto = true
 ~ travel("ybytugua", "depois")
