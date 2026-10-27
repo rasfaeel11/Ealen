@@ -304,6 +304,8 @@ export interface Unit {
    * soak em ./engine.ts). Quem põe e tira as duas é o chão em que ele está.
    */
   river?: boolean;
+  /** Quantos turnos dele o bicho de rio já começou em seco, desde que saiu da água: o couro racha com o tempo. */
+  dryTurns?: number;
   /** O peso dele: cada empurrão ou puxão o desloca esse tanto de quadrados a menos. Bicho grande se puxa aos poucos. */
   heft?: number;
   /**

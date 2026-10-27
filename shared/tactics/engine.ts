@@ -275,6 +275,7 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
     // O limite de mana é por turno: a conta do corpo recomeça quando a vez dele começa.
     if (next.manaSpent !== undefined) delete next.manaSpent;
     events.push({ type: "turnStarted", unit: next.id });
+    dry(next, events);
 
     for (const status of harms) {
       if (!isAlive(next) || next.invulnerable) break;
@@ -997,16 +998,34 @@ function push(encounter: Encounter, actor: Unit, target: Unit, pushDistance: num
 /**
  * O bicho de rio (`river`) e o chão em que ele está: na água fica Submerso
  * (rápido, a Muralha alta, e se refaz a cada turno); fora dela, Em seco (lento,
- * o couro racha, a Muralha quase some). As duas duram enquanto ele não mudar de
- * chão: quem as põe e tira é isto, chamado na abertura e sempre que ele muda
- * de quadrado (andando ou empurrado). Tirá-lo da água é o jeito de vencê-lo.
+ * sem a Muralha da água). As duas duram enquanto ele não mudar de chão: quem as
+ * põe e tira é isto, chamado na abertura e sempre que ele muda de quadrado
+ * (andando, empurrado, ou com a água subindo embaixo dele). Voltar pra água
+ * desfaz o couro rachado (ver `dry`). Tirá-lo da água é o jeito de vencê-lo.
  */
 function soak(encounter: Encounter, unit: Unit, events: TacticalEvent[]): void {
   if (!unit.river || !isAlive(unit)) return;
   const wet = tileAt(encounter.grid, unit.pos)?.water === true;
   const [now, gone] = wet ? [STATUSES.submerged, STATUSES.beached] : [STATUSES.beached, STATUSES.submerged];
-  removeStatuses(unit, (status) => status.id === gone.id, events);
+  removeStatuses(unit, (status) => status.id === gone.id || (wet && status.id === STATUSES.cracked_hide.id), events);
+  if (wet) delete unit.dryTurns;
   if (!unit.statuses.some((status) => status.id === now.id)) addStatus(unit, now, Infinity, events);
+}
+
+/** Quantos turnos do bicho de rio em seco até o couro rachar: o tempo de o vento secar o lodo. */
+export const CRACK_TURNS = 2;
+
+/**
+ * Começo do turno do bicho de rio: em seco, o couro seca mais um pouco, e no
+ * CRACK_TURNS-ésimo turno fora d'água ele racha (Couro rachado) e fica rachado
+ * até voltar pra água. Esperar é o que abre o couro pras espadas.
+ */
+function dry(unit: Unit, events: TacticalEvent[]): void {
+  if (!unit.river || !unit.statuses.some((status) => status.id === STATUSES.beached.id)) return;
+  unit.dryTurns = (unit.dryTurns ?? 0) + 1;
+  if (unit.dryTurns >= CRACK_TURNS && !unit.statuses.some((status) => status.id === STATUSES.cracked_hide.id)) {
+    addStatus(unit, STATUSES.cracked_hide, Infinity, events);
+  }
 }
 
 // --- Destrutíveis -----------------------------------------------------------

@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { BESTIARY, creaturePlacement, spawnCreature } from "../../mock/bestiary";
 import { parseCueWhen } from "../../world/tiledMap";
 import {
+  CRACK_TURNS,
   activeUnit,
   findUnit,
   gridFromAscii,
@@ -69,7 +70,7 @@ test("o Ykuruã está no bestiário como bicho de rio, pesado e atraído pela ma
   assert.deepEqual([unit.river, unit.heft, unit.drawnToMana, unit.style], [true, 1, true, "baluarte"]);
 });
 
-test("na água ele fica Submerso, com a Muralha alta; em seco, o couro racha e a Muralha quase some", () => {
+test("na água ele fica Submerso, com a Muralha alta; em seco, fica só com a do Baluarte", () => {
   // A letra do desenho é sempre chão: o bicho entra direto no quadrado de água.
   const wet = stage(["M..w"], (at) => [mage(at("M")), ykurua({ x: 3, y: 0 })]).encounter;
   const swimmer = findUnit(wet, "Y")!;
@@ -79,7 +80,35 @@ test("na água ele fica Submerso, com a Muralha alta; em seco, o couro racha e a
   const dry = stage(["M...Y"], (at) => [mage(at("M")), ykurua(at("Y"))]).encounter;
   const beached = findUnit(dry, "Y")!;
   assert.deepEqual(statusIds(beached), ["beached"]);
-  assert.equal(styleReduction(beached), 0);
+  assert.equal(styleReduction(beached), 2);
+});
+
+test("em seco, o couro racha no segundo turno dele fora d'água, e volta inteiro se ele voltar pra água", () => {
+  const { encounter } = stage(["M.Yw"], (at) => [mage(at("M")), ykurua(at("Y"))]);
+  const beast = findUnit(encounter, "Y")!;
+  assert.deepEqual(encounter.order, ["M", "Y"]);
+  // Ninguém faz nada: um teste de regra, não de IA.
+  const hold = () => run(encounter, { type: "endTurn", unitId: activeUnit(encounter)!.id });
+
+  hold(); // a vez de M acaba; o primeiro turno de Y em seco começa
+  assert.equal(beast.dryTurns, 1);
+  assert.deepEqual(statusIds(beast), ["beached"]);
+  assert.equal(styleReduction(beast), 2);
+  hold(); // Y passa; rodada 2, vez de M
+  const second = hold(); // M passa; o segundo turno de Y em seco: o couro racha
+  assert.equal(CRACK_TURNS, 2);
+  assert.deepEqual(eventsOf(second, "statusApplied").map((event) => event.statusId), ["cracked_hide"]);
+  assert.deepEqual(statusIds(beast), ["beached", "cracked_hide"]);
+  assert.equal(styleReduction(beast), 0);
+  hold(); // Y passa; vez de M
+
+  // Empurrado de volta pra água: Submerso, e o couro se refaz.
+  const shove: Ability = { ...PULL, id: "test.shove", name: "Empurrão", effects: [{ kind: "push", distance: 2 }] };
+  findUnit(encounter, "M")!.abilities.push(shove);
+  run(encounter, { type: "ability", unitId: "M", abilityId: shove.id, target: beast.pos });
+  assert.deepEqual(beast.pos, { x: 3, y: 0 });
+  assert.deepEqual(statusIds(beast), ["submerged"]);
+  assert.equal(beast.dryTurns, undefined);
 });
 
 test("na água ele se refaz no começo de cada turno dele", () => {

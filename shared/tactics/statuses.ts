@@ -76,8 +76,10 @@ export const STATUSES = {
   // --- O bicho de rio na água e na terra (ver soak em ./engine.ts): quem as põe e tira é o chão. ---
   /** Na água: só a ponta das costas à vista. Rápido, a Muralha alta, e se refaz a cada turno. */
   submerged: { id: "submerged", name: "Submerso", speed: 2, wall: 6, regen: 6 },
-  /** Fora d'água: o couro seca e racha. Lento, e a Muralha quase não segura. */
-  beached: { id: "beached", name: "Em seco", speed: -3, wall: -2, damageTaken: 2 },
+  /** Fora d'água: lento, e sem a Muralha alta da água. O couro ainda não secou: segura o que o Baluarte segura. */
+  beached: { id: "beached", name: "Em seco", speed: -3 },
+  /** O couro secou ao vento e rachou (ver CRACK_TURNS em ./engine.ts): a Muralha quase não segura, e o golpe entra fundo. */
+  cracked_hide: { id: "cracked_hide", name: "Couro rachado", wall: -2, damageTaken: 2 },
   /** O que a cura deixa em quem a recebe (ver HEAL_PER_BREATH em ../breath.ts): o corpo queimou o que tinha, e a próxima cura até o descanso custa o dobro. */
   hungry: { id: "hungry", name: "Fome", hunger: true, untilRest: true },
 
