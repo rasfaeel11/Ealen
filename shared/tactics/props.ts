@@ -34,12 +34,30 @@ export interface PropTemplate {
   unbreakable?: boolean;
   /** Ao quebrar, deixa esta superfície no próprio quadrado e em volta dele. */
   spill?: { surface: SurfaceId; rounds: number; radius: number };
+  /**
+   * Mexer nele PUXA: o inimigo de pé mais perto, até `reach` quadrados (o
+   * bicho de rio primeiro), vem `pull` quadrados na direção dele — menos o
+   * peso de quem é puxado. É o círculo gravado antes da luta: já está pago,
+   * não gasta mana e não passa do limite de ninguém.
+   */
+  pull?: { distance: number; reach: number };
+  /** A água que sobe (ver Flood em ./types.ts) o apaga quando chega ao lado dele: ele some, e o chão dele alaga. */
+  washes?: boolean;
 }
 
 export const PROPS = {
   crate: { id: "crate", name: "Caixote", hp: 8, cover: true },
   bell: { id: "bell", name: "Sino de bronze", hp: 1, interact: "Tocar", unbreakable: true },
   winch: { id: "winch", name: "Guincho da corrente", hp: 1, interact: "Soltar", unbreakable: true },
+  circle: {
+    id: "circle",
+    name: "Círculo gravado",
+    hp: 1,
+    interact: "Acender",
+    unbreakable: true,
+    pull: { distance: 3, reach: 8 },
+    washes: true,
+  },
   barrel: { id: "barrel", name: "Barril de óleo", hp: 4, spill: { surface: "fire", rounds: 2, radius: 1 } },
 } satisfies Record<string, PropTemplate>;
 

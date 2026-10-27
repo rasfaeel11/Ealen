@@ -55,6 +55,7 @@ import {
   samePos,
   sheetAbilities,
   standAreaProps,
+  fellProp,
   standPeople,
   startAreaEncounter,
   stepToward,
@@ -277,7 +278,6 @@ export default class WorldScene extends Phaser.Scene {
 
     this.enterArea();
     this.drawMap();
-    this.standProps();
     this.story = new StoryRunner(
       this.cache.text.get(STORY_KEY) as string,
       { character, companions: save.companions, rng: STORY_RNG, isDefeated: (key) => isDefeated(save, key) },
@@ -483,18 +483,31 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * Põe de pé os destrutíveis que ainda não foram quebrados: na grade (pra
-   * barrarem o passo, na exploração e na luta) e na tela, ordenados por Y
-   * como tudo que fica de pé.
+   * Acerta os destrutíveis com a história: põe de pé os que não foram
+   * quebrados e que as condições (`if`/`unless`) põem aqui agora — na grade
+   * (pra barrarem o passo, na exploração e na luta) e na tela, ordenados por Y
+   * como tudo que fica de pé —, e tira os que a história tirou.
    */
   private standProps(): void {
-    this.props = standAreaProps(this.map, brokenInArea(this.save, this.area.id));
-
-    for (const prop of this.props) {
+    const broken = brokenInArea(this.save, this.area.id);
+    const wanted = new Set(
+      this.map.props.filter((prop) => !broken.has(prop.id) && isActive(prop, this.flag)).map((prop) => prop.id),
+    );
+    this.props = this.props.filter((prop) => {
+      if (wanted.has(prop.id)) return true;
+      fellProp(this.map.grid, prop);
+      this.propImages.get(prop.id)?.destroy();
+      this.propImages.delete(prop.id);
+      return false;
+    });
+    const standing = new Set(this.props.map((prop) => prop.id));
+    const fresh = standAreaProps(this.map, broken, (prop) => wanted.has(prop.id) && !standing.has(prop.id));
+    for (const prop of fresh) {
       const { gid } = this.map.props.find((candidate) => candidate.id === prop.id)!;
       const image = this.standTile(gid, prop.pos.x, prop.pos.y, this.map.tileSize);
       if (image) this.propImages.set(prop.id, image);
     }
+    this.props.push(...fresh);
   }
 
   /** O que uma condição (`if`/`unless`) de um objeto do mapa pergunta: uma variável da história, ou quem está no grupo. */
@@ -508,6 +521,7 @@ export default class WorldScene extends Phaser.Scene {
    * único lugar que decide quem está de pé.
    */
   private syncPresence(): void {
+    this.standProps();
     this.npcs = this.map.npcs.filter((npc) => isActive(npc, this.flag));
     this.exits = this.map.exits.filter((exit) => isActive(exit, this.flag));
     this.enemies = this.map.enemies.filter(

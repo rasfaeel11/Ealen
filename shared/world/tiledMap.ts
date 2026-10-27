@@ -89,7 +89,7 @@ import { CLASS_INFO } from "../types/characterClass";
  *              da luta quem acompanha sem lutar: o apoio dele some. `rise`
  *              (bool) faz a água subir um anel nessa hora
  *
- *   `npc`, `enemy`, `trigger`, `exit` e `cue` aceitam ainda `if` e `unless`: o nome
+ *   `npc`, `enemy`, `trigger`, `exit`, `cue` e `prop` aceitam ainda `if` e `unless`: o nome
  *   de uma variável (VAR) da história. O objeto só existe enquanto a de `if`
  *   for verdadeira e a de `unless` for falsa — é como a história põe e tira
  *   gente do mapa, arma um gatilho ou tranca uma saída (ver ./presence.ts).
@@ -241,7 +241,7 @@ export function parseCueApply(text: string): { status: string; turns: number } |
   return status === undefined ? undefined : { status, turns: turns === undefined ? 1 : Number(turns) };
 }
 
-export interface AreaProp {
+export interface AreaProp extends AreaCondition {
   /** Único dentro da área. */
   id: string;
   /** O nome do objeto no mapa: é por ele que uma deixa `broken` ou `used` o aponta. */
@@ -484,7 +484,14 @@ export function parseTiledMap(raw: unknown): AreaMap {
           x: Math.floor((object.x + map.tilewidth / 2) / map.tilewidth),
           y: Math.floor((object.y - 1) / map.tileheight),
         };
-        props.push({ id: `prop-${object.id}`, name: object.name ?? "", kind: propKind, tile, gid: object.gid & GID_MASK });
+        props.push({
+          id: `prop-${object.id}`,
+          name: object.name ?? "",
+          kind: propKind,
+          tile,
+          gid: object.gid & GID_MASK,
+          ...conditionOf(propertiesOf(object)),
+        });
       } else if (kind === "cue") {
         const properties = propertiesOf(object);
         const { group, dialog, ends, on, goal, burst, dismiss } = properties;

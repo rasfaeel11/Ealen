@@ -5,6 +5,7 @@ import { parseCueWhen } from "../../world/tiledMap";
 import {
   CRACK_TURNS,
   activeUnit,
+  standProp,
   findUnit,
   gridFromAscii,
   planTurn,
@@ -249,4 +250,39 @@ test("uma deixa com `rise` faz a água subir na hora em que dispara, e conta na 
   });
   const events = [...pass(encounter), ...pass(encounter)];
   assert.deepEqual(eventsOf(events, "waterRose")[0]?.tiles, [{ x: 3, y: 0 }]);
+});
+
+test("o círculo gravado na margem puxa o bicho na direção dele, sem gastar mana nem chamar ninguém", () => {
+  // M encostado no círculo (c); o bicho a cinco quadrados, na água.
+  const { grid } = gridFromAscii(["Mc...www"]);
+  const circle = standProp(grid, "circulo", "circle", { x: 1, y: 0 });
+  const { encounter } = startEncounter({ grid, units: [mage({ x: 0, y: 0 }), ykurua({ x: 6, y: 0 })], props: [circle], seed: 4 });
+  const caster = findUnit(encounter, "M")!;
+  const beast = findUnit(encounter, "Y")!;
+  const mana = caster.mana;
+
+  const events = run(encounter, { type: "interact", unitId: "M", target: { x: 1, y: 0 } });
+  // Puxa 3, menos o peso dele (1): dois quadrados, e o segundo já é seco.
+  assert.deepEqual(eventsOf(events, "pushed").map((event) => [event.from.x, event.to.x]), [[6, 4]]);
+  assert.deepEqual(statusIds(beast), ["beached"]);
+  assert.equal(caster.mana, mana);
+  assert.deepEqual(eventsOf(events, "manaBurst"), []);
+  assert.equal(encounter.bonusTurns, undefined);
+});
+
+test("a água que sobe apaga o círculo que alcança, e alaga o chão dele", () => {
+  const { grid } = gridFromAscii(["M..cw"]);
+  const circle = standProp(grid, "circulo", "circle", { x: 3, y: 0 });
+  const { encounter } = startEncounter({
+    grid,
+    units: [mage({ x: 0, y: 0 }), makeUnit("X", "enemy", { x: 1, y: 0 })],
+    props: [circle],
+    seed: 4,
+    cues: [{ id: "chuva", when: { kind: "round", round: 2 }, rise: true }],
+  });
+  const events = [...pass(encounter), ...pass(encounter)];
+  assert.deepEqual(eventsOf(events, "propDestroyed").map((event) => event.prop), ["circulo"]);
+  assert.equal(circle.hp, 0);
+  assert.equal(encounter.grid.tiles[3].water, true);
+  assert.equal(encounter.grid.tiles[3].blocksMove, false);
 });

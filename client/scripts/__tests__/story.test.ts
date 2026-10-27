@@ -246,7 +246,8 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   // Ato 3: o conselho chama, a cheia, e o fim.
   play("conselheira");
   assert.equal(runner.flag("ato3"), true);
-  assert.deepEqual(play("a_cheia", "Entrar na água"), { fight: "final" });
+  assert.deepEqual(play("a_cheia", "Riscar os círculos", "Entrar na água"), { fight: "final" });
+  assert.equal(runner.flag("preparo"), true);
   assert.deepEqual(play("final_fim"), { travel: { area: "ybytugua", spawn: "depois" } });
   assert.equal(runner.flag("ykurua_morto"), true);
   assert.deepEqual(present(), ["Jarupã", "Xanduí"]);

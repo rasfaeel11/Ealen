@@ -293,7 +293,6 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 |---|---|---|
 | 31 | **A voz do `jogo.md` em todo o texto** | Passar as falas dos cinco `.ink` pelo guia de diálogos (`jogo.md` §6). Jarupã não lê e não tem vergonha disso (sai o "Eu sei ler o principal"), dá regra de estrada inventada na hora e chama ferida de "raso". Xanduí fala metade, confere correia enquanto os outros discutem, tem a última palavra e repete termo de juiz de ouvido ("Quebra de contrato"). Endyru dá o número exato e corrige os outros até o ato 3; depois, corta a frase no meio. Oryndu bate o remo, chama de "rapaz", fala de lodo, corda e vento. Vocabulário do mundo (Verso, medida, palmo, fôlego, lua). Regra da ponte: a última fala antes de cada luta aponta pra mecânica dela. |
 | 35 | **Os saqueadores do dique** (Luta 2, opcional) | Mercenários dispensados de uma caravana roubando o armazém de cordas e óleo da guilda. Luta curta em lugar fechado: posição, o empurrão de Endyru contra parede e caixote, o triângulo. Pede um pedaço de mapa (o armazém) e a gente no bestiário (pelo papel, sem nome). |
-| 39 | **O preparo na margem** (cena 3.1) | Antes da luta final, um preparo no mapa: Endyru grava círculos de atração em quadrados da margem seca (o círculo gravado ganha lugar no mapa; hoje é só o texto pronto, task 5), Jarupã põe barris de óleo e estacas, e o sinal com Oryndu se combina. Ativado na luta, o círculo puxa o bicho na direção dele. A fala de Oryndu ("Puxa um palmo, deixa a moça segurar o bote...") e a de Endyru ("Eu faço essa conta desde os quatorze anos."). Ir sem preparar continua possível. |
 | 41 | **A virada pela metade da vida** (cena 3.2) | No lugar da antiga 21. A deixa `final_pressa` sai da rodada 3 e vai pra quando o Ykuruã chega à metade da vida (deixa nova no motor, `when: hp Nome 50`), com a chuva apertando, a água subindo um degrau (task 40), o braço de Jarupã sangrando e a lua da rendição amanhã. Endyru força um Círculo inteiro de uma vez (`burst`), o barco parte (`dismiss`), e ele tenta recitar pra puxar Oryndu: o cântico começa e quebra na segunda linha, e Jarupã só puxa o remo. Na fase 2, a marca também baixa o limite de mana e facilita a quebra da recitação (`jogo.md` §4.2 e §7; hoje é só -2 no acerto). Endyru já é Círculo aqui (ver Decisões do co-autor): o estouro passa do limite dele. |
 | 43 | **O silêncio na margem** (cena 4.1) | O `final_fim` do roteiro: o bicho morto na pedra, cheirando a lodo e ferro; Jarupã amarra o remo quebrado de Oryndu nas costas sem piada; Xanduí limpa a espada num tufo de capim, aperta o ombro de Endyru uma vez, curto, e sobe o barranco; Endyru abre a boca pra justificar a medida e fecha. Ninguém diz nada. |
 | 44 | **A unificação na parede** (cena 4.2) | Mostrar em vez de contar: o relatório escrito devagar (a mão ainda treme), a prata contada no balcão, guardas de Ymboripe que entram sem desembainhar e pregam um edital por cima do quadro da Mesa, o estandarte trocando na torre. A conselheira deixa de anunciar a anexação. |
@@ -479,6 +478,14 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   não alaga o mapa da área. No client, `waterRose` pinta o chão alagado de água barrenta, com o som grave. A luta final
   dos baixios tem cheia de 3 em 3 rodadas, até 2 vezes. Limite: um caixote quebrado depois da primeira subida não reabre
   o chão do mapa (só a cópia); nenhum mapa com cheia tem caixote.
+- **39. O preparo na margem.** Antes da luta final, `a_cheia` oferece riscar os círculos na margem seca (`preparo`):
+  Endyru mede a corda duas vezes, Jarupã rola dois barris de óleo e crava as estacas, o sinal do remo se combina, e vêm as
+  falas de Oryndu ("Puxa um palmo, deixa a moça segurar o bote...") e de Endyru ("desde os quatorze anos"). Dá pra ir
+  sem. O círculo gravado ganhou lugar no mapa: é um objeto (`circle` em `PROPS`) que se acende encostado nele, puxa o
+  inimigo mais perto (o bicho de rio primeiro) três quadrados na direção dele, menos o peso, e não gasta mana nem chama o
+  bicho. A água que sobe apaga o círculo que alcança (`washes`). Os destrutíveis passaram a aceitar `if`/`unless` e a
+  seguir a história como o resto do mapa (aparecem e somem a cada `syncPresence`), e o que se mexeu numa luta está
+  pronto de novo na seguinte. Os três círculos e os dois barris dos baixios só existem com `preparo`.
 
 ## 9. Onde isto está no cânone
 

@@ -13,7 +13,7 @@ import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
 import type { LearnedAbility, LevelUpResult } from "../types/levelUp";
 import { HERO_ID, castOf, companionId, keepsVow, magicOf, supportOf } from "../party";
-import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type PixelPos } from "./tiledMap";
+import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type AreaProp, type PixelPos } from "./tiledMap";
 
 /**
  * A ponte entre o mundo e o combate: quando uma luta começa, quem entra
@@ -37,15 +37,20 @@ import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap
 
 /**
  * Põe de pé, na grade da área, os destrutíveis que ainda não foram quebrados
- * (`broken` são os ids dos que já foram). Muta `map.grid`: a partir daqui
+ * (`broken` são os ids dos que já foram) e que a história põe ali agora
+ * (`present`, as condições `if`/`unless` do objeto). Muta `map.grid`: a partir daqui
  * eles barram o passo de quem explora e de quem luta, do mesmo jeito. Os
  * objetos devolvidos são os que a luta recebe — quebrado um deles, a grade
  * se abre de novo sozinha.
  */
-export function standAreaProps(map: AreaMap, broken: ReadonlySet<string> = new Set()): Prop[] {
+export function standAreaProps(
+  map: AreaMap,
+  broken: ReadonlySet<string> = new Set(),
+  present: (prop: AreaProp) => boolean = () => true,
+): Prop[] {
   const standing: Prop[] = [];
   for (const prop of map.props) {
-    if (broken.has(prop.id) || !isPropId(prop.kind)) continue;
+    if (broken.has(prop.id) || !isPropId(prop.kind) || !present(prop)) continue;
     standing.push(standProp(map.grid, prop.id, prop.kind, prop.tile));
   }
   return standing;
@@ -272,6 +277,8 @@ export function startAreaEncounter(
       }),
     );
   }
+  // Mexer num objeto vale uma vez por luta: o que se mexeu numa luta anterior da área está pronto de novo.
+  for (const prop of props) delete prop.used;
   const flood = enemies.find((enemy) => enemy.flood)?.flood;
   return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, lasting, opening, seed, ...(flood ? { flood } : {}) });
 }

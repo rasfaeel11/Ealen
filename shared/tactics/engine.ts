@@ -5,7 +5,7 @@ import { HUNGER, healCap, healToll } from "../breath";
 import { CONCEPTS } from "../mana";
 import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { findPath } from "./movement";
-import { PROPS, fellProp, type Prop, type PropTemplate } from "./props";
+import { PROPS, fellProp, propTemplate, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
 import { STATUSES, isHarmful, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
 import { STYLES, counters, isSworn, punishFactor, styleReduction, waveBonus } from "./styles";
@@ -938,7 +938,7 @@ function applyEffect(
       return;
     }
     case "push":
-      push(encounter, actor, target, effect.distance, events);
+      push(encounter, actor.pos, target, effect.distance, events);
       return;
   }
 }
@@ -980,11 +980,11 @@ function dealDamage(encounter: Encounter, target: Unit, amount: number, events: 
  * a água também (`soak`). Quem carrega uma condição `immovable` não sai do
  * lugar; quem é pesado (`heft`) sai esse tanto a menos.
  */
-function push(encounter: Encounter, actor: Unit, target: Unit, pushDistance: number, events: TacticalEvent[]): void {
+function push(encounter: Encounter, origin: Pos, target: Unit, pushDistance: number, events: TacticalEvent[]): void {
   if (target.statuses.some((status) => status.immovable)) return;
   const direction = Math.sign(pushDistance);
-  const dx = Math.sign(target.pos.x - actor.pos.x) * direction;
-  const dy = Math.sign(target.pos.y - actor.pos.y) * direction;
+  const dx = Math.sign(target.pos.x - origin.x) * direction;
+  const dy = Math.sign(target.pos.y - origin.y) * direction;
   if (dx === 0 && dy === 0) return;
 
   const from = { ...target.pos };
@@ -1037,13 +1037,28 @@ function dry(unit: Unit, events: TacticalEvent[]): void {
 /**
  * A água sobe um anel: todo quadrado seco que não barra o passo e encosta
  * (de lado, não na diagonal) em água vira água, e custa o passo de água (2).
- * Destrutível de pé barra o passo: o chão dele fica seco. Na primeira vez, a
+ * Destrutível de pé barra o passo: o chão dele fica seco — menos o que a água
+ * apaga (`washes`, o círculo gravado), que some antes e alaga junto. Na primeira vez, a
  * luta passa a ter a própria grade (`ownGrid`), pra cheia não alagar o mapa
  * da área. O bicho de rio que estava ali volta a ficar Submerso.
  */
 function riseWater(encounter: Encounter, events: TacticalEvent[]): void {
   if (encounter.flood) encounter.flood.risen += 1;
+  if (!encounter.ownGrid) {
+    encounter.grid = { ...encounter.grid, tiles: [...encounter.grid.tiles] };
+    encounter.ownGrid = true;
+  }
   const { grid } = encounter;
+  const wetAt = (pos: Pos) => tileAt(grid, pos)?.water === true;
+  // O círculo que a água alcança se apaga antes de ela subir: o chão dele alaga junto com o resto.
+  for (const prop of encounter.props) {
+    if (prop.hp <= 0 || !propTemplate(prop).washes) continue;
+    const { x, y } = prop.pos;
+    if (![{ x: x - 1, y }, { x: x + 1, y }, { x, y: y - 1 }, { x, y: y + 1 }].some(wetAt)) continue;
+    prop.hp = 0;
+    fellProp(grid, prop);
+    events.push({ type: "propDestroyed", prop: prop.id, name: propTemplate(prop).name, pos: { ...prop.pos } });
+  }
   const wet = (x: number, y: number) => x >= 0 && y >= 0 && x < grid.width && y < grid.height && grid.tiles[y * grid.width + x].water === true;
   const tiles: Pos[] = [];
   for (let y = 0; y < grid.height; y++) {
@@ -1054,10 +1069,6 @@ function riseWater(encounter: Encounter, events: TacticalEvent[]): void {
     }
   }
   if (tiles.length === 0) return;
-  if (!encounter.ownGrid) {
-    encounter.grid = { ...grid, tiles: [...grid.tiles] };
-    encounter.ownGrid = true;
-  }
   for (const pos of tiles) {
     const index = pos.y * grid.width + pos.x;
     const tile = encounter.grid.tiles[index];
@@ -1117,6 +1128,14 @@ function interact(encounter: Encounter, unit: Unit, target: Pos, events: Tactica
     verb: template.interact!,
     pos: { ...prop.pos },
   });
+  if (template.pull) {
+    // O círculo gravado: puxa quem está do outro lado, o bicho de rio primeiro.
+    const { distance: pull, reach } = template.pull;
+    const [target] = encounter.units
+      .filter((other) => other.team !== unit.team && isAlive(other) && distance(other.pos, prop.pos) <= reach)
+      .sort((a, b) => Number(b.river === true) - Number(a.river === true) || distance(a.pos, prop.pos) - distance(b.pos, prop.pos));
+    if (target) push(encounter, prop.pos, target, -pull, events);
+  }
   return undefined;
 }
 

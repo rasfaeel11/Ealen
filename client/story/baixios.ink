@@ -11,6 +11,7 @@ VAR ato2 = false
 VAR circulo = false
 VAR ykurua_morto = false
 VAR estaca = false
+VAR preparo = false
 
 // Um `trigger` em quem chega pela estrada de Ybytuguá: a primeira vez.
 === baixios_chegada ===
@@ -92,18 +93,36 @@ Oryndu: Faz os teus círculos antes. Na hora, só acende.
 ~ grant_xp(50)
 -> END
 
-// Ato 3: a cheia no alto, e a luta que não tem volta.
+// Ato 3: a cheia no alto, e a luta que não tem volta. Antes, o preparo na margem (jogo.md cena 3.1): os círculos
+// gravados na margem seca e os barris de Jarupã, que o mapa põe de pé com `preparo`. Dá pra ir sem.
 === a_cheia ===
-A cheia cobriu os bancos de areia. O raso ficou fundo onde era raso, e o redemoinho já está no meio dele, esperando.
+A cheia cobriu os bancos de areia. Sobrou uma língua de terra firme e pedra rachada onde a água ainda não chega. O redemoinho já está no meio do raso, esperando.
 Oryndu desvira o barco e põe ele na água, na beira, com a vara cravada no lodo.
 Oryndu: Eu seguro a margem com o barco. Vocês puxam. Devagar.
-Endyru: Devagar.
-Jarupã: O bicho começa?
-Xanduí: O bicho começa.
-* [Ainda não. Descansar antes, e preparar os círculos.]
+-> preparo_escolhas
+
+= preparo_escolhas
+* {not preparo} [Riscar os círculos na margem seca, antes de chamar o bicho.]
+    Endyru risca três círculos de atração na pedra da margem, um embaixo do outro, com o texto em volta, letra por letra. Mede a corda até o canal duas vezes, com a corda.
+    Jarupã rola dois barris de óleo do barco até a beira e crava as estacas do lado.
+    Jarupã: Se ele subir na pedra, a gente acende o óleo. Bicho de rio não gosta de fogo.
+    Xanduí: Ninguém gosta de fogo.
+    Oryndu olha o céu escuro de chuva e combina o sinal: duas batidas de remo no casco, ele afasta o barco; três, ele chega.
+    ~ preparo = true
+    Oryndu: O bicho vai vir devagar, Endyru. Puxa um palmo, deixa a moça segurar o bote, puxa outro palmo. Se você despejar tudo de uma vez pra puxar inteiro, ele não sobe na pedra. Ele vira pro lado onde a mana gritou. E no lado da água estou eu.
+    Endyru: Eu sei a medida, Oryndu. Eu faço essa conta desde os quatorze anos.
+    -> preparo_escolhas
+* [Ainda não. Descansar antes.]
     Oryndu: A cheia espera um pouco. Pouco.
     -> END
 + [Entrar na água.]
+    Jarupã: O bicho começa?
+    Xanduí: O bicho começa.
+    {preparo:
+        Oryndu: Um círculo de cada vez. Encostado nele. A água vai subir e apagar os de baixo primeiro.
+    - else:
+        Oryndu: Sem círculo, é verso pequeno, um palmo por vez. E esperar o couro secar na pedra.
+    }
     ~ start_fight("final")
     -> END
 
