@@ -317,4 +317,23 @@ Na guilda dos barqueiros, cada um dos três conta duas moedas em cima da mesa do
 {pay("prata", 2):
     Mestre da guilda: Eu sei pra quem é.
 }
+-> bifurcacao
+
+// A despedida na saída da cidade (jogo.md cena 4.3). O segredo de Xanduí fica na mão dela, na lombada: a tela mostra
+// Endyru olhando e calando, e não diz o que ele viu (AGENTS.md, Decisões do co-autor). Sem epílogo.
+=== bifurcacao ===
+Na saída da cidade, a estrada se divide. Pra cima, a margem e a estrada de Kuatiarape. Pro leste, a estrada longa da costa, pra Tanguratyba e Itamoguá.
+Endyru separa a parte dele da prata em cima de uma pedra de marco. Uma pilha pra taxa da universidade. O resto, a passagem pra costa: ouviu no cais que uma escola de lá procura professor de fundamentos.
+Jarupã: Fundamentos. É empurrar coisa?
+Endyru: É empurrar coisa.
+Jarupã tira do gibão um livrinho encadernado em couro, comprado no mercado do cais com a parte dele, e dá pra Xanduí.
+Jarupã: Almanaque. Tem figura bonita na capa e nome de cidade grande. Pra quando a gente for rico.
+Xanduí pega o livrinho. Passa o polegar na capa, sem abrir. Segura pela lombada, do lado das folhas, e guarda no bolso de dentro do gibão.
+Xanduí: Vou ler no barco, que sacode menos.
+Endyru olha a mão dela na lombada. Abre a boca.
+Cala de novo. Sorri.
+Endyru: Quando vocês cansarem da estrada, a minha porta na costa vai ter carneiro.
+Jarupã: Carneiro de professor. Vai ser magro.
+Xanduí: A gente vai.
+Cada um pega o seu lado da estrada.
 -> END

@@ -293,7 +293,6 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 |---|---|---|
 | 31 | **A voz do `jogo.md` em todo o texto** | Passar as falas dos cinco `.ink` pelo guia de diálogos (`jogo.md` §6). Jarupã não lê e não tem vergonha disso (sai o "Eu sei ler o principal"), dá regra de estrada inventada na hora e chama ferida de "raso". Xanduí fala metade, confere correia enquanto os outros discutem, tem a última palavra e repete termo de juiz de ouvido ("Quebra de contrato"). Endyru dá o número exato e corrige os outros até o ato 3; depois, corta a frase no meio. Oryndu bate o remo, chama de "rapaz", fala de lodo, corda e vento. Vocabulário do mundo (Verso, medida, palmo, fôlego, lua). Regra da ponte: a última fala antes de cada luta aponta pra mecânica dela. |
 | 35 | **Os saqueadores do dique** (Luta 2, opcional) | Mercenários dispensados de uma caravana roubando o armazém de cordas e óleo da guilda. Luta curta em lugar fechado: posição, o empurrão de Endyru contra parede e caixote, o triângulo. Pede um pedaço de mapa (o armazém) e a gente no bestiário (pelo papel, sem nome). |
-| 45 | **A bifurcação** (cena 4.3) | A despedida na saída da cidade: a estrada pra Kuatiarape e a do leste, pra costa (Tanguratyba, Itamoguá). Endyru separa a prata da universidade e da passagem (a escola da costa que precisa de professor de fundamentos). Jarupã dá a Xanduí o almanaque encadernado em couro, "pra quando a gente for rico"; ela passa o polegar na capa, segura a lombada pelo lado das folhas e guarda: "Vou ler no barco, que sacode menos." Endyru abre a boca, cala, sorri, e fala do carneiro na porta dele. A cópia do relatório sai. A tela mostra o gesto e o silêncio e nunca diz que Endyru entendeu (§1.1: ninguém no jogo percebe). |
 | 46 | **De Fio a Corpo** | O `jogo.md` põe Jarupã e Xanduí indo de Fio a Corpo; hoje a aura não sobe. Um `aura_rise` como o `mage_rise`, numa cena (sugestão: depois da ponte, task 38), que sobe o teto da proficiência pra 3. Junto com a task 26, se o autor aprovar os dons. |
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
@@ -498,6 +497,11 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   no fim de cada linha; a conselheira paga as três pilhas; três guardas de Ymboripe entram sem tirar a espada e pregam o
   edital por cima do da cheia; Endyru lê sem querer e para no meio; "A prata é a mesma"; e o estandarte da torre do cais
   troca. A parte de Oryndu na guilda ficou.
+- **45. A bifurcação.** O `fim` termina em `bifurcacao`: a estrada de Kuatiarape e a da costa (Tanguratyba, Itamoguá),
+  Endyru separando a taxa da universidade e a passagem pra escola que procura professor de fundamentos ("É empurrar
+  coisa"), o almanaque que Jarupã dá a Xanduí "pra quando a gente for rico", ela segurando pela lombada do lado das
+  folhas, "Vou ler no barco, que sacode menos", e Endyru olhando, abrindo a boca, calando, sorrindo, e o carneiro na
+  porta da costa. A tela não diz o que ele viu. Saiu a cópia do relatório. Sem epílogo.
 
 ## 9. Onde isto está no cânone
 
