@@ -209,45 +209,53 @@ Um velho remenda uma rede no chão da guilda, com a rede inteira em cima das per
 + [Deixar o velho com a rede.]
     -> END
 
-// O ferreiro demônio: a receita é absurda e funciona (biblia §3.4; AGENTS.md §1.2).
+// O ferreiro demônio: a receita é absurda e funciona (biblia §3.4; jogo.md §6.2). É um Verso de entropia cantado no
+// compasso da bigorna; ninguém diz isso, Endyru só conta as batidas.
 === ferreiro ===
 {temperadas:
-    Ferreiro: Funcionou? Funciona sempre. Não precisa voltar pra me contar.
+    Thrykar: Funcionou? Funciona sempre. Não precisa voltar pra me contar.
     -> END
 }
 Um demônio de avental de couro, com as orelhas pontudas cheias de fuligem, bate um ferro na bigorna sem olhar quem entrou.
-Ferreiro: Placa na porta. Leu?
+Thrykar: Placa na porta. Leu?
 -> conversa
 
 = conversa
 * [Perguntar se ele tempera espada pra couro de bicho de rio.]
-    Ferreiro: Tempero. Receita velha. Três escamas de peixe do fundo, lodo dos baixios mexido contra a corrente, e uma unha de quem vai usar a espada.
-    Jarupã: A unha?
-    Ferreiro: Do pé.
-    Jarupã: Do pé de quem?
-    Ferreiro: De quem vai usar a espada. Já falei. Dois de prata pelas duas.
+    Thrykar: Tempero. Banha de bagre cego. Três pregos de barco que afundou com carga paga. Trinta marretadas, cantando pra sogra morrer.
+    Jarupã: Sogra de quem?
+    Thrykar: Não importa de quem. Importa que morra. Dois de prata pelas duas.
     -> conversa
 * {money("prata") >= 2 && in_party("jarupa") && in_party("xandui")} [Pagar dois de prata pelas duas espadas.]
     ~ pay("prata", 2)
-    Jarupã tira a bota antes de o ferreiro terminar de pedir.
-    Xanduí: A minha não.
-    Ferreiro: Então a sua espada fica como está.
-    Xanduí olha pra própria espada um tempo. Tira a bota.
-    O ferreiro mexe o lodo num balde contra o sentido do rio, joga as escamas, joga as unhas, e enfia as duas lâminas no balde com a cara de quem faz isso todo dia. As lâminas saem escuras e com um fio que não estava lá.
+    O demônio unta as duas lâminas com uma banha amarela que cheira a rio parado e põe três pregos verdes de ferrugem na brasa.
+    Thrykar: Banha de bagre cego.
+    Bate.
+    Thrykar: Três pregos de barco que afundou com carga paga.
+    Bate.
+    Thrykar: Se a carga era roubada, o ferro entorta.
+    Endyru: Como o senhor sabe se o bagre era cego?
+    Thrykar: Ele não desviou da rede. Puxa o fole e cala a boca, que a conta é de trinta e você me fez falar no doze.
+    Endyru puxa o fole. O demônio canta baixo, na língua dele, uma batida por sílaba. Endyru conta sem querer, como conta qualquer coisa. Dezoito. Dezenove. Para de contar no vinte e não diz nada.
+    Jarupã: A gente tem que cantar junto?
+    Thrykar: Vocês pagaram. Quem paga não canta.
+    As lâminas saem escuras e com um fio que não estava lá.
     ~ give_item("gear-espada-reta-temperada")
     ~ give_item("gear-espada-pesada-temperada")
     ~ temperadas = true
-    Ferreiro: Agora entra em couro de bicho. Em couro de gente também. Não me conta qual.
+    Thrykar: Agora entra em couro de bicho. Em couro de gente também. Não me conta qual.
     -> END
 + [Ir embora.]
     -> END
 
 === placa_forja ===
-Uma tábua pregada na porta da forja, em letra de quem escreve com ferro em brasa.
-Endyru: "Ferreiro. Afio o que corta. Não afio conversa."
+Duas tábuas na porta da forja. A de baixo, na letra dos portos; a de cima, em runas cavadas a ferro quente.
+Endyru: Embaixo: "Ferro e couro."
+Endyru: Em cima: "Thrykar. Conserta o que você estragou. Não faço fiado."
 {in_party("jarupa"):
-    Jarupã: O que diz?
-    Endyru lê de novo, igual.
+    Jarupã: E o que você estragou?
+    Endyru: Nada. É o que diz.
+    Jarupã: Então a gente não entra.
 }
 -> END
 

@@ -45,7 +45,7 @@ const PLACEHOLDER_COLOR: Record<string, string> = {
   Oryndu: "#5a7a5e",
   Conselheira: "#7a6a8a",
   Castelão: "#6a6f78",
-  Ferreiro: "#7a4a3a",
+  Thrykar: "#7a4a3a",
   "Mestre da guilda": "#4f6a6a",
   Mercador: "#8a7a4a",
   "Escrivão da Mesa": "#6a5f50",

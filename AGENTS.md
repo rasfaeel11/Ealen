@@ -292,7 +292,6 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 | # | Task | O que é |
 |---|---|---|
 | 31 | **A voz do `jogo.md` em todo o texto** | Passar as falas dos cinco `.ink` pelo guia de diálogos (`jogo.md` §6). Jarupã não lê e não tem vergonha disso (sai o "Eu sei ler o principal"), dá regra de estrada inventada na hora e chama ferida de "raso". Xanduí fala metade, confere correia enquanto os outros discutem, tem a última palavra e repete termo de juiz de ouvido ("Quebra de contrato"). Endyru dá o número exato e corrige os outros até o ato 3; depois, corta a frase no meio. Oryndu bate o remo, chama de "rapaz", fala de lodo, corda e vento. Vocabulário do mundo (Verso, medida, palmo, fôlego, lua). Regra da ponte: a última fala antes de cada luta aponta pra mecânica dela. |
-| 34 | **O ferreiro do roteiro** | A placa de duas linhas (a letra dos portos embaixo, as runas em cima) e a receita do `jogo.md`: banha de bagre cego, três pregos de barco que afundou com carga paga, trinta marretadas. A cena do bagre que "não desviou da rede" e da conta que parou no doze. Endyru reconhece a métrica de um Verso de entropia no compasso da bigorna e não explica além disso. A receita da unha do pé sai. Ele vende Temperado e Gravado (a banca da task 25 pode ser aqui). |
 | 35 | **Os saqueadores do dique** (Luta 2, opcional) | Mercenários dispensados de uma caravana roubando o armazém de cordas e óleo da guilda. Luta curta em lugar fechado: posição, o empurrão de Endyru contra parede e caixote, o triângulo. Pede um pedaço de mapa (o armazém) e a gente no bestiário (pelo papel, sem nome). |
 | 36 | **A primeira ida do roteiro** (cena 1.3) | Os destroços da barcaça de grãos; num rochedo da margem, cinza de giz e pedra queimada de encantamento (objeto que se examina, vai pro diário). Jarupã bate na água e a espada não pega; o bicho sente a mana de Endyru e parte a passarela de madeira (destrutível, deixa `broken`). O objetivo vira recuar até a barcaça em poucas rodadas (deixa `used` na barcaça, com `goal`), com Oryndu lendo a água. Na saída, Oryndu tira do lodo a estaca com o ferro de Ymboripe e um círculo de atração riscado às pressas: a resposta começa no fim do ato 1. A "leitura na margem" contada pela guilda vira reforço ou sai. |
 | 37 | **A estrada pela floresta** (cena 2.1) | No lugar das conversas de estrada da antiga 24, as do roteiro: no acampamento, Endyru ensina por que o círculo fecha exato, e Jarupã usa o giz pra marcar placar de dados e ganha três cobres dele. A tabuleta de fronteira caída: Xanduí a vira de cabeça pra baixo, "Madeira boa. Endyru, vê se o nome do duque tá escrito direito aí", e Endyru lê sem notar. A Luta 4, batedores da Tsvirana pagos pelo ducado (o aventureiro contratado do bestiário serve), e depois a Cura em Jarupã, que cai sentado comendo meio pão duro: "Magia de estudante é igual imposto...". |
@@ -444,6 +443,12 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   pressa. Jarupã agora diz que não lê e nunca precisou. Na guilda, ninguém guia ("Quem espera a cheia baixar vive até
   a seca"); no barco, Oryndu leva o grupo pelo leme rachado na corrente e põe a condição. O aviso de cabeça pra baixo
   saiu do quadro e espera a tabuleta da floresta (task 37).
+- **34. O ferreiro do roteiro.** O ferreiro é Thrykar (no mapa, na caixa e no busto). A placa tem duas tábuas: "Ferro e
+  couro" na letra dos portos, e em runas "Thrykar. Conserta o que você estragou. Não faço fiado." A receita é a do
+  `jogo.md`: banha de bagre cego, pregos de barco que afundou com carga paga, trinta marretadas cantando pra sogra
+  morrer, e a cena do bagre que não desviou da rede e da conta que parou no doze. Endyru conta as batidas, para no vinte
+  e não diz nada. A unha do pé saiu. Ele continua só temperando as duas espadas; vender Temperado e Gravado fica com a
+  banca da task 25.
 
 ## 9. Onde isto está no cânone
 
