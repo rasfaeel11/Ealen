@@ -13,7 +13,7 @@ import { findItemTemplate } from "./items";
  * repositório da história) e a gente do Ymonhã e de Ymboripe — gente não pede
  * entrada no bestiário da história; criatura pede. Criatura nova (os bichos da
  * floresta entre as bacias, se o autor quiser) só entra depois de gravada lá.
- * Quem não tem nome aprovado aparece pelo papel: o castelão, o recitador.
+ * Quem não tem nome aprovado aparece pelo papel; o castelão (Mbyraku) e o mago do duque (Jurendy) já têm nome.
  *
  * `template.arts` é também O KIT da criatura: do kit da classe dela, ela sabe
  * só o que nomeia ali (ver abilitiesFor em ../tactics/abilities.ts). Dar uma
@@ -134,7 +134,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     },
   },
 
-  // O castelão: o primeiro chefe. Da Tsvirana (lê quem se repete), Corpo de aura. Sem nome aprovado: é o papel.
+  // Mbyraku, o castelão do Castelo da Volta: o primeiro chefe, na ponte do afluente com Jurendy. Da Tsvirana (lê
+  // quem se repete), Corpo de aura.
   "encounter-castelao": {
     person: true,
     style: { id: "tsvirana", grade: 3 },
@@ -146,7 +147,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     drops: [{ itemId: "item-lagrima-de-eir", chance: 1 }],
     template: {
       id: "enemy-castelao",
-      name: "Castelão",
+      name: "Mbyraku",
       race: "humano",
       characterClass: "espadachim",
       level: 4,
@@ -236,6 +237,33 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
       currentNodeId: "",
       equipment: { weapon: "gear-bordao", armor: "gear-tunica-de-linho" },
       arts: { quick_attack: "Puxão", attack: "Bordão", heavy_attack: "Empurrão", defend: "Guarda" },
+    },
+  },
+
+  // Jurendy, mago da corte de Ymboripe: estudou em Kuatiarape na bancada de Endyru, com dinheiro pra terminar. É ele
+  // quem desce ao rio de duas em duas noites pra descarregar um Círculo bruto na água. Círculo, como Endyru vai ser.
+  "encounter-jurendy": {
+    person: true,
+    magic: { concept: "atracao_repulsao", level: 4 },
+    glyph: "✎",
+    summary: "Mago da corte de Ymboripe. Lê grande na beira do rio, de propósito.",
+    lore: "Ex-colega de Endyru em Kuatiarape, filho de gente com dinheiro. Ganhou cargo no ducado de Pytumã e faz a conta dele como quem explica uma conta: um bicho de rio sai mais barato que uma guerra.",
+    // Fica no alto e recita. De perto, o espadachim o amassa; puxado do barranco, perde a leitura.
+    ai: { caution: 1.5, support: 0.6 },
+    drops: [{ itemId: "item-lagrima-de-eir", chance: 1 }],
+    template: {
+      id: "enemy-jurendy",
+      name: "Jurendy",
+      race: "humano",
+      characterClass: "atracao_repulsao",
+      level: 4,
+      xp: 0,
+      attributes: { forca: 3, fator: 9, vigor: 5, olho: 6, couro: 3, labia: 6, saber: 9 },
+      currentHp: 30,
+      maxHp: 30,
+      currentNodeId: "",
+      equipment: { weapon: "gear-bordao", armor: "gear-tunica-de-linho" },
+      arts: { quick_attack: "Puxão", attack: "Bordão", heavy_attack: "Empurrão", defend: "Guarda", desarmar: "Desarmar" },
     },
   },
 

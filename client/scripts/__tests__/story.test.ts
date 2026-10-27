@@ -235,14 +235,12 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.equal(runner.flag("estaca"), true);
   assert.equal(runner.flag("ato2"), true);
 
-  // Ato 2: a margem (o Círculo), a leitura na floresta, o papel, o castelão e o livro.
+  // Ato 2: a margem (o Círculo), e Jurendy e Mbyraku na ponte do afluente; a carta no bolso do castelão.
   play("margem");
   assert.equal(host.character.mageLevel, 4);
-  assert.deepEqual(play("leitura_na_margem", "Ir pra cima"), { fight: "recitador" });
-  play("recitador_caiu");
-  assert.equal(runner.flag("papel_do_recitador"), true);
-  assert.deepEqual(play("castelao", "Pedir o livro"), { fight: "castelo" });
-  play("castelao_caiu");
+  assert.deepEqual(play("leitura_na_margem", "Atravessar a ponte"), { fight: "ponte" });
+  play("ponte_caiu");
+  assert.equal(runner.flag("castelao_vencido"), true);
   assert.equal(runner.flag("prova"), true);
 
   // Ato 3: o conselho chama, a cheia, e o fim.

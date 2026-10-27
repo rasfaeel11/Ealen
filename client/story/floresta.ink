@@ -1,6 +1,7 @@
-// A floresta entre as bacias, terra de ninguém (AGENTS.md §2 e §6, ato 2). Seguindo a margem, o trio acha a
-// resposta: homens do ducado de cima, Ymboripe, andam conjurando grande no rio, de propósito, pra acordar o Ykuruã e
-// matar o comércio de Ybytuguá. Cidade sem comércio aceita senhor. É política humana, explicada no próprio ato.
+// A floresta entre as bacias, terra de ninguém (AGENTS.md §2 e §6, ato 2; jogo.md cenas 2.1 e 2.2). Seguindo a
+// margem, o trio acha a resposta: Jurendy, mago da corte de Ymboripe, lê grande no afluente que desce pros baixios,
+// de propósito, pra manter o Ykuruã acordado e matar o comércio de Ybytuguá, e Mbyraku, o castelão da corrente,
+// guarda a ponte dele. Cidade sem comércio aceita senhor. É política humana, explicada no próprio ato.
 
 VAR visto_tabuleta = false
 
@@ -12,34 +13,70 @@ Jarupã: Mato é bom. No mato ninguém cobra pedágio.
 Xanduí: No mato ninguém cobra nada. Cobra antes.
 -> END
 
-// Um `trigger` perto da margem, a noroeste: a leitura alta que os barqueiros ouvem de noite.
+// Um `trigger` ao sul do afluente, a noroeste: a ponte de pedra, Jurendy lendo do barranco e Mbyraku segurando a
+// ponte. A conta de Ymboripe é dita por quem a faz, sem vilania: é política humana (AGENTS.md §6, ato 2).
 === leitura_na_margem ===
-Na margem do rio grande, um rapaz de túnica lê alto, virado pra água, com um livro aberto nas duas mãos. Dois homens sem cor nenhuma na roupa vigiam a trilha de costas pra ele.
-Não é verso de puxar rede. É uma página inteira de repulsão, lida devagar e certo, pra dentro da cheia.
+Um afluente desce ali direto pros baixios, estreito e fundo, com uma ponte de pedra no meio. Do outro lado, um barranco alto.
+Em cima do barranco, um rapaz de capa boa lê alto, virado pra água, com um livro aberto nas duas mãos. Na ponte, um homem de cota de escamas e dois escudeiros com a cor de Ymboripe na manga.
+Não é verso de puxar rede. É uma página inteira de repulsão, lida pra dentro do rio que desce pros baixios.
 Oryndu: Na cheia.
-Endyru reconhece o texto. Sabe o tamanho do que vai bater na água quando ele terminar.
-* [Gritar pra ele parar.]
-    Endyru: Para! Rio abaixo tem gente!
-    O rapaz não para de ler. Os dois homens se viram, e um deles já tem a espada na mão.
-    ~ start_fight("recitador")
-    -> END
-+ [Ir pra cima antes que ele termine.]
-    Xanduí: Eu não começo.
-    Jarupã: Eu sei.
-    ~ start_fight("recitador")
+Jarupã: O da cota é o dono da corrente. Desceu do muro.
+O rapaz do barranco para no meio do verso e fecha o livro com o dedo marcando a página.
+Jurendy: Endyru. Da bancada de fundamentos.
+Endyru: Jurendy.
+Jurendy: Você largou Kuatiarape por duas moedas de prata. Eu lembro. O teu nome ficou riscado no mural das taxas a lua inteira.
+Ele olha a bota de Endyru, a capa de estrada, os dois espadachins.
+Jurendy: E agora é escolta de barqueiro.
+Endyru: Contratado do conselho de Ybytuguá. O bicho dos baixios.
+Jurendy: Então você trabalha pra nós também. Só que mais devagar.
+-> conversa
+
+= conversa
+* [Perguntar por que ele lê no rio.]
+    Jurendy: Porque sai barato. Faz a conta, Endyru. Guerra com Ybytuguá custa soldado e queima barcaça. Um bicho de rio fechando o porto por uma lua não custa nada ao duque. Uma leitura a cada duas noites, e um castelão que cobra a corrente e fecha a boca.
+    Mbyraku não diz nada. Cospe no rio.
+    Jurendy: Daqui a duas semanas eles mesmos abrem o portão e ainda pagam o jantar do duque. Você está sujando a bota por uma cidade que já comprou a tinta pra se vender.
+    Endyru: Rio abaixo tem gente.
+    Jurendy: Rio abaixo sempre tem gente.
+    -> conversa
+* [Dizer que ele lê errado.]
+    Endyru: Você está lendo a medida do afluente como se fosse o Ymonhã. Metade disso cai no lodo.
+    Jurendy: Metade basta. O bicho não é exigente. Você é que sempre foi.
+    -> conversa
+* [Dizer pra que vocês foram contratados.]
+    Mbyraku: Contrato de Ybytuguá não fala de ponte nenhuma.
+    Xanduí: "O contratado responde pelo bicho dos baixios, e pelo que lhe der causa, até a cheia baixar."
+    Ela diz as palavras uma por uma, sem pressa, olhando pro castelão.
+    Endyru: É isso mesmo que está escrito.
+    Jurendy: Então vocês vieram buscar a causa.
+    -> conversa
++ [Atravessar a ponte.]
+    Mbyraku: Ponte de duque paga pedágio.
+    Jarupã: Eu pago. Deixa que eu abro.
+    Xanduí: Puxa o leitor do barranco, estudante. Lá de cima ele não para de ler.
+    ~ start_fight("ponte")
     -> END
 
-// O recitador e quem o guardava vencidos (onDefeat): o papel.
-=== recitador_caiu ===
-~ papel_do_recitador = true
-No meio das coisas do recitador, enrolado num pano encerado, um papel dobrado com um selo de cera. Endyru lê.
-Endyru: "Ler na cheia, nos baixios abaixo de Ybytuguá e na margem rio acima, de três em três noites, até a cidade pedir senhor. Pagamento com o castelão da corrente."
-Jarupã: O selo é de quem?
-Endyru: De Ymboripe.
-Xanduí: O ducado de cima.
-Oryndu olha pro rio e não diz nada por um tempo.
+// Mbyraku, Jurendy e os escudeiros vencidos (onDefeat): Jurendy foge, e o castelão tem uma carta no bolso.
+=== ponte_caiu ===
+~ castelao_vencido = true
+~ prova = true
+Jurendy está no pé do barranco, com o livro aberto na lama, as duas mãos pra cima.
+Jurendy: Rendição. Eu me rendo. Isso tem nome no tratado.
+Xanduí: Legítima defesa. Também tem nome. Eu ouvi um juiz dizer, em Kuatiarape, com essas mesmas palavras.
+Jarupã: E quem ganhou?
+Xanduí: Um dos dois. Mas a palavra era essa.
+Quando Jarupã se vira pra amarrar o castelão, Jurendy já está subindo a trilha, sem o livro, sem olhar pra trás. Ninguém corre atrás dele.
+Mbyraku está sentado na ponte, com a mão no flanco. Endyru tira do gibão dele uma carta aberta, com a dobra gasta de quem já leu muitas vezes.
+Endyru: "Ao senhor de Ymboripe, dos conselheiros de Ybytuguá que assinam abaixo. Se o rio continuar fechado até a lua cheia, levamos ao conselho os termos do duque, e o porto entra no ducado com as guildas como estão."
+Jarupã: Quem assina?
+Endyru: Três nomes. Gente do conselho.
+Oryndu olha pro afluente, que desce pros baixios.
 Oryndu: O bicho não acordou. Acordaram ele.
-~ note("papel", "O papel do recitador, com o selo de Ymboripe: ler na cheia, nos baixios e rio acima, até Ybytuguá pedir senhor. Pagamento com o castelão da corrente.")
+Xanduí: Então a gente mata o bicho antes da lua cheia, recebe a prata antes de eles venderem a cadeira e vai embora. Simples.
+~ note("carta", "No gibão de Mbyraku, o castelão: uma carta de três conselheiros de Ybytuguá ao senhor de Ymboripe. Se o rio continuar fechado até a lua cheia, levam os termos do duque ao conselho.")
+~ note("jurendy", "Jurendy, mago da corte de Ymboripe, lia de duas em duas noites na beira do afluente que desce pros baixios.")
+~ grant_xp(80)
 -> END
 
 // Os batedores contratados vencidos (onDefeat): a Tsvirana, paga pelo ducado. Depois, a Cura em Jarupã.

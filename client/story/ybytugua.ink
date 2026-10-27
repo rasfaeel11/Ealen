@@ -3,7 +3,7 @@
 // ler; Xanduí escolhe Endyru. O trio se forma aqui, na Mesa dos Contratos.
 //
 // O segredo de Xanduí vive pela forma, nunca pela fala: ela pede que Endyru leia "porque ele lê bonito", segura um
-// aviso de cabeça pra baixo uma vez, e repete palavra por palavra o que ouviu (ver castelao, em ymonha.ink).
+// aviso de cabeça pra baixo uma vez, e repete palavra por palavra o que ouviu (ver a ponte, em floresta.ink).
 // Ninguém no jogo percebe.
 
 VAR chegou = false
@@ -119,8 +119,8 @@ Conselheira: A guilda dos barqueiros sabe o que sobe e desce o rio. Pergunte a e
 
 = chamado
 {prova:
-    Endyru põe o livro do castelão em cima da mesa comprida, aberto na página do selo.
-    A conselheira lê em silêncio. Lê duas vezes. Fecha o livro com a palma da mão.
+    Endyru põe a carta do castelão em cima da mesa comprida.
+    A conselheira lê em silêncio. Chega nas assinaturas e para. Dobra o papel em quatro e põe a palma da mão em cima.
     Conselheira: O conselho vai ler isto. Depois. Agora, o bicho.
 - else:
     Conselheira: A cheia está no alto. Os barcos que ainda flutuam vão sair amanhã, rio acima, de vez.
@@ -155,7 +155,7 @@ Escrivão da Mesa: Uma moeda e eu leio.
 Jarupã já está com a mão na bolsa. Xanduí segura o pulso dele.
 Ela olha o edital de longe, com a cabeça inclinada, como quem avalia se um bicho morde. Depois aponta Endyru com o queixo.
 Xanduí: Pra que dar moeda pra escrivão se o menino lê bonito? Lê aí pra gente, estudante.
-Endyru: "Contrato de Corpo. O Conselho das Guildas de Ybytuguá paga vinte de prata a quem matar ou expulsar o Ykuruã dos baixios do sul. Dois na assinatura, dezoito contra o relatório. Fiança dispensada por urgência."
+Endyru: "Contrato de Corpo. O Conselho das Guildas de Ybytuguá paga vinte de prata a quem matar ou expulsar o Ykuruã dos baixios do sul. Dois na assinatura, dezoito contra o relatório. O contratado responde pelo bicho dos baixios, e pelo que lhe der causa, até a cheia baixar. Fiança dispensada por urgência."
 Endyru: "A companhia contratada terá ao menos um letrado, que assine o livro da Mesa pelo próprio punho e entregue ao conselho relatório escrito do estado dos baixios, como exigem as guildas de seguro."
 Jarupã: Assina lá, Xanduí.
 Xanduí cruza os braços. Não pisca.
@@ -304,7 +304,7 @@ Uma semana depois, a cheia baixou dois palmos. Os primeiros barcos voltam pra á
 A conselheira paga o relatório em cima da mesa comprida. Dezoito moedas de prata, em três pilhas de seis.
 ~ earn("prata", 6)
 Conselheira: O conselho assinou com Ymboripe hoje de manhã.
-Endyru: Vocês leram o livro do castelão.
+Endyru: Vocês leram a carta.
 Conselheira: Lemos. E lemos o que a próxima cheia faz com uma cidade sem senhor.
 Ela guarda a pena. Não há mais nada no quadro de contratos.
 Na guilda dos barqueiros, cada um dos três conta duas moedas em cima da mesa do mestre. Ninguém diz pra quem são.

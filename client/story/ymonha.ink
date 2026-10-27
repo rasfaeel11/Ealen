@@ -1,11 +1,11 @@
-// O Ymonhã, no castelo de pedágio: a abertura do jogo (AGENTS.md §6) e, no ato 2, o castelão por terra.
+// O Ymonhã, no Castelo da Volta, o castelo de pedágio: a abertura do jogo (AGENTS.md §6) e, no ato 2, o castelo
+// visto por terra. Mbyraku, o castelão, luta no ato 2 na ponte do afluente (floresta.ink).
 //
 // A abertura começa com ação: a corrente sobe na frente do barco e um virote crava no costado. O pedágio subiu de
 // novo, e há três saídas — pagar, convencer (Lábia de Endyru) ou lutar. Ensina a luta, o voto de Xanduí (ela não
 // abre; Jarupã abre) e a pressa de Endyru (Oryndu o segura: "Não no rio, rapaz.").
 
 VAR pedagio_resolvido = false
-VAR papel_do_recitador = false
 VAR castelao_vencido = false
 
 // Um `trigger` em cima do barco, onde o jogo começa: uma vez só.
@@ -132,52 +132,11 @@ Xanduí: Dono da corrente não desce pra cobrar.
 
 // Ato 2: o castelo pela estrada da margem, vindo da floresta.
 === castelo_por_terra ===
-Por terra, o castelo de pedágio é outro castelo: um muro de costas pra estrada, um portão aberto pro rio, e a guarda da estrada de olho em quem desce a margem a pé.
-{papel_do_recitador:
-    Endyru: O pagamento sai daqui.
-    Jarupã: Então a gente entra.
+Por terra, o Castelo da Volta é outro castelo: um muro de costas pra estrada, um portão aberto pro rio, e a guarda da estrada de olho em quem desce a margem a pé.
+{castelao_vencido:
+    O guincho está parado, com a corrente frouxa dentro d'água. Lá no alto do muro não tem ninguém.
+    Jarupã: Sem dono, a corrente afunda sozinha.
 - else:
     Oryndu: Daqui o castelão vê o rio inteiro. O que passa e o que afunda.
 }
--> END
-
-// O castelão, no pátio, no ato 2 (inimigo passivo: só a história começa a luta).
-=== castelao ===
-O castelão não se levanta da mesa do pátio. Tem um livro aberto na frente, de contas, e a pena ainda molhada.
-Castelão: O barqueiro, o estudante e a escolta do sal. Vocês pagaram o pedágio.
--> perguntas
-
-= perguntas
-* [Mostrar o papel do recitador.]
-    Endyru põe o papel em cima do livro de contas. O selo de Ymboripe fica virado pra cima.
-    Castelão: Ymboripe paga melhor que barco de sal. Paga até pelo barco que não passa.
-    Endyru: Eles afundam os barcos de Ybytuguá. Você cobra a corrente e eles cobram o rio.
-    Castelão: E quando a cidade assinar, quem cobra a corrente sou eu, com o selo deles. Vocês acham que é segredo o que um senhor de margem faz com a margem?
-    -> perguntas
-* [Dizer pra que foram contratados.]
-    Castelão: Contrato de Ybytuguá não fala de castelo nenhum.
-    Xanduí: "O contratado responde pelo bicho dos baixios, e pelo que lhe der causa, até a cheia baixar."
-    Ela diz as palavras uma por uma, sem pressa, olhando pro castelão.
-    Endyru: É isso mesmo que está escrito.
-    Castelão: Então vocês vieram buscar a causa.
-    -> perguntas
-+ [Pedir o livro de contas.]
-    Castelão: Venham buscar.
-    Ele fecha o livro e se levanta, e a espada sai da bainha antes de ele terminar de levantar.
-    ~ start_fight("castelo")
-    -> END
-
-// O castelão vencido (onDefeat).
-=== castelao_caiu ===
-~ castelao_vencido = true
-~ prova = true
-O castelão está sentado no chão do próprio pátio, com a mão no flanco e os olhos no livro de contas, que ficou aberto em cima da mesa.
-Endyru lê em voz alta, porque Xanduí pede.
-Endyru: "De Ymboripe, pela corrente fechada aos barcos de sal, de pano e de grão, rumo a Ybytuguá. De Ymboripe, pelos leitores na margem. De Ymboripe, pelo silêncio."
-Xanduí: Lê de novo a última.
-Endyru: "Pelo silêncio."
-~ note("livro_da_corrente", "O livro de contas do castelão: pagamentos de Ymboripe pela corrente fechada aos barcos de Ybytuguá, pelos leitores na margem e pelo silêncio.")
-Jarupã fecha o livro, enfia debaixo do braço e olha pro castelão.
-Jarupã: Pelo silêncio, você vai ficar quieto aí.
-~ grant_xp(50)
 -> END
