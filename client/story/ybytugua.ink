@@ -297,26 +297,24 @@ Oryndu: Rio acima é contra a corrente. Chega no castelo antes do escuro.
 A cheia cobriu o vau da floresta. Da estrada só se vê a água marrom, correndo onde era o caminho.
 -> END
 
-// Uma semana depois do bicho (gatilho em frente à Mesa, depois de final_fim em baixios.ink).
+// Uma semana depois do bicho (gatilho em frente à Mesa, depois de final_fim em baixios.ink): o papel assinado
+// (jogo.md cena 4.2). A anexação não é anunciada: é pregada na parede, por cima do quadro.
 === fim ===
 ~ clock_stop()
-Uma semana depois, a cheia baixou dois palmos. Os primeiros barcos voltam pra água, tortos, cheios de remendo.
-A conselheira paga o relatório em cima da mesa comprida. Dezoito moedas de prata, em três pilhas de seis.
+Uma semana depois, a cheia baixou dois palmos. As barcaças descem o rio de novo, tortas, cheias de remendo.
+Na Mesa dos Contratos, Endyru escreve o relatório no balcão, devagar. No fim de cada linha a mão ainda treme, e ele espera passar antes de começar a outra.
+A conselheira lê o relatório inteiro. Paga em cima da mesa comprida: dezoito moedas de prata, em três pilhas de seis.
 ~ earn("prata", 6)
-Conselheira: O conselho assinou com Ymboripe hoje de manhã.
-Endyru: Vocês leram a carta.
-Conselheira: Lemos. E lemos o que a próxima cheia faz com uma cidade sem senhor.
-Ela guarda a pena. Não há mais nada no quadro de contratos.
+Enquanto eles contam, três guardas com a cor de Ymboripe na manga entram pela porta da Mesa sem tirar a espada da bainha. Um deles prega um edital novo no quadro, por cima do edital da cheia.
+Endyru está de frente pro quadro. Lê sem querer, em voz alta, como lê tudo.
+Endyru: "Ybytuguá, pelo tratado firmado entre o conselho das guildas e o senhor de Ymboripe, entra no ducado com o porto e as..."
+Ele para no meio.
+A conselheira não levanta os olhos da pena.
+Jarupã: A prata vale igual?
+Conselheira: A prata é a mesma.
+Pela janela, no alto da torre do cais, o estandarte da cidade desce. Outro sobe no lugar.
 Na guilda dos barqueiros, cada um dos três conta duas moedas em cima da mesa do mestre. Ninguém diz pra quem são.
 {pay("prata", 2):
     Mestre da guilda: Eu sei pra quem é.
 }
-No cais, Jarupã já arranjou outra escolta, rio abaixo, de pano.
-Jarupã: Paga mal. Ninguém morre.
-Endyru dá a Xanduí uma cópia do relatório, com o nome da companhia e os três nomes embaixo, na letra dele.
-Xanduí dobra o papel duas vezes e guarda dentro da camisa.
-Xanduí: Vou ler com calma.
-Jarupã: Lê pra mim depois.
-Xanduí: Leio.
-Endyru sobe o rio pra Kuatiarape num barco que não é de Oryndu. O nariz parou de sangrar faz dois dias. As mãos já não tremem.
 -> END
