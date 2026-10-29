@@ -18,7 +18,7 @@ Xanduí: No mato ninguém cobra nada. Cobra antes.
 === leitura_na_margem ===
 Um afluente desce ali direto pros baixios, estreito e fundo, com uma ponte de pedra no meio. Do outro lado, um barranco alto.
 Em cima do barranco, um rapaz de capa boa lê alto, virado pra água, com um livro aberto nas duas mãos. Na ponte, um homem de cota de escamas e dois escudeiros com a cor de Ymboripe na manga.
-Não é verso de puxar rede. É uma página inteira de repulsão, lida pra dentro do rio que desce pros baixios.
+Não é Verso de puxar rede. É uma página inteira de repulsão, lida pra dentro do rio que desce pros baixios.
 Oryndu: Na cheia.
 Jarupã: O da cota é o dono da corrente. Desceu do muro.
 O rapaz do barranco para no meio do verso e fecha o livro com o dedo marcando a página.
@@ -64,8 +64,8 @@ Jurendy: Então você trabalha pra nós também. Só que mais devagar.
 Jurendy está no pé do barranco, com o livro aberto na lama, as duas mãos pra cima.
 Jurendy: Rendição. Eu me rendo. Isso tem nome no tratado.
 Xanduí: Legítima defesa. Também tem nome. Eu ouvi um juiz dizer, em Kuatiarape, com essas mesmas palavras.
-Jarupã: E quem ganhou?
-Xanduí: Um dos dois. Mas a palavra era essa.
+Jarupã: Um dos dois.
+Xanduí: Mas a palavra era essa.
 Quando Jarupã se vira pra amarrar o castelão, Jurendy já está subindo a trilha, sem o livro, sem olhar pra trás. Ninguém corre atrás dele.
 Jarupã limpa a espada na manga e fica olhando a lâmina, do jeito que se conta um troco que veio a mais.
 Jarupã: Hoje ela pesou menos.
@@ -97,7 +97,7 @@ Jarupã: Raso. Não apareceu osso, é raso.
 Xanduí: Tá enchendo a bota.
 Endyru se ajoelha e põe a mão em cima do talho. Diz a cura baixo, devagar, a medida do corte em dedos. A carne fecha embaixo da mão dele como barro secando.
 Jarupã fica branco. Cai sentado de vez, suando frio, puxa o pão duro da mochila e come metade de uma mordida só.
-Jarupã: Magia de estudante é igual imposto. Tira de um buraco e abre outro na barriga.
+Jarupã: Reza de estudante é igual imposto. Tira de um buraco e abre outro na barriga.
 Endyru: A cura acelera o corpo. Quem paga é o...
 Jarupã: Eu sei quem paga. Tô pagando.
 -> END

@@ -32,6 +32,7 @@ Endyru: A cheia sobe e você bate num barco.
 Oryndu: Bato.
 * [Esperar Oryndu terminar.]
     Ele bate a terceira vez. Lá no meio do raso, a água responde com um redemoinho lento, do tamanho de uma casa.
+    Oryndu: Você está olhando a água de cima, rapaz. Olha o junco da beira: o caranguejo subiu três palmos na haste desde ontem.
     Oryndu: Está embaixo. Acordado.
     Endyru: Então é agora.
     Oryndu: Não é.
@@ -104,12 +105,14 @@ Oryndu: Eu seguro a margem com o barco. Vocês puxam. Devagar.
 = preparo_escolhas
 * {not preparo} [Riscar os círculos na margem seca, antes de chamar o bicho.]
     Endyru risca três círculos de atração na pedra da margem, um embaixo do outro, com o texto em volta, letra por letra. Mede a corda até o canal duas vezes, com a corda.
+    Jarupã: Da pedra até o canal é um estirão.
+    Endyru: Dezoito passos. Se forem vinte, o Verso cai na água e eu sangro pelo nariz à toa.
     Jarupã rola dois barris de óleo do barco até a beira e crava as estacas do lado.
     Jarupã: Se ele subir na pedra, a gente acende o óleo. Bicho de rio não gosta de fogo.
     Xanduí: Ninguém gosta de fogo.
     Oryndu olha o céu escuro de chuva e combina o sinal: duas batidas de remo no casco, ele afasta o barco; três, ele chega.
     ~ preparo = true
-    Oryndu: O bicho vai vir devagar, Endyru. Puxa um palmo, deixa a moça segurar o bote, puxa outro palmo. Se você despejar tudo de uma vez pra puxar inteiro, ele não sobe na pedra. Ele vira pro lado onde a mana gritou. E no lado da água estou eu.
+    Oryndu: O bicho vai vir devagar, Endyru. Puxa um palmo, deixa a moça segurar o bote, puxa outro palmo. Se você despejar tudo de uma vez pra puxar inteiro, ele não sobe na pedra. Ele vira pro lado onde a palavra grande bateu. E no lado da água estou eu.
     Endyru: Eu sei a medida, Oryndu. Eu faço essa conta desde os quatorze anos.
     -> preparo_escolhas
 * [Ainda não. Descansar antes.]
@@ -121,7 +124,7 @@ Oryndu: Eu seguro a margem com o barco. Vocês puxam. Devagar.
     {preparo:
         Oryndu: Um círculo de cada vez. Encostado nele. A água vai subir e apagar os de baixo primeiro.
     - else:
-        Oryndu: Sem círculo, é verso pequeno, um palmo por vez. E esperar o couro secar na pedra.
+        Oryndu: Sem círculo, é Verso pequeno, um palmo por vez. E esperar o couro secar na pedra.
     }
     ~ start_fight("final")
     -> END
@@ -135,7 +138,7 @@ Jarupã está com o braço aberto até o cotovelo, segurando a espada com a outr
 {prova:
     A lua da carta é amanhã.
 }
-Endyru conta: com verso pequeno, um palmo por vez, são mais três fôlegos. Três fôlegos ele não tem.
+Endyru conta: com Verso pequeno, um palmo por vez, são mais três fôlegos. Três fôlegos ele não tem.
 Ele larga a medida. Abre o livro na página inteira e grita o verbo de uma vez, tudo, pra arrancar o bicho da água num puxão só.
 O sangue desce do nariz na hora. As duas mãos começam a tremer.
 O puxão arranca metade do Ykuruã do lodo. E o estouro bate na água inteira, como um sino tocado debaixo do rio.
@@ -146,6 +149,9 @@ Oryndu cai na correnteza, embaixo das tábuas.
 Endyru começa a recitar pra puxá-lo da água. A mão treme. O sangue entra na boca. O texto quebra na segunda linha, e texto quebrado não volta do meio.
 Jarupã corre até a beira e mete o braço bom na água. Puxa o remo, partido.
 Oryndu não sobe mais.
+Jarupã: Estudante...
+Endyru: Deixa. Verso pequeno. A gente tem...
+Ele não termina. Limpa o sangue da boca com as costas da mão e abre o livro na primeira linha.
 -> END
 
 // O Ykuruã vencido (onDefeat do grupo final): o silêncio na margem (jogo.md cena 4.1). Ninguém comemora, ninguém

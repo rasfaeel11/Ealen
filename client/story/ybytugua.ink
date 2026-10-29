@@ -22,7 +22,11 @@ O mercador desce do barco primeiro, abre um saco com a faca e enfia a mão. O sa
 Mercador: Molhou. Metade da carga é pedra agora. Metade da escolta, então.
 Ele põe três moedas de cobre na mão de Jarupã e já está subindo a rua do cais com os sacos que ainda servem antes de Jarupã fechar a mão.
 Jarupã: Metade de quê? Era prata.
-Xanduí: Era.
+Xanduí: Quebra de contrato.
+Jarupã: Quê?
+Xanduí: Eu ouvi um juiz dizer isso em Kuatiarape, com essas mesmas palavras. Quebra. O homem saiu com a mula e com os sacos.
+Endyru: O dono da mula ou o ladrão?
+Xanduí: Um dos dois. Mas a palavra era essa.
 Jarupã: Três de cobre. Não paga a cerveja de hoje.
 Xanduí: Então hoje não tem cerveja. Diz que o conselho paga em prata. Na Mesa.
 Jarupã: A gente se vê lá, estudante. Se o contrato for bom, a gente não se vê.
@@ -197,7 +201,7 @@ Um velho remenda uma rede no chão da guilda, com a rede inteira em cima das per
 = perguntas
 * [Perguntar do bicho.]
     Mestre da guilda: O Bebe-Cheia. Dorme no lodo dos baixios o ano inteiro e acorda com a cheia. Na água ninguém vence ele. Na areia ele seca e racha.
-    Mestre da guilda: Na cheia, ninguém conjura no rio. Barqueiro usa verso pra puxar a rede e mais nada.
+    Mestre da guilda: Na cheia, ninguém conjura no rio. Barqueiro usa Verso pra puxar a rede e mais nada.
     -> perguntas
 * [Perguntar quem guia até os baixios.]
     Mestre da guilda: Ninguém desta guilda. Os barcos estão no seco, e ficam no seco.

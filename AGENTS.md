@@ -291,7 +291,6 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 
 | # | Task | O que é |
 |---|---|---|
-| 31 | **A voz do `jogo.md` em todo o texto** | Passar as falas dos cinco `.ink` pelo guia de diálogos (`jogo.md` §6). Jarupã não lê e não tem vergonha disso (sai o "Eu sei ler o principal"), dá regra de estrada inventada na hora e chama ferida de "raso". Xanduí fala metade, confere correia enquanto os outros discutem, tem a última palavra e repete termo de juiz de ouvido ("Quebra de contrato"). Endyru dá o número exato e corrige os outros até o ato 3; depois, corta a frase no meio. Oryndu bate o remo, chama de "rapaz", fala de lodo, corda e vento. Vocabulário do mundo (Verso, medida, palmo, fôlego, lua). Regra da ponte: a última fala antes de cada luta aponta pra mecânica dela. |
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
 Texto novo de história vai como proposta pro autor antes de entrar (§1).
@@ -514,6 +513,13 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   caixa anuncia "Jarupã chegou ao Corpo. Gryskar III." No elenco, Jarupã e Xanduí sabem a escola no grau 3, e o Fio os
   corta no 2 até a subida. Ela vem em `ponte_caiu`, depois que Jurendy foge: "Hoje ela pesou menos." / "Hoje você
   bateu menos." Os dons (task 26) continuam esperando o autor.
+- **31. A voz do `jogo.md` em todo o texto.** Os textos das tasks 32 a 45 já vinham do roteiro; a passada final
+  acertou o resto. Verso com maiúscula quando é o nível ("Sem Verso", "Verso pequeno"). Xanduí diz "Quebra de
+  contrato" no calote do mercador, com o juiz de Kuatiarape e a mula, e na ponte o "Legítima defesa" vira eco: quem
+  completa "Um dos dois" é Jarupã. Jarupã chama a Cura de reza; Oryndu não fala de mana ("onde a palavra grande
+  bateu") e lê o caranguejo no junco antes da primeira ida; Endyru corrige o "estirão" de Jarupã no preparo
+  ("Dezoito passos"). Depois que Oryndu afunda, Endyru corta a frase ("Deixa. Verso pequeno. A gente tem...") e
+  abre o livro na primeira linha: é a última fala antes de a luta seguir, e aponta pro jeito lento.
 
 ## 9. Onde isto está no cânone
 
