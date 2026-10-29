@@ -75,7 +75,7 @@ export const TEST_CREATURES: Record<string, BestiaryEntry> = {
     summary: "",
     lore: "",
     ai: { caution: 0.1, support: 0.4 },
-    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.5 }],
+    drops: [{ itemId: "item-unguento-de-barqueiro", chance: 0.5 }],
     template: template("fraco", "Fraco", 1, 24, { arts: { quick_attack: "Tapa", attack: "Soco", defend: "Encolher" } }),
   },
   /** Caçador: vai no ferido; larga pão e, às vezes, um anel (equipamento vai pro guardado, não pra mochila). */
@@ -85,7 +85,7 @@ export const TEST_CREATURES: Record<string, BestiaryEntry> = {
     lore: "",
     ai: { finisher: 2, caution: 0.8 },
     drops: [
-      { itemId: "item-pao-de-cinza", chance: 0.6 },
+      { itemId: "item-pao-de-viagem", chance: 0.6 },
       { itemId: "gear-teste-anel-de-forca", chance: 0.3 },
     ],
     template: template("cacador", "Caçador", 3, 28, {
@@ -100,9 +100,9 @@ export const TEST_CREATURES: Record<string, BestiaryEntry> = {
     summary: "",
     lore: "",
     ai: { aggression: 1.3, finisher: 0, caution: 0 },
-    carries: ["item-pao-de-cinza"],
+    carries: ["item-pao-de-viagem"],
     drops: [
-      { itemId: "item-pao-de-cinza", chance: 0.5 },
+      { itemId: "item-pao-de-viagem", chance: 0.5 },
       { itemId: "gear-teste-placa", chance: 0.25 },
     ],
     template: template("bruto", "Bruto", 4, 42, {
@@ -117,8 +117,8 @@ export const TEST_CREATURES: Record<string, BestiaryEntry> = {
     lore: "",
     ai: { caution: 1.2, support: 1.3 },
     invulnerable: true,
-    carries: ["item-lagrima-de-eir"],
-    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.5 }],
+    carries: ["item-unguento-de-barqueiro"],
+    drops: [{ itemId: "item-unguento-de-barqueiro", chance: 0.5 }],
     template: template("sem-vida", "Sem Vida", 5, 38, { arts: { attack: "Toque", defend: "Casulo" } }),
   },
   /** Da Ipojy: não dá o primeiro golpe. */
@@ -130,7 +130,7 @@ export const TEST_CREATURES: Record<string, BestiaryEntry> = {
     summary: "",
     lore: "",
     ai: { aggression: 0.8, caution: 1.2 },
-    drops: [{ itemId: "item-pao-de-cinza", chance: 0.5 }],
+    drops: [{ itemId: "item-pao-de-viagem", chance: 0.5 }],
     template: template("espera", "Espera", 2, 30, {
       equipment: { weapon: "gear-chuco", armor: "gear-gibao-de-couro" },
       arts: { quick_attack: "Ponta", attack: "Estocada", heavy_attack: "Pôr pra Fora", defend: "Fechar o Ombro" },
@@ -145,7 +145,7 @@ export const TEST_CREATURES: Record<string, BestiaryEntry> = {
     summary: "",
     lore: "",
     ai: { finisher: 1.3, caution: 1 },
-    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.4 }],
+    drops: [{ itemId: "item-unguento-de-barqueiro", chance: 0.4 }],
     template: template("atirador", "Atirador", 3, 24, {
       attributes: { forca: 4, fator: 2, vigor: 4, olho: 7, couro: 3, labia: 2, saber: 3 },
       equipment: { weapon: "gear-besta", armor: "gear-tunica-de-linho" },

@@ -17,7 +17,7 @@ import { AREAS } from "../world/areas";
  * Campo novo no save: acrescentar em `GameSave`, subir `SAVE_VERSION` e
  * escrever em `MIGRATIONS` como um save da versão anterior ganha esse campo.
  */
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** Onde o personagem está: a área e o ponto do mapa dela, em pixels. */
 export interface SaveLocation {
@@ -105,7 +105,32 @@ const MIGRATIONS: Record<number, (old: Json) => Json> = {
       ? old.companions.map((member) => (isObject(member) ? { ...member, character: rename(member.character) } : member))
       : old.companions,
   }),
+  // A versão 6 guardava os dois itens do jogo com os ids do Eälen (ver ITEM_IDS). Quem tinha os ganha com o id de agora.
+  6: (old) => ({
+    ...old,
+    version: 7,
+    character: reitem(old.character),
+    companions: Array.isArray(old.companions)
+      ? old.companions.map((member) => (isObject(member) ? { ...member, character: reitem(member.character) } : member))
+      : old.companions,
+  }),
 };
+
+/** O id antigo de cada item da mochila no id de agora. */
+const ITEM_IDS: Record<string, string> = {
+  "item-lagrima-de-eir": "item-unguento-de-barqueiro",
+  "item-pao-de-cinza": "item-pao-de-viagem",
+};
+
+/** A ficha `value` com os itens da mochila nos ids de agora. O que não tem mochila, ou não parece ficha, passa como veio. */
+function reitem(value: unknown): unknown {
+  if (!isObject(value) || !isObject(value.inventory) || !Array.isArray(value.inventory.slots)) return value;
+  const slots = value.inventory.slots.map((slot) => {
+    if (!isObject(slot) || !isObject(slot.item) || typeof slot.item.id !== "string" || !(slot.item.id in ITEM_IDS)) return slot;
+    return { ...slot, item: { ...slot.item, id: ITEM_IDS[slot.item.id] } };
+  });
+  return { ...value, inventory: { ...value.inventory, slots } };
+}
 
 /** A chave de cada atributo do Eälen na chave de agora. */
 const RENAMED: Record<string, keyof Attributes> = {

@@ -5,7 +5,7 @@ import type { ConsumableItem, Inventory } from "./types/inventory";
 import { MOCK_ITEMS } from "./mock/items";
 
 const STARTING_INVENTORY_MAX_SLOTS = 12;
-const STARTING_ITEM_ID = "item-lagrima-de-eir";
+const STARTING_ITEM_ID = "item-unguento-de-barqueiro";
 const STARTING_ITEM_QUANTITY = 2;
 
 /**

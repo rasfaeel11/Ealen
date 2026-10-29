@@ -191,7 +191,7 @@ test("fora de luta a cura custa o mesmo que na luta, a quem a faz: a mana de End
 test("item que cura se usa em qualquer um do grupo; o que é de luta fica pra luta, e recusa não gasta nada", () => {
   const hero = createProtagonist();
   hero.inventory = { slots: [], maxSlots: 12 };
-  const tear = findItemTemplate("item-lagrima-de-eir")!;
+  const tear = findItemTemplate("item-unguento-de-barqueiro")!;
   const balm = TEST_ITEMS.couro;
   addItemToInventory(hero, tear);
   addItemToInventory(hero, tear);

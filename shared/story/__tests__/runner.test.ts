@@ -100,7 +100,7 @@ Guarda: Alto lá{order() == "atracao_repulsao":, estudante}.
     -> END
 * [Oferecer ajuda.]
     Guarda: Fica com isto, então.
-    ~ give_item("item-pao-de-cinza")
+    ~ give_item("item-pao-de-viagem")
     ~ grant_xp(10)
     -> END
 + [Ir embora.]
@@ -173,7 +173,7 @@ test("dar item e XP muda o personagem e vira acontecimento, na ordem em que o te
     step.beats.map((beat) => (beat.kind === "line" ? "line" : beat.event.type)),
     ["line", "item", "xp"],
   );
-  assert.equal(host.character.inventory?.slots[0].item.id, "item-pao-de-cinza");
+  assert.equal(host.character.inventory?.slots[0].item.id, "item-pao-de-viagem");
   assert.equal(host.character.xp, 10);
 });
 
@@ -229,7 +229,7 @@ test("o jogo lê e escreve as flags; trecho que não existe e save estragado nã
 test("a história tira item da mochila, e só segue o ramo de quem tinha o que dar", () => {
   const json = compile(`
 === pedagio ===
-{take_item("item-pao-de-cinza"): Guarda: Serve. Passa. | Guarda: De mãos vazias não passa.}
+{take_item("item-pao-de-viagem"): Guarda: Serve. Passa. | Guarda: De mãos vazias não passa.}
 -> END
 `);
   const empty = new StoryRunner(json, makeHost()).start("pedagio");
@@ -238,8 +238,8 @@ test("a história tira item da mochila, e só segue o ramo de quem tinha o que d
   const giver = makeHost();
   const give = compile(`
 === dar ===
-~ give_item("item-pao-de-cinza")
-~ give_item("item-pao-de-cinza")
+~ give_item("item-pao-de-viagem")
+~ give_item("item-pao-de-viagem")
 -> END
 `);
   new StoryRunner(give, giver).start("dar");

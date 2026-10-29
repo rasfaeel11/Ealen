@@ -13,8 +13,7 @@ import type { ConsumableItem } from "../types/inventory";
  */
 export const MOCK_ITEMS: ConsumableItem[] = [
   {
-    // O id vem do Eälen; o que o jogo mostra é do mundo de agora.
-    id: "item-lagrima-de-eir",
+    id: "item-unguento-de-barqueiro",
     name: "Unguento de Barqueiro",
     description:
       "Gordura de peixe batida com casca amarga, num pote de barro com tampa de cera. Arde mais que o corte, e fecha o corte.",
@@ -23,7 +22,7 @@ export const MOCK_ITEMS: ConsumableItem[] = [
     data: { effect: { kind: "heal_hp", amount: 15 }, usesRemaining: 1, maxUses: 1 },
   },
   {
-    id: "item-pao-de-cinza",
+    id: "item-pao-de-viagem",
     name: "Pão de Viagem",
     description:
       "Pão escuro e duro, assado pra durar a descida do rio. Tem gosto de fumaça e segura alguém de pé por mais um dia.",

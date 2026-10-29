@@ -171,9 +171,9 @@ function savedWhen(save: GameSave): string {
 }
 
 function fileName(state: SlotState): string {
-  if (state.status !== "ok") return "ealen-save.json";
+  if (state.status !== "ok") return "tres-na-estrada-save.json";
   const { name, level } = state.save.character;
   // Só o que qualquer sistema de arquivos aceita num nome.
   const safe = name.normalize("NFD").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
-  return `ealen-${safe || "save"}-nivel-${level}.json`;
+  return `tres-na-estrada-${safe || "save"}-nivel-${level}.json`;
 }

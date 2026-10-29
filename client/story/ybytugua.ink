@@ -281,7 +281,7 @@ Ela sai pela porta sem a espada, com os outros dois apoiados um no outro. Ningu�
 Na guilda, o mestre ouve sem largar a rede. Depois conta cobre em cima da mesa, uma moeda por braçada de corda que voltou.
 Mestre da guilda: Seis. Rio acima corda vale mais. Aqui não vale nada até a cheia baixar.
 ~ earn("cobre", 6)
-~ give_item("item-lagrima-de-eir")
+~ give_item("item-unguento-de-barqueiro")
 Ele põe do lado das moedas um pote de unguento com a tampa amarrada.
 Mestre da guilda: De barqueiro. É pra talho de corda. Serve pra talho de espada.
 ~ grant_xp(40)
@@ -346,12 +346,12 @@ Vendedora do cais: Pão, dois de cobre. Unguento, quatro. Prata eu não troco. T
 = escolhas
 + {money("cobre") >= 2} [Comprar um pão de viagem, por dois de cobre.]
     ~ pay("cobre", 2)
-    ~ give_item("item-pao-de-cinza")
+    ~ give_item("item-pao-de-viagem")
     Vendedora do cais: Duro até a lua que vem. Molha no rio.
     -> escolhas
 + {money("cobre") >= 4} [Comprar um unguento, por quatro de cobre.]
     ~ pay("cobre", 4)
-    ~ give_item("item-lagrima-de-eir")
+    ~ give_item("item-unguento-de-barqueiro")
     Vendedora do cais: Passa no talho e não olha. Arde.
     -> escolhas
 + [Ir embora.]

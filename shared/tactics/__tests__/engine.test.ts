@@ -262,14 +262,14 @@ test("a guarda reduz o dano e cai no começo do próprio turno seguinte", () => 
 
 test("item custa a ação bônus, cura e sai da mochila", () => {
   const character = makeCharacter("A", { currentHp: 10, attributes: { olho: FIRST } });
-  addItemToInventory(character, findItemTemplate("item-lagrima-de-eir")!);
+  addItemToInventory(character, findItemTemplate("item-unguento-de-barqueiro")!);
   addItemToInventory(character, TEST_ITEMS.foco);
 
   const { encounter } = setup(["AE"], (at) => [
     unitFromCharacter(character, { team: "party", pos: at("A") }),
     makeUnit("E", "enemy", at("E")),
   ]);
-  const events = run(encounter, { type: "useItem", unitId: "A", itemId: "item-lagrima-de-eir" });
+  const events = run(encounter, { type: "useItem", unitId: "A", itemId: "item-unguento-de-barqueiro" });
 
   assert.equal(unit(encounter, "A").currentHp, 25);
   assert.equal(eventsOf(events, "heal")[0].amount, 15);

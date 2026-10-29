@@ -1,4 +1,5 @@
 import { parseSave, serializeSave, type GameSave, type SaveProblem } from "@jogo/shared";
+import { STORAGE_PREFIX, adoptOldKeys } from "./storage";
 
 /**
  * Onde os saves ficam guardados: neste dispositivo, via localStorage, um
@@ -8,10 +9,10 @@ import { parseSave, serializeSave, type GameSave, type SaveProblem } from "@jogo
  */
 export const SLOT_COUNT = 3;
 
-const SLOT_KEY = (slot: number) => `ealen:slot:${slot}`;
-const LAST_SLOT_KEY = "ealen:lastSlot";
+const SLOT_KEY = (slot: number) => `${STORAGE_PREFIX}slot:${slot}`;
+const LAST_SLOT_KEY = `${STORAGE_PREFIX}lastSlot`;
 
-/** As chaves do save antigo (versão 1): o personagem numa, o resto espalhado. */
+/** As chaves do save antigo (versão 1), do tempo do Eälen: o personagem numa, o resto espalhado. */
 const LEGACY_KEYS = {
   save: "ealen:save",
   location: "ealen:location",
@@ -35,6 +36,7 @@ export function readSlot(slot: number): SlotState {
 
 /** Todos os espaços, em ordem. Na primeira vez, traz pra dentro deles o save do formato antigo. */
 export function readSlots(): SlotState[] {
+  adoptOldKeys();
   adoptLegacySave();
   return Array.from({ length: SLOT_COUNT }, (_, slot) => readSlot(slot));
 }

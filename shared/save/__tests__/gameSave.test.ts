@@ -254,3 +254,19 @@ test("save da versão 5 troca as runas do Eälen pelos atributos do mundo, na fi
   const [slot] = save.character.inventory!.slots;
   assert.deepEqual(slot.item.data.effect, { kind: "buff_stat", stat: "labia", bonus: 2, durationTurns: 3 });
 });
+
+test("save da versão 6 troca os ids do Eälen dos dois itens do jogo pelos de agora, na mochila de quem os tinha", () => {
+  const slot = (slotIndex: number, id: string) => ({
+    slotIndex,
+    quantity: 2,
+    item: { id, name: "x", category: "consumable", data: { effect: { kind: "heal_hp", amount: 1 }, usesRemaining: 1, maxUses: 1 } },
+  });
+  const slots = [slot(0, "item-lagrima-de-eir"), slot(1, "item-pao-de-cinza"), slot(2, "item-outro")];
+  const hero = { ...makeCharacter(), inventory: { slots, maxSlots: 12 } };
+  const save = read({ ...newGame(makeCharacter()), version: 6, character: hero });
+
+  assert.deepEqual(
+    save.character.inventory!.slots.map((each) => [each.item.id, each.quantity]),
+    [["item-unguento-de-barqueiro", 2], ["item-pao-de-viagem", 2], ["item-outro", 2]],
+  );
+});

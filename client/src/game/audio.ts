@@ -6,13 +6,14 @@
  * chama (`sfx("hit")`, `playMusic("battle")`) continua igual.
  *
  * Três volumes (geral, música, efeitos), guardados neste dispositivo numa
- * chave própria: são do jogador, não de uma partida, como o perfil.
+ * chave própria: são do jogador, não de uma partida.
  *
  * O navegador só deixa tocar depois do primeiro clique ou tecla; até lá a
  * música fica armada e os efeitos são descartados.
  */
+import { STORAGE_PREFIX, adoptOldKeys } from "./storage";
 
-const SETTINGS_KEY = "ealen:audio";
+const SETTINGS_KEY = `${STORAGE_PREFIX}audio`;
 
 export type VolumeKind = "master" | "music" | "sfx";
 export type Volumes = Record<VolumeKind, number>;
@@ -20,6 +21,7 @@ export type Volumes = Record<VolumeKind, number>;
 const DEFAULT_VOLUMES: Volumes = { master: 0.8, music: 0.6, sfx: 0.8 };
 
 function readVolumes(): Volumes {
+  adoptOldKeys();
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "null") as Partial<Volumes> | null;
     const level = (kind: VolumeKind) => {
@@ -324,7 +326,7 @@ interface Track {
  * mexer aqui.
  */
 const TRACKS = {
-  // Ré menor, lento: o título e o prólogo.
+  // Ré menor, lento: o título.
   title: {
     bpm: 60,
     voices: [
@@ -334,8 +336,8 @@ const TRACKS = {
       { wave: "sine", shape: "pluck", every: 6, hold: 8, gain: 0.03, notes: [81, 0, 86, 0, 0, 84, 0] },
     ],
   },
-  // Dó maior pentatônico, calmo: a clareira.
-  clareira: {
+  // Dó maior pentatônico, calmo: a cidade.
+  cidade: {
     bpm: 76,
     voices: [
       { wave: "sine", shape: "pad", every: 16, hold: 17, gain: 0.045, notes: [[48, 55, 64], [53, 60, 69], [45, 52, 60], [55, 62, 71]] },
@@ -344,7 +346,7 @@ const TRACKS = {
       { wave: "triangle", shape: "pluck", every: 8, hold: 7, gain: 0.05, notes: [36, 43, 41, 48, 33, 40, 43, 38] },
     ],
   },
-  // Ré dórico, andando: a estrada.
+  // Ré dórico, andando: o rio e a floresta.
   estrada: {
     bpm: 88,
     voices: [
@@ -354,8 +356,8 @@ const TRACKS = {
       { wave: "noise", every: 4, hold: 1, gain: 0.012, cutoff: 5000, notes: [0, 1, 0, 1, 0, 1, 1, 1] },
     ],
   },
-  // Grave, com trítono, quase parada: as ruínas.
-  ruinas: {
+  // Grave, com trítono, quase parada: os baixios.
+  baixios: {
     bpm: 52,
     voices: [
       { wave: "sine", shape: "pad", every: 16, hold: 18, gain: 0.06, notes: [[38, 45, 53], [37, 44, 53], [36, 43, 51], [34, 44, 50]] },
@@ -379,14 +381,11 @@ const TRACKS = {
 
 export type TrackId = keyof typeof TRACKS;
 
-/**
- * A música de cada área (a chave de `AREAS`). As faixas têm o nome dos lugares do Eälen, onde nasceram: a calma
- * fica com a cidade, a tensa com o rio e a floresta, a sombria com os baixios. Área que não está aqui toca a calma.
- */
-const AREA_MUSIC: Record<string, TrackId> = { ymonha: "estrada", ybytugua: "clareira", baixios: "ruinas", floresta: "estrada" };
+/** A música de cada área (a chave de `AREAS`). Área que não está aqui toca a da cidade. */
+const AREA_MUSIC: Record<string, TrackId> = { ymonha: "estrada", ybytugua: "cidade", baixios: "baixios", floresta: "estrada" };
 
 export function areaMusic(areaId: string): TrackId {
-  return AREA_MUSIC[areaId] ?? "clareira";
+  return AREA_MUSIC[areaId] ?? "cidade";
 }
 
 /** De quanto em quanto o agendador acorda, e até quanto adiante ele agenda. */

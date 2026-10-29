@@ -309,17 +309,17 @@ for (const [areaId, map] of Object.entries(maps)) {
     const unit = encounter.units.find((candidate) => candidate.id === "bruto")!;
     assert.deepEqual(
       unit.inventory?.slots.map((slot) => slot.item.id),
-      ["item-pao-de-cinza"],
+      ["item-pao-de-viagem"],
     );
     // O molde do bestiário não ganha mochila: cada luta monta a sua.
     assert.equal(findBestiaryEntry("encounter-teste-bruto")!.template.inventory, undefined);
 
     const carried = unusedItems(encounter, "enemy");
-    assert.deepEqual(carried.map((item) => item.id), ["item-pao-de-cinza"]);
+    assert.deepEqual(carried.map((item) => item.id), ["item-pao-de-viagem"]);
 
     const character = structuredClone(hero);
     const rewards = grantEncounterRewards(character, [], { rngState: 1 }, carried);
-    assert.deepEqual(rewards.loot.map((item) => item.id), ["item-pao-de-cinza"]);
+    assert.deepEqual(rewards.loot.map((item) => item.id), ["item-pao-de-viagem"]);
     assert.equal(character.inventory?.slots[0].quantity, 1);
 
     unit.inventory!.slots = [];

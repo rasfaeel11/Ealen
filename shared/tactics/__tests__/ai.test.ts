@@ -142,14 +142,14 @@ function withItem(item: ConsumableItem, rows: string[], hp = 30) {
 }
 
 test("ferido, bebe a poção antes de bater; inteiro, guarda", () => {
-  const hurt = withItem(findItemTemplate("item-lagrima-de-eir")!, ["AE"], 10);
-  assert.deepEqual(chooseCommand(hurt), { type: "useItem", unitId: "A", itemId: "item-lagrima-de-eir" });
+  const hurt = withItem(findItemTemplate("item-unguento-de-barqueiro")!, ["AE"], 10);
+  assert.deepEqual(chooseCommand(hurt), { type: "useItem", unitId: "A", itemId: "item-unguento-de-barqueiro" });
 
   const events = playTurn(hurt);
   assert.equal(eventsOf(events, "itemUsed").length, 1);
   assert.ok(eventsOf(events, "attackRoll").length > 0, "bebeu e esqueceu de atacar");
 
-  const scratched = withItem(findItemTemplate("item-lagrima-de-eir")!, ["AE"], 25);
+  const scratched = withItem(findItemTemplate("item-unguento-de-barqueiro")!, ["AE"], 25);
   assert.equal(planTurn(scratched).item, undefined);
   assert.equal(findUnit(scratched, "A")!.inventory!.slots.length, 1);
 });

@@ -189,9 +189,9 @@ test("equipamento é item como os outros pra história e pro espólio: entra no 
   assert.equal(takeItem(owner, plate.id), false);
 
   // Consumível continua indo pra mochila e saindo dela.
-  assert.equal(itemCount(owner, "item-lagrima-de-eir"), 2);
-  assert.equal(takeItem(owner, "item-lagrima-de-eir"), true);
-  assert.equal(itemCount(owner, "item-lagrima-de-eir"), 1);
+  assert.equal(itemCount(owner, "item-unguento-de-barqueiro"), 2);
+  assert.equal(takeItem(owner, "item-unguento-de-barqueiro"), true);
+  assert.equal(itemCount(owner, "item-unguento-de-barqueiro"), 1);
 
   // O caçador às vezes deixa o anel: quando deixa, ele vai pro guardado, não pra mochila.
   const ring = "gear-teste-anel-de-forca";

@@ -91,7 +91,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     summary: "Guarda de corrente de um castelo de pedágio do Ymonhã.",
     lore: "Ganha por barco parado, não por barco que passa. Sabe que o pedágio subiu de novo; não sabe por quê, e não pergunta.",
     ai: { aggression: 1.1 },
-    drops: [{ itemId: "item-pao-de-cinza", chance: 0.4 }],
+    drops: [{ itemId: "item-pao-de-viagem", chance: 0.4 }],
     template: {
       id: "enemy-guarda-do-pedagio",
       name: "Guarda do pedágio",
@@ -114,7 +114,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     lore: "Não tem escola nenhuma: tem a besta e a muralha. Atira em quem está mais perto da corrente.",
     // De longe, e sem se expor.
     ai: { caution: 1.3 },
-    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.3 }],
+    drops: [{ itemId: "item-unguento-de-barqueiro", chance: 0.3 }],
     template: {
       id: "enemy-besteiro-do-pedagio",
       name: "Besteiro",
@@ -140,7 +140,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     summary: "O castelão do pedágio: dono de uma margem do Ymonhã e da corrente atravessada nela.",
     lore: "Cobra de quem desce o que o senhor de cima manda cobrar, e guarda a diferença. Aprendeu a espada com quem lia o outro antes de bater; bate quando o outro se repete.",
     ai: { finisher: 1.2, caution: 0.8 },
-    drops: [{ itemId: "item-lagrima-de-eir", chance: 1 }],
+    drops: [{ itemId: "item-unguento-de-barqueiro", chance: 1 }],
     template: {
       id: "enemy-castelao",
       name: "Mbyraku",
@@ -166,7 +166,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     summary: "Soldado do ducado de cima, sem a cor do ducado.",
     lore: "Anda à paisana na floresta entre as bacias. Recebe de Ymboripe e não diz de quem recebe; bate antes de alguém perguntar.",
     ai: { aggression: 1.2 },
-    drops: [{ itemId: "item-pao-de-cinza", chance: 0.5 }],
+    drops: [{ itemId: "item-pao-de-viagem", chance: 0.5 }],
     template: {
       id: "enemy-espada-de-ymboripe",
       name: "Espada de Ymboripe",
@@ -191,7 +191,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     summary: "Lança do ducado de cima, da Espera.",
     lore: "Fica no caminho e espera. Fez o voto da Ipojy numa escola rio acima; quem paga a escola é o ducado.",
     ai: { aggression: 0.9, caution: 1.1 },
-    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.3 }],
+    drops: [{ itemId: "item-unguento-de-barqueiro", chance: 0.3 }],
     template: {
       id: "enemy-lanca-de-ymboripe",
       name: "Lança de Ymboripe",
@@ -216,7 +216,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     lore: "Lê grande onde a gente do rio não lê nada: na água, na cheia. O que vem depois não é problema dele; é o que foi pago pra chamar.",
     // Fica longe e recita. É Página, como Endyru: de perto, o espadachim o amassa.
     ai: { caution: 1.4, support: 0.6 },
-    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.5 }],
+    drops: [{ itemId: "item-unguento-de-barqueiro", chance: 0.5 }],
     template: {
       id: "enemy-recitador-de-ymboripe",
       name: "Recitador",
@@ -242,7 +242,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     lore: "Ex-colega de Endyru em Kuatiarape, filho de gente com dinheiro. Ganhou cargo no ducado de Pytumã e faz a conta dele como quem explica uma conta: um bicho de rio sai mais barato que uma guerra.",
     // Fica no alto e recita. De perto, o espadachim o amassa; puxado do barranco, perde a leitura.
     ai: { caution: 1.5, support: 0.6 },
-    drops: [{ itemId: "item-lagrima-de-eir", chance: 1 }],
+    drops: [{ itemId: "item-unguento-de-barqueiro", chance: 1 }],
     template: {
       id: "enemy-jurendy",
       name: "Jurendy",
@@ -267,7 +267,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     summary: "Aventureiro de contrato, pago pelo ducado sem saber pra quê.",
     lore: "Assinou escolta numa Mesa dos Contratos rio acima. O contrato não dizia o que se escoltava, e ele não lê.",
     ai: { finisher: 1.2 },
-    drops: [{ itemId: "item-pao-de-cinza", chance: 0.5 }],
+    drops: [{ itemId: "item-pao-de-viagem", chance: 0.5 }],
     template: {
       id: "enemy-aventureiro-contratado",
       name: "Aventureiro contratado",
@@ -295,7 +295,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     summary: "Mercenário de caravana, dispensado no cais.",
     lore: "A caravana pagou até o cais, e o cais parou. Sem barco pra subir nem prata pra esperar, vende o que acha. Corda e óleo se vendem rio acima.",
     ai: { aggression: 1.2 },
-    drops: [{ itemId: "item-pao-de-cinza", chance: 0.4 }],
+    drops: [{ itemId: "item-pao-de-viagem", chance: 0.4 }],
     template: {
       id: "enemy-saqueador-do-dique",
       name: "Saqueador",
@@ -319,7 +319,7 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     summary: "Mercenária de caravana, dispensada no cais.",
     lore: "Ia na frente da caravana, olhando a estrada. Agora olha a porta do armazém.",
     ai: { finisher: 1.2 },
-    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.4 }],
+    drops: [{ itemId: "item-unguento-de-barqueiro", chance: 0.4 }],
     template: {
       id: "enemy-saqueadora-do-dique",
       name: "Saqueadora",

@@ -329,7 +329,7 @@ test("o golpe que sufoca leva Fôlego de quem apanha, até o que ele tem", () =>
 test("quem está Irreversível não se cura: nem por habilidade, nem por item — e purificar tira a trava", () => {
   const scene = () => {
     const wounded = makeCharacter("W", { currentHp: 5, attributes: { olho: FIRST } });
-    addItemToInventory(wounded, findItemTemplate("item-lagrima-de-eir")!);
+    addItemToInventory(wounded, findItemTemplate("item-unguento-de-barqueiro")!);
     addItemToInventory(wounded, TEST_ITEMS.purificar);
     const { encounter } = setup(["HW.E"], (at) => [
       makeUnit("H", "party", at("H"), { kit: [TEST_KIT.cura], attributes: { olho: 50 } }),
@@ -341,7 +341,7 @@ test("quem está Irreversível não se cura: nem por habilidade, nem por item �
   };
 
   const sealed = scene();
-  const drunk = run(sealed, { type: "useItem", unitId: "W", itemId: "item-lagrima-de-eir" });
+  const drunk = run(sealed, { type: "useItem", unitId: "W", itemId: "item-unguento-de-barqueiro" });
   assert.equal(eventsOf(drunk, "heal").length, 0);
   assert.deepEqual(eventsOf(drunk, "healDenied").map((event) => event.target), ["W"]);
   run(sealed, { type: "endTurn", unitId: "W" });
