@@ -250,12 +250,12 @@ esta seção, vale o `jogo.md`; as tasks 31 a 46 trazem o jogo até ele.
 
 ## 7. A base técnica
 
-O código parte do Eälen (Phaser 3 + Vite no `client/`, regra pura em TypeScript no `shared/`, `server/`
-opcional). Ele já tem 22 fases prontas, e os sistemas funcionam. O que não funcionou foi a ordem de trabalho.
+O código partiu do Eälen (Phaser 3 + Vite no `client/`, regra pura em TypeScript no `shared/`). Os sistemas
+funcionavam; o que não funcionou foi a ordem de trabalho. O que era só do Eälen já saiu (ver Feito, a limpeza).
 
-- A descrição técnica completa do Eälen (motor tático, mundo em Tiled, Ink, save, som, sprites) **sai do
-  AGENTS.md e vai para `docs/motor.md`**, sem mudar. Ela continua valendo para tudo que a tabela da §4 não troca.
-- Trocar um nome do Eälen por um deste mundo é trocar em todo lugar: código, testes, Ink, mapas, save.
+- A descrição técnica (motor tático, mundo em Tiled, Ink, save, som, sprites) está em `docs/motor.md`, com os
+  nomes deste jogo. Mudou uma regra ou uma peça, muda lá também.
+- Nome novo no lugar de um velho é trocar em todo lugar: código, testes, Ink, mapas, save (com migração).
 
 ### 7.1 A regra central (continua igual)
 O motor nunca anima nada. `applyCommand` recebe um comando, valida, muta a luta e devolve eventos em ordem; o
@@ -299,7 +299,7 @@ Texto novo de história vai como proposta pro autor antes de entrar (§1).
 
 ### P2 e P3
 Arte final, som gravado, balanceamento (`balance:matrix` com as escolas), tutorial, opções e o empacotamento
-seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
+estão nas Tasks de `docs/motor.md` (24 a 40).
 
 ### Feito
 - **1. A descrição técnica mudou de casa.** O AGENTS.md do Eälen está inteiro em `docs/motor.md`, sem mudança.
@@ -520,12 +520,23 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   Jarupã ganhou a Ombrada (`shoulder`): ação bônus, empurra um quadrado, e quem estava encostado na parede bate nela.
   Xanduí ganhou Segurar o Bote (`hold_the_lunge`): ação bônus, deixa o alvo Seguro (`held`, -4 no passo) por dois
   turnos. Com o Em seco, o Ykuruã não volta pra água: é o "deixa a moça segurar o bote" do preparo. É golpe, então o
-  voto da Ipojy vale. Os três dons do Eälen continuam sem dono, só pros testes.
+  voto da Ipojy vale.
 - **25. O cobre serve pra alguma coisa** (aprovado pelo autor em 2026-10-29). Uma banca na boca do cais de Ybytuguá
   (`banca`, um ponto sem boneco): a vendedora, pelo papel, vende Pão de Viagem a 2 de cobre e Unguento a 4, e não
   troca prata. Depois do contrato, o escrivão faz por 1 cobre a cópia selada do contrato ("Cópia selada a família
   recebe a parte"), e Xanduí a guarda dobrada sem abrir ("Estudante perde papel"). O cobre agora também paga os dados
   do acampamento e entra pela guilda, depois do armazém. Os saqueadores e a vendedora ganharam busto provisório.
+- **A limpeza do Eälen** (2026-10-29). Saíram o `server/` (Express + Supabase), o `supabase/`, o `LORE.md` (o mundo do
+  Eälen), o mapa de nós (`seed.ts`, e com ele `currentNodeId` na ficha), as skills e o MCP do Supabase e os worktrees
+  velhos. O `balance:matrix` foi pra `client/scripts/balanceMatrix.ts` (`npm run balance:matrix` na raiz). Os pacotes
+  viraram `@jogo/shared` e `@jogo/client`, e a pasta `shared/mock` virou `shared/data` (`ITEMS` no lugar de
+  `MOCK_ITEMS`). Os itens têm ids do mundo (`item-unguento-de-barqueiro`, `item-pao-de-viagem`; o save foi pra
+  versão 7, que os troca), as faixas de música também (`cidade`, `baixios`), e o que o jogo guarda no
+  `localStorage` tem o prefixo `jogo:` (o que estava em `ealen:` muda de casa sozinho); o estado da história marca
+  `historia` e ainda lê a marca antiga. Saíram os três dons e as quatro condições das Ordens que nada usava; o que
+  os testes do motor exercitam virou kit de teste (`abrir`, `rede`), e os mapas de teste viraram `campo`, `trilha` e
+  `porao`, com gente neutra. A ficha não fala mais em Ordem ("Isso não é arma de quem ele é"), e a arma diz quem a
+  usa por `classes`. O `docs/motor.md` foi reescrito com os nomes deste jogo.
 
 ## 9. Onde isto está no cânone
 
