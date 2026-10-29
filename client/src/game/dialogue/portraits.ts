@@ -54,6 +54,9 @@ const PLACEHOLDER_COLOR: Record<string, string> = {
   "Guarda do portão": "#5f5a52",
   "Mulher da família": "#7a6050",
   Contratada: "#6a5040",
+  Saqueador: "#6a5a3a",
+  Saqueadora: "#7a5a48",
+  "Vendedora do cais": "#7a6a52",
 };
 
 /** A textura do retrato de `speaker`; com `face`, a daquele rosto. */

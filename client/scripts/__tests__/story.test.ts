@@ -236,6 +236,11 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.equal(runner.flag("saqueadores_vencidos"), true);
   assert.equal(host.character.purse?.cobre, 12);
 
+  // O cobre compra na banca do cais, e paga a cópia do contrato no escrivão.
+  play("banca", "Comprar um pão", "Comprar um unguento", "Ir embora");
+  play("escrivao", "Pagar um cobre");
+  assert.equal(host.character.purse?.cobre, 5);
+
   // A primeira ida não se vence: a deixa da rodada 3 encerra a luta e abre o ato 2.
   assert.deepEqual(play("primeira_ida", "Entrar na água"), { fight: "primeira" });
   play("primeira_oryndu");

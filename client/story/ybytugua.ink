@@ -137,11 +137,24 @@ Conselheira: A guilda dos barqueiros sabe o que sobe e desce o rio. Pergunte a e
 === escrivao ===
 {contrato:
     Escrivão da Mesa: Está no livro. O nome da companhia, o nível, a fiança. Se morrerem, também fica no livro.
+    -> copia
 - else:
     Escrivão da Mesa: A Mesa não dá contrato, registra. Contrato quem dá é o conselho. A Mesa cobra a taxa dos dois lados.
     Escrivão da Mesa: Quem não sabe ler, eu leio o quadro por uma moeda.
 }
 -> END
+
+// O escrivão aceita a moeda de Endyru: a cópia do contrato com o selo da Mesa. Xanduí a guarda sem desdobrar.
+= copia
+* {money("cobre") >= 1 && in_party("xandui")} [Pagar um cobre por uma cópia do contrato.]
+    ~ pay("cobre", 1)
+    Escrivão da Mesa: Com o selo da Mesa. Cópia selada a família recebe a parte. Sem selo, a família recebe a notícia.
+    Ele copia o edital numa folha estreita, sem olhar pro original, e aperta o selo de cera embaixo.
+    Endyru estica a mão. Xanduí pega a folha primeiro, dobra em quatro e guarda no gibão.
+    Xanduí: Eu guardo. Estudante perde papel.
+    -> END
++ [Deixar o escrivão.]
+    -> END
 
 === quadro ===
 {
@@ -323,6 +336,26 @@ Endyru: Em cima: "Thrykar. Conserta o que você estragou. Não faço fiado."
     Jarupã: Então a gente não entra.
 }
 -> END
+
+// A banca da boca do cais (task 25): o cobre compra o que a estrada come. Prata ela não troca.
+=== banca ===
+Uma tábua em cima de dois barris, na boca do cais. Uma velha vende pão de viagem embrulhado em folha e potes de unguento de barqueiro. Quem ainda compra é quem vai embora.
+Vendedora do cais: Pão, dois de cobre. Unguento, quatro. Prata eu não troco. Troco de prata ninguém tem.
+-> escolhas
+
+= escolhas
++ {money("cobre") >= 2} [Comprar um pão de viagem, por dois de cobre.]
+    ~ pay("cobre", 2)
+    ~ give_item("item-pao-de-cinza")
+    Vendedora do cais: Duro até a lua que vem. Molha no rio.
+    -> escolhas
++ {money("cobre") >= 4} [Comprar um unguento, por quatro de cobre.]
+    ~ pay("cobre", 4)
+    ~ give_item("item-lagrima-de-eir")
+    Vendedora do cais: Passa no talho e não olha. Arde.
+    -> escolhas
++ [Ir embora.]
+    -> END
 
 === familia ===
 Uma mulher amarra a última trouxa no carrinho de mão. Uma criança senta em cima das trouxas como se fosse um barco.

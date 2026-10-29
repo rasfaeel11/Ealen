@@ -296,7 +296,6 @@ Texto novo de história vai como proposta pro autor antes de entrar (§1).
 | # | Task | O que é |
 |---|---|---|
 | 20 | **Retratos de verdade** | Arte do autor: o trio, Oryndu, a conselheira, o castelão, o ferreiro (a cara do demônio confere a ficha do povo). O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
-| 25 | **O cobre serve pra alguma coisa** | Uma banca no cais de Ybytuguá vende Pão de Viagem e Unguento a cobre; o escrivão aceita a moeda dele. |
 
 ### P2 e P3
 Arte final, som gravado, balanceamento (`balance:matrix` com as escolas), tutorial, opções e o empacotamento
@@ -522,6 +521,11 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   Xanduí ganhou Segurar o Bote (`hold_the_lunge`): ação bônus, deixa o alvo Seguro (`held`, -4 no passo) por dois
   turnos. Com o Em seco, o Ykuruã não volta pra água: é o "deixa a moça segurar o bote" do preparo. É golpe, então o
   voto da Ipojy vale. Os três dons do Eälen continuam sem dono, só pros testes.
+- **25. O cobre serve pra alguma coisa** (aprovado pelo autor em 2026-10-29). Uma banca na boca do cais de Ybytuguá
+  (`banca`, um ponto sem boneco): a vendedora, pelo papel, vende Pão de Viagem a 2 de cobre e Unguento a 4, e não
+  troca prata. Depois do contrato, o escrivão faz por 1 cobre a cópia selada do contrato ("Cópia selada a família
+  recebe a parte"), e Xanduí a guarda dobrada sem abrir ("Estudante perde papel"). O cobre agora também paga os dados
+  do acampamento e entra pela guilda, depois do armazém. Os saqueadores e a vendedora ganharam busto provisório.
 
 ## 9. Onde isto está no cânone
 
