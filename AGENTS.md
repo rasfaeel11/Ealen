@@ -287,10 +287,8 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, e o jogo ainda não. As tasks
 21 a 24 da análise de 2026-10-26 entraram aqui (21 na 41, 22 e 23 na 38, 24 na 37). Ordem sugerida: 31, 32,
 33, 34, 36, 37, 38, 40, 42, 39, 41, 43, 44, 45, 35, 46. As tasks de motor (40, 41, 42, 46) testam a regra no
-`shared/` antes de a cena usar. Os nomes do `jogo.md` estão decididos (ver Decisões do co-autor).
-
-| # | Task | O que é |
-|---|---|---|
+`shared/` antes de a cena usar. Os nomes do `jogo.md` estão decididos (ver Decisões do co-autor). Todas entraram
+(ver Feito).
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
 Texto novo de história vai como proposta pro autor antes de entrar (§1).
