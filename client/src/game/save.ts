@@ -1,4 +1,4 @@
-import { parseSave, serializeSave, type GameSave, type SaveProblem } from "@ealen/shared";
+import { parseSave, serializeSave, type GameSave, type SaveProblem } from "@jogo/shared";
 
 /**
  * Onde os saves ficam guardados: neste dispositivo, via localStorage, um

@@ -91,7 +91,7 @@ import {
   type TeamId,
   type Trail,
   type WalkBody,
-} from "@ealen/shared";
+} from "@jogo/shared";
 import { areaMusic, playMusic, sfx } from "../game/audio";
 import { BagPanel } from "../game/BagPanel";
 import { EngravePanel } from "../game/EngravePanel";

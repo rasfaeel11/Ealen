@@ -8,7 +8,7 @@ import {
   type DialogueChoice,
   type DialogueStep,
   type StoryEvent,
-} from "@ealen/shared";
+} from "@jogo/shared";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { addBodyText, addPanel, addTitleText } from "../ui";
 import { PORTRAIT_WIDTH, portraitFor } from "./portraits";

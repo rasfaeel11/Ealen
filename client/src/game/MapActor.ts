@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import type { PixelPos } from "@ealen/shared";
+import type { PixelPos } from "@jogo/shared";
 import { COLORS } from "./config";
 import { drySpriteKey, standingFrame, walkAnimKey, type Facing } from "./mapSprites";
 

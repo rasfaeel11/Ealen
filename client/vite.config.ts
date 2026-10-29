@@ -14,7 +14,7 @@ function inkStory(): Plugin {
   const compile = () => writeFileSync(output, compileStory());
 
   return {
-    name: "ealen-ink-story",
+    name: "ink-story",
     buildStart: compile,
     configureServer(server) {
       server.watcher.add(STORY_DIR);

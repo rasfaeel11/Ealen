@@ -257,7 +257,6 @@ for (const [areaId, map] of Object.entries(maps)) {
     attributes: { forca: 8, fator: 3, vigor: 7, olho: 4, couro: 6, labia: 5, saber: 5 },
     currentHp: 48,
     maxHp: 48,
-    currentNodeId: "",
   };
 
   test("chegar perto de um inimigo puxa o grupo dele inteiro pra luta, na grade da área", () => {
@@ -610,7 +609,6 @@ test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda
     attributes: { forca: 6, fator: 3, vigor: 6, olho: 8, couro: 4, labia: 5, saber: 5 },
     currentHp: 40,
     maxHp: 40,
-    currentNodeId: "",
   };
   const playerTile = { x: wolfTile.x - 7, y: wolfTile.y };
   assert.equal(aggroedGroup(map, group, playerTile), undefined);
@@ -760,7 +758,6 @@ test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa
     attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
     currentHp: 500,
     maxHp: 500,
-    currentNodeId: "",
   };
   const tile = tileOfPixel(map, group[0]);
   const { encounter, events } = startAreaEncounter(
@@ -810,7 +807,6 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
     currentHp: 5000,
     maxHp: 5000,
-    currentNodeId: "",
   });
   const fight = (tile: Pos) =>
     startAreaEncounter(map, [{ character: hero(), tile }], group, 7, standAreaProps(loadFixture("ruinas")), undefined, fightCues(map, cues, group));
@@ -863,7 +859,6 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
     currentHp,
     maxHp: 500,
-    currentNodeId: "",
   });
   /** A luta com `groupId`, num mapa só dela, com o herói em `tile`. */
   const fight = (groupId: string, tile: Pos, hero: Character, seed = 7) => {

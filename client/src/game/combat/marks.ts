@@ -1,5 +1,5 @@
 import type * as Phaser from "phaser";
-import type { PixelPos, Pos } from "@ealen/shared";
+import type { PixelPos, Pos } from "@jogo/shared";
 
 /**
  * As marcas que o combate põe no chão. A regra é uma só: o chão só ganha

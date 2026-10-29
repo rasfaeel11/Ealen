@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { AREAS } from "@ealen/shared";
+import { AREAS } from "@jogo/shared";
 
 /**
  * Imagens dos tilesets, pelo NOME que o tileset tem dentro do mapa do Tiled.

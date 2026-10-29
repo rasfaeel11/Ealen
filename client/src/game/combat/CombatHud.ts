@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { activeUnit, isAlive, styleLabel, type Encounter } from "@ealen/shared";
+import { activeUnit, isAlive, styleLabel, type Encounter } from "@jogo/shared";
 import { sfx } from "../audio";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { addBodyText, addPanel, drawPanel, addTitleText } from "../ui";

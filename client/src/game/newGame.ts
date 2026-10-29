@@ -1,5 +1,5 @@
 import type * as Phaser from "phaser";
-import { createProtagonist, newGame } from "@ealen/shared";
+import { createProtagonist, newGame } from "@jogo/shared";
 import { REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCENES } from "./config";
 import { firstEmptySlot, readSlots } from "./save";
 import { GameSession } from "./session";

@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import type { StoryClock } from "@ealen/shared";
+import type { StoryClock } from "@jogo/shared";
 import { COLORS, GAME_WIDTH, TEXT_COLORS } from "./config";
 import { addBodyText } from "./ui";
 

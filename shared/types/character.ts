@@ -13,7 +13,6 @@ export interface Character {
   attributes: Attributes;
   currentHp: number;
   maxHp: number;
-  currentNodeId: string;
   /** O Fôlego que resta (ver ../breath.ts). Ausente = cheio. */
   breath?: number;
   /** A mana que resta, em quem conjura (ver ../mana.ts). Ausente = cheia. */

@@ -12,7 +12,7 @@ import {
   type Character,
   type DialogueStep,
   type StoryHost,
-} from "@ealen/shared";
+} from "@jogo/shared";
 import { compileStory } from "../compileStory";
 
 /**
@@ -70,7 +70,6 @@ function makeHost(attribute: number, seed: number): StoryHost {
     attributes: { forca: attribute, fator: attribute, vigor: attribute, olho: attribute, couro: attribute, labia: attribute, saber: attribute },
     currentHp: 30,
     maxHp: 30,
-    currentNodeId: "",
   };
   return { character, companions: [], rng: { rngState: seed }, isDefeated: () => seed % 2 === 0 };
 }

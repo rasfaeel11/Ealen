@@ -7,7 +7,7 @@ import {
   type ConsumableItem,
   type FieldItemError,
   type FieldItemResult,
-} from "@ealen/shared";
+} from "@jogo/shared";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
 import { Menu, addBodyText, addPanel, addTitleText, type MenuOption } from "./ui";
 

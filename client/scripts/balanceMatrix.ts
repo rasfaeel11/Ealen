@@ -3,8 +3,8 @@
  * trio, no nível 1, sozinha contra cada criatura do
  * bestiário, numa arena aberta. O mago entra com a magia de Endyru.
  *
- *     npm run balance:matrix --workspace=server
- *     npm run balance:matrix --workspace=server -- 100 ymboripe (menos lutas, só umas criaturas)
+ *     npm run balance:matrix
+ *     npm run balance:matrix -- 100 ymboripe (menos lutas, só umas criaturas)
  *
  * Os dois lados são jogados pela IA do jogo (chooseCommand) — a criatura
  * com os pesos, o estilo, as manias, a mochila e o que ela veste no bestiário, o herói com os
@@ -36,9 +36,9 @@ import {
   unitFromCharacter,
   type Character,
   type CharacterClass,
-} from "@ealen/shared";
+} from "@jogo/shared";
 
-// `npm run balance:matrix --workspace=server -- 100 ymboripe` roda 100 lutas por célula, só contra as criaturas
+// `npm run balance:matrix -- 100 ymboripe` roda 100 lutas por célula, só contra as criaturas
 // cujo id tem "ymboripe": é o jeito rápido de conferir uma mudança num lugar só.
 const [countArg, filterArg] = process.argv.slice(2);
 const N = Number(countArg) > 0 ? Math.floor(Number(countArg)) : 300;
@@ -60,7 +60,6 @@ function makePlayer(characterClass: CharacterClass): Character {
     attributes,
     currentHp: maxHp,
     maxHp,
-    currentNodeId: "n",
     // Vestido como quem começa naquela classe: é com a arma e a armadura dela que o kit foi pensado.
     equipment: startingEquipment(characterClass),
   };

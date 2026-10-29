@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { summarizeSave, type GameSave } from "@ealen/shared";
+import { summarizeSave, type GameSave } from "@jogo/shared";
 import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { beginNewGame } from "../game/newGame";
 import { deleteSlot, exportSlot, pickSaveFile, readSlots, writeSlot, type SlotState } from "../game/save";

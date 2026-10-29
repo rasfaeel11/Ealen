@@ -46,7 +46,6 @@ function sheet(characterClass: CharacterClass, extra: Partial<Character> = {}): 
     attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
     currentHp: 30,
     maxHp: 30,
-    currentNodeId: "",
     ...extra,
   };
 }

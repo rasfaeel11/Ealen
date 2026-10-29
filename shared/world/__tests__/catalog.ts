@@ -64,7 +64,6 @@ function template(id: string, name: string, level: number, hp: number, extra: Pa
     attributes: { forca: 5, fator: 1, vigor: 5, olho: 5, couro: 4, labia: 2, saber: 2 },
     currentHp: hp,
     maxHp: hp,
-    currentNodeId: "",
     ...extra,
   };
 }

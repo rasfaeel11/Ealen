@@ -74,7 +74,6 @@ function sheet(id: string, characterClass: Character["characterClass"], extra: P
     attributes: { forca: 6, fator: 5, vigor: 6, olho: 8, couro: 4, labia: 5, saber: 5 },
     currentHp: 40,
     maxHp: 40,
-    currentNodeId: "",
     ...extra,
   };
 }

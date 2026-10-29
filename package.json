@@ -1,20 +1,20 @@
 {
-  "name": "ealen",
+  "name": "tres-na-estrada",
   "private": true,
   "version": "0.1.0",
-  "description": "Eälen: O Canto das Primeiras Luzes — RPG de navegador",
+  "description": "Três na Estrada (título provisório) — RPG tático de navegador",
   "workspaces": [
     "client",
-    "server",
     "shared"
   ],
   "scripts": {
-    "dev:client": "npm run dev --workspace=client",
-    "dev:server": "npm run dev --workspace=server",
-    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
-    "test": "npm run test --workspace=shared && npm run test --workspace=client"
+    "dev": "npm run dev --workspace=client",
+    "test": "npm run test --workspace=shared && npm run test --workspace=client",
+    "balance:matrix": "npm run balance:matrix --workspace=client --"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "@types/node": "^20.14.10",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
   }
 }

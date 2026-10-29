@@ -52,7 +52,7 @@ import {
   type TacticalEvent,
   type TeamId,
   type Unit,
-} from "@ealen/shared";
+} from "@jogo/shared";
 import { sfx } from "../audio";
 import { COLORS, TEXT_COLORS } from "../config";
 import type { MapActor } from "../MapActor";

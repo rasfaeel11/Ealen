@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import type { JournalEntry } from "@ealen/shared";
+import type { JournalEntry } from "@jogo/shared";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
 import { addBodyText, addPanel, addTitleText } from "./ui";
 

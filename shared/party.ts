@@ -3,7 +3,6 @@ import { restoreBreath } from "./breath";
 import { restoreMana, type Magic } from "./mana";
 import { startingEquipment } from "./equipment";
 import { applyXpGain, xpToNextLevel } from "./leveling";
-import { MOCK_MAP_NODES } from "./mock/seed";
 import type { GiftId } from "./tactics/abilities";
 import { isSworn, type StyleId } from "./tactics/styles";
 import type { SupportId } from "./tactics/supports";
@@ -183,7 +182,6 @@ function createSheet(id: string, member: CastMember): Character {
     attributes,
     currentHp: maxHp,
     maxHp,
-    currentNodeId: MOCK_MAP_NODES[0].id,
     ...(member.magic ? { mageLevel: member.magic.level } : {}),
     // Quem só acompanha não veste nada pra luta.
     ...(member.support ? {} : { equipment: startingLoadout({ id, characterClass }) }),

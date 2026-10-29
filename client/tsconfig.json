@@ -13,8 +13,8 @@
     "noEmit": true,
     "strict": true,
     "paths": {
-      "@ealen/shared": ["../shared/index.ts"],
-      "@ealen/shared/*": ["../shared/*"]
+      "@jogo/shared": ["../shared/index.ts"],
+      "@jogo/shared/*": ["../shared/*"]
     }
   },
   "include": ["src"]

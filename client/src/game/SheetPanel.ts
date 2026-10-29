@@ -42,7 +42,7 @@ import {
   type EquipmentSlot,
   type EquipResult,
   type StatusId,
-} from "@ealen/shared";
+} from "@jogo/shared";
 import { describeAbility } from "./combat/CombatController";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
 import { classSpriteKey, standingFrame, walkAnimKey } from "./mapSprites";

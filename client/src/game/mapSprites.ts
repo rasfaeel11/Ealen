@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { BESTIARY, CLASS_INFO, NPC_LOOKS, type CharacterClass } from "@ealen/shared";
+import { BESTIARY, CLASS_INFO, NPC_LOOKS, type CharacterClass } from "@jogo/shared";
 
 /**
  * Sprites de quem está no mapa — personagens e criaturas, andando ou

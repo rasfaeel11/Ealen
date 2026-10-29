@@ -1,4 +1,4 @@
-import type { Character, GameSave } from "@ealen/shared";
+import type { Character, GameSave } from "@jogo/shared";
 import { writeSlot } from "./save";
 
 /**

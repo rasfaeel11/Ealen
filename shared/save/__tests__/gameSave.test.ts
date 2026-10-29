@@ -28,7 +28,6 @@ function makeCharacter(): Character {
     attributes: { forca: 5, fator: 5, vigor: 5, olho: 5, couro: 5, labia: 5, saber: 5 },
     currentHp: 22,
     maxHp: 30,
-    currentNodeId: "",
     inventory: { slots: [], maxSlots: 12 },
   };
 }
