@@ -40,7 +40,7 @@ import {
   type Trail,
 } from "../index";
 
-/** O grupo num mundo de mapas do Tiled: os provisórios do Eälen, que ficaram como peças de teste (./fixtures). */
+/** O grupo num mundo de mapas do Tiled: os de teste (./fixtures). */
 function loadArea(name: string) {
   const map = parseTiledMap(JSON.parse(readFileSync(new URL(`./fixtures/${name}.tmj`, import.meta.url), "utf8")));
   return { map, props: standAreaProps(map) };
@@ -100,9 +100,9 @@ test("o rastro leva cada companheiro pra um ponto atrás do personagem, pelo cam
 });
 
 test("cada companheiro entra na luta num quadrado livre: o dele se der, senão o mais perto do personagem", () => {
-  const { map } = loadArea("estrada");
+  const { map } = loadArea("trilha");
   const { hero, company } = makeParty();
-  const wolves = map.enemies.filter((enemy) => enemy.group === "lobos");
+  const wolves = map.enemies.filter((enemy) => enemy.group === "cacadores");
   const wolfTile = tileOfPixel(map, wolves[0]);
   const heroTile = { x: wolfTile.x - 3, y: wolfTile.y };
   const taken = wolves.map((enemy) => tileOfPixel(map, enemy));
@@ -135,9 +135,9 @@ test("cada companheiro entra na luta num quadrado livre: o dele se der, senão o
 });
 
 test("o grupo luta junto até o fim; quem cai numa vitória se levanta com 1 de vida e todos ganham o XP inteiro", () => {
-  const { map, props } = loadArea("estrada");
+  const { map, props } = loadArea("trilha");
   const { hero, members, company } = makeParty();
-  const wolves = map.enemies.filter((enemy) => enemy.group === "lobos");
+  const wolves = map.enemies.filter((enemy) => enemy.group === "cacadores");
   const wolfTile = tileOfPixel(map, wolves[0]);
   const heroTile = { x: wolfTile.x - 3, y: wolfTile.y };
   const party = placeParty(
@@ -203,12 +203,12 @@ test("uma condição de mapa pode perguntar pelo grupo: party:jarupa vale enquan
   assert.equal(partyCondition("party:jarupa", members), false);
   assert.equal(partyCondition("party:jarupa", []), false);
   // O que não pergunta pelo grupo, ou pergunta por quem não existe, fica pra história responder (ou pro teste acusar).
-  assert.equal(partyCondition("sentinela_fora", members), undefined);
+  assert.equal(partyCondition("vigia_fora", members), undefined);
   assert.equal(partyCondition("party:ninguem", members), undefined);
 });
 
 test("quem acompanha sem lutar entra na luta como apoio, não como unidade", () => {
-  const { map, props } = loadArea("clareira");
+  const { map, props } = loadArea("campo");
   const hero = createProtagonist();
   const members: PartyMember[] = [];
   joinParty(members, "jarupa", 1);
@@ -222,7 +222,7 @@ test("quem acompanha sem lutar entra na luta como apoio, não como unidade", () 
   assert.equal(oryndu.equipment, undefined);
 
   const heroTile = tileOfPixel(map, map.spawns.default);
-  const group = map.enemies.filter((enemy) => enemy.group === "fiapo");
+  const group = map.enemies.filter((enemy) => enemy.group === "fraco");
   const party = placeParty(map, hero, heroTile, [{ character: jarupa, at: pixelOfTile(map, { x: heroTile.x - 1, y: heroTile.y }) }]);
   // Passar quem luta entre os que só olham não o tira da luta nem faz dele apoio.
   const { encounter } = startAreaEncounter(map, party, group, 5, props, undefined, [], [oryndu, jarupa]);
@@ -240,7 +240,7 @@ test("quem acompanha sem lutar entra na luta como apoio, não como unidade", () 
 });
 
 test("a escola, a aura e a magia vêm do elenco e do bestiário, a cada luta", () => {
-  const { map, props } = loadArea("ruinas");
+  const { map, props } = loadArea("porao");
   const hero = createProtagonist();
   const members: PartyMember[] = [];
   joinParty(members, "jarupa", 1);
@@ -273,15 +273,15 @@ test("a escola, a aura e a magia vêm do elenco e do bestiário, a cada luta", (
 });
 
 test("Xanduí guarda o voto da Ipojy fora da luta também: com ela no comando, ninguém embosca", () => {
-  const { map } = loadArea("clareira");
+  const { map } = loadArea("campo");
   const { hero, company } = makeParty();
   const [jarupa, xandui] = company;
   assert.deepEqual([keepsVow(hero), keepsVow(jarupa), keepsVow(xandui)], [false, false, true]);
 
-  const fiapo = map.enemies.filter((enemy) => enemy.group === "fiapo");
-  const near = { x: tileOfPixel(map, fiapo[0]).x - 7, y: tileOfPixel(map, fiapo[0]).y };
-  assert.equal(ambushableGroup(map, fiapo, near, hero), "fiapo");
-  assert.equal(ambushableGroup(map, fiapo, near, xandui), undefined);
+  const fraco = map.enemies.filter((enemy) => enemy.group === "fraco");
+  const near = { x: tileOfPixel(map, fraco[0]).x - 7, y: tileOfPixel(map, fraco[0]).y };
+  assert.equal(ambushableGroup(map, fraco, near, hero), "fraco");
+  assert.equal(ambushableGroup(map, fraco, near, xandui), undefined);
 });
 
 test("Endyru grava no descanso até o nível de mago dele, só o que é magia dele; quem não conjura não grava", () => {

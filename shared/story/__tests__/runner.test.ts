@@ -529,7 +529,7 @@ test("diário e relógio vão no save junto com a história, e um save de antes 
   assert.equal(new StoryRunner(TIDE, makeHost(), chargeSavedClock(saved, "round", 40)!).clock()!.value, 10, "não passa do limite");
   assert.equal(chargeSavedClock(saved, "round", 0), saved, "luta que caiu na primeira rodada não gastou rodada nenhuma");
 
-  // Um relógio gravado antes de a rodada custar abre sem cobrá-la.
+  // Um relógio gravado antes de a rodada custar abre sem cobrá-la (e o texto com a marca de antes, do Eälen, abre).
   const { ink: sameInk, memory } = unpackStory(saved);
   const older = JSON.stringify({
     ealen: 1,

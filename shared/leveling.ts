@@ -23,7 +23,7 @@ export function xpToNextLevel(level: number): number {
  *
  * O atributo primário da classe sobe mais que os demais a cada nível; Vigor
  * também aumenta o HP máximo, já que é o atributo que o
- * governa. As Técnicas que a Ordem dá em cada nível alcançado (ver
+ * governa. As Técnicas que a classe dá em cada nível alcançado (ver
  * `learnedAt` em ./tactics/abilities.ts) voltam em `learned`: a ficha já as
  * tem — o kit se monta pelo nível —, isto é só o que há pra anunciar.
  */

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import "./catalog";
-import { findBestiaryEntry } from "../../mock/bestiary";
+import { findBestiaryEntry } from "../../data/bestiary";
 import { COMPANIONS, HERO_ID, companionId } from "../../party";
 import { activeUnit, applyCommand, chooseCommand, findUnit, isOver, type Encounter } from "../../tactics";
 import { distance, samePos, stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
@@ -56,13 +56,13 @@ function loadArea(areaId: string): AreaMap {
 const maps = Object.fromEntries(Object.keys(AREAS).map((areaId) => [areaId, loadArea(areaId)]));
 
 /**
- * Os mapas provisórios do Eälen (a clareira, a estrada e as ruínas), que saíram do jogo e ficaram aqui como peças
+ * Três mapas de teste (o campo, a trilha e o porão), que ficam aqui como peças
  * que exercitam o motor do mundo: luta puxada por quem chega perto, patamar, emboscada, deixas, quem não se fere.
  */
 function loadFixture(name: string): AreaMap {
   return parseTiledMap(JSON.parse(readFileSync(new URL(`./fixtures/${name}.tmj`, import.meta.url), "utf8")));
 }
-const fixtures = { clareira: loadFixture("clareira"), estrada: loadFixture("estrada"), ruinas: loadFixture("ruinas") };
+const fixtures = { campo: loadFixture("campo"), trilha: loadFixture("trilha"), porao: loadFixture("porao") };
 const fixtureProps = Object.fromEntries(Object.entries(fixtures).map(([name, map]) => [name, standAreaProps(map)]));
 /** O terreno de cada área antes dos destrutíveis: é nele que eles têm que caber. */
 const bare = Object.fromEntries(Object.keys(AREAS).map((areaId) => [areaId, loadArea(areaId)]));
@@ -260,15 +260,15 @@ for (const [areaId, map] of Object.entries(maps)) {
   };
 
   test("chegar perto de um inimigo puxa o grupo dele inteiro pra luta, na grade da área", () => {
-    const map = fixtures.estrada;
+    const map = fixtures.trilha;
     const [wolf] = map.enemies;
     const wolfTile = tileOfPixel(map, wolf);
     const playerTile = { x: wolfTile.x - 3, y: wolfTile.y };
 
     assert.equal(aggroedGroup(map, map.enemies, { x: 3, y: 11 }), undefined);
-    assert.equal(aggroedGroup(map, map.enemies, playerTile), "lobos");
+    assert.equal(aggroedGroup(map, map.enemies, playerTile), "cacadores");
 
-    const group = map.enemies.filter((enemy) => enemy.group === "lobos");
+    const group = map.enemies.filter((enemy) => enemy.group === "cacadores");
     const { encounter } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: playerTile }], group, 5);
     assert.equal(encounter.grid, map.grid);
     assert.deepEqual(encounter.units.map((unit) => unit.team).sort(), ["enemy", "enemy", "party"]);
@@ -280,10 +280,10 @@ for (const [areaId, map] of Object.entries(maps)) {
     assert.ok(encounter.winner);
   });
 
-  test("cobertura e altura vêm das propriedades dos tiles, e a luta no patamar das ruínas anda até o fim", () => {
-    const map = fixtures.ruinas;
+  test("cobertura e altura vêm das propriedades dos tiles, e a luta no patamar das porão anda até o fim", () => {
+    const map = fixtures.porao;
     const high = map.grid.tiles.filter((tile) => tile.elevation > 0);
-    assert.ok(high.length > 0, "as ruínas deveriam ter chão elevado");
+    assert.ok(high.length > 0, "as porão deveriam ter chão elevado");
     assert.ok(high.every((tile) => !tile.blocksMove));
     // Pedra e mureta dão cobertura; árvore e parede barram a visão de uma vez.
     const cover = map.grid.tiles.filter((tile) => tile.cover);
@@ -301,7 +301,7 @@ for (const [areaId, map] of Object.entries(maps)) {
   });
 
   test("a criatura entra na luta com o que carrega, e o que ela não usou fica pra quem vence", () => {
-    const map = fixtures.estrada;
+    const map = fixtures.trilha;
     const brute = { ...map.enemies[0], id: "bruto", creature: "encounter-teste-bruto" };
     const tile = tileOfPixel(map, brute);
     const { encounter } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: { x: tile.x - 3, y: tile.y } }], [brute], 5);
@@ -595,8 +595,8 @@ test("inimigo passivo não percebe ninguém nem pode ser emboscado; o hostil se 
 });
 
 test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda até o fim", () => {
-  const map = fixtures.estrada;
-  const group = map.enemies.filter((candidate) => candidate.group === "lobos");
+  const map = fixtures.trilha;
+  const group = map.enemies.filter((candidate) => candidate.group === "cacadores");
   const wolfTile = tileOfPixel(map, group[0]);
   const hero: Character = {
     id: "hero",
@@ -612,9 +612,9 @@ test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda
   };
   const playerTile = { x: wolfTile.x - 7, y: wolfTile.y };
   assert.equal(aggroedGroup(map, group, playerTile), undefined);
-  assert.equal(ambushableGroup(map, group, playerTile), "lobos");
+  assert.equal(ambushableGroup(map, group, playerTile), "cacadores");
 
-  const { encounter, events } = startAreaEncounter(map, [{ character: hero, tile: playerTile }], group, 3, fixtureProps.estrada, "enemy");
+  const { encounter, events } = startAreaEncounter(map, [{ character: hero, tile: playerTile }], group, 3, fixtureProps.trilha, "enemy");
   // Quem abre a luta de verdade é o herói: todo lobo que estava na frente dele perdeu a vez.
   assert.equal(encounter.order[encounter.turnIndex], "hero");
   assert.equal(encounter.round, 1);
@@ -636,8 +636,8 @@ test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda
 
 test("a deixa do Tiled chega lida: de que grupo é, quando dispara, o que abre e como encerra", () => {
   assert.deepEqual(parseCueWhen("round 3"), { kind: "round", round: 3 });
-  assert.deepEqual(parseCueWhen("  down Velha Sentinela "), { kind: "down", who: "Velha Sentinela" });
-  assert.deepEqual(parseCueWhen("down party:lish"), { kind: "down", who: "party:lish" });
+  assert.deepEqual(parseCueWhen("  down Velha Vigia "), { kind: "down", who: "Velha Vigia" });
+  assert.deepEqual(parseCueWhen("down party:jarupa"), { kind: "down", who: "party:jarupa" });
   assert.deepEqual(parseCueWhen("broken Sino"), { kind: "broken", prop: "Sino" });
   assert.deepEqual(parseCueWhen("defeat"), { kind: "defeat" });
   assert.deepEqual(parseCueWhen("used Sino"), { kind: "used", props: ["Sino"] });
@@ -673,10 +673,10 @@ test("a deixa do Tiled chega lida: de que grupo é, quando dispara, o que abre e
     parse(property("group", "chefe"), property("when", "used Sino"), property("apply", "exposed 2"), property("goal", "Toque o sino")),
     [{ id: "cue-7", group: "chefe", when: { kind: "used", props: ["Sino"] }, apply: { status: "exposed", turns: 2, on: "enemies" }, goal: "Toque o sino" }],
   );
-  assert.deepEqual(parse(property("group", "chefe"), property("when", "round 2"), property("apply", "exposed"), property("on", "party:lish"))[0].apply, {
+  assert.deepEqual(parse(property("group", "chefe"), property("when", "round 2"), property("apply", "exposed"), property("on", "party:jarupa"))[0].apply, {
     status: "exposed",
     turns: 1,
-    on: "party:lish",
+    on: "party:jarupa",
   });
   assert.throws(() => parse(property("group", "chefe"), property("when", "round 3"), property("apply", "exposed muito")));
   assert.throws(() => parse(property("when", "round 3")));
@@ -702,7 +702,7 @@ test("o roteiro vai pra luta com os nomes do mapa trocados por ids, e sem as dei
         cue("a", { kind: "round", round: 2 }),
         cue("b", { kind: "down", who: "Chefe" }, "win"),
         cue("c", { kind: "down", who: "hero" }),
-        cue("d", { kind: "down", who: "party:lish" }, "stop"),
+        cue("d", { kind: "down", who: "party:jarupa" }, "stop"),
         cue("e", { kind: "broken", prop: "Sino" }, "win"),
         cue("f", { kind: "defeat" }),
         // Quem não entrou na luta e o que a área não tem: de fora.
@@ -714,26 +714,26 @@ test("o roteiro vai pra luta com os nomes do mapa trocados por ids, e sem as dei
         applying("k", "enemies"),
         applying("l", "party"),
         applying("m", "hero"),
-        applying("n", "party:lish"),
+        applying("n", "party:jarupa"),
         applying("o", "Chefe"),
         applying("p", "Capanga"),
         applying("q", "enemies", "enfeitiçado"),
       ],
       [boss],
-      [HERO_ID, companionId("lish")],
+      [HERO_ID, companionId("jarupa")],
     ),
     [
       { id: "a", when: { kind: "round", round: 2 } },
       { id: "b", when: { kind: "down", unit: "enemy-1" }, ends: "win" },
       { id: "c", when: { kind: "down", unit: HERO_ID } },
-      { id: "d", when: { kind: "down", unit: companionId("lish") }, ends: "stop" },
+      { id: "d", when: { kind: "down", unit: companionId("jarupa") }, ends: "stop" },
       { id: "e", when: { kind: "broken", prop: "prop-9" }, ends: "win" },
       { id: "f", when: { kind: "defeat" } },
       { id: "i", when: { kind: "used", props: ["prop-10", "prop-9"] }, ends: "win" },
       { id: "k", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: ["enemy-1"] } },
-      { id: "l", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: [HERO_ID, companionId("lish")] } },
+      { id: "l", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: [HERO_ID, companionId("jarupa")] } },
       { id: "m", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: [HERO_ID] } },
-      { id: "n", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: [companionId("lish")] } },
+      { id: "n", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: [companionId("jarupa")] } },
       { id: "o", when: { kind: "round", round: 2 }, apply: { statusId: "exposed", turns: 2, units: ["enemy-1"] } },
       { id: "p", when: { kind: "round", round: 2 } },
       { id: "q", when: { kind: "round", round: 2 } },
@@ -741,12 +741,12 @@ test("o roteiro vai pra luta com os nomes do mapa trocados por ids, e sem as dei
   );
 });
 
-test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa", () => {
-  const map = fixtures.ruinas;
-  const group = map.enemies.filter((candidate) => candidate.group === "sentinela");
-  const cues = map.cues.filter((cue) => cue.group === "sentinela");
+test("nas porão, a luta com a Vigia para sozinha quando a rodada 4 começa", () => {
+  const map = fixtures.porao;
+  const group = map.enemies.filter((candidate) => candidate.group === "vigia");
+  const cues = map.cues.filter((cue) => cue.group === "vigia");
   const stop = cues.find((cue) => cue.ends === "stop");
-  assert.ok(stop, "a luta da Sentinela deveria ter uma deixa que a para");
+  assert.ok(stop, "a luta da Vigia deveria ter uma deixa que a para");
 
   const hero: Character = {
     id: HERO_ID,
@@ -765,7 +765,7 @@ test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa
     [{ character: hero, tile: { x: tile.x + 2, y: tile.y } }],
     group,
     7,
-    fixtureProps.ruinas,
+    fixtureProps.porao,
     undefined,
     fightCues(map, cues, group),
   );
@@ -786,16 +786,16 @@ test("nas ruínas, a luta com a Sentinela para sozinha quando a rodada 4 começa
 
   // Na rodada 3 a história mexe nas regras: a guarda dela cai (`apply` na deixa).
   const jam = cues.find((cue) => cue.apply !== undefined);
-  assert.ok(jam, "a luta da Sentinela deveria ter uma deixa que aplica uma condição");
+  assert.ok(jam, "a luta da Vigia deveria ter uma deixa que aplica uma condição");
   const at = log.findIndex((event) => event.type === "cue" && event.id === jam.id);
   assert.deepEqual(log[at - 1], { type: "roundStarted", round: 3 });
   assert.deepEqual(log[at + 1], { type: "statusApplied", target: group[0].id, statusId: "exposed", name: "Sem guarda", turns: 2 });
 });
 
-test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou para sozinha na rodada 6", () => {
-  const map = fixtures.ruinas;
-  const group = map.enemies.filter((candidate) => candidate.group === "coletor");
-  const cues = map.cues.filter((cue) => cue.group === "coletor");
+test("nas porão, o Intocado não se fere: a luta se vence tocando o sino, ou para sozinha na rodada 6", () => {
+  const map = fixtures.porao;
+  const group = map.enemies.filter((candidate) => candidate.group === "intocado");
+  const cues = map.cues.filter((cue) => cue.group === "intocado");
   const bell = map.props.find((prop) => prop.name === "Sino")!;
   const hero = (): Character => ({
     id: HERO_ID,
@@ -809,10 +809,10 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     maxHp: 5000,
   });
   const fight = (tile: Pos) =>
-    startAreaEncounter(map, [{ character: hero(), tile }], group, 7, standAreaProps(loadFixture("ruinas")), undefined, fightCues(map, cues, group));
+    startAreaEncounter(map, [{ character: hero(), tile }], group, 7, standAreaProps(loadFixture("porao")), undefined, fightCues(map, cues, group));
   const collector = (encounter: Encounter) => findUnit(encounter, group[0].id)!;
 
-  // Colado no sino: quando a vez chega, toca, e a luta acaba vencida com o Coletor inteiro.
+  // Colado no sino: quando a vez chega, toca, e a luta acaba vencida com o Intocado inteiro.
   const won = fight({ x: bell.tile.x + 1, y: bell.tile.y });
   assert.equal(collector(won.encounter).invulnerable, true);
   const log = [...won.events];
@@ -847,7 +847,7 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
   assert.equal(collector(stalled.encounter).currentHp, collector(stalled.encounter).maxHp);
 });
 
-// A gente do capítulo, na estrada: cada luta exercita o jeito de lutar de quem está nela.
+// A gente do capítulo, na trilha: cada luta exercita o jeito de lutar de quem está nela.
 {
   const stout = (currentHp = 500): Character => ({
     id: HERO_ID,
@@ -862,7 +862,7 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
   });
   /** A luta com `groupId`, num mapa só dela, com o herói em `tile`. */
   const fight = (groupId: string, tile: Pos, hero: Character, seed = 7) => {
-    const map = loadFixture("estrada");
+    const map = loadFixture("trilha");
     const group = map.enemies.filter((candidate) => candidate.group === groupId);
     const cues = map.cues.filter((cue) => cue.group === groupId);
     const started = startAreaEncounter(map, [{ character: hero, tile }], group, seed, standAreaProps(map), undefined, fightCues(map, cues, group));
@@ -881,26 +881,26 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     return log;
   };
 
-  test("na estrada, os fiscais fecham a ponte de lado a lado enquanto estão de pé nela", () => {
-    const map = loadFixture("estrada");
+  test("na trilha, os porteiros fecham a ponte de lado a lado enquanto estão de pé nela", () => {
+    const map = loadFixture("trilha");
     standAreaProps(map);
-    const fiscais = map.enemies.filter((enemy) => enemy.group === "fiscais");
-    assert.equal(fiscais.length, 2);
-    assert.ok(fiscais.every((enemy) => enemy.passive && enemy.dialog === "fiscais" && enemy.unless === "fiscais_fora"));
+    const porteiros = map.enemies.filter((enemy) => enemy.group === "porteiros");
+    assert.equal(porteiros.length, 2);
+    assert.ok(porteiros.every((enemy) => enemy.passive && enemy.dialog === "porteiros" && enemy.unless === "porteiros_fora"));
 
-    const from = tileOfPixel(map, map.spawns.from_clareira);
-    const beyond = tileIndex(map.grid, tileOfPixel(map, map.spawns.from_ruinas));
+    const from = tileOfPixel(map, map.spawns.from_campo);
+    const beyond = tileIndex(map.grid, tileOfPixel(map, map.spawns.from_porao));
     assert.ok(flood(map, from).has(beyond));
     standPeople(map, peopleTiles(map, map.npcs, map.enemies));
-    assert.ok(!flood(map, from).has(beyond), "com os fiscais na ponte, ainda dá pra atravessar");
+    assert.ok(!flood(map, from).has(beyond), "com os porteiros na ponte, ainda dá pra atravessar");
     standPeople(map, []);
     assert.ok(flood(map, from).has(beyond));
   });
 
-  test("na estrada, um fiscal não dá o primeiro golpe: fica no caminho até alguém bater, e depois revida", () => {
-    const { encounter, group } = fight("fiscais", { x: 19, y: 11 }, stout());
-    const fiscais = new Set(group.map((enemy) => enemy.id));
-    for (const id of fiscais) {
+  test("na trilha, um porteiro não dá o primeiro golpe: fica no caminho até alguém bater, e depois revida", () => {
+    const { encounter, group } = fight("porteiros", { x: 19, y: 11 }, stout());
+    const porteiros = new Set(group.map((enemy) => enemy.id));
+    for (const id of porteiros) {
       assert.equal(findUnit(encounter, id)!.quirks, undefined);
       assert.equal(findUnit(encounter, id)!.style, "ipojy");
     }
@@ -908,11 +908,11 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     // Quem só fica ali não apanha: quatro rodadas passando a vez, e nenhum golpe.
     const quiet = structuredClone(encounter);
     const idle = play(quiet, (now) => ({ type: "endTurn", unitId: activeUnit(now)!.id }), 12);
-    assert.equal(idle.filter(({ event }) => event.type === "attackRoll" && fiscais.has(event.actor)).length, 0);
+    assert.equal(idle.filter(({ event }) => event.type === "attackRoll" && porteiros.has(event.actor)).length, 0);
     // E não arredam pé: ficam colados nele, no caminho.
-    for (const id of fiscais) assert.equal(distance(findUnit(quiet, id)!.pos, findUnit(quiet, HERO_ID)!.pos), 1);
+    for (const id of porteiros) assert.equal(distance(findUnit(quiet, id)!.pos, findUnit(quiet, HERO_ID)!.pos), 1);
 
-    // O primeiro golpe é do herói; só depois dele um fiscal levanta o bastão por conta própria (o golpe que a
+    // O primeiro golpe é do herói; só depois dele um porteiro levanta o bastão por conta própria (o golpe que a
     // Ipojy devolve a quem erra é reação, não iniciativa: não conta).
     const target = findUnit(encounter, group[0].id)!;
     const log = play(encounter, () => ({ type: "ability", unitId: HERO_ID, abilityId: "espadachim.attack", target: target.pos }), 40);
@@ -920,18 +920,18 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     const struck = log.findIndex(
       ({ event }) =>
         event.type === "abilityUsed" &&
-        fiscais.has(event.unit) &&
+        porteiros.has(event.unit) &&
         !event.reaction &&
         findUnit(encounter, event.unit)!.abilities.some(
           (ability) => ability.id === event.abilityId && ability.effects.some((effect) => effect.kind === "damage"),
         ),
     );
     assert.ok(first >= 0, "o herói não bateu");
-    assert.ok(struck > first, struck < 0 ? "os fiscais não revidaram nunca" : "um fiscal bateu primeiro");
+    assert.ok(struck > first, struck < 0 ? "os porteiros não revidaram nunca" : "um porteiro bateu primeiro");
   });
 
-  test("na estrada, os mergulhadores lutam de longe, no Gryskar, e a luta com eles anda até o fim", () => {
-    const { encounter, group } = fight("mergulhadores", { x: 41, y: 14 }, stout());
+  test("na trilha, os atiradores lutam de longe, no Gryskar, e a luta com eles anda até o fim", () => {
+    const { encounter, group } = fight("atiradores", { x: 41, y: 14 }, stout());
     assert.equal(group.length, 2);
     assert.ok(group.every((enemy) => !enemy.passive));
     for (const enemy of group) {
@@ -943,11 +943,11 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     assert.equal(encounter.winner, "party");
   });
 
-  test("na estrada, o Espelho devolve o tipo da última ação da protagonista", () => {
-    const { encounter, group } = fight("espelho", { x: 10, y: 17 }, stout());
-    const espelho = findUnit(encounter, group[0].id)!;
-    assert.deepEqual(espelho.quirks, { mirrors: HERO_ID });
-    assert.equal(espelho.style, "tsvirana");
+  test("na trilha, o Imitador devolve o tipo da última ação da protagonista", () => {
+    const { encounter, group } = fight("imitador", { x: 10, y: 17 }, stout());
+    const imitador = findUnit(encounter, group[0].id)!;
+    assert.deepEqual(imitador.quirks, { mirrors: HERO_ID });
+    assert.equal(imitador.style, "tsvirana");
 
     const script = ["defend", "defend", "attack", "attack", "defend"];
     let turn = 0;
@@ -957,15 +957,15 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
         const hero = findUnit(now, HERO_ID)!;
         if (!hero.turn.action) return { type: "endTurn", unitId: HERO_ID };
         const stance = script[turn++ % script.length];
-        return { type: "ability", unitId: HERO_ID, abilityId: `espadachim.${stance}`, target: stance === "defend" ? hero.pos : espelho.pos };
+        return { type: "ability", unitId: HERO_ID, abilityId: `espadachim.${stance}`, target: stance === "defend" ? hero.pos : imitador.pos };
       },
       60,
     );
 
     const stanceOf = (id: string | undefined) => id?.slice(id.lastIndexOf(".") + 1);
     const answers = log.flatMap(({ event, habit }) => {
-      if (event.type !== "abilityUsed" || event.unit !== espelho.id || event.reaction) return [];
-      const ability = espelho.abilities.find((candidate) => candidate.id === event.abilityId)!;
+      if (event.type !== "abilityUsed" || event.unit !== imitador.id || event.reaction) return [];
+      const ability = imitador.abilities.find((candidate) => candidate.id === event.abilityId)!;
       return ability.cost === "action" && habit?.last !== undefined ? [[stanceOf(habit.last), stanceOf(ability.id)]] : [];
     });
     assert.ok(answers.length >= 4, `só ${answers.length} respostas`);
@@ -973,10 +973,10 @@ test("nas ruínas, o Coletor não se fere: a luta se vence tocando o sino, ou pa
     assert.deepEqual([...new Set(answers.map(([hers]) => hers))].sort(), ["attack", "defend"]);
   });
 
-  test("na estrada, a luta com o Espelho não se perde: ela para no lugar da derrota", () => {
-    const { encounter, events, cues } = fight("espelho", { x: 10, y: 17 }, stout(3));
+  test("na trilha, a luta com o Imitador não se perde: ela para no lugar da derrota", () => {
+    const { encounter, events, cues } = fight("imitador", { x: 10, y: 17 }, stout(3));
     const mercy = cues.find((cue) => cue.when.kind === "defeat");
-    assert.ok(mercy, "a luta com o Espelho deveria ter uma deixa no lugar da derrota");
+    assert.ok(mercy, "a luta com o Imitador deveria ter uma deixa no lugar da derrota");
 
     const log = [...events, ...play(encounter, (now) => ({ type: "endTurn", unitId: activeUnit(now)!.id })).map(({ event }) => event)];
     assert.equal(findUnit(encounter, HERO_ID)!.currentHp, 0);

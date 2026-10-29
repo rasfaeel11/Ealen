@@ -39,7 +39,7 @@ export interface Technique extends CombatArt {
   mage?: number;
 }
 
-/** Ordem de exibição das posturas, da mais segura à mais arriscada. */
+/** A ordem de exibição das posturas, da mais segura à mais arriscada. */
 export const STANCE_ORDER: CombatStance[] = ["quick_attack", "attack", "heavy_attack", "defend", "heal"];
 
 /** `null` numa postura significa que a classe não a tem: o espadachim não cura. */

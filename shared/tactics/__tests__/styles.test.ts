@@ -96,18 +96,18 @@ test("a vantagem de escola entra na rolagem de ataque, pros dois lados, e só en
     styled(makeUnit("E", "enemy", at("E"), TOUGH), "ipojy"),
     styled(makeUnit("B", "party", at("B")), "ipojy"),
   ]);
-  const [lish, guard, ally] = encounter.units;
-  const strike = lish.abilities.find((ability) => ability.id === "espadachim.attack")!;
+  const [striker, guard, ally] = encounter.units;
+  const strike = striker.abilities.find((ability) => ability.id === "espadachim.attack")!;
 
-  const edge = attackEdge(encounter, lish, strike, guard);
+  const edge = attackEdge(encounter, striker, strike, guard);
   assert.equal(edge.style, 1);
   assert.equal(edge.toHit, STYLE_TO_HIT);
-  assert.equal(attackEdge(encounter, guard, strike, lish).toHit, -STYLE_TO_HIT);
-  assert.equal(attackEdge(encounter, lish, strike, ally).style, 0);
+  assert.equal(attackEdge(encounter, guard, strike, striker).toHit, -STYLE_TO_HIT);
+  assert.equal(attackEdge(encounter, striker, strike, ally).style, 0);
 
   const [roll] = eventsOf(run(encounter, { type: "ability", unitId: "A", abilityId: strike.id, target: guard.pos }), "attackRoll");
   assert.equal(roll.style, 1);
-  assert.equal(roll.total, roll.natural + attackTotals(lish, strike, guard, edge).bonus);
+  assert.equal(roll.total, roll.natural + attackTotals(striker, strike, guard, edge).bonus);
 });
 
 test("Onda do Gryskar: cada golpe seguido no mesmo alvo soma no dano do próximo; errar zera", () => {
@@ -379,19 +379,19 @@ test("Voto da Ipojy: quem é da Espera não dá golpe de abertura — a luta com
   assert.deepEqual(findUnit(encounter, "I")!.pos, { x: 0, y: 0 });
 });
 
-test("Adiantar a Maré pega todo inimigo de pé, vale uma vez por luta e cobra o turno seguinte de quem a fez", () => {
+test("o que pega todos os inimigos (`foes`) pega todo inimigo de pé, vale uma vez por luta e cobra o turno seguinte de quem a fez", () => {
   const { encounter } = stage(["A....E.F.G"], (at) => [
-    unitFromCharacter(makeCharacter("A", { attributes: { olho: FIRST } }), { team: "party", pos: at("A"), gifts: ["tide_pull"] }),
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST }, kit: [TEST_KIT.abrir] }),
     makeUnit("E", "enemy", at("E"), { attributes: { olho: 50 } }),
     makeUnit("F", "enemy", at("F"), { attributes: { olho: 40 } }),
     makeUnit("G", "enemy", at("G"), { currentHp: 0 }),
   ]);
-  const varel = findUnit(encounter, "A")!;
-  const tide = varel.abilities.find((ability) => ability.id === "gift.tide_pull")!;
-  assert.deepEqual(abilityTargets(encounter, varel, tide), [varel.pos]);
-  assert.equal(usesLeft(varel, tide), 1);
+  const opener = findUnit(encounter, "A")!;
+  const open = opener.abilities.find((ability) => ability.id === TEST_KIT.abrir.id)!;
+  assert.deepEqual(abilityTargets(encounter, opener, open), [opener.pos]);
+  assert.equal(usesLeft(opener, open), 1);
 
-  const events = run(encounter, { type: "ability", unitId: "A", abilityId: tide.id, target: varel.pos });
+  const events = run(encounter, { type: "ability", unitId: "A", abilityId: open.id, target: opener.pos });
   assert.deepEqual(
     eventsOf(events, "statusApplied").map((event) => [event.target, event.statusId]),
     [
@@ -400,7 +400,7 @@ test("Adiantar a Maré pega todo inimigo de pé, vale uma vez por luta e cobra o
       ["A", "winded"],
     ],
   );
-  assert.equal(usesLeft(varel, tide), 0);
+  assert.equal(usesLeft(opener, open), 0);
 
   // Não há segunda vez, nem na rodada seguinte — e a vez seguinte dele se perde.
   const round = [...pass(encounter), ...pass(encounter), ...pass(encounter)];
@@ -409,7 +409,7 @@ test("Adiantar a Maré pega todo inimigo de pé, vale uma vez por luta e cobra o
   pass(encounter);
   pass(encounter);
   assert.equal(activeUnit(encounter)!.id, "A");
-  assert.deepEqual(applyCommand(encounter, { type: "ability", unitId: "A", abilityId: tide.id, target: varel.pos }), {
+  assert.deepEqual(applyCommand(encounter, { type: "ability", unitId: "A", abilityId: open.id, target: opener.pos }), {
     ok: false,
     reason: "resource_spent",
   });

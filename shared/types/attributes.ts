@@ -1,6 +1,6 @@
 /**
  * Os sete atributos de uma ficha, com nomes simples, em português (a tabela
- * da §4 do AGENTS.md: o jogo não usa as runas Tirán do Eälen). Os números
+ * da §4 do AGENTS.md). Os números
  * de nível 1 ficam entre 1 e 9 (ver ../characterCreation.ts).
  */
 export interface Attributes {

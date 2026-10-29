@@ -11,7 +11,7 @@ import type { ConsumableItem } from "../types/inventory";
  * efeitos que nenhum item do jogo usa ainda (reforço de atributo, foco,
  * purificar) continuam no motor, e os testes os exercitam com itens deles.
  */
-export const MOCK_ITEMS: ConsumableItem[] = [
+export const ITEMS: ConsumableItem[] = [
   {
     id: "item-unguento-de-barqueiro",
     name: "Unguento de Barqueiro",
@@ -34,5 +34,5 @@ export const MOCK_ITEMS: ConsumableItem[] = [
 
 /** Busca um item do catálogo pelo id. */
 export function findItemTemplate(itemId: string): ConsumableItem | undefined {
-  return MOCK_ITEMS.find((item) => item.id === itemId);
+  return ITEMS.find((item) => item.id === itemId);
 }

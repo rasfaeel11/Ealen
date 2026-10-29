@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { BESTIARY, creaturePlacement, spawnCreature } from "../../mock/bestiary";
+import { BESTIARY, creaturePlacement, spawnCreature } from "../../data/bestiary";
 import { parseCueWhen } from "../../world/tiledMap";
 import {
   CRACK_TURNS,

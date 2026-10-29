@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { addItemToInventory } from "../../inventoryEffects";
-import { BESTIARY, creaturePlacement, spawnCreature } from "../../mock/bestiary";
-import { findItemTemplate } from "../../mock/items";
+import { BESTIARY, creaturePlacement, spawnCreature } from "../../data/bestiary";
+import { findItemTemplate } from "../../data/items";
 import { PROTAGONIST } from "../../party";
 import type { CharacterClass } from "../../types/characterClass";
 import {

@@ -1,5 +1,5 @@
-import { BESTIARY } from "../../mock/bestiary";
-import { EQUIPMENT } from "../../mock/equipment";
+import { BESTIARY } from "../../data/bestiary";
+import { EQUIPMENT } from "../../data/equipment";
 import type { BestiaryEntry } from "../../types/bestiary";
 import type { Character } from "../../types/character";
 import type { EquipmentItem } from "../../types/inventory";
@@ -153,7 +153,7 @@ export const TEST_CREATURES: Record<string, BestiaryEntry> = {
     }),
   },
   /** Da Tsvirana, e espelha o tipo da última ação da protagonista. */
-  "encounter-teste-espelho": {
+  "encounter-teste-imitador": {
     person: true,
     style: { id: "tsvirana", grade: 3 },
     aura: 3,
@@ -162,7 +162,7 @@ export const TEST_CREATURES: Record<string, BestiaryEntry> = {
     lore: "",
     quirks: { mirrors: "hero" },
     drops: [],
-    template: template("espelho", "Espelho", 5, 60, {
+    template: template("imitador", "Imitador", 5, 60, {
       attributes: { forca: 8, fator: 2, vigor: 8, olho: 8, couro: 8, labia: 4, saber: 4 },
       equipment: { weapon: "gear-espada-reta", armor: "gear-tunica-de-linho" },
       arts: { quick_attack: "O Mesmo Corte Curto", attack: "O Mesmo Golpe", heavy_attack: "Devolver com Peso", defend: "A Mesma Guarda" },

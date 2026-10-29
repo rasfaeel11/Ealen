@@ -59,7 +59,7 @@ export interface CastMember {
   gifts?: readonly GiftId[];
   /** Conjura: o conceito do sangue dele e o nível de mago (ver ./mana.ts). Sem isto, não tem mana nem paga magia. */
   magic?: Magic;
-  /** Com o que ele chega: os ids das peças (ver ./mock/equipment.ts). Sem isto, o que a classe dele dá. */
+  /** Com o que ele chega: os ids das peças (ver ./data/equipment.ts). Sem isto, o que a classe dele dá. */
   gear?: Equipment;
 }
 
@@ -234,13 +234,13 @@ export function isInParty(members: readonly PartyMember[], key: string): boolean
   return members.some((member) => member.present && member.character.id === companionId(key));
 }
 
-/** O prefixo de uma condição de mapa que pergunta pelo grupo: `unless` = `party:lish`. */
+/** O prefixo de uma condição de mapa que pergunta pelo grupo: `unless` = `party:jarupa`. */
 const PARTY_CONDITION = "party:";
 
 /**
  * O que uma condição de mapa (`if`/`unless`) vale quando pergunta pelo grupo
- * em vez de por uma variável da história: `party:lish` é verdadeiro enquanto
- * Lish anda com o personagem. Undefined se `name` não é uma pergunta dessas,
+ * em vez de por uma variável da história: `party:jarupa` é verdadeiro enquanto
+ * Jarupã anda com o personagem. Undefined se `name` não é uma pergunta dessas,
  * ou se pergunta por alguém que não existe.
  */
 export function partyCondition(name: string, members: readonly PartyMember[]): boolean | undefined {

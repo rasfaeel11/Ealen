@@ -2,7 +2,7 @@ import { ATTRIBUTE_KEYS, type Attributes } from "./types/attributes";
 import { RACE_MODIFIERS, type Race } from "./types/race";
 import type { CharacterClass } from "./types/characterClass";
 import type { ConsumableItem, Inventory } from "./types/inventory";
-import { MOCK_ITEMS } from "./mock/items";
+import { ITEMS } from "./data/items";
 
 const STARTING_INVENTORY_MAX_SLOTS = 12;
 const STARTING_ITEM_ID = "item-unguento-de-barqueiro";
@@ -33,7 +33,7 @@ export function startingMaxHp(attributes: Attributes): number {
 
 /** Mochila inicial de Endyru: uns potes de unguento de barqueiro, o que se leva pra descer o rio. */
 export function createStartingInventory(): Inventory<ConsumableItem> {
-  const startingItem = MOCK_ITEMS.find((item) => item.id === STARTING_ITEM_ID);
+  const startingItem = ITEMS.find((item) => item.id === STARTING_ITEM_ID);
   if (!startingItem) {
     return { slots: [], maxSlots: STARTING_INVENTORY_MAX_SLOTS };
   }

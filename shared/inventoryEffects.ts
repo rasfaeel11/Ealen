@@ -1,6 +1,6 @@
 import { addGear, gearCount, removeGear } from "./equipment";
-import { findEquipment } from "./mock/equipment";
-import { findItemTemplate } from "./mock/items";
+import { findEquipment } from "./data/equipment";
+import { findItemTemplate } from "./data/items";
 import type { Character } from "./types/character";
 import type { ConsumableItem, EquipmentItem, Inventory, InventorySlot } from "./types/inventory";
 

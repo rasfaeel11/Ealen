@@ -27,7 +27,7 @@ export interface UnitPlacement {
   style?: { id: StyleId; grade: number };
   /** O nível de aura, 1 a 7: o teto da proficiência. */
   aura?: number;
-  /** Habilidades próprias, além das da Ordem (ver GIFTS em ./abilities.ts). */
+  /** Habilidades próprias, além das da classe (ver GIFTS em ./abilities.ts). */
   gifts?: readonly GiftId[];
   /** Conjura: o conceito e o nível de mago (ver ../mana.ts). A mana dele vem da ficha. */
   magic?: Magic;

@@ -121,7 +121,7 @@ test("a recarga conta turnos de quem usou: com 1, o golpe pesado não sai em doi
 test("turno perdido também conta na recarga", () => {
   const { encounter } = duel();
   run(encounter, heavy(encounter));
-  // Perde o turno seguinte (como quem adiantou a maré): a recarga anda do mesmo jeito.
+  // Perde o turno seguinte (como quem abriu a guarda de todos): a recarga anda do mesmo jeito.
   unit(encounter, "A").statuses.push({ id: "winded", name: "Sem fôlego", skipsTurn: true, turnsLeft: 1 });
 
   run(encounter, { type: "endTurn", unitId: "A" });

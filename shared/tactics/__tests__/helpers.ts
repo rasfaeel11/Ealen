@@ -180,6 +180,26 @@ export const TEST_KIT = {
     breath: 2,
     cooldown: 2,
   }),
+  /** Abre a guarda de todo inimigo de pé, uma vez por luta, e cobra o turno seguinte de quem a fez. */
+  abrir: testAbility("abrir", {
+    cost: "action",
+    range: 0,
+    targets: "foes",
+    effects: [{ kind: "status", statusId: "exposed", turns: 2 }],
+    limit: 1,
+    breath: 3,
+    backlash: { statusId: "winded", turns: 1 },
+  }),
+  /** Prende o passo de quem pega, de longe, na ação bônus. */
+  rede: testAbility("rede", {
+    cost: "bonus",
+    range: 3,
+    targets: "enemy",
+    attack: { toHit: 2 },
+    effects: [{ kind: "status", statusId: "netted", turns: 2 }],
+    breath: 1,
+    cooldown: 3,
+  }),
   /** A cura paga em Fôlego, na hora (a do jogo é magia: mana e recitada). */
   cura: testAbility("cura", {
     cost: "action",

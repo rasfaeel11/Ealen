@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { addItemToInventory } from "../../inventoryEffects";
-import { findItemTemplate } from "../../mock/items";
+import { findItemTemplate } from "../../data/items";
 import { TEST_ITEMS, TEST_KIT } from "./helpers";
 import {
   activeUnit,

@@ -87,38 +87,30 @@ export const STATUSES = {
   /** O que a cura deixa em quem a recebe (ver HEAL_PER_BREATH em ../breath.ts): o corpo queimou o que tinha, e a próxima cura até o descanso custa o dobro. */
   hungry: { id: "hungry", name: "Fome", hunger: true, untilRest: true },
 
-  // --- O que os kits põem (ver KITS em ./abilities.ts) ------------------------
-  /** Atração e repulsão: o cabo escorregou da mão. O que ele tenta com a arma sai torto. */
+  // --- O que o kit do mago põe (ver KITS em ./abilities.ts) e os dons do trio (GIFTS) ------------------------------
+  /** O Desarmar de atração e repulsão: o cabo escorregou da mão. O que ele tenta com a arma sai torto. */
   disarmed: { id: "disarmed", name: "Desarmado", toHit: -4 },
-  /** Sombrílico: não está onde se olha. Quem o ataca precisa de muito mais pra acertar. */
-  unseen: { id: "unseen", name: "Despercebido", evasion: 5 },
-  /** Rachador (e quem luta de viés): torto de propósito. */
-  oblique: { id: "oblique", name: "Torto", evasion: 4 },
-  /** Luminar: um plano reto fixado na frente de um aliado. É uma guarda que outro pôs. */
-  warded: { id: "warded", name: "Atrás da Muralha", guard: true },
-  /** Guardião: preso às constantes do lugar. Nada o desloca, e cada golpe chega mais leve. */
-  anchored: { id: "anchored", name: "Ancorado", immovable: true, damageTaken: -3 },
-  /** Guardião: a gravidade dobrada sob os pés. */
-  heavy: { id: "heavy", name: "Pesado", speed: -3 },
-  /** Entropista: a guarda enferruja antes de quem a segura. */
-  rusted: { id: "rusted", name: "Enferrujado", attributeBonus: { couro: -2 }, breaksGuard: true },
-  /** Entropista: o relógio adiantado. Fere a cada turno. */
-  decaying: { id: "decaying", name: "Decaindo", harm: D4 },
-  /** Entropista: o selo do fim. A armadura envelhece sozinha. */
-  decay_mark: { id: "decay_mark", name: "Marca de Decaimento", attributeBonus: { couro: -4 } },
-  /** Entropista: travado no estado em que está. Nada nele se restaura. */
-  irreversible: { id: "irreversible", name: "Irreversível", noHeal: true },
-  /** Cantor: a onda invertida por cima da voz dele. O que ele tentar sai fraco. */
-  muffled: { id: "muffled", name: "Abafado", toHit: -3 },
-  /** Cantor: a própria frequência multiplicada até soar como muitos. */
-  chorus: { id: "chorus", name: "Em coro", attributeBonus: { labia: 4, fator: 4 } },
-  /** Rachador: uma fissura mínima. Dói no próximo golpe. */
-  cracked: { id: "cracked", name: "Trincado", damageTaken: 3 },
-  /** Rachador: o padrão quebrado de vez. Todo golpe acha uma abertura nova. */
-  broken_symmetry: { id: "broken_symmetry", name: "Simetria quebrada", damageTaken: 4, attributeBonus: { couro: -1 } },
-  /** Xanduí segurando (o `hold_the_lunge`): o passo preso nela. Com o Em seco, o bicho de rio não volta pra água. */
+  /** O Segurar o Bote de Xanduí: o passo preso nela. Com o Em seco, o bicho de rio não volta pra água. */
   held: { id: "held", name: "Seguro", speed: -4 },
-  /** A rede aberta nas pernas de alguém (o `net_cast`). */
+
+  // --- Peças do motor que nada do jogo põe ainda: os testes as exercitam (ver TEST_KIT em __tests__/helpers.ts) ---
+  /** Esquiva: quem ataca o portador precisa de muito mais pra acertar. */
+  unseen: { id: "unseen", name: "Despercebido", evasion: 5 },
+  /** Uma guarda que outro pôs na frente do portador. */
+  warded: { id: "warded", name: "Atrás da Muralha", guard: true },
+  /** Nada desloca o portador, e cada golpe chega mais leve. */
+  anchored: { id: "anchored", name: "Ancorado", immovable: true, damageTaken: -3 },
+  /** O passo pesado. */
+  heavy: { id: "heavy", name: "Pesado", speed: -3 },
+  /** Fere a cada turno, sem ataque nem armadura. */
+  decaying: { id: "decaying", name: "Decaindo", harm: D4 },
+  /** Nada no portador se restaura. */
+  irreversible: { id: "irreversible", name: "Irreversível", noHeal: true },
+  /** O que o portador tentar sai fraco. */
+  muffled: { id: "muffled", name: "Abafado", toHit: -3 },
+  /** Dói mais no próximo golpe. */
+  cracked: { id: "cracked", name: "Trincado", damageTaken: 3 },
+  /** O passo preso numa rede. */
   netted: { id: "netted", name: "Enredado", speed: -4 },
 } satisfies Record<string, StatusTemplate>;
 

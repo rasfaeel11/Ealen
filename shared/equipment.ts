@@ -1,4 +1,4 @@
-import { findEquipment } from "./mock/equipment";
+import { findEquipment } from "./data/equipment";
 import type { Dice } from "./tactics/rng";
 import { ATTRIBUTE_KEYS, type Attributes } from "./types/attributes";
 import type { Character } from "./types/character";
@@ -134,7 +134,7 @@ export type EquipError =
   /** A peça não existe, ou não está guardada. */
   | "not_owned"
   /** A classe de quem ia vestir não sabe usar esta arma. */
-  | "wrong_order";
+  | "wrong_class";
 
 export type EquipResult = { ok: true; replaced?: EquipmentItem } | { ok: false; reason: EquipError };
 
@@ -144,7 +144,7 @@ export type EquipResult = { ok: true; replaced?: EquipmentItem } | { ok: false; 
  */
 export function equipRefusal(wearer: Pick<Character, "characterClass">, item: EquipmentItem): EquipError | undefined {
   const { data } = item;
-  if (data.slot === "weapon" && data.orders && !data.orders.includes(wearer.characterClass)) return "wrong_order";
+  if (data.slot === "weapon" && data.classes && !data.classes.includes(wearer.characterClass)) return "wrong_class";
   return undefined;
 }
 

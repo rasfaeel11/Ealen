@@ -48,13 +48,13 @@ export interface Character {
   gear?: string[];
   /**
    * O que esta criatura sabe fazer, e com que nome: as habilidades do kit da
-   * Ordem que ela tem, pela chave de cada uma (`attack`, `heavy_attack`,
-   * `puxao_de_mare`... ver KITS em ../tactics/abilities.ts), e o nome próprio
+   * classe que ela tem, pela chave de cada uma (`attack`, `heavy_attack`,
+   * `desarmar`... ver KITS em ../tactics/abilities.ts), e o nome próprio
    * que ela dá a cada. Com isto, o kit é SÓ o que está aqui, seja qual for o
-   * nível. Personagens jogáveis nunca o preenchem: o kit deles vem da Ordem e
+   * nível. Personagens jogáveis nunca o preenchem: o kit deles vem da classe e
    * cresce com o nível. Quem usa são as criaturas do bestiário, que
-   * reaproveitam o shape de Character mas não deveriam narrar "usa Fome do
-   * Vazio" só porque foram modeladas como sombrílicas.
+   * reaproveitam o shape de Character mas não deveriam narrar o Arremesso
+   * do Círculo só porque foram modeladas como magos de atração e repulsão.
    */
   arts?: Partial<Record<string, string>>;
 }

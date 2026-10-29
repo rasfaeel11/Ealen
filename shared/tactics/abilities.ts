@@ -176,16 +176,7 @@ function artOf(characterClass: CharacterClass, slug: string): (CombatArt & { lev
  *   quem estava de costas pra parede bate nela (ver push em ./engine.ts).
  * - `hold_the_lunge` é de Xanduí: ela não bate, segura. Quem fica Seguro quase
  *   não anda — o bicho em seco não volta pra água. É golpe: o voto da Ipojy vale.
- *
- * As três de baixo eram do elenco do Eälen e ficam como as peças que exercitam
- * (`foes`, `limit`, `backlash`), sem dono.
- *
- * - `tide_pull` adianta a maré e abre a guarda de todo inimigo de pé. Uma vez
- *   por luta, e cobra — Fôlego, e o turno seguinte de quem a fez.
- * - `net_cast` é uma rede aberta em cima de alguém: quem fica enredado quase
- *   não anda.
- * - `crooked_step` é ficar fora de prumo de propósito, sem gastar o golpe do
- *   turno.
+
  */
 export const GIFTS = {
   shoulder: {
@@ -212,40 +203,6 @@ export const GIFTS = {
     breath: 2,
     cooldown: 3,
   },
-  tide_pull: {
-    id: "gift.tide_pull",
-    name: "Adiantar a Maré",
-    flavor: "A água chega antes da hora e leva o chão de quem estava firme. Quem a chamou fica sem fôlego.",
-    cost: "action",
-    range: 0,
-    targets: "foes",
-    effects: [{ kind: "status", statusId: "exposed", turns: 2 }],
-    limit: 1,
-    breath: 3,
-    backlash: { statusId: "winded", turns: 1 },
-  },
-  net_cast: {
-    id: "gift.net_cast",
-    name: "Lançar a Rede",
-    flavor: "A rede de coleta aberta no ar, como sobre um cardume. Quem ela pega passa os próximos passos se soltando.",
-    cost: "bonus",
-    range: 3,
-    targets: "enemy",
-    attack: { toHit: 2 },
-    effects: [{ kind: "status", statusId: "netted", turns: 2 }],
-    breath: 1,
-    cooldown: 3,
-  },
-  crooked_step: {
-    id: "gift.crooked_step",
-    name: "Pé Torto",
-    flavor: "A faca na mão errada, o peso no pé errado. Quem aprendeu a acertar gente de prumo não acha onde bater.",
-    cost: "bonus",
-    range: 0,
-    targets: "self",
-    effects: [{ kind: "status", statusId: "oblique", turns: 1 }],
-    cooldown: 2,
-  },
 } satisfies Record<string, Ability>;
 
 export type GiftId = keyof typeof GIFTS;
@@ -254,7 +211,7 @@ export function isGiftId(id: unknown): id is GiftId {
   return typeof id === "string" && id in GIFTS;
 }
 
-/** O id de uma gravação na luta: a magia e a posição dela entre as gravações da ficha (`guardiao.x#gravada1`). */
+/** O id de uma gravação na luta: a magia e a posição dela entre as gravações da ficha (`atracao_repulsao.quick_attack#gravada1`). */
 export function engravedId(abilityId: string, index: number): string {
   return `${abilityId}#gravada${index + 1}`;
 }
@@ -276,7 +233,7 @@ export function engravedAbilities(own: readonly Ability[], engraved: readonly st
 
 /** Uma habilidade do kit de uma classe, com o nível em que se aprende. */
 export interface KitAbility {
-  /** A chave dela no kit: o fim do id (`guardiao.puxao_de_mare`). */
+  /** A chave dela no kit: o fim do id (`atracao_repulsao.desarmar`). */
   slug: string;
   level: number;
   /** O nível de mago que ela pede, além do nível (ver `mage` em Technique, ../combatArts.ts). */

@@ -1,7 +1,7 @@
 import { addItemToInventory, findItem, giveItem, type GameItem } from "../inventoryEffects";
 import { applyXpGain, xpForEnemy } from "../leveling";
-import { creaturePlacement, findBestiaryEntry, spawnCreature } from "../mock/bestiary";
-import { findItemTemplate } from "../mock/items";
+import { creaturePlacement, findBestiaryEntry, spawnCreature } from "../data/bestiary";
+import { findItemTemplate } from "../data/items";
 import { startEncounter, type Opening } from "../tactics/engine";
 import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "../tactics/grid";
 import { isPropId, standProp, type Prop } from "../tactics/props";

@@ -15,9 +15,9 @@ import {
   wornItem,
 } from "../../equipment";
 import { findItem, giveItem, itemCount, takeItem } from "../../inventoryEffects";
-import { BESTIARY } from "../../mock/bestiary";
-import { EQUIPMENT, findEquipment } from "../../mock/equipment";
-import { MOCK_ITEMS } from "../../mock/items";
+import { BESTIARY } from "../../data/bestiary";
+import { EQUIPMENT, findEquipment } from "../../data/equipment";
+import { ITEMS } from "../../data/items";
 import { COMPANIONS, HERO_ID, PROTAGONIST, STARTING_STASH, companionId, createProtagonist, joinParty, startingLoadout } from "../../party";
 import { SAVE_VERSION, newGame, parseSave, serializeSave } from "../../save";
 import { checkChance } from "../../story";
@@ -65,7 +65,7 @@ function assertWearable(who: string, characterClass: CharacterClass, equipment: 
 test("o catálogo não repete id nem pisa nos consumíveis, e todo mundo que veste alguma coisa veste o que existe e sabe usar", () => {
   const ids = EQUIPMENT.map((item) => item.id);
   assert.equal(new Set(ids).size, ids.length);
-  for (const id of ids) assert.equal(MOCK_ITEMS.some((item) => item.id === id), false, `${id} também é consumível`);
+  for (const id of ids) assert.equal(ITEMS.some((item) => item.id === id), false, `${id} também é consumível`);
 
   for (const order of ORDERS) assertWearable(`a classe ${order}`, order, startingEquipment(order));
   assertWearable("Endyru", PROTAGONIST.characterClass, PROTAGONIST.gear ?? {});
@@ -121,7 +121,7 @@ test("vestir tira do guardado e devolve o que estava no lugar; recusado, não mu
   // Arma de espadachim no mago: a peça continua guardada.
   addGear(owner, "gear-espada-reta");
   const before = structuredClone(owner);
-  assert.deepEqual(equip(owner, owner, "gear-espada-reta"), { ok: false, reason: "wrong_order" });
+  assert.deepEqual(equip(owner, owner, "gear-espada-reta"), { ok: false, reason: "wrong_class" });
   assert.deepEqual(owner, before);
 
   // O guardado é do grupo: um companheiro veste o que está com ele.

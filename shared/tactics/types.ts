@@ -12,7 +12,7 @@ import type { Surface, SurfaceId } from "./surfaces";
 
 export type TeamId = "party" | "enemy";
 
-/** Um atributo Tirán, ou "primary" = o primeiro atributo primário da Ordem de quem age. */
+/** Um atributo, ou "primary" = o primeiro atributo primário da classe de quem age. */
 export type AttributeRef = keyof Attributes | "primary";
 
 /**
@@ -181,7 +181,7 @@ export type CueWhen =
 
 /**
  * A condição que uma deixa põe em quem está na luta ao disparar: é a história
- * mexendo nas regras (o velho adianta a maré e os fiscais perdem a guarda).
+ * mexendo nas regras (a chuva aperta e o bicho fica Sem guarda, digamos).
  * `units` são os ids de quem a recebe; quem já caiu fica de fora.
  */
 export interface CueStatus {

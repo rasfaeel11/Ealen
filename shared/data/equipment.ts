@@ -25,7 +25,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Lâmina reta de dois gumes, de ferro-cru. É a arma da Espera: espera o golpe do outro e corta na volta.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 1, orders: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 1, classes: ["espadachim"] },
   },
   {
     id: "gear-espada-pesada",
@@ -33,7 +33,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Larga e pesada, de ferro-cru. Pede o golpe que decide logo, o do Bate-Primeiro.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "weapon", dice: { count: 1, sides: 10 }, range: 1, toHit: -1, orders: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 10 }, range: 1, toHit: -1, classes: ["espadachim"] },
   },
   {
     id: "gear-bordao",
@@ -41,7 +41,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Vara de madeira de quem anda a pé. Não tem texto nenhum gravado: é madeira.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "weapon", dice: { count: 1, sides: 6 }, range: 1, orders: ["atracao_repulsao"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 6 }, range: 1, classes: ["atracao_repulsao"] },
   },
   {
     id: "gear-gibao-de-couro",
@@ -59,7 +59,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "A mesma espada reta, temperada na receita do ferreiro de Ybytuguá. O fio entra em couro que antes só riscava.",
     category: "equipment",
     rarity: "uncommon",
-    data: { slot: "weapon", dice: { count: 1, sides: 10 }, range: 1, toHit: 1, orders: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 10 }, range: 1, toHit: 1, classes: ["espadachim"] },
   },
   {
     id: "gear-espada-pesada-temperada",
@@ -67,7 +67,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "A espada pesada, temperada na receita do ferreiro de Ybytuguá. Ainda pesa; agora pesa onde bate.",
     category: "equipment",
     rarity: "uncommon",
-    data: { slot: "weapon", dice: { count: 1, sides: 12 }, range: 1, orders: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 12 }, range: 1, classes: ["espadachim"] },
   },
   // --- A gente do rio e de Ymboripe ----------------------------------------
   {
@@ -76,7 +76,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Ponta de ferro-cru num cabo comprido. Arma de quem guarda corrente e cais: segura o outro longe.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 2, toHit: -1, orders: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 2, toHit: -1, classes: ["espadachim"] },
   },
   {
     id: "gear-besta",
@@ -84,7 +84,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Arco atravessado numa coronha, com manivela. Qualquer um aprende a usar numa tarde; é por isso que os castelos gostam.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 6, orders: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 6, classes: ["espadachim"] },
   },
   // --- Armaduras ------------------------------------------------------------
   {

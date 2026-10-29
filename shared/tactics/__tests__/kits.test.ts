@@ -3,8 +3,8 @@ import { test } from "node:test";
 import { CLASS_COMBAT_ARTS, CLASS_TECHNIQUES, STANCE_ORDER } from "../../combatArts";
 import { addItemToInventory } from "../../inventoryEffects";
 import { applyXpGain, xpToNextLevel } from "../../leveling";
-import { BESTIARY, creaturePlacement, spawnCreature } from "../../mock/bestiary";
-import { findItemTemplate } from "../../mock/items";
+import { BESTIARY, creaturePlacement, spawnCreature } from "../../data/bestiary";
+import { findItemTemplate } from "../../data/items";
 import { CLASS_INFO, type CharacterClass } from "../../types/characterClass";
 import {
   GIFTS,
@@ -275,12 +275,12 @@ test("a rede prende o passo de quem pega, pelos turnos que dura", () => {
       const { encounter } = setup(
         ["A..E"],
         (at) => [
-          unitFromCharacter(makeCharacter("A", { attributes: { olho: FIRST } }), { team: "party", pos: at("A"), gifts: ["net_cast"] }),
+          makeUnit("A", "party", at("A"), { attributes: { olho: FIRST }, kit: [TEST_KIT.rede] }),
           makeUnit("E", "enemy", at("E")),
         ],
         seed,
       );
-      const events = run(encounter, { type: "ability", unitId: "A", abilityId: GIFTS.net_cast.id, target: unit(encounter, "E").pos });
+      const events = run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.rede.id, target: unit(encounter, "E").pos });
       return { encounter, events };
     },
     ({ events }) => eventsOf(events, "statusApplied").some((event) => event.statusId === "netted"),

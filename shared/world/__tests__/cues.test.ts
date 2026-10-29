@@ -11,22 +11,22 @@ import type { AreaCue, AreaEnemy, AreaMap } from "../tiledMap";
  */
 
 const MAP = { props: [] } as unknown as AreaMap;
-const FOE = { id: "t1", name: "Espelho", creature: "encounter-teste-espelho", group: "primos", x: 0, y: 0 } as unknown as AreaEnemy;
+const FOE = { id: "t1", name: "Imitador", creature: "encounter-teste-imitador", group: "primos", x: 0, y: 0 } as unknown as AreaEnemy;
 
 function down(id: string, who: string): AreaCue {
   return { id, group: "primos", when: { kind: "down", who }, ends: "stop" };
 }
 
 test("a deixa que espera um companheiro cair só vale se ele está lutando", () => {
-  const cues = [down("jarupa_cai", "party:jarupa"), down("espelho_cai", "Espelho"), down("ela_cai", "hero")];
+  const cues = [down("jarupa_cai", "party:jarupa"), down("imitador_cai", "Imitador"), down("ela_cai", "hero")];
   const ids = (party: string[]) => fightCues(MAP, cues, [FOE], party).map((cue) => cue.id);
 
   // Jarupã no grupo e na luta: a deixa dele entra, com o id da unidade.
-  assert.deepEqual(ids([HERO_ID, companionId("jarupa")]), ["jarupa_cai", "espelho_cai", "ela_cai"]);
+  assert.deepEqual(ids([HERO_ID, companionId("jarupa")]), ["jarupa_cai", "imitador_cai", "ela_cai"]);
   assert.deepEqual(fightCues(MAP, cues, [FOE], [HERO_ID, companionId("jarupa")])[0].when, { kind: "down", unit: companionId("jarupa") });
 
   // Jarupã fora do grupo (ou só Oryndu acompanhando, que não luta): a deixa não vai pro motor.
-  assert.deepEqual(ids([HERO_ID]), ["espelho_cai", "ela_cai"]);
+  assert.deepEqual(ids([HERO_ID]), ["imitador_cai", "ela_cai"]);
   // E o inimigo que não entrou nesta luta também não.
   assert.deepEqual(fightCues(MAP, cues, [], [HERO_ID]).map((cue) => cue.id), ["ela_cai"]);
 });

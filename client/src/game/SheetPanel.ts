@@ -91,7 +91,7 @@ const SLOT_LABEL: Record<EquipmentSlot, string> = { weapon: "Arma", armor: "Arma
 
 const EQUIP_REFUSAL: Record<EquipError, string> = {
   not_owned: "Essa peça não está mais guardada.",
-  wrong_order: "A Ordem dele não sabe usar isso.",
+  wrong_class: "Isso não é arma de quem ele é.",
 };
 
 /** O que uma peça faz, em números. `brief` é a linha curta da ficha: sem dizer quem pode usar. */
@@ -103,7 +103,7 @@ export function describeEquipment(item: EquipmentItem, brief = false): string {
       `dano ${data.dice.count}d${data.dice.sides}`,
       data.range === 1 ? (brief ? "de perto" : "corpo a corpo") : `alcance ${data.range}`,
       ...(data.toHit ? [`acerto ${signed(data.toHit)}`] : []),
-      ...(data.orders && !brief ? [`só ${data.orders.map((order) => CLASS_INFO[order].name).join(", ")}`] : []),
+      ...(data.classes && !brief ? [`só ${data.classes.map((each) => CLASS_INFO[each].name).join(", ")}`] : []),
     ].join(" · ");
   }
   if (data.slot === "armor") return [`defesa ${signed(data.defense)}`, ...(data.speed ? [`movimento ${signed(data.speed)}`] : [])].join(" · ");
@@ -135,7 +135,7 @@ export interface SheetHost {
  * A ficha de quem está no grupo, aberta por cima do mundo parado: o retrato
  * (o mesmo boneco do mapa, ampliado e andando no lugar), quem é, os
  * atributos, o que veste, a escola, as condições que carrega e o que sabe
- * fazer — e, apagado, o que a Ordem ainda vai ensinar.
+ * fazer — e, apagado, o que ele ainda vai aprender.
  *
  * É daqui que se usa uma habilidade FORA de luta: uma cura, em alguém do
  * grupo; um golpe, pra abrir uma luta (ver shared/world/field.ts). E é daqui
@@ -256,7 +256,7 @@ export class SheetPanel {
       this.add(addBodyText(scene, WHO_X, y, `Carrega: ${afflictions.join(", ")}`, { fontSize: "17px", color: TEXT_COLORS.danger }));
     }
 
-    // Os atributos já com o que ele veste; o que o acessório soma fica ao lado, entre parênteses. Em dourado, o que a Ordem escala.
+    // Os atributos já com o que ele veste; o que o acessório soma fica ao lado, entre parênteses. Em dourado, o que a classe escala.
     const primary = info.primaryAttributes;
     const geared = gearedAttributes(character);
     const bonus = gearBonus(character);
@@ -289,7 +289,7 @@ export class SheetPanel {
 
   /** O que vale num lugar vazio. */
   private bareText(slot: EquipmentSlot): string {
-    return slot === "weapon" ? "mãos vazias: 1d6, o natural da Ordem" : "nada";
+    return slot === "weapon" ? "mãos vazias: 1d6" : "nada";
   }
 
   private setFooter(text: string): void {
@@ -420,7 +420,7 @@ export class SheetPanel {
           const refusal = equipRefusal(wearer, item);
           const count = stored.filter((other) => other.id === item.id).length;
           return {
-            label: `${item.name}${count > 1 ? `  x${count}` : ""}${refusal ? "  ·  outra Ordem" : ""}`,
+            label: `${item.name}${count > 1 ? `  x${count}` : ""}${refusal ? "  ·  não é arma dele" : ""}`,
             onFocus: () =>
               this.detail.setText(
                 `${item.description}\n\n${describeEquipment(item)}\n\n${

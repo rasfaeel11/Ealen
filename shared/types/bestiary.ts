@@ -3,7 +3,7 @@ import type { AiProfile, AiQuirks } from "../tactics/types";
 import type { Character } from "./character";
 import type { Magic } from "../mana";
 
-/** Chance de drop de um item ao vencer a criatura (0 a 1). `itemId` é um consumível (../mock/items.ts) ou uma peça de equipamento (../mock/equipment.ts). */
+/** Chance de drop de um item ao vencer a criatura (0 a 1). `itemId` é um consumível (../data/items.ts) ou uma peça de equipamento (../data/equipment.ts). */
 export interface LootDrop {
   itemId: string;
   chance: number;

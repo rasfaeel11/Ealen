@@ -52,7 +52,7 @@ export interface StoryMemory {
   clock: StoryClock | null;
   /**
    * As condições que a história pôs em alguém e que duram ENTRE lutas (o
-   * braço de Lish), pelo id da ficha: quem as tem entra em toda luta com
+   * braço ferido de Jarupã), pelo id da ficha: quem as tem entra em toda luta com
    * elas, até a história tirar. São ids de STATUSES (../tactics/statuses.ts).
    */
   afflictions: Record<string, string[]>;
@@ -205,10 +205,14 @@ function readAfflictions(raw: unknown): Record<string, string[]> {
   return afflictions;
 }
 
+/** A chave que diz que o texto é o que `packStory` junta. Os saves de antes da limpeza do Eälen marcavam com OLD_STORY_MARK. */
+const STORY_MARK = "historia";
+const OLD_STORY_MARK = "ealen";
+
 /** Junta o estado do Ink (`ink`, o JSON dele) com o resto do que a história guarda no texto que vai pro save. */
 export function packStory(ink: string, memory: StoryMemory): string {
   return JSON.stringify({
-    ealen: 1,
+    [STORY_MARK]: 1,
     ink: JSON.parse(ink) as unknown,
     journal: memory.journal,
     clock: memory.clock,
@@ -228,7 +232,7 @@ export function unpackStory(saved: string): { ink: string; memory: StoryMemory }
   } catch {
     return { ink: saved, memory: emptyMemory() };
   }
-  if (!isObject(parsed) || !("ealen" in parsed) || !isObject(parsed.ink)) return { ink: saved, memory: emptyMemory() };
+  if (!isObject(parsed) || !(STORY_MARK in parsed || OLD_STORY_MARK in parsed) || !isObject(parsed.ink)) return { ink: saved, memory: emptyMemory() };
   return {
     ink: JSON.stringify(parsed.ink),
     memory: {

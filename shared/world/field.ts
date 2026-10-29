@@ -2,7 +2,7 @@ import { breathOf, healCap, healToll } from "../breath";
 import { CONCEPTS, manaLimit, manaOf } from "../mana";
 import { gearedAttributes } from "../equipment";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
-import { findBestiaryEntry, spawnCreature } from "../mock/bestiary";
+import { findBestiaryEntry, spawnCreature } from "../data/bestiary";
 import { castOf, keepsVow, magicOf } from "../party";
 import { GIFTS, abilitiesFor, engravedAbilities } from "../tactics/abilities";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
@@ -45,7 +45,7 @@ import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
 
 type Knower = Pick<Character, "id" | "characterClass" | "level" | "equipment" | "arts" | "engraved">;
 
-/** Tudo que uma ficha sabe fazer: o kit da Ordem, o que só ela sabe (`gifts` no elenco) e o que deixou gravado. */
+/** Tudo que uma ficha sabe fazer: o kit da classe, o que só ela sabe (`gifts` no elenco) e o que deixou gravado. */
 export function sheetAbilities(character: Knower): Ability[] {
   const gifts = castOf(character)?.gifts ?? [];
   const own = [...abilitiesFor(character), ...gifts.map((gift): Ability => ({ ...GIFTS[gift] }))];

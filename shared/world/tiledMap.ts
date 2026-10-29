@@ -65,7 +65,7 @@ import { CLASS_INFO } from "../types/characterClass";
  *                                 metade da vida (ou ao tanto por cento dito)
  *                `down Nome`      quando cai o inimigo desse grupo cujo objeto
  *                                 tem esse Nome; `down hero` é a protagonista,
- *                                 `down party:lish` um companheiro
+ *                                 `down party:jarupa` um companheiro
  *                `broken Nome`    quando quebra o destrutível com esse Nome
  *                `used Nome`      quando alguém do grupo mexe no objeto com
  *                                 esse Nome; `used A, B, C` espera os três
@@ -81,7 +81,7 @@ import { CLASS_INFO } from "../types/characterClass";
  *              `apply` é a condição que cai sobre alguém nessa hora — o id em
  *              STATUSES e por quantos turnos (`exposed 2`; sem número, 1) — e
  *              `on` diz sobre quem: `enemies` (o padrão), `party`, `hero`,
- *              `party:lish` ou o Nome de um inimigo do grupo. `goal` é o
+ *              `party:jarupa` ou o Nome de um inimigo do grupo. `goal` é o
  *              objetivo que a deixa representa, escrito pro jogador ("Toque o
  *              sino"): fica à vista durante a luta até ela disparar, com a
  *              conta de rodadas (numa de `round`) ou de objetos (numa de `used`).
