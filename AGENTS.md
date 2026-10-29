@@ -537,6 +537,10 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
   os testes do motor exercitam virou kit de teste (`abrir`, `rede`), e os mapas de teste viraram `campo`, `trilha` e
   `porao`, com gente neutra. A ficha não fala mais em Ordem ("Isso não é arma de quem ele é"), e a arma diz quem a
   usa por `classes`. O `docs/motor.md` foi reescrito com os nomes deste jogo.
+- **As peças guardadas na mochila** (do ramo `worktree-equipamento`, de 2026-10-09). O equipamento daquele ramo já
+  estava todo no `main`, refeito; só faltava isto: a mochila (`I`) lista, depois dos itens, as peças que ninguém
+  veste — as espadas temperadas de Thrykar, o que cai de inimigo —, com o que cada uma faz, e Enter leva à ficha pra
+  vestir. As peças do ramo eram do mundo do Eälen e não entraram.
 
 ## 9. Onde isto está no cânone
 

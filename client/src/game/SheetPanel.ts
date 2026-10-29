@@ -87,7 +87,7 @@ const TRAIT_TEXT: Record<keyof typeof STYLES, string> = {
   baluarte: "tira um tanto fixo de cada golpe que recebe",
 };
 
-const SLOT_LABEL: Record<EquipmentSlot, string> = { weapon: "Arma", armor: "Armadura", accessory: "Acessório" };
+export const SLOT_LABEL: Record<EquipmentSlot, string> = { weapon: "Arma", armor: "Armadura", accessory: "Acessório" };
 
 const EQUIP_REFUSAL: Record<EquipError, string> = {
   not_owned: "Essa peça não está mais guardada.",

@@ -2,12 +2,14 @@ import * as Phaser from "phaser";
 import {
   describePurse,
   fights,
+  storedGear,
   usableOutside,
   type Character,
   type ConsumableItem,
   type FieldItemError,
   type FieldItemResult,
 } from "@jogo/shared";
+import { SLOT_LABEL, describeEquipment } from "./SheetPanel";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
 import { Menu, addBodyText, addPanel, addTitleText, type MenuOption } from "./ui";
 
@@ -69,6 +71,8 @@ export interface BagHost {
  * A mochila do grupo, aberta por cima do mundo parado: o que há nela, o que
  * cada coisa é e faz, e — pro que cura — usar em alguém ali mesmo. O que só
  * serve numa luta aparece, mas fica pra ela. A regra é de shared/world/field.ts.
+ * Depois dos itens vêm as peças que ninguém veste (o guardado do grupo, ver
+ * shared/equipment.ts): aparecem aqui, e vestem-se pela ficha.
  *
  * ↑/↓ escolhem o item; Enter usa; C vai pra ficha; Esc ou I fecham.
  */
@@ -132,18 +136,34 @@ export class BagPanel {
     const inventory = this.host.owner.inventory;
     const slots = [...(inventory?.slots ?? [])].sort((a, b) => a.slotIndex - b.slotIndex);
     this.title.setText(`MOCHILA  ${slots.length}/${inventory?.maxSlots ?? 0}  ·  bolsa: ${describePurse(this.host.owner)}`);
-    if (slots.length === 0) this.detail.setText("Nada na mochila.\n\nO que os vencidos carregavam sem usar fica pra quem vence.");
+    // Depois dos itens, as peças que ninguém veste (o guardado do grupo): aparecem aqui, vestem-se pela ficha.
+    const stored = storedGear(this.host.owner);
+    const pieces = [...new Map(stored.map((piece) => [piece.id, piece])).values()];
+    if (slots.length === 0 && pieces.length === 0) {
+      this.detail.setText("Nada na mochila.\n\nO que os vencidos carregavam sem usar fica pra quem vence.");
+    }
 
     this.setMenu(
-      slots.map(({ item, quantity }) => {
-        const charges = item.data.maxUses > 1 ? `  (${item.data.usesRemaining}/${item.data.maxUses} usos)` : "";
-        const where = usableOutside(item) ? "Enter: usar agora em alguém do grupo." : REFUSAL.only_in_fight;
-        return {
-          label: `${item.name}  x${quantity}${charges}`,
-          onFocus: () => this.detail.setText(`${RARITY[item.rarity]}\n\n${item.description}\n\n${describeEffect(item)}\n\n${where}`),
-          onSelect: () => (usableOutside(item) ? this.chooseTarget(item) : this.say(REFUSAL.only_in_fight)),
-        };
-      }),
+      [
+        ...slots.map(({ item, quantity }) => {
+          const charges = item.data.maxUses > 1 ? `  (${item.data.usesRemaining}/${item.data.maxUses} usos)` : "";
+          const where = usableOutside(item) ? "Enter: usar agora em alguém do grupo." : REFUSAL.only_in_fight;
+          return {
+            label: `${item.name}  x${quantity}${charges}`,
+            onFocus: () => this.detail.setText(`${RARITY[item.rarity]}\n\n${item.description}\n\n${describeEffect(item)}\n\n${where}`),
+            onSelect: () => (usableOutside(item) ? this.chooseTarget(item) : this.say(REFUSAL.only_in_fight)),
+          };
+        }),
+        ...pieces.map((piece) => {
+          const count = stored.filter((other) => other.id === piece.id).length;
+          return {
+            label: `${piece.name}${count > 1 ? `  x${count}` : ""}  ·  ${SLOT_LABEL[piece.data.slot].toLowerCase()}`,
+            onFocus: () =>
+              this.detail.setText(`Guardada\n\n${piece.description}\n\n${describeEquipment(piece)}\n\nVeste-se pela ficha: Enter (ou C), depois E.`),
+            onSelect: () => this.host.onSheet(),
+          };
+        }),
+      ],
       () => this.host.onClose(),
     );
   }
