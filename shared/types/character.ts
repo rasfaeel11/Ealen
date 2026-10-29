@@ -30,6 +30,11 @@ export interface Character {
    * Ausente = o que o elenco diz (ver magicOf em ../party.ts).
    */
   mageLevel?: number;
+  /**
+   * O nível de aura, 1 a 7 (`magia` §7.2), em quem luta de espada: Jarupã e Xanduí chegam no Fio, e quem o sobe é
+   * o texto (`aura_rise`, ver ../story/runner.ts). Ausente = o que o elenco diz (ver auraOf em ../party.ts).
+   */
+  aura?: number;
   /** Ausente = personagem ainda não tem mochila inicializada. */
   inventory?: Inventory<ConsumableItem>;
   /** O dinheiro de quem leva a mochila, em cobre e em prata (ver ../purse.ts). Ausente = bolsa vazia. */

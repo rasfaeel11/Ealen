@@ -76,7 +76,7 @@ function makeHost(attribute: number, seed: number): StoryHost {
 }
 
 /** O que o trecho de uma deixa que NÃO encerra a luta não pode fazer: mexer na ficha ou no grupo. */
-const MID_FIGHT_FORBIDDEN: ReadonlySet<string> = new Set(["item", "itemTaken", "coins", "xp", "joined", "left", "mageRose"]);
+const MID_FIGHT_FORBIDDEN: ReadonlySet<string> = new Set(["item", "itemTaken", "coins", "xp", "joined", "left", "mageRose", "auraRose"]);
 
 /** Quantas escolhas seguidas uma conversa aguenta antes de ser considerada um laço sem saída. */
 const MAX_DEPTH = 6;
@@ -247,6 +247,8 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.equal(host.character.mageLevel, 4);
   assert.deepEqual(play("leitura_na_margem", "Atravessar a ponte"), { fight: "ponte" });
   play("ponte_caiu");
+  // Na ponte, Jarupã e Xanduí chegam ao Corpo de aura.
+  assert.deepEqual(host.companions.filter((member) => member.character.aura === 3).map((member) => member.character.name).sort(), ["Jarupã", "Xanduí"]);
   assert.equal(runner.flag("castelao_vencido"), true);
   assert.equal(runner.flag("prova"), true);
 

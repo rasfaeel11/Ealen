@@ -8,6 +8,7 @@ import {
   STATUSES,
   STYLES,
   auraName,
+  auraOf,
   breathOf,
   canAfford,
   castOf,
@@ -237,8 +238,9 @@ export class SheetPanel {
       lines.push(`Gravadas ${character.engraved?.length ?? 0}/${engravingSlots(character)}  ·  grava-se no descanso`);
     }
     if (cast?.style) {
-      const grade = proficiency(cast.style.grade, cast.aura);
-      const aura = cast.aura !== undefined ? `  ·  aura ${auraName(cast.aura)}` : "";
+      const level = auraOf(character);
+      const grade = proficiency(cast.style.grade, level);
+      const aura = level !== undefined ? `  ·  aura ${auraName(level)}` : "";
       lines.push(`${styleLabel({ style: cast.style.id, grade })}${aura}  ·  ${STYLES[cast.style.id].trait}`);
     }
     let y = TOP + PORTRAIT + 14;

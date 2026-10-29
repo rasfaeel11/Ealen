@@ -75,6 +75,8 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
         text: `Endyru chegou ao ${event.level}.${event.learned.length ? ` Aprendeu ${event.learned.join(" e ")}.` : ""}`,
         color: TEXT_COLORS.goldBright,
       };
+    case "auraRose":
+      return { text: `${event.name} chegou ao ${event.level}. ${event.style}.`, color: TEXT_COLORS.goldBright };
     case "itemTaken":
       return { text: `Entregou: ${event.item.name}.`, color: TEXT_COLORS.item };
     case "joined":

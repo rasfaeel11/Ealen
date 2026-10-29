@@ -67,6 +67,12 @@ Xanduí: Legítima defesa. Também tem nome. Eu ouvi um juiz dizer, em Kuatiarap
 Jarupã: E quem ganhou?
 Xanduí: Um dos dois. Mas a palavra era essa.
 Quando Jarupã se vira pra amarrar o castelão, Jurendy já está subindo a trilha, sem o livro, sem olhar pra trás. Ninguém corre atrás dele.
+Jarupã limpa a espada na manga e fica olhando a lâmina, do jeito que se conta um troco que veio a mais.
+Jarupã: Hoje ela pesou menos.
+Xanduí: Hoje você bateu menos.
+Ela passa o polegar no fio da dela e põe de volta na bainha sem olhar.
+~ aura_rise("jarupa", 3)
+~ aura_rise("xandui", 3)
 Mbyraku está sentado na ponte, com a mão no flanco. Endyru tira do gibão dele uma carta aberta, com a dobra gasta de quem já leu muitas vezes.
 Endyru: "Ao senhor de Ymboripe, dos conselheiros de Ybytuguá que assinam abaixo. Se o rio continuar fechado até a lua cheia, levamos ao conselho os termos do duque, e o porto entra no ducado com as guildas como estão."
 Jarupã: Quem assina?

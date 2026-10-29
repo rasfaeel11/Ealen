@@ -4,8 +4,9 @@ import { findItem, giveItem, itemCount, takeItem, type GameItem } from "../inven
 import { applyXpGain } from "../leveling";
 import { MAGE_LEVELS, mageLevelName } from "../mana";
 import { coinsOf, earnCoins, isCoin, payCoins, type Coin } from "../purse";
-import { HERO_ID, castId, isInParty, joinParty, leaveParty, magicOf, presentCompanions, type PartyMember } from "../party";
+import { HERO_ID, auraOf, castId, castOf, isInParty, joinParty, leaveParty, magicOf, presentCompanions, type PartyMember } from "../party";
 import { learnedAtMage } from "../tactics/abilities";
+import { AURA_LEVELS, auraName, proficiency, styleLabel } from "../tactics/styles";
 import { STATUSES, isStatusId, passesWithRest, type StatusId } from "../tactics/statuses";
 import { AREAS } from "../world/areas";
 import type { RngHolder } from "../tactics/rng";
@@ -64,6 +65,9 @@ import {
  *   earn("cobre", 30)        põe na bolsa
  *   mage_rise(4)             sobe o protagonista a esse nível de mago (4 é o
  *                            Círculo); só sobe. mage_level() diz o de agora
+ *   aura_rise("jarupa", 3)   sobe um companheiro do grupo a esse nível de aura
+ *                            (3 é o Corpo), e com ele o teto da proficiência
+ *                            na escola; só sobe, e só em quem já tem ficha
  *   start_fight("grupo")     quando a conversa acabar, luta com esse grupo
  *                            de inimigos da área em que se está
  *   travel("area", "ponto")  quando a conversa acabar, leva o personagem a
@@ -121,6 +125,8 @@ export type StoryEvent =
   | { type: "xp"; amount: number; levelUp: LevelUpResult }
   /** O protagonista chegou a um nível de mago novo (`level` é o nome dele, "Círculo") e aprendeu `learned`. */
   | { type: "mageRose"; level: string; learned: string[] }
+  /** `name` chegou a um nível de aura novo (`level`, "Corpo"), e a escola dele ficou assim (`style`, "Gryskar 3"). */
+  | { type: "auraRose"; name: string; level: string; style: string }
   /** A conversa termina em luta com este grupo de inimigos da área atual. */
   | { type: "fight"; group: string }
   /** A conversa termina com o personagem levado a outro lugar. */
@@ -303,6 +309,18 @@ export class StoryRunner {
       for (let mage = magic.level + 1; mage <= to; mage++) learned.push(...learnedAtMage(host.character.characterClass, mage).map(({ name }) => name));
       host.character.mageLevel = to;
       this.pending.push({ type: "mageRose", level: mageLevelName(to), learned });
+    });
+    story.BindExternalFunction("aura_rise", (who: string, level: number) => {
+      // Como o nível de mago: só sobe, e só em quem luta de espada. Quem nunca andou com o grupo não tem ficha pra subir.
+      const { id } = this.sheet(who);
+      const character = this.host.companions.find((member) => member.character.id === id)?.character;
+      const style = character && castOf(character)?.style;
+      const from = character && auraOf(character);
+      const to = Math.min(AURA_LEVELS.length, Math.floor(Number(level)));
+      if (!character || !style || from === undefined || !(to > from)) return;
+      character.aura = to;
+      const grade = proficiency(style.grade, to);
+      this.pending.push({ type: "auraRose", name: character.name, level: auraName(to), style: styleLabel({ style: style.id, grade }) });
     });
     story.BindExternalFunction("join_party", (key: string) => {
       const joined = joinParty(host.companions, String(key), host.character.level);

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Compiler, CompilerOptions } from "inkjs/full";
+import { auraOf, joinParty } from "../../party";
 import { passesWithRest } from "../../tactics/statuses";
 import type { Character } from "../../types/character";
 import {
@@ -25,6 +26,7 @@ EXTERNAL people()
 EXTERNAL level()
 EXTERNAL mage_level()
 EXTERNAL mage_rise(level)
+EXTERNAL aura_rise(who, level)
 EXTERNAL has_item(id)
 EXTERNAL defeated(group)
 EXTERNAL check(name, difficulty)
@@ -630,6 +632,30 @@ test("mage_rise sobe Endyru de nível de mago (só sobe) e anuncia o que ele apr
   // Chamado de novo no mesmo nível, ou pra baixo, não faz nada.
   assert.deepEqual(events, [{ type: "mageRose", level: "Círculo", learned: ["Desarmar", "Arremesso"] }]);
   assert.equal(host.character.mageLevel, 4);
+});
+
+const AURA = compile(`
+=== corpo ===
+~ aura_rise("jarupa", 3)
+~ aura_rise("jarupa", 3)
+~ aura_rise("jarupa", 1)
+~ aura_rise("xandui", 3)
+~ aura_rise("oryndu", 3)
+-> END
+`);
+
+test("aura_rise sobe um espadachim do grupo de aura (só sobe), e a escola dele vai junto até o grau que ele sabe", () => {
+  const host = makeHost();
+  joinParty(host.companions, "jarupa", 1);
+  joinParty(host.companions, "oryndu", 1);
+  const step = new StoryRunner(AURA, host).start("corpo");
+
+  const events = step.beats.flatMap((beat) => (beat.kind === "event" ? [beat.event] : []));
+  // De novo no mesmo nível, ou pra baixo, nada; quem nunca andou com o grupo (Xanduí) e quem não luta (Oryndu), nada.
+  assert.deepEqual(events, [{ type: "auraRose", name: "Jarupã", level: "Corpo", style: "Gryskar III" }]);
+  const jarupa = host.companions.find((member) => member.character.name === "Jarupã")!.character;
+  assert.equal(jarupa.aura, 3);
+  assert.equal(auraOf(jarupa), 3);
 });
 
 const TOLL = compile(`

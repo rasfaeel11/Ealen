@@ -14,6 +14,7 @@ EXTERNAL people()           // o povo dele: "humano"
 EXTERNAL level()
 EXTERNAL mage_level()        // o nível de mago de Endyru: 3 é a Página, 4 o Círculo
 EXTERNAL mage_rise(level)    // mage_rise(4): Endyru chega ao Círculo e aprende o que ele dá. Só sobe
+EXTERNAL aura_rise(who, level)   // aura_rise("jarupa", 3): ele chega ao Corpo, e a escola dele sobe junto até o grau que ele sabe. Só sobe
 EXTERNAL has_item(id)
 EXTERNAL defeated(group)    // defeated("ymonha:pedagio"): aquele grupo de inimigos já foi vencido?
 EXTERNAL check(name, difficulty)   // rola um teste agora, no meio do texto: {check("saber", 13): ... | ...}

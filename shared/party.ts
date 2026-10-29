@@ -54,7 +54,7 @@ export interface CastMember {
   support?: SupportId;
   /** A escola de espada e a proficiência nela. Sem isto, fica fora do triângulo. */
   style?: { id: StyleId; grade: number };
-  /** O nível de aura, 1 a 7: a proficiência na escola nunca passa dele. */
+  /** O nível de aura com que ele CHEGA, 1 a 7 (o texto o sobe, ver auraOf): a proficiência na escola nunca passa dele. */
   aura?: number;
   /** O que só ele sabe fazer, além do kit da classe. */
   gifts?: readonly GiftId[];
@@ -75,21 +75,23 @@ export const PROTAGONIST: CastMember = {
 
 /** Quem pode entrar no grupo, pela chave que o texto usa (`join_party("jarupa")`). */
 export const COMPANIONS: Record<string, CastMember> = {
-  // Do Gryskar, o Bate-Primeiro: bate primeiro e pergunta depois. Aura baixa (Fio), e a espada pesada da escola.
+  // Do Gryskar, o Bate-Primeiro: bate primeiro e pergunta depois. Aura baixa (Fio), e a espada pesada da escola. O
+  // grau 3 é o que ele sabe da escola; até a aura chegar ao Corpo (`aura_rise`), a proficiência fica no 2.
   jarupa: {
     name: "Jarupã",
     race: "humano",
     characterClass: "espadachim",
-    style: { id: "gryskar", grade: 2 },
+    style: { id: "gryskar", grade: 3 },
     aura: 2,
     gear: { weapon: "gear-espada-pesada", armor: "gear-gibao-de-couro" },
   },
-  // Da Ipojy, a Espera: nunca dá o primeiro golpe (o voto). Aura baixa (Fio), e a espada reta da escola.
+  // Da Ipojy, a Espera: nunca dá o primeiro golpe (o voto). Aura baixa (Fio), e a espada reta da escola. Como
+  // Jarupã, sabe a escola no grau 3, e a aura o corta no 2 até o Corpo.
   xandui: {
     name: "Xanduí",
     race: "humano",
     characterClass: "espadachim",
-    style: { id: "ipojy", grade: 2 },
+    style: { id: "ipojy", grade: 3 },
     aura: 2,
     gear: { weapon: "gear-espada-reta", armor: "gear-gibao-de-couro" },
   },
@@ -123,6 +125,15 @@ export function castOf(character: Pick<Character, "id">): CastMember | undefined
 export function magicOf(character: Pick<Character, "id" | "mageLevel">): Magic | undefined {
   const magic = castOf(character)?.magic;
   return magic ? { ...magic, level: character.mageLevel ?? magic.level } : undefined;
+}
+
+/**
+ * O nível de aura de quem tem a ficha `character`, se ele luta de espada (ver ./tactics/styles.ts): o da ficha
+ * (`aura`, que o texto sobe), e na ficha que nunca o guardou, o do elenco.
+ */
+export function auraOf(character: Pick<Character, "id" | "aura">): number | undefined {
+  const cast = castOf(character);
+  return cast?.aura === undefined ? undefined : (character.aura ?? cast.aura);
 }
 
 /** O apoio que a ficha `character` oferece numa luta, se ela é de quem acompanha sem lutar. Undefined em quem luta. */

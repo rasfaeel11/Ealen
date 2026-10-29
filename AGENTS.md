@@ -292,7 +292,6 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 | # | Task | O que é |
 |---|---|---|
 | 31 | **A voz do `jogo.md` em todo o texto** | Passar as falas dos cinco `.ink` pelo guia de diálogos (`jogo.md` §6). Jarupã não lê e não tem vergonha disso (sai o "Eu sei ler o principal"), dá regra de estrada inventada na hora e chama ferida de "raso". Xanduí fala metade, confere correia enquanto os outros discutem, tem a última palavra e repete termo de juiz de ouvido ("Quebra de contrato"). Endyru dá o número exato e corrige os outros até o ato 3; depois, corta a frase no meio. Oryndu bate o remo, chama de "rapaz", fala de lodo, corda e vento. Vocabulário do mundo (Verso, medida, palmo, fôlego, lua). Regra da ponte: a última fala antes de cada luta aponta pra mecânica dela. |
-| 46 | **De Fio a Corpo** | O `jogo.md` põe Jarupã e Xanduí indo de Fio a Corpo; hoje a aura não sobe. Um `aura_rise` como o `mage_rise`, numa cena (sugestão: depois da ponte, task 38), que sobe o teto da proficiência pra 3. Junto com a task 26, se o autor aprovar os dons. |
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
 Texto novo de história vai como proposta pro autor antes de entrar (§1).
@@ -510,6 +509,11 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   ("Arrancaram a tranca de madrugada"). No motor, o empurrão que bate (`slammed`): empurrado (não puxado) contra
   parede, destrutível ou corpo, o alvo leva 2 por quadrado que faltou andar (`SLAM_PER_TILE`), sem armadura, e o
   destrutível leva o mesmo — o barril de óleo quebra e derrama fogo. A IA ainda não mira o choque.
+- **46. De Fio a Corpo.** A aura agora fica na ficha (`aura`, lida por `auraOf`; sem ela, a do elenco), como o nível de
+  mago. O texto a sobe com `aura_rise("jarupa", 3)`: só sobe, só em quem luta de espada e já andou com o grupo, e a
+  caixa anuncia "Jarupã chegou ao Corpo. Gryskar III." No elenco, Jarupã e Xanduí sabem a escola no grau 3, e o Fio os
+  corta no 2 até a subida. Ela vem em `ponte_caiu`, depois que Jurendy foge: "Hoje ela pesou menos." / "Hoje você
+  bateu menos." Os dons (task 26) continuam esperando o autor.
 
 ## 9. Onde isto está no cânone
 
