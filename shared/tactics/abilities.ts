@@ -168,10 +168,17 @@ function artOf(characterClass: CharacterClass, slug: string): (CombatArt & { lev
 
 /**
  * Habilidades que são de UMA pessoa, não de uma classe: o que alguém do
- * elenco sabe fazer além do kit (`gifts` em ../party.ts). Ninguém do trio tem
- * uma ainda; as três que existem eram do elenco do Eälen e ficam como as
- * peças que exercitam (`foes`, `limit`, `backlash`, ação bônus), até alguém
- * do elenco ganhar a dele. Os números são provisórios como o resto.
+ * elenco sabe fazer além do kit (`gifts` em ../party.ts). Nenhum é golpe-selo
+ * (`magia` §5.6): é o costume de cada um, não técnica de iniciação. Os números
+ * são provisórios como o resto.
+ *
+ * - `shoulder` é de Jarupã: o ombro antes da espada. Empurra um quadrado, e
+ *   quem estava de costas pra parede bate nela (ver push em ./engine.ts).
+ * - `hold_the_lunge` é de Xanduí: ela não bate, segura. Quem fica Seguro quase
+ *   não anda — o bicho em seco não volta pra água. É golpe: o voto da Ipojy vale.
+ *
+ * As três de baixo eram do elenco do Eälen e ficam como as peças que exercitam
+ * (`foes`, `limit`, `backlash`), sem dono.
  *
  * - `tide_pull` adianta a maré e abre a guarda de todo inimigo de pé. Uma vez
  *   por luta, e cobra — Fôlego, e o turno seguinte de quem a fez.
@@ -181,6 +188,30 @@ function artOf(characterClass: CharacterClass, slug: string): (CombatArt & { lev
  *   turno.
  */
 export const GIFTS = {
+  shoulder: {
+    id: "gift.shoulder",
+    name: "Ombrada",
+    flavor: "O ombro antes da espada. Quem estava de costas pra parede descobre a parede.",
+    cost: "bonus",
+    range: 1,
+    targets: "enemy",
+    attack: { toHit: 1 },
+    effects: [{ kind: "push", distance: 1 }],
+    breath: 1,
+    cooldown: 2,
+  },
+  hold_the_lunge: {
+    id: "gift.hold_the_lunge",
+    name: "Segurar o Bote",
+    flavor: "Ela não bate: segura. O braço que mostrou onde ia estar fica preso ali.",
+    cost: "bonus",
+    range: 1,
+    targets: "enemy",
+    attack: { toHit: 1 },
+    effects: [{ kind: "status", statusId: "held", turns: 2 }],
+    breath: 2,
+    cooldown: 3,
+  },
   tide_pull: {
     id: "gift.tide_pull",
     name: "Adiantar a Maré",

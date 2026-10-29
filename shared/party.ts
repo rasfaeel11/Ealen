@@ -83,6 +83,7 @@ export const COMPANIONS: Record<string, CastMember> = {
     characterClass: "espadachim",
     style: { id: "gryskar", grade: 3 },
     aura: 2,
+    gifts: ["shoulder"],
     gear: { weapon: "gear-espada-pesada", armor: "gear-gibao-de-couro" },
   },
   // Da Ipojy, a Espera: nunca dá o primeiro golpe (o voto). Aura baixa (Fio), e a espada reta da escola. Como
@@ -93,6 +94,7 @@ export const COMPANIONS: Record<string, CastMember> = {
     characterClass: "espadachim",
     style: { id: "ipojy", grade: 3 },
     aura: 2,
+    gifts: ["hold_the_lunge"],
     gear: { weapon: "gear-espada-reta", armor: "gear-gibao-de-couro" },
   },
   // Não luta: lê a água. A classe é só a cara dele no mapa, por enquanto.

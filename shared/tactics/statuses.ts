@@ -116,6 +116,8 @@ export const STATUSES = {
   cracked: { id: "cracked", name: "Trincado", damageTaken: 3 },
   /** Rachador: o padrão quebrado de vez. Todo golpe acha uma abertura nova. */
   broken_symmetry: { id: "broken_symmetry", name: "Simetria quebrada", damageTaken: 4, attributeBonus: { couro: -1 } },
+  /** Xanduí segurando (o `hold_the_lunge`): o passo preso nela. Com o Em seco, o bicho de rio não volta pra água. */
+  held: { id: "held", name: "Seguro", speed: -4 },
   /** A rede aberta nas pernas de alguém (o `net_cast`). */
   netted: { id: "netted", name: "Enredado", speed: -4 },
 } satisfies Record<string, StatusTemplate>;

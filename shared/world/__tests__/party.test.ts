@@ -262,8 +262,9 @@ test("a escola, a aura e a magia vêm do elenco e do bestiário, a cada luta", (
   assert.equal(unit(hero.id).style, undefined);
   assert.deepEqual([unit(hero.id).mana, unit(hero.id).manaLimit, unit(hero.id).concept], [maxMana(hero, PROTAGONIST.magic!), 3, "atracao_repulsao"]);
   assert.equal(unit(jarupa.id).mana, undefined);
-  // Ninguém do trio tem habilidade própria além do kit.
-  for (const id of [hero.id, jarupa.id, xandui.id]) assert.ok(!unit(id).abilities.some((ability) => ability.id.startsWith("gift.")));
+  // Cada espadachim traz o dom dele, além do kit: a Ombrada de Jarupã, o Segurar o Bote de Xanduí. Endyru, nenhum.
+  const gifts = (id: string) => unit(id).abilities.filter((ability) => ability.id.startsWith("gift.")).map((ability) => ability.id);
+  assert.deepEqual([gifts(hero.id), gifts(jarupa.id), gifts(xandui.id)], [[], ["gift.shoulder"], ["gift.hold_the_lunge"]]);
   assert.deepEqual([unit(servant.id).style, unit(servant.id).grade], ["baluarte", 2]);
 
   // O que a história pôs em Jarupã entra com ele, e fica.

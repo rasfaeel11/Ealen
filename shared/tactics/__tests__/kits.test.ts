@@ -8,6 +8,7 @@ import { findItemTemplate } from "../../mock/items";
 import { CLASS_INFO, type CharacterClass } from "../../types/characterClass";
 import {
   GIFTS,
+  applyCommand,
   STATUSES,
   abilitiesFor,
   attackOdds,
@@ -448,4 +449,53 @@ test("a gente do mundo luta com o que é: humano, da escola dela, com o que vest
   assert.deepEqual([unit.manaLimit, unit.concept], [3, "atracao_repulsao"]);
   assert.ok(unit.mana! > 0);
   assert.ok(unit.abilities.some((ability) => isRecited(ability)));
+});
+
+test("a Ombrada de Jarupã empurra um quadrado, e contra a parede quem apanha bate nela", () => {
+  const { events } = seedWhere(
+    (seed) => {
+      const { encounter } = setup(
+        ["AE#"],
+        (at) => [
+          unitFromCharacter(makeCharacter("A", { attributes: { olho: FIRST } }), { team: "party", pos: at("A"), gifts: ["shoulder"] }),
+          makeUnit("E", "enemy", at("E")),
+        ],
+        seed,
+      );
+      const events = run(encounter, { type: "ability", unitId: "A", abilityId: GIFTS.shoulder.id, target: unit(encounter, "E").pos });
+      return { encounter, events };
+    },
+    ({ events }) => eventsOf(events, "slammed").length > 0,
+  );
+  assert.equal(eventsOf(events, "slammed")[0].into, "wall");
+});
+
+test("Segurar o Bote prende o passo de quem Xanduí segura, e o voto vale: antes de a luta abrir, ela não segura ninguém", () => {
+  const scene = (seed: number) => {
+    const { encounter } = setup(
+      ["AE"],
+      (at) => [
+        unitFromCharacter(makeCharacter("A", { attributes: { olho: FIRST } }), { team: "party", pos: at("A"), style: { id: "ipojy", grade: 2 }, gifts: ["hold_the_lunge"] }),
+        makeUnit("E", "enemy", at("E")),
+      ],
+      seed,
+    );
+    return encounter;
+  };
+  const closed = scene(1);
+  assert.ok(findUnit(closed, "A")!.abilities.some((ability) => ability.id === GIFTS.hold_the_lunge.id));
+  // Ninguém bateu ainda: o comando é recusado.
+  assert.equal(applyCommand(closed, { type: "ability", unitId: "A", abilityId: GIFTS.hold_the_lunge.id, target: unit(closed, "E").pos }).ok, false);
+
+  const held = seedWhere(
+    (seed) => {
+      const encounter = scene(seed);
+      encounter.opened = true;
+      const events = run(encounter, { type: "ability", unitId: "A", abilityId: GIFTS.hold_the_lunge.id, target: unit(encounter, "E").pos });
+      return { encounter, events };
+    },
+    ({ events }) => eventsOf(events, "statusApplied").some((event) => event.statusId === "held"),
+  );
+  const foe = unit(held.encounter, "E");
+  assert.equal(movementOf(foe), Math.max(0, foe.speed + STATUSES.held.speed));
 });
