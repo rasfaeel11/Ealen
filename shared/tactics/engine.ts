@@ -977,6 +977,9 @@ function dealDamage(encounter: Encounter, target: Unit, amount: number, events: 
   events.push({ type: "death", unit: target.id });
 }
 
+/** Quanto dói cada quadrado de empurrão que sobrou quando o alvo bate em parede, caixote ou corpo. */
+export const SLAM_PER_TILE = 2;
+
 /**
  * Desloca `target` em linha reta pra longe de `actor` (ou pra perto, com
  * distância negativa), um quadrado por vez, até acabar a distância ou
@@ -984,6 +987,11 @@ function dealDamage(encounter: Encounter, target: Unit, amount: number, events: 
  * oportunidade, mas a superfície de onde o alvo vai parar age sobre ele, e
  * a água também (`soak`). Quem carrega uma condição `immovable` não sai do
  * lugar; quem é pesado (`heft`) sai esse tanto a menos.
+ *
+ * Empurrado (não puxado) contra o que barra o passo, o alvo bate: leva
+ * SLAM_PER_TILE por quadrado que faltou andar, sem armadura no meio, e o
+ * destrutível em que bateu leva o mesmo (o barril de óleo quebra e derrama).
+ * Puxão não bate: quem puxa é o próprio corpo no caminho.
  */
 function push(encounter: Encounter, origin: Pos, target: Unit, pushDistance: number, events: TacticalEvent[]): void {
   if (target.statuses.some((status) => status.immovable)) return;
@@ -994,16 +1002,39 @@ function push(encounter: Encounter, origin: Pos, target: Unit, pushDistance: num
 
   const from = { ...target.pos };
   const steps = Math.abs(pushDistance) - (target.heft ?? 0);
+  let left = 0;
+  let stop: Pos | undefined;
   for (let step = 0; step < steps; step++) {
     const next = { x: target.pos.x + dx, y: target.pos.y + dy };
-    if (tileAt(encounter.grid, next)?.blocksMove ?? true) break;
-    if (unitAt(encounter, next)) break;
+    if ((tileAt(encounter.grid, next)?.blocksMove ?? true) || unitAt(encounter, next)) {
+      left = steps - step;
+      stop = next;
+      break;
+    }
     target.pos = next;
   }
-  if (samePos(from, target.pos)) return;
-  events.push({ type: "pushed", unit: target.id, from, to: { ...target.pos } });
-  touchSurface(encounter, target, events);
-  soak(encounter, target, events);
+  if (!samePos(from, target.pos)) {
+    events.push({ type: "pushed", unit: target.id, from, to: { ...target.pos } });
+    touchSurface(encounter, target, events);
+    soak(encounter, target, events);
+  }
+  if (direction > 0 && stop && isAlive(target)) slam(encounter, target, stop, left * SLAM_PER_TILE, events);
+}
+
+/** `target` bateu no que está em `into` com a força de `amount` (ver push). */
+function slam(encounter: Encounter, target: Unit, into: Pos, amount: number, events: TacticalEvent[]): void {
+  const prop = encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, into));
+  const body = unitAt(encounter, into);
+  events.push({
+    type: "slammed",
+    unit: target.id,
+    into: prop ? "prop" : body ? "unit" : "wall",
+    name: prop ? propTemplate(prop).name : body?.name,
+    pos: { ...into },
+  });
+  if (target.invulnerable) events.push({ type: "immune", target: target.id });
+  else dealDamage(encounter, target, amount, events);
+  if (prop) damageProp(encounter, prop, amount, events);
 }
 
 /**

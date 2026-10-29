@@ -229,6 +229,13 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.equal(runner.flag("temperadas"), true);
   assert.equal(host.character.purse?.prata, 0);
 
+  // A luta do armazém é opcional: dá pra deixar a corda com eles e voltar depois.
+  play("armazem", "Deixar a corda");
+  assert.deepEqual(play("armazem", "Entrar"), { fight: "armazem" });
+  play("saqueadores_caem");
+  assert.equal(runner.flag("saqueadores_vencidos"), true);
+  assert.equal(host.character.purse?.cobre, 12);
+
   // A primeira ida não se vence: a deixa da rodada 3 encerra a luta e abre o ato 2.
   assert.deepEqual(play("primeira_ida", "Entrar na água"), { fight: "primeira" });
   play("primeira_oryndu");

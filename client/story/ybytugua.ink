@@ -12,6 +12,7 @@ VAR prova = false
 VAR ato3 = false
 VAR temperadas = false
 VAR leu_edital = false
+VAR saqueadores_vencidos = false
 
 // Um `trigger` no cais: a primeira vez que o barco encosta.
 === chegada_ybytugua ===
@@ -206,6 +207,11 @@ Um velho remenda uma rede no chão da guilda, com a rede inteira em cima das per
     Mestre da guilda: Bate o remo no casco. Devagar. Ele responde ou não responde.
     Mestre da guilda: Pressa no rio é coisa de forasteiro. Os velhos tiram o barco da água e esperam a cheia passar.
     -> perguntas
+* {contrato && not saqueadores_vencidos} [Perguntar do barulho do lado.]
+    Mestre da guilda: O armazém. Corda e óleo da guilda. Arrancaram a tranca de madrugada.
+    Mestre da guilda: Não sou eu que vou lá. Nem eles.
+    Ele aponta com o queixo os barqueiros sentados na porta, olhando o rio.
+    -> perguntas
 * {ato2} [Contar que ele acordou bravo, cedo demais.]
     O velho para a rede no meio do nó.
     Mestre da guilda: Os barqueiros que sobem até a floresta das bacias ouvem leitura na margem, de noite. Leitura alta. Gente que não é do rio.
@@ -214,6 +220,55 @@ Um velho remenda uma rede no chão da guilda, com a rede inteira em cima das per
     -> perguntas
 + [Deixar o velho com a rede.]
     -> END
+
+// O armazém de cordas e óleo da guilda, colado na guilda (jogo.md cena 1.2, a luta 2, opcional): mercenários de
+// uma caravana que não sai mais. Luta curta de parede, caixote e barril; e o triângulo, se a escola casar com o
+// saqueador certo (o `trigger` na porta abre isto toda vez que se entra nela).
+=== armazem ===
+A porta do armazém está aberta, com a tranca arrancada pendurada num prego. Lá dentro, cheiro de óleo de lampião e de corda nova.
+Três pessoas de capa de estrada enrolam corda em braçadas. Um deles ainda tem no ombro a fita de uma caravana.
+Saqueador: Fechado. A guilda mandou a gente buscar.
+Jarupã: A guilda tá ali do lado, remendando rede.
+Saqueador: Então mandou de longe.
+-> escolhas
+
+= escolhas
+* [Perguntar de que caravana eles são.]
+    Saqueadora: Da que não sai. Doze carroças de lã esperando barco no cais. O dono vendeu os bois ontem e dispensou a escolta hoje cedo.
+    Saqueadora: Escolta dispensada come igual.
+    -> escolhas
+* [Ler a marca nos barris.]
+    Endyru: "Guilda dos barqueiros de Ybytuguá. Óleo de lampião. Doze medidas." Cada um.
+    Xanduí: Doze medidas cada um, num quarto de taipa.
+    -> escolhas
++ [Deixar a corda com eles.]
+    Jarupã: Não é contrato nosso.
+    Xanduí: Ainda.
+    -> END
++ [Entrar.]
+    Saqueador: Três contra três. Vocês nem são do cais.
+    Jarupã: Regra de armazém: quem fica de costas pra parede já perdeu. Eu abro.
+    Xanduí confere a fivela da bainha.
+    Xanduí: O da espada grande é meu. A da espada fina é sua, Jarupã.
+    Xanduí: E ninguém empurra ninguém no barril, estudante. A não ser que seja pra empurrar.
+    ~ start_fight("armazem")
+    -> END
+
+// Os saqueadores vencidos (onDefeat): a fome é da cidade inteira. A guilda paga em cobre, por braçada de corda.
+=== saqueadores_caem ===
+~ saqueadores_vencidos = true
+A saqueadora larga a espada no chão de taipa, longe do óleo, e levanta as mãos.
+Saqueadora: A fita é da caravana. A corda é da guilda. A fome é minha.
+Jarupã: A fome é da cidade inteira.
+Ela sai pela porta sem a espada, com os outros dois apoiados um no outro. Ninguém corre atrás.
+Na guilda, o mestre ouve sem largar a rede. Depois conta cobre em cima da mesa, uma moeda por braçada de corda que voltou.
+Mestre da guilda: Seis. Rio acima corda vale mais. Aqui não vale nada até a cheia baixar.
+~ earn("cobre", 6)
+~ give_item("item-lagrima-de-eir")
+Ele põe do lado das moedas um pote de unguento com a tampa amarrada.
+Mestre da guilda: De barqueiro. É pra talho de corda. Serve pra talho de espada.
+~ grant_xp(40)
+-> END
 
 // O ferreiro demônio: a receita é absurda e funciona (biblia §3.4; jogo.md §6.2). É um Verso de entropia cantado no
 // compasso da bigorna; ninguém diz isso, Endyru só conta as batidas.

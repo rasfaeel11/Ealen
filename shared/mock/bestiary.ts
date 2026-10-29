@@ -292,6 +292,60 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
       arts: { quick_attack: "Golpe Rápido", attack: "Golpe", heavy_attack: "Golpe Pesado", defend: "Guarda" },
     },
   },
+
+  // --- A gente do cais de Ybytuguá --------------------------------------------------------------------------------
+  // Mercenários dispensados de uma caravana que não sai mais: o rio fechou, e a caravana pagou até o cais. Roubam o
+  // armazém de cordas e óleo da guilda (jogo.md cena 1.2, a luta 2). Dois do Gryskar e uma da Tsvirana: quem casa
+  // a escola certa com o saqueador certo acaba a luta antes.
+  "encounter-saqueador-do-dique": {
+    person: true,
+    style: { id: "gryskar", grade: 1 },
+    aura: 1,
+    glyph: "⚒",
+    summary: "Mercenário de caravana, dispensado no cais.",
+    lore: "A caravana pagou até o cais, e o cais parou. Sem barco pra subir nem prata pra esperar, vende o que acha. Corda e óleo se vendem rio acima.",
+    ai: { aggression: 1.2 },
+    drops: [{ itemId: "item-pao-de-cinza", chance: 0.4 }],
+    template: {
+      id: "enemy-saqueador-do-dique",
+      name: "Saqueador",
+      race: "humano",
+      characterClass: "espadachim",
+      level: 2,
+      xp: 0,
+      attributes: { forca: 6, fator: 1, vigor: 5, olho: 4, couro: 4, labia: 2, saber: 1 },
+      currentHp: 22,
+      maxHp: 22,
+      currentNodeId: "",
+      equipment: { weapon: "gear-espada-pesada", armor: "gear-gibao-de-couro" },
+      arts: { attack: "Golpe", heavy_attack: "Golpe de Caravana", defend: "Guarda" },
+    },
+  },
+
+  "encounter-saqueadora-do-dique": {
+    person: true,
+    style: { id: "tsvirana", grade: 1 },
+    aura: 1,
+    glyph: "✧",
+    summary: "Mercenária de caravana, dispensada no cais.",
+    lore: "Ia na frente da caravana, olhando a estrada. Agora olha a porta do armazém.",
+    ai: { finisher: 1.2 },
+    drops: [{ itemId: "item-lagrima-de-eir", chance: 0.4 }],
+    template: {
+      id: "enemy-saqueadora-do-dique",
+      name: "Saqueadora",
+      race: "humano",
+      characterClass: "espadachim",
+      level: 2,
+      xp: 0,
+      attributes: { forca: 4, fator: 1, vigor: 4, olho: 6, couro: 4, labia: 3, saber: 1 },
+      currentHp: 18,
+      maxHp: 18,
+      currentNodeId: "",
+      equipment: { weapon: "gear-espada-reta", armor: "gear-gibao-de-couro" },
+      arts: { quick_attack: "Golpe Rápido", attack: "Golpe", defend: "Guarda" },
+    },
+  },
 };
 
 /**

@@ -1026,6 +1026,17 @@ export class CombatController {
         return;
       }
 
+      case "slammed": {
+        const name = this.unit(event.unit).name;
+        sfx("block");
+        this.host.scene.cameras.main.shake(140, 0.006);
+        this.hud.log(
+          event.into === "wall" ? `${name} bate na parede.` : `${name} bate ${event.into === "prop" ? "no" : "em"} ${event.name}.`,
+        );
+        await this.wait(120);
+        return;
+      }
+
       case "statusApplied": {
         const actor = this.actor(event.target);
         this.wear(event.target, event.statusId, true);

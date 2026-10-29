@@ -292,7 +292,6 @@ O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, 
 | # | Task | O que é |
 |---|---|---|
 | 31 | **A voz do `jogo.md` em todo o texto** | Passar as falas dos cinco `.ink` pelo guia de diálogos (`jogo.md` §6). Jarupã não lê e não tem vergonha disso (sai o "Eu sei ler o principal"), dá regra de estrada inventada na hora e chama ferida de "raso". Xanduí fala metade, confere correia enquanto os outros discutem, tem a última palavra e repete termo de juiz de ouvido ("Quebra de contrato"). Endyru dá o número exato e corrige os outros até o ato 3; depois, corta a frase no meio. Oryndu bate o remo, chama de "rapaz", fala de lodo, corda e vento. Vocabulário do mundo (Verso, medida, palmo, fôlego, lua). Regra da ponte: a última fala antes de cada luta aponta pra mecânica dela. |
-| 35 | **Os saqueadores do dique** (Luta 2, opcional) | Mercenários dispensados de uma caravana roubando o armazém de cordas e óleo da guilda. Luta curta em lugar fechado: posição, o empurrão de Endyru contra parede e caixote, o triângulo. Pede um pedaço de mapa (o armazém) e a gente no bestiário (pelo papel, sem nome). |
 | 46 | **De Fio a Corpo** | O `jogo.md` põe Jarupã e Xanduí indo de Fio a Corpo; hoje a aura não sobe. Um `aura_rise` como o `mage_rise`, numa cena (sugestão: depois da ponte, task 38), que sobe o teto da proficiência pra 3. Junto com a task 26, se o autor aprovar os dons. |
 
 ### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
@@ -502,6 +501,15 @@ seguem as tasks 24 a 40 do Eälen, que vão junto para `docs/motor.md`.
   coisa"), o almanaque que Jarupã dá a Xanduí "pra quando a gente for rico", ela segurando pela lombada do lado das
   folhas, "Vou ler no barco, que sacode menos", e Endyru olhando, abrindo a boca, calando, sorrindo, e o carneiro na
   porta da costa. A tela não diz o que ele viu. Saiu a cópia do relatório. Sem epílogo.
+- **35. Os saqueadores do dique.** O armazém de cordas e óleo da guilda é uma sala de taipa nova colada na guilda, no
+  mapa de Ybytuguá, com três caixotes e três barris de óleo. Lá dentro, dois saqueadores do Gryskar e uma saqueadora
+  da Tsvirana (`encounter-saqueador-do-dique`, `encounter-saqueadora-do-dique`, mercenários de uma caravana que não sai
+  mais), passivos até a porta: o gatilho dela (`armazem`) abre a cena toda vez que se entra, depois do contrato, e dá
+  pra deixar a corda com eles. Antes da luta, Xanduí reparte o triângulo ("O da espada grande é meu. A da espada fina
+  é sua") e avisa do barril. Na queda, a guilda paga seis de cobre e um Unguento. O mestre da guilda dá a deixa
+  ("Arrancaram a tranca de madrugada"). No motor, o empurrão que bate (`slammed`): empurrado (não puxado) contra
+  parede, destrutível ou corpo, o alvo leva 2 por quadrado que faltou andar (`SLAM_PER_TILE`), sem armadura, e o
+  destrutível leva o mesmo — o barril de óleo quebra e derrama fogo. A IA ainda não mira o choque.
 
 ## 9. Onde isto está no cânone
 

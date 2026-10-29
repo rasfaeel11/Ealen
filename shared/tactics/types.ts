@@ -475,6 +475,11 @@ export type TacticalEvent =
   /** A condição `name` feriu `unit` no começo do turno dele (ver `harm`). O `damage` vem logo depois. */
   | { type: "statusTriggered"; unit: string; statusId: string; name: string }
   | { type: "pushed"; unit: string; from: Pos; to: Pos }
+  /**
+   * Empurrado, `unit` bateu no que barrava o passo em `pos` (parede, o destrutível `name` ou o corpo `name`). O
+   * `damage` (ou o `immune`) vem logo depois, e o `propDamaged` do destrutível, se foi nele.
+   */
+  | { type: "slammed"; unit: string; into: "wall" | "prop" | "unit"; name?: string; pos: Pos }
   | { type: "statusApplied"; target: string; statusId: string; name: string; turns: number }
   | { type: "statusExpired"; target: string; statusId: string; name: string }
   | { type: "surfaceCreated"; surfaceId: SurfaceId; name: string; tiles: Pos[]; rounds: number }
