@@ -221,6 +221,10 @@ def agy_binary():
     sys.exit("Não achei o agy (Antigravity CLI) no PATH.")
 
 
+class GenerationFailed(Exception):
+    """Quem gera não entregou a imagem (cota esgotada, recusa): o lote para, e o que já saiu fica registrado."""
+
+
 def generate_agy(job_id, kind, prompt, transparent, reference):
     """
     Pede a imagem ao subagente image-generator do Antigravity, numa pasta só
@@ -256,10 +260,10 @@ def generate_agy(job_id, kind, prompt, transparent, reference):
     try:
         reply = json.loads(result.stdout[result.stdout.index("{"):])
     except ValueError:
-        sys.exit(f"O agy não respondeu JSON:\n{result.stdout[-2000:]}\n{result.stderr[-2000:]}")
+        raise GenerationFailed(f"O agy não respondeu JSON:\n{result.stdout[-2000:]}\n{result.stderr[-2000:]}")
     image = stage / out_name
     if reply.get("status") != "SUCCESS" or not image.exists():
-        sys.exit(f"O agy não gerou {job_id} ({reply.get('status')}): {str(reply.get('response'))[:1500]}")
+        raise GenerationFailed(f"O agy não gerou {job_id} ({reply.get('status')}): {str(reply.get('response'))[:1500]}")
     return image.read_bytes()
 
 
@@ -497,7 +501,12 @@ def command_gen(manifest, args):
             print(f"{job_id}: gerando ({via if via == 'agy' else MODEL}{', com o retrato de referência' if reference else ''})...")
             raw.parent.mkdir(parents=True, exist_ok=True)
             if via == "agy":
-                data = generate_agy(job_id, kind, prompt, transparent, reference)
+                try:
+                    data = generate_agy(job_id, kind, prompt, transparent, reference)
+                except GenerationFailed as failure:
+                    print(failure)
+                    print("O lote parou aqui; o que já saiu fica registrado. Rode o mesmo comando de novo pra continuar.")
+                    break
                 image = Image.open(io.BytesIO(data))
                 (key_green(image) if transparent else image.convert("RGB")).save(raw)
             else:
