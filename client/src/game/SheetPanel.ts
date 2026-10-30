@@ -45,7 +45,7 @@ import {
 } from "@jogo/shared";
 import { describeAbility } from "./combat/CombatController";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
-import { classSpriteKey, standingFrame, walkAnimKey } from "./mapSprites";
+import { classSpriteKey, ownSpriteKey, standingFrame, walkAnimKey } from "./mapSprites";
 import { Menu, addBodyText, addPanel, addTitleText, type MenuOption } from "./ui";
 
 /** Põe um objeto na cena de modo que só a câmera da interface o desenhe. */
@@ -214,7 +214,7 @@ export class SheetPanel {
     const cast = castOf(character);
 
     // O retrato: o boneco do mapa, grande, andando no lugar.
-    const spriteKey = classSpriteKey(character.characterClass);
+    const spriteKey = ownSpriteKey(scene, character.name, classSpriteKey(character.characterClass));
     const feet = { x: WHO_X + PORTRAIT / 2, y: TOP + PORTRAIT - 22 };
     this.add(scene.add.ellipse(feet.x, feet.y - 2, 90, 22, 0x000000, 0.35));
     const sprite = this.add(scene.add.sprite(feet.x, feet.y, spriteKey, standingFrame("down")));

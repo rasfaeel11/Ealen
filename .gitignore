@@ -14,3 +14,7 @@ build/
 
 # A história compilada (gerada de client/story pelo Vite)
 client/public/story.json
+
+# O bruto da arte gerada (art/gerar_arte.py): fica só na máquina de quem gerou
+art/raw/
+__pycache__/

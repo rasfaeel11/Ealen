@@ -1,0 +1,227 @@
+{
+  "_leia": "Prompts da arte gerada (em inglês, que é como o gerador entende melhor). O que está em 'look' é a aparência de cada um: a parte que vira cânone. 'proposal: true' marca o que foi proposto pelo co-autor e ainda não foi conferido com a ficha da história (historiav2/fichas); 'needsSheet: true' não gera até o autor escrever o 'look' a partir da ficha. Ver docs/arte.md.",
+  "style": {
+    "world": "Dark low-fantasy river country of many rivers, forests and hills, before firearms. People dress in practical wool, linen and leather, worn by travel and weather. No modern items, no text, no logos, no watermarks.",
+    "portrait": "Painted character portrait bust for a dark fantasy CRPG dialogue box, in the tradition of classic hand-painted CRPG portraits. Chest-up, three-quarter view facing slightly to the right of the frame, eyes alive, expressive but restrained. Muted earthy palette, dramatic soft key light from the upper left, visible confident brushwork, fine detail on the face. Fully transparent background, the bust cut cleanly at the bottom edge of the image.",
+    "splash": "Painterly key art for a dark low-fantasy tactical RPG, cinematic composition, muted earthy palette with one warm light source, atmospheric haze, rich texture, high detail.",
+    "sheet": "Pixel art sprite sheet for a top-down three-quarter view tactical RPG. Crisp pixel art, limited palette of about 24 colors, clean dark 1px outline, soft light from the upper left, readable silhouette, about three heads tall. Fully transparent background. A grid of exactly 4 rows and 4 columns of evenly spaced cells, one full-body figure per cell, feet at the bottom of each cell, nothing crossing into the neighbouring cell. Row 1: walking toward the viewer. Row 2: walking to the left. Row 3: walking to the right. Row 4: walking away from the viewer. Each row is a 4-frame walk cycle. The same character in every cell, identical outfit, colors and proportions. No grid lines, no ground, no cast shadows, no text.",
+    "beast": "Pixel art sprite sheet for a top-down three-quarter view tactical RPG. Crisp pixel art, limited palette of about 24 colors, clean dark 1px outline, soft light from the upper left. Fully transparent background. A grid of exactly 4 rows and 4 columns of evenly spaced cells, one whole creature per cell, its belly at the bottom of each cell. Row 1: crawling toward the viewer. Row 2: crawling to the left. Row 3: crawling to the right. Row 4: crawling away from the viewer. Each row is a 4-frame crawl cycle. The same creature in every cell. No grid lines, no ground, no water, no text."
+  },
+  "characters": [
+    {
+      "id": "endyru",
+      "name": "Endyru",
+      "proposal": true,
+      "look": "A young human man of about twenty, a poor university student turned road traveller. Lean and restless, sharp eager eyes, dark hair tied back carelessly, ink stains on his fingers. A threadbare scholar's coat patched for the road, a satchel stuffed with papers and chalk, a knotted measuring cord coiled at his belt, a plain wooden quarterstaff.",
+      "portrait": true,
+      "sheet": true,
+      "splash": "Endyru kneels on a muddy riverbank at dusk, chalk in hand, drawing a careful circle of symbols on the ground, a knotted measuring cord stretched beside it; a wide grey river and a flat barge behind him."
+    },
+    {
+      "id": "jarupa",
+      "name": "Jarupã",
+      "proposal": true,
+      "look": "A human man in his early twenties, a boat escort and swordsman. Broad-shouldered, loud easy grin, sunburnt, a few old nicks on his forearms, sleeves rolled up. A scuffed leather jerkin over a linen shirt, a heavy two-handed sword carried on his shoulder.",
+      "portrait": true,
+      "sheet": true,
+      "splash": "Jarupã charges across a wet stone causeway in the rain, heavy sword raised for the first blow, grinning, river spray around him."
+    },
+    {
+      "id": "xandui",
+      "name": "Xanduí",
+      "proposal": true,
+      "look": "A human woman in her early twenties, a boat escort and swordswoman. Lean and still, dry watchful expression, one eyebrow slightly raised, hair in a tight practical braid. A worn leather jerkin with an inner pocket, a straight single-handed sword sheathed at her hip, her hand resting calmly on the pommel.",
+      "portrait": true,
+      "sheet": true,
+      "splash": "Xanduí stands perfectly still in tall river reeds at dawn, sword still sheathed, hand on the pommel, waiting, mist around her knees."
+    },
+    {
+      "id": "oryndu",
+      "name": "Oryndu",
+      "proposal": true,
+      "look": "A human river boatman of about fifty. Weathered sun-dark skin creased by years on the water, patient narrow eyes, grey stubble. A rough linen shirt, rope belt, rolled trousers, river-worn boots, holding a long wooden boat pole.",
+      "portrait": true,
+      "sheet": true,
+      "splash": "Oryndu stands at the stern of a flat river barge at dusk, tapping the hull slowly with his long pole to listen to the water, crabs climbing the reeds nearby."
+    },
+    {
+      "id": "conselheira",
+      "name": "Conselheira",
+      "proposal": true,
+      "look": "A middle-aged human woman, a councillor of a free city run by merchant guilds. Composed and tired, sharp eyes. Sober dark wool clothes of good quality, a ledger under her arm, a ring of wax seals at her belt.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "escrivao",
+      "name": "Escrivão da Mesa",
+      "proposal": true,
+      "look": "An old human clerk of a contracts office. Thin, stooped, a quill behind his ear, ink-stained cuffs, a dark sleeveless overcoat, a heavy register book.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "mestre_da_guilda",
+      "name": "Mestre da guilda",
+      "proposal": true,
+      "look": "A burly older human man, master of the boatmen's guild. Thick rope-scarred hands, grizzled beard, a heavy oiled coat, a coil of rope over one shoulder.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "thrykar",
+      "name": "Thrykar",
+      "needsSheet": true,
+      "look": "TODO: a aparência do povo demônio vem da ficha (historiav2). O que já é certo: ferreiro, avental de couro queimado, cara fechada, mãos de forja, fuligem.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "mercador",
+      "name": "Mercador",
+      "proposal": true,
+      "look": "A plump human salt merchant of the river trade, middle-aged, anxious and stingy. A damp fur-trimmed coat, a fat purse held close, wet boots.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "familia",
+      "name": "Mulher da família",
+      "sheetName": "Família no cais",
+      "proposal": true,
+      "look": "A tired human mother from the docks, packing to leave the city. Plain patched wool dress, a headscarf, a bundle of belongings on her back.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "vendedora",
+      "name": "Vendedora do cais",
+      "proposal": true,
+      "look": "A sturdy human woman who runs a food stall on the docks. Flour on her forearms, a stained apron, a basket of dark travel bread.",
+      "portrait": true
+    },
+    {
+      "id": "sargento",
+      "name": "Sargento do pedágio",
+      "proposal": true,
+      "look": "A human sergeant of a river toll castle, middle-aged, bored and greedy. A padded gambeson with the toll castle's tabard, an iron kettle helmet, a bill polearm.",
+      "portrait": true
+    },
+    {
+      "id": "guarda_do_portao",
+      "name": "Guarda do portão",
+      "proposal": true,
+      "look": "A young human gate guard of a river toll castle. A padded gambeson with the toll castle's tabard, an iron kettle helmet, a sword at the hip.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "mbyraku",
+      "name": "Mbyraku",
+      "creature": "encounter-castelao",
+      "proposal": true,
+      "look": "A hard-faced human castellan of a river toll castle, in his forties, clipped beard, cold appraising eyes. A coat of iron scales over a quilted gambeson, a straight sword, a heavy key ring at his belt.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "jurendy",
+      "name": "Jurendy",
+      "creature": "encounter-jurendy",
+      "proposal": true,
+      "look": "A young human mage of about twenty-one, son of wealth, a former classmate of Endyru. Well fed, smug half-smile, neatly combed hair. A new clean linen tunic and a fine travelling coat in a duke's livery, a polished wooden staff, a bound book under his arm.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "saqueador",
+      "name": "Saqueador",
+      "creature": "encounter-saqueador-do-dique",
+      "proposal": true,
+      "look": "A rough human caravan mercenary turned looter. Unshaven, hungry eyes, a battered leather jerkin, a heavy two-handed sword.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "saqueadora",
+      "name": "Saqueadora",
+      "creature": "encounter-saqueadora-do-dique",
+      "proposal": true,
+      "look": "A wiry human woman, a caravan mercenary turned looter. Short-cropped hair, a scar on the chin, a leather jerkin, a straight sword held low.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "contratada",
+      "name": "Contratada",
+      "proposal": true,
+      "look": "A human woman, a hired adventurer scout. A hooded travel cloak, mismatched leather pieces, a straight sword, a wary half-smile.",
+      "portrait": true,
+      "sheet": true
+    },
+    {
+      "id": "contratado",
+      "name": "Contratado",
+      "creature": "encounter-aventureiro-contratado",
+      "proposal": true,
+      "look": "A human man, a hired adventurer scout. A hooded travel cloak, mismatched leather pieces, a straight sword.",
+      "sheet": true
+    },
+    {
+      "id": "guarda_do_pedagio",
+      "name": "Guarda do pedágio",
+      "creature": "encounter-guarda-do-pedagio",
+      "proposal": true,
+      "look": "A human soldier of a river toll castle. A padded gambeson with the toll castle's tabard, an iron kettle helmet, a long bill polearm.",
+      "sheet": true
+    },
+    {
+      "id": "besteiro",
+      "name": "Besteiro",
+      "creature": "encounter-besteiro-do-pedagio",
+      "proposal": true,
+      "look": "A human crossbowman of a river toll castle. A linen tunic with the toll castle's tabard, a quiver of bolts at the hip, a heavy crossbow.",
+      "sheet": true
+    },
+    {
+      "id": "espada_de_ymboripe",
+      "name": "Espada de Ymboripe",
+      "creature": "encounter-espada-de-ymboripe",
+      "proposal": true,
+      "look": "A human soldier of the upper duchy. A leather jerkin under a slate-blue and black livery tabard, a heavy two-handed sword.",
+      "sheet": true
+    },
+    {
+      "id": "lanca_de_ymboripe",
+      "name": "Lança de Ymboripe",
+      "creature": "encounter-lanca-de-ymboripe",
+      "proposal": true,
+      "look": "A human soldier of the upper duchy. A leather jerkin under a slate-blue and black livery tabard, a long bill polearm held upright.",
+      "sheet": true
+    }
+  ],
+  "beasts": [
+    {
+      "id": "ykurua",
+      "creatures": ["encounter-ykurua", "encounter-ykurua-desperto"],
+      "look": "The Ykuruã: a colossal river amphibian the size of a cargo barge, low and wide. Thick hide like the bark of an old tree, covered in mud and clusters of river shells, a huge wide mouth like a catfish crossed with a caiman, tiny almost blind eyes. An animal, not a monster of myth: no glow, no markings, no symbols.",
+      "dry": "The same creature stranded on dry land: the mud on its hide dried pale grey and cracked open in deep fissures, shells flaking off, its body heavy and sagging."
+    }
+  ],
+  "splashes": [
+    {
+      "id": "titulo",
+      "prompt": "Two young sword-carrying escorts, a young student with a satchel and a staff, and an old boatman with a long pole stand on a flat river barge at dusk. The barge is stopped before a heavy iron chain stretched across a wide grey river, between the banks, under a squat stone toll castle. Rain-heavy sky, warm lantern light on the barge, mist on the water. Leave the top third calm and dark for the title."
+    },
+    {
+      "id": "baixios",
+      "prompt": "Grey river shallows under low fog: ankle-deep water over mud flats, reeds, a half-sunk grain barge, and the long bark-like back of a colossal river amphibian breaking the surface, covered in shells. Small human figures on the bank for scale. Dread, stillness."
+    }
+  ],
+  "maps": [
+    {
+      "id": "mundo",
+      "prompt": "A hand-drawn fantasy world map on aged parchment, ink line art with soft watercolor washes, compass rose, no sea monsters or creatures other than the ones written below, place names lettered in a clean old serif hand, exactly as written below. Legend box in a corner: a star = important place; a skull = dungeon; crossed swords = old battlefield.\n\nWORLD SHAPE: the whole landmass is an UPSIDE-DOWN HEART. The sharp point is at the TOP (north) and is a frozen ice bridge. The two rounded lobes are at the bottom (south). A long deep ocean channel splits the two lobes from the south coast all the way up to the ice bridge. Open sea surrounds everything.\n\nNorth point: \"Ponta de Gelo\", a narrow bridge of ice and snow joining both lobes. Tiny camps of ice guides.\nCentral channel: \"Mar da Fenda\", a dark, deep sea between the lobes, with pirate ships, shipwrecks and glinting sunken relics.\n\nWEST LOBE: \"Yrandupe\" (humans and elves)\nNorthwest: \"Zvenoles\", dense ancient elven forest and horse meadows. Star \"Svyrlogor\" (elven seat, deep in the forest). Star \"Zorinitsa\" (elven star observatory school). Star \"Zlatena\" (a giant golden tree).\nNorth: \"Mboraguá\", farmlands and logged forest edges biting into Zvenoles, with stumps along the border. Star \"Akaraupe\" (capital, big cathedral). Star \"Tajyguá\" (lumber port on the channel coast). \"Kyrape\" (small farming village). \"Kururupe\" (last village, at the snow line). Star \"Muro Velho\" (an ancient ruined wall in the far north, just below the ice, at the end of a snowy road).\nEast coast, facing the channel: \"Tanguratyba\", a coastal kingdom. Star \"Ygarupe\" (naval shipyards, north coast). Star \"Itamoguá\" (big port city, central coast), with star \"Jekuatyba\" (school of magic) inside it. Star \"Jaguatyba\" (royal capital, south of Itamoguá). Star \"Ysyrype\" (customs city at the river mouth, southern coast). \"Embyrepe\" (old battlefield turned forest park, inland near the western border, crossed swords).\nSouthwest and center interior: \"Xerumbetyba\", a land of many rivers, hills and forests. The great river \"Ymonhã\" starts in the western mountains and flows east to the sea at Ysyrype. Star \"Ymboripe\" (capital, in the western mountains at the river source). Star \"Kuatiarape\" (university city of libraries, mid-river). Star \"Ybytuguá\" (old river trade city, downstream, with shallows below it).\n\nEAST LOBE: \"Hravgarn\" (demons and dragons)\nWest coast, facing the channel: \"Throsvek\", a demon kingdom. Star \"Brimheld\" (port city, under falling ash).\nBehind the coast, a long north-south chain of active volcanoes: \"Cinzeira\". Thick ash clouds blow WEST over Throsvek; the east slopes are clear. One tallest peak, with wild dragons circling it. Star \"Throsvek\" (capital with huge glowing forges, at the western foot of the volcanoes). Small ruined forge-dungeons inside the mountains (skulls).\nEast of the volcanoes: \"Zakhamur\", vast open plains of the dragon people, cut by straight roads, canals and mines climbing the clear east slopes. Star \"Garshaaki\" (dragon capital, center of the plains). Scattered ruined nests and vaults (skulls).\nSouth, between the end of the volcanoes and the plains: \"Ilgaadur\" (the Areal), a vast desert full of ruins, forts, tombs and dungeon icons (skulls). A single impossible river, \"Idnuur\" (the Teimoso), springs from the sand in the middle of the desert and runs southwest to the mouth of the channel, with green banks. Star \"Vau-de-Osso\" (adventurer town at the river ford)."
+    }
+  ]
+}

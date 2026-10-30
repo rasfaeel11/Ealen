@@ -206,7 +206,7 @@ Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/
 
 ### Cenas (`client/src/scenes/`)
 
-`Boot` (carrega sprites, mapas e tilesets) → `Title` → `World`. Não há prólogo nem escolha de classe: o jogo novo (`client/src/game/newGame.ts`) já entra no mundo. `Saves` (a lista de espaços de save) e `Som` (os volumes) abrem a partir do título. No mundo: `E` fala, `Q` esgueira, `F` embosca (ou dá a investida, à vista), `Z` descansa (pausa curta ou acampamento, que abre o painel de gravar pra quem conjura), `C` abre a ficha, `I` a mochila, `J` o diário, `1`-`9` miram uma habilidade pra abrir uma luta, `Esc` pausa.
+`Boot` (carrega sprites, mapas e tilesets) → `Title` → `World`. Não há prólogo nem escolha de classe: o jogo novo (`client/src/game/newGame.ts`) já entra no mundo. `Saves` (a lista de espaços de save) e `Som` (os volumes) abrem a partir do título. No mundo: `E` fala, `Q` esgueira, `F` embosca (ou dá a investida, à vista), `Z` descansa (pausa curta ou acampamento, que abre o painel de gravar pra quem conjura), `M` abre o mapa do mundo, `C` abre a ficha, `I` a mochila, `J` o diário, `1`-`9` miram uma habilidade pra abrir uma luta, `Esc` pausa.
 
 A `WorldScene` é exploração e combate na mesma cena, com duas câmeras: a do mundo (zoom 3x, segue o personagem) e a da interface (sem zoom). Todo objeto criado passa por `addWorld` ou `addHud`. O combate em si mora em `client/src/game/combat/`: `CombatController` (entrada → comando, eventos → animação) e `CombatHud` (ordem de turnos, registro, barra de ações, resultado).
 
@@ -230,7 +230,7 @@ Todo o som é SINTETIZADO na hora, com Web Audio: não há arquivo de áudio nen
 
 ### Sprites
 
-Quem está no mapa (personagem ou criatura) é uma folha 4x4: uma linha por direção, quatro quadros de caminhada, o primeiro servindo de "parado". Enquanto não há arte final, `client/src/game/mapSprites.ts` gera provisórios em tempo de execução com esse layout: um boneco por classe e por cara de NPC (`NPC_LOOKS`), um vulto por criatura — e um boneco pra criatura que é gente (`person` na entrada do bestiário). Pra trocar por arte de verdade: salvar a folha em `client/public/sprites/` e registrar em `MAP_SHEETS` nesse arquivo — nada mais muda. Ataque, dano e morte hoje são efeitos (bote, clarão, faísca, recuo, achatar e sumir); animações próprias entram quando houver arte.
+Quem está no mapa (personagem ou criatura) é uma folha 4x4: uma linha por direção, quatro quadros de caminhada, o primeiro servindo de "parado". Enquanto não há arte final, `client/src/game/mapSprites.ts` gera provisórios em tempo de execução com esse layout: um boneco por classe e por cara de NPC (`NPC_LOOKS`), um vulto por criatura — e um boneco pra criatura que é gente (`person` na entrada do bestiário). A arte final é de 48x48 por quadrado e entra pela densidade dela (`sheetScale`; ver `docs/arte.md`): a gerada é registrada por `art/gerar_arte.py` em `generatedArt.ts`, que `MAP_SHEETS` inclui; a feita à mão é uma linha em `MAP_SHEETS`. Quem tem arte própria além da classe, da cara ou da criatura é achado pelo nome (`personSpriteKey`, `ownSpriteKey`) — nada mais muda. Ataque, dano e morte hoje são efeitos (bote, clarão, faísca, recuo, achatar e sumir); animações próprias entram quando houver arte.
 
 ### Save
 
@@ -297,7 +297,7 @@ Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz fa
 | 15 | **Mais verbos de combate** | Empurrar, derrubar, agarrar, disparada, esconder-se no meio da luta, ajudar um aliado, preparar uma ação pra depois; reações além do ataque de oportunidade (aparar, interceptar). |
 | 16 | **Cair e levantar** | Quem chega a 0 some da luta. Falta o caído que ainda pode ser levantado (por item, por cura, por um aliado colado) e o que acontece se ninguém levanta. |
 | 17 | **Registro de missões** | O diário guarda fatos soltos. Falta a lista do que há pra fazer (aberta, feita, falhada), com o que cada uma pede, sem dizer a conclusão ao jogador. |
-| 19 | **Mapa** | Mapa da área, mapa do mundo (o grafo de áreas), marcadores, viagem rápida entre lugares já visitados. |
+| 19 | **Mapa** | O mapa do mundo já abre com `M` (a ilustração `mundo`, ver `docs/arte.md`). Falta o mapa da área, o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
 | 21 | **Relógio dentro da luta** | O tempo já corre por rodada, mas o que ele fecha só se confere no fim. Falta a deixa que espera o relógio (`when: clock N`) e o relógio que anda sozinho fora de luta (por passo, por área). |
 | 22 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
 | 23 | **IA de companheiro** | Companheiro é sempre comandado pelo jogador. Falta a opção de deixá-lo por conta própria, com ordens simples (guardar, avançar, proteger alguém). |
@@ -306,7 +306,7 @@ Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz fa
 
 | # | Task | O que é |
 |---|---|---|
-| 24 | **Arte final** | Sprites, tilesets, retratos pra ficha e pra caixa de diálogo, animações próprias de ataque, dano e morte, efeitos. Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). Trocar sprite já é uma linha em `MAP_SHEETS`. |
+| 24 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). Faltam os tilesets em 48, animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
 | 25 | **Relíquias e runas** | Itens que não se gastam: efeito passivo além de atributo (o acessório de hoje só soma atributo), encaixe em equipamento. As armas lendárias da história entram aqui. |
 | 26 | **Coleta e preparo** | Materiais no mapa e no espólio; receitas de consumível. |
 | 27 | **Companheiros como gente** | Afinidade, conversa de acampamento, comentário no meio do diálogo dos outros, missão pessoal, discordar de uma escolha. |

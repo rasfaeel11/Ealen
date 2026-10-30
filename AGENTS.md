@@ -279,7 +279,7 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P1 — o conteúdo
 | # | Task | O que é |
 |---|---|---|
-| 14 | **Gravar os nomes na história** | Mbyraku, Castelo da Volta, Jurendy (e o fato de ser ex-colega de Endyru) e Thrykar foram decididos (ver Decisões do co-autor), o autor os aprovou em 2026-10-30, e já valem pro jogo; falta gravar as fichas e a lista de nomes no repositório da história, que não está nesta máquina. |
+| 14 | **Gravar os nomes na história** | Mbyraku, Castelo da Volta, Jurendy (e o fato de ser ex-colega de Endyru) e Thrykar foram decididos (ver Decisões do co-autor), o autor os aprovou em 2026-10-30, e já valem pro jogo; falta gravar as fichas e a lista de nomes no repositório da história, que não está nesta máquina. O mapa do mundo que o autor descreveu (`docs/mundo.md`) também vai pra lá. |
 | 15 | **Retoque dos mapas no Tiled** | Os quatro mapas saíram de um gerador, com os placeholders; o desenho de verdade é do autor (o contrato do Tiled está em `docs/motor.md`). |
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
@@ -295,7 +295,9 @@ Texto novo de história vai como proposta pro autor antes de entrar (§1).
 
 | # | Task | O que é |
 |---|---|---|
-| 20 | **Retratos de verdade** | Arte do autor: o trio, Oryndu, a conselheira, o castelão, o ferreiro (a cara do demônio confere a ficha do povo). O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
+| 20 | **Conferir a aparência com as fichas** | Toda aparência de `art/manifest.json` é proposta (`proposal`): confira com a ficha de cada um e acerte o `look` antes (ou depois) de gerar. O Thrykar só se gera com o `look` da ficha do povo demônio. O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
+| 47 | **Gerar a arte** | O pipeline está pronto (ver Feito, a arte gerada); falta a chave `OPENAI_API_KEY` na máquina e rodar `python art/gerar_arte.py gen --all` (a skill `gerar-arte` guia). Olhar cada folha: a que sair torta se refaz. |
+| 48 | **Os mapas em 48** | Quando os tiles do autor chegarem (task 15, em 48x48): mapas de quadrados de 48, câmera em zoom 1, e o que o client mede em pixels de 16 (passo, corpo, o que a luta desenha) passa a sair do tamanho do quadrado (`docs/arte.md`). |
 
 ### P2 e P3
 Arte final, som gravado, balanceamento (`balance:matrix` com as escolas), tutorial, opções e o empacotamento
@@ -551,6 +553,15 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
   entra Surpreso; pego no meio do bote, quem entra Surpreso é o grupo. À vista, `F` é a investida, chutar a porta: o
   grupo age antes de todos e a Força pode deixar o outro lado Abalado. Luta aberta pela história não dá vantagem a
   ninguém. Os inimigos da floresta e do portão ganharam direção.
+- **A arte gerada** (pedida pelo autor em 2026-10-30; `docs/arte.md`). A escala é 48x48 por quadrado: a arte final entra
+  pixel por pixel com o zoom 3 da câmera (`sheetScale`), e o provisório continua. Cada pessoa pode ter folha própria
+  pelo nome (`person:Jarupã`), e o trio deixou de dividir o boneco da classe. `art/gerar_arte.py` pede à API de
+  imagens da OpenAI o que `art/manifest.json` descreve (prompts em inglês): 18 retratos pintados (640x800), 22 folhas
+  de 48x48 em pixel art (a folha sai do retrato, pra ter a mesma cara), o Ykuruã em 96x96 com a folha seca, as
+  splash arts do trio, de Oryndu, do título e dos baixios, e o mapa do mundo. Converte, guarda o bruto fora do git e
+  escreve `client/src/game/generatedArt.ts`, que o jogo lê. A tela de título usa a ilustração, a caixa de diálogo o
+  retrato pintado, e `M` (ou Mapa, na pausa) abre o mapa do mundo. A skill `gerar-arte` tem os comandos. Nada foi
+  gerado ainda: falta a chave (task 47), e as aparências são proposta (task 20).
 - **As peças guardadas na mochila** (do ramo `worktree-equipamento`, de 2026-10-09). O equipamento daquele ramo já
   estava todo no `main`, refeito; só faltava isto: a mochila (`I`) lista, depois dos itens, as peças que ninguém
   veste — as espadas temperadas de Thrykar, o que cai de inimigo —, com o que cada uma faz, e Enter leva à ficha pra

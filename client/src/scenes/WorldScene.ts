@@ -109,10 +109,11 @@ import { drawArea, drawBrackets, drawReach, drawStop } from "../game/combat/mark
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { JournalPanel } from "../game/JournalPanel";
+import { WorldMapPanel } from "../game/WorldMapPanel";
 import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
 import { SoundPanel } from "../game/SoundPanel";
-import { classSpriteKey, creatureSpriteKey, lookSpriteKey, type Facing } from "../game/mapSprites";
+import { classSpriteKey, creatureSpriteKey, lookSpriteKey, ownSpriteKey, sheetScale, type Facing } from "../game/mapSprites";
 import type { GameSession } from "../game/session";
 import { Menu, addBodyText, addPanel, addTitleText } from "../game/ui";
 import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
@@ -146,7 +147,7 @@ const SORTED_LAYER_PREFIX = "sorted";
 /** Camadas cujo nome começa com isto são desenhadas POR CIMA de tudo (pontes altas, telhados). */
 const ABOVE_LAYER_PREFIX = "above";
 
-const EXPLORE_HINT = "WASD ou setas: andar  ·  Z: descansar  ·  C: ficha  ·  I: mochila  ·  Esc: pausa";
+const EXPLORE_HINT = "WASD ou setas: andar  ·  Z: descansar  ·  C: ficha  ·  I: mochila  ·  M: mapa  ·  Esc: pausa";
 const AIM_HINT = "←/→: trocar de alvo  ·  Enter ou clique: atacar  ·  Esc: desistir";
 /** As marcas de quem mira um golpe de abertura: por cima do chão, por baixo de quem está de pé. */
 const AIM_DEPTH = -1;
@@ -309,7 +310,7 @@ export default class WorldScene extends Phaser.Scene {
       { character, companions: save.companions, rng: STORY_RNG, isDefeated: (key) => isDefeated(save, key) },
       save.story,
     );
-    this.player = this.addActor(classSpriteKey(character.characterClass), this.pos);
+    this.player = this.addActor(ownSpriteKey(this, character.name, classSpriteKey(character.characterClass)), this.pos);
     this.trail = [{ ...this.pos }];
     this.syncPresence();
 
@@ -435,7 +436,7 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   private addActor(spriteKey: string, pos: PixelPos): MapActor {
-    const actor = new MapActor(this, spriteKey, pos);
+    const actor = new MapActor(this, spriteKey, pos, sheetScale(spriteKey, this.map.tileSize));
     for (const object of actor.objects) this.addWorld(object);
     return actor;
   }
@@ -555,8 +556,8 @@ export default class WorldScene extends Phaser.Scene {
 
     // Quem tem cara (`look`) fica de pé; os outros `npc` são só pontos pra examinar no que o mapa já desenha.
     const standing = this.npcs.filter((npc) => npc.look !== undefined);
-    this.syncActors(this.npcActors, standing, (npc) => lookSpriteKey(npc.look!));
-    this.syncActors(this.enemyActors, this.enemies, (enemy) => creatureSpriteKey(enemy.creature));
+    this.syncActors(this.npcActors, standing, (npc) => ownSpriteKey(this, npc.name, lookSpriteKey(npc.look!)));
+    this.syncActors(this.enemyActors, this.enemies, (enemy) => ownSpriteKey(this, enemy.name, creatureSpriteKey(enemy.creature)));
     for (const enemy of this.enemies) this.enemyActors.get(enemy.id)?.face(enemy.facing ?? "down");
     this.drawSight();
     // O bicho de rio parado no mapa: meio corpo na água, ou inteiro no seco.
@@ -580,7 +581,8 @@ export default class WorldScene extends Phaser.Scene {
     for (const character of present) {
       if (this.followers.some((follower) => follower.character === character)) continue;
       const pos = { ...this.pos };
-      this.followers.push({ character, pos, actor: this.addActor(classSpriteKey(character.characterClass), pos) });
+      const spriteKey = ownSpriteKey(this, character.name, classSpriteKey(character.characterClass));
+      this.followers.push({ character, pos, actor: this.addActor(spriteKey, pos) });
     }
   }
 
@@ -1256,6 +1258,7 @@ export default class WorldScene extends Phaser.Scene {
     if (this.pause || this.combat || this.leaving || this.talking) return;
     if (event.code === "Escape") this.openPause();
     else if (event.code === "KeyJ") this.openJournal();
+    else if (event.code === "KeyM") this.openWorldMap();
     else if (event.code === "KeyC") this.openSheet();
     else if (event.code === "KeyI") this.openBag();
     else if (/^(Digit|Numpad)[1-9]$/.test(event.code)) {
@@ -1477,6 +1480,13 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   /** `J`: o diário de pistas, por cima do mundo parado. */
+  /** `M`: o mapa do mundo, por cima do mundo parado. */
+  private openWorldMap(): void {
+    this.halt();
+    sfx("uiOpen");
+    this.pause = new WorldMapPanel(this, (object) => this.addHud(object), () => this.closePause());
+  }
+
   private openJournal(): void {
     this.halt();
     sfx("uiOpen");
@@ -1493,7 +1503,7 @@ export default class WorldScene extends Phaser.Scene {
     this.halt();
     sfx("uiOpen");
     const width = 420;
-    const height = 438;
+    const height = 482;
     const x = (GAME_WIDTH - width) / 2;
     const y = (GAME_HEIGHT - height) / 2;
     const objects = [
@@ -1512,6 +1522,7 @@ export default class WorldScene extends Phaser.Scene {
         { label: "Ficha", onSelect: () => this.swapPause(() => this.openSheet()) },
         { label: "Mochila", onSelect: () => this.swapPause(() => this.openBag()) },
         { label: "Diário", onSelect: () => this.swapPause(() => this.openJournal()) },
+        { label: "Mapa", onSelect: () => this.swapPause(() => this.openWorldMap()) },
         { label: "Som", onSelect: () => this.swapPause(() => this.openSound()) },
         // Ao fechar, a cena grava o jogo (SHUTDOWN chama persist).
         { label: "Salvar e sair pro título", onSelect: () => this.scene.start(SCENES.title) },

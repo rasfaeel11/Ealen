@@ -4,6 +4,7 @@ import { beginNewGame } from "../game/newGame";
 import { firstEmptySlot, lastPlayedSlot, readSlots } from "../game/save";
 import { GameSession } from "../game/session";
 import { playMusic } from "../game/audio";
+import { splashKey } from "../game/splashes";
 import { SoundPanel } from "../game/SoundPanel";
 import { Menu, addBodyText, addTitleText } from "../game/ui";
 import type { SaveSlotsData } from "./SaveSlotsScene";
@@ -15,6 +16,12 @@ export default class TitleScene extends Phaser.Scene {
 
   create(): void {
     const centerX = GAME_WIDTH / 2;
+
+    // A ilustração do título, quando existe (ver art/manifest.json), escurecida embaixo do texto.
+    if (this.textures.exists(splashKey("titulo"))) {
+      this.add.image(centerX, GAME_HEIGHT / 2, splashKey("titulo")).setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+      this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.45).setOrigin(0);
+    }
 
     // Título provisório (ver AGENTS.md).
     addTitleText(this, centerX, 240, "TRÊS NA ESTRADA", { fontSize: "84px" }).setOrigin(0.5);

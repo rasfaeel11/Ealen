@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { BESTIARY, CLASS_INFO, NPC_LOOKS, type CharacterClass } from "@jogo/shared";
+import { GENERATED_SHEETS } from "./generatedArt";
 
 /**
  * Sprites de quem está no mapa — personagens e criaturas, andando ou
@@ -14,7 +15,15 @@ import { BESTIARY, CLASS_INFO, NPC_LOOKS, type CharacterClass } from "@jogo/shar
  * Pra trocar pela arte final: salve a folha em client/public/sprites/ e
  * registre em MAP_SHEETS, com a chave de quem ela representa. O pé fica no
  * meio da base do quadro. O quadro pode ser maior que o quadrado do mapa (o
- * Ykuruã é 48x32): a regra continua pondo cada um num quadrado só.
+ * Ykuruã ocupa dois de largura): a regra continua pondo cada um num quadrado só.
+ *
+ * A ESCALA: a arte final é desenhada a ART_PX_PER_TILE (48) pixels por
+ * quadrado do mapa — um boneco é 48x48 —, e o provisório a 16. O ator se
+ * encolhe pro quadrado do mapa (ver sheetScale), e como a câmera do mundo
+ * amplia o mapa até um quadrado ter 48 pixels na tela, a arte final aparece
+ * pixel por pixel, sem borrão. Quem ganha arte própria além da classe (o
+ * trio, Oryndu, Thrykar, a Contratada...) é registrado pelo nome, como está
+ * no mapa e na ficha (ver personSpriteKey).
  */
 
 export type Facing = "down" | "left" | "right" | "up";
@@ -29,15 +38,44 @@ export interface MapSheetDef {
   url: string;
   frameWidth: number;
   frameHeight: number;
+  /** Quantos pixels da folha cabem num quadrado do mapa. Sem isso, ART_PX_PER_TILE. */
+  pxPerTile?: number;
+}
+
+/** A densidade da arte final: um quadrado do mapa tem 48 pixels de arte (o boneco é 48x48). */
+export const ART_PX_PER_TILE = 48;
+/** A densidade do provisório desenhado aqui. */
+const PLACEHOLDER_PX_PER_TILE = 16;
+
+/**
+ * Quanto o ator de `spriteKey` encolhe (ou cresce) pra caber num mapa de
+ * quadrados de `tileSize` pixels: a arte final pela densidade dela, o
+ * provisório pela dele. A folha seca segue a da criatura.
+ */
+export function sheetScale(spriteKey: string, tileSize: number): number {
+  const def = MAP_SHEETS[spriteKey] ?? MAP_SHEETS[spriteKey.replace(/:seco$/, "")];
+  return tileSize / (def ? (def.pxPerTile ?? ART_PX_PER_TILE) : PLACEHOLDER_PX_PER_TILE);
+}
+
+/** A folha de quem tem arte própria, pelo nome (`Jarupã`, `Thrykar`, `Contratada`). */
+export function personSpriteKey(name: string): string {
+  return `person:${name}`;
+}
+
+/** A folha própria de `name`, se a arte dela foi carregada; senão `fallback` (a da classe, da cara ou da criatura). */
+export function ownSpriteKey(scene: Phaser.Scene, name: string, fallback: string): string {
+  const own = personSpriteKey(name);
+  return scene.textures.exists(own) ? own : fallback;
 }
 
 /**
- * Folhas de arte final, por chave (ver classSpriteKey, lookSpriteKey e
- * creatureSpriteKey). Vazio = todo mundo usa o provisório. Exemplo:
+ * Folhas de arte final, por chave (ver classSpriteKey, lookSpriteKey,
+ * creatureSpriteKey e personSpriteKey): as que art/gerar_arte.py registrou
+ * (generatedArt.ts) e as feitas à mão, aqui. Quem não tem usa o provisório. Exemplo:
  *
- *   "class:espadachim": { url: "sprites/espadachim.png", frameWidth: 24, frameHeight: 32 },
+ *   "class:espadachim": { url: "sprites/espadachim.png", frameWidth: 48, frameHeight: 48 },
  */
-export const MAP_SHEETS: Record<string, MapSheetDef> = {};
+export const MAP_SHEETS: Record<string, MapSheetDef> = { ...GENERATED_SHEETS };
 
 export function classSpriteKey(characterClass: CharacterClass): string {
   return `class:${characterClass}`;
@@ -262,6 +300,11 @@ export function registerMapSprites(scene: Phaser.Scene): void {
       // A folha seca da arte final já está carregada: aqui ela só ganha as animações.
       placeholders[drySpriteKey(spriteKey)] = { draw: riverBeast(DRY_MUD, true) };
     }
+  }
+
+  // As folhas próprias de cada pessoa (ver personSpriteKey) não têm provisório: só ganham as animações.
+  for (const spriteKey of Object.keys(MAP_SHEETS)) {
+    if (spriteKey.startsWith("person:") && scene.textures.exists(spriteKey)) placeholders[spriteKey] = { draw: () => undefined };
   }
 
   for (const [spriteKey, { draw, width, height }] of Object.entries(placeholders)) {

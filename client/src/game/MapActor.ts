@@ -51,14 +51,19 @@ export class MapActor {
   private sink = 0;
   private bleeding?: Phaser.Time.TimerEvent;
 
+  /**
+   * `scale`: quanto a folha encolhe pra caber no quadrado do mapa (ver
+   * sheetScale em ./mapSprites.ts) — a arte final é mais densa que o mapa.
+   */
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly spriteKey: string,
     pos: PixelPos,
+    private readonly scale = 1,
   ) {
     this.sheet = spriteKey;
-    this.sprite = scene.add.sprite(0, 0, spriteKey, standingFrame(this.facing)).setOrigin(0.5, 1);
-    const width = this.sprite.width;
+    this.sprite = scene.add.sprite(0, 0, spriteKey, standingFrame(this.facing)).setOrigin(0.5, 1).setScale(scale);
+    const width = this.sprite.displayWidth;
     this.barWidth = Math.max(HP_BAR_WIDTH, Math.round(width * 0.5));
     this.shadow = scene.add.ellipse(0, 0, Math.max(12, width * 0.75), Math.max(5, width * 0.2), 0x000000, 0.3);
     this.turnRing = scene.add.ellipse(0, 0, Math.max(16, width * 0.8), Math.max(7, width * 0.25)).setVisible(false);
@@ -82,7 +87,7 @@ export class MapActor {
 
   /** Onde fica a cabeça — de onde sobem os números de dano. Submerso, é o alto do que está fora da água. */
   get top(): PixelPos {
-    return { x: this.feet.x, y: this.feet.y - (this.sprite.height - this.sink) };
+    return { x: this.feet.x, y: this.feet.y - (this.sprite.displayHeight - this.sink) };
   }
 
   /** O que a câmera segue. */
@@ -115,7 +120,7 @@ export class MapActor {
 
   /** Agachado, esgueirando (ver shared/world/stealth.ts): mais baixo e mais apagado. */
   setSneaking(sneaking: boolean): void {
-    this.sprite.setAlpha(sneaking ? 0.6 : 1).setScale(1, sneaking ? 0.88 : 1);
+    this.sprite.setAlpha(sneaking ? 0.6 : 1).setScale(this.scale, this.scale * (sneaking ? 0.88 : 1));
   }
 
   setWalking(walking: boolean): void {
@@ -145,9 +150,11 @@ export class MapActor {
       if (walking) this.sprite.anims.play(walkAnimKey(sheet, this.facing));
     }
 
+    // O corte é no quadro da folha; o que afunda, em pixels do mapa.
     const { width, height } = this.sprite;
-    this.sink = immersion === "submerged" ? Math.round(height * SUBMERGED_SHARE) : 0;
-    if (this.sink > 0) this.sprite.setCrop(0, 0, width, height - this.sink);
+    const sunk = immersion === "submerged" ? Math.round(height * SUBMERGED_SHARE) : 0;
+    this.sink = sunk * this.scale;
+    if (sunk > 0) this.sprite.setCrop(0, 0, width, height - sunk);
     else this.sprite.setCrop();
     this.shadow.setVisible(this.sink === 0);
     this.ripple.setVisible(this.sink > 0);

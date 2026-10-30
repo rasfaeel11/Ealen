@@ -1,4 +1,5 @@
 import * as Phaser from "phaser";
+import { GENERATED_PORTRAITS } from "../generatedArt";
 
 /**
  * Retratos de quem fala na caixa de diálogo: um busto grande, no canto de
@@ -27,6 +28,8 @@ export interface PortraitDef {
    * Rosto pedido sem arte aqui mostra o retrato de sempre.
    */
   faces?: Record<string, string>;
+  /** Pintado, não pixel art: escala com suavização. */
+  smooth?: boolean;
 }
 
 /**
@@ -35,7 +38,7 @@ export interface PortraitDef {
  *
  *   Xanduí: { url: "sprites/portraits/xandui.png", faces: { riso: "sprites/portraits/xandui-riso.png" } },
  */
-export const PORTRAITS: Record<string, PortraitDef> = {};
+export const PORTRAITS: Record<string, PortraitDef> = { ...GENERATED_PORTRAITS };
 
 /** Quem ganha busto provisório, e em que cor. Quem não está aqui não tem retrato. */
 const PLACEHOLDER_COLOR: Record<string, string> = {
@@ -123,7 +126,7 @@ export function registerPortraits(scene: Phaser.Scene): void {
   }
   for (const [speaker, def] of Object.entries(PORTRAITS)) {
     for (const face of [undefined, ...Object.keys(def.faces ?? {})]) {
-      scene.textures.get(portraitKey(speaker, face)).setFilter(Phaser.Textures.FilterMode.NEAREST);
+      scene.textures.get(portraitKey(speaker, face)).setFilter(def.smooth ? Phaser.Textures.FilterMode.LINEAR : Phaser.Textures.FilterMode.NEAREST);
     }
   }
 }
