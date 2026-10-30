@@ -544,6 +544,13 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
   sem gastar a Cheia. O acampamento come um Pão de Viagem a cada duas bocas de quem luta; quem fica sem acorda com
   metade do que faltava e com Fome, e a noite gasta a Cheia. Endyru começa com dois pães; a banca do cais vende mais.
   O save foi pra versão 8 (`shortRests`).
+- **A furtividade** (task 12 do `docs/motor.md`, pedida pelo autor em 2026-10-30). Nada obriga a se esconder, e cada
+  jeito de começar a luta tem o seu preço. Cada inimigo olha pra um lado (`facing` no Tiled) num cone de 6 quadrados, e
+  ouve quem anda à vista a 2. Com `Q` o grupo se agacha e anda devagar: o olhar deles fica pintado no chão, e quem tem o
+  grupo no olhar desconfia antes de ver (um "?" que vai do dourado ao vermelho). Escondido, `F` embosca e o outro lado
+  entra Surpreso; pego no meio do bote, quem entra Surpreso é o grupo. À vista, `F` é a investida, chutar a porta: o
+  grupo age antes de todos e a Força pode deixar o outro lado Abalado. Luta aberta pela história não dá vantagem a
+  ninguém. Os inimigos da floresta e do portão ganharam direção.
 - **As peças guardadas na mochila** (do ramo `worktree-equipamento`, de 2026-10-09). O equipamento daquele ramo já
   estava todo no `main`, refeito; só faltava isto: a mochila (`I`) lista, depois dos itens, as peças que ninguém
   veste — as espadas temperadas de Thrykar, o que cai de inimigo —, com o que cada uma faz, e Enter leva à ficha pra

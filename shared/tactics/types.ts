@@ -406,8 +406,17 @@ export type AttackOutcome = "hit" | "miss" | "crit" | "fumble";
  * e a cena reproduz. Regra nova de combate vira evento novo aqui.
  */
 export type TacticalEvent =
-  /** `surprised` é o lado pego de surpresa, se houve emboscada. */
-  | { type: "battleStarted"; order: { unit: string; initiative: number }[]; surprised?: TeamId }
+  /**
+   * `surprised` é o lado pego de surpresa, se houve emboscada. `charge`, a
+   * investida, se um lado entrou chutando a porta: ele age antes, e rolou
+   * `roll` (d20 + a maior Força dele) contra `needed` pra abalar o outro.
+   */
+  | {
+      type: "battleStarted";
+      order: { unit: string; initiative: number }[];
+      surprised?: TeamId;
+      charge?: { team: TeamId; roll: number; needed: number; shaken: boolean };
+    }
   | { type: "roundStarted"; round: number }
   | { type: "turnStarted"; unit: string }
   | { type: "turnEnded"; unit: string }

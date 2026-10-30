@@ -40,7 +40,8 @@ import { CLASS_INFO } from "../types/characterClass";
  *              `passive`) e `onDefeat` (o trecho que abre quando o grupo
  *              dele é vencido). E `flood` ("3 2"): a luta do grupo dele tem
  *              cheia — a água come um anel da margem de 3 em 3 rodadas, até
- *              2 vezes (ver Flood em ../tactics/types.ts)
+ *              2 vezes (ver Flood em ../tactics/types.ts). E `facing` (down, left,
+ *              right ou up; sem ele, down): pra onde ele olha (ver ./stealth.ts)
  *     `npc`    ponto; alguém (ou algo) com quem se fala. O Nome é o que
  *              aparece na caixa; a propriedade `dialog` é o trecho (knot)
  *              da história em client/story que a conversa abre. Com `look`
@@ -142,8 +143,19 @@ export interface AreaEnemy extends AreaCondition {
   onDefeat?: string;
   /** A luta do grupo dele tem cheia: a água sobe de `every` em `every` rodadas, até `rises` vezes (ver Flood no motor). */
   flood?: { every: number; rises: number };
+  /** Pra onde ele olha, parado (ver ./stealth.ts). Sem isso, pra baixo. */
+  facing?: Heading;
   x: number;
   y: number;
+}
+
+/** Os quatro lados pra onde alguém olha no mapa. */
+export type Heading = "down" | "left" | "right" | "up";
+
+export const HEADINGS: readonly Heading[] = ["down", "left", "right", "up"];
+
+export function isHeading(value: unknown): value is Heading {
+  return (HEADINGS as readonly unknown[]).includes(value);
 }
 
 /** Um pedaço do chão que abre um trecho da história quando se pisa nele. */
@@ -438,9 +450,12 @@ export function parseTiledMap(raw: unknown): AreaMap {
         });
       } else if (kind === "enemy") {
         const properties = propertiesOf(object);
-        const { creature, group, dialog, onDefeat } = properties;
+        const { creature, group, dialog, onDefeat, facing } = properties;
         if (typeof creature !== "string") {
           throw new Error(`Inimigo "${object.name ?? ""}" precisa da propriedade "creature".`);
+        }
+        if (facing !== undefined && !isHeading(facing)) {
+          throw new Error(`Inimigo "${object.name ?? ""}": "facing" é down, left, right ou up, não "${String(facing)}".`);
         }
         const id = `enemy-${object.id}`;
         enemies.push({
@@ -452,6 +467,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
           dialog: typeof dialog === "string" ? dialog : undefined,
           onDefeat: typeof onDefeat === "string" ? onDefeat : undefined,
           ...floodOf(object.name ?? "", properties.flood),
+          ...(facing !== undefined ? { facing } : {}),
           x: object.x,
           y: object.y,
           ...conditionOf(properties),

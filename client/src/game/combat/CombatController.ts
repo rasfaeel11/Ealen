@@ -751,6 +751,10 @@ export class CombatController {
   private async animate(event: TacticalEvent): Promise<void> {
     switch (event.type) {
       case "battleStarted":
+        if (event.charge) {
+          const { roll, needed, shaken } = event.charge;
+          this.hud.log(`Investida! ${roll} contra ${needed}: ${shaken ? "o outro lado está Abalado." : "ninguém se abala."}`);
+        }
         return;
 
       case "roundStarted":

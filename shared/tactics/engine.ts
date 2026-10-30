@@ -82,6 +82,13 @@ export interface EncounterSetup {
    */
   surprised?: TeamId;
   /**
+   * O lado que entrou na luta à vista, de propósito: a INVESTIDA (chutar a
+   * porta). Ele age antes de todo mundo na primeira rodada e rola d20 + a
+   * maior Força dele contra CHARGE_DC; passando, o outro lado entra Abalado
+   * até o fim do primeiro turno. Não vem junto com a surpresa.
+   */
+  charge?: TeamId;
+  /**
    * O roteiro da luta: as deixas dela, na ordem em que valem quando duas
    * disparam juntas (ver Cue em ./types.ts). Sem nenhuma, a luta só acaba
    * com um lado inteiro no chão.
@@ -149,13 +156,18 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
   }));
   // Empate: quem tem mais Olho; persistindo, quem foi declarado primeiro.
   rolls.sort((a, b) => b.initiative - a.initiative || b.unit.attributes.olho - a.unit.attributes.olho || a.index - b.index);
+  // Na investida, quem a deu vem antes de todo mundo, na ordem que rolou entre os seus.
+  const charge = setup.surprised ? undefined : setup.charge;
+  if (charge) rolls.sort((a, b) => Number(b.unit.team === charge) - Number(a.unit.team === charge));
   encounter.order = rolls.map((roll) => roll.unit.id);
+  const charged = charge ? chargeRoll(encounter, charge) : undefined;
 
   const events: TacticalEvent[] = [
     {
       type: "battleStarted",
       order: rolls.map((roll) => ({ unit: roll.unit.id, initiative: roll.initiative })),
       ...(setup.surprised ? { surprised: setup.surprised } : {}),
+      ...(charged ? { charge: charged } : {}),
     },
   ];
   for (const unit of encounter.units) {
@@ -168,12 +180,27 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     unit.turn.reaction = false;
     addStatus(unit, STATUSES.surprised, 1, events);
   }
+  for (const unit of encounter.units) {
+    if (!charged?.shaken || unit.team === charged.team || !isAlive(unit)) continue;
+    // Dois inícios de turno: cai quando ele for agir pela SEGUNDA vez, e o primeiro turno inteiro é Abalado.
+    addStatus(unit, STATUSES.shaken, 2, events);
+  }
   if (setup.opening) strikeFirst(encounter, setup.opening, events);
   if (!concludeIfDecided(encounter, events)) {
     events.push({ type: "roundStarted", round: 1 });
     advanceTurn(encounter, events);
   }
   return { encounter, events };
+}
+
+/** Quanto a investida precisa tirar (d20 + a maior Força de quem a deu) pra abalar o outro lado. */
+export const CHARGE_DC = 18;
+
+/** A rolagem da investida de `team` (ver EncounterSetup.charge). */
+function chargeRoll(encounter: Encounter, team: TeamId): { team: TeamId; roll: number; needed: number; shaken: boolean } {
+  const strongest = Math.max(0, ...encounter.units.filter((unit) => unit.team === team && isAlive(unit)).map((unit) => effectiveAttribute(unit, "forca")));
+  const roll = rollDie(encounter, 20) + strongest;
+  return { team, roll, needed: CHARGE_DC, shaken: roll >= CHARGE_DC };
 }
 
 /** Resolve o golpe de abertura (ver Opening). Inválido, não faz nada. */

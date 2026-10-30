@@ -75,6 +75,8 @@ export const STATUSES = {
   wounded_arm: { id: "wounded_arm", name: "Braço ferido", toHit: -2 },
   /** Quem foi pego de surpresa (ver `surprised` em EncounterSetup): perde o primeiro turno. */
   surprised: { id: "surprised", name: "Surpreso", skipsTurn: true },
+  /** Quem viu o grupo entrar chutando a porta: treme no primeiro turno (ver Charge no motor). */
+  shaken: { id: "shaken", name: "Abalado", toHit: -2 },
   /** A marca da mana de atração e repulsão (ver ../mana.ts): sangue pelo nariz e tremor na mão. Passa com o descanso. */
   bloodied: { id: "bloodied", name: "Sangue e tremor", toHit: -2, manaLimit: -1, focus: -3, untilRest: true },
   // --- O bicho de rio na água e na terra (ver soak em ./engine.ts): quem as põe e tira é o chão. ---

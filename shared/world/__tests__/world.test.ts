@@ -11,7 +11,8 @@ import { isStatusId } from "../../tactics/statuses";
 import type { Character } from "../../types/character";
 import { isLook } from "../tiledMap";
 import {
-  AGGRO_RANGE,
+  HEAR_RANGE,
+  SIGHT_RANGE,
   AMBUSH_RANGE,
   AREAS,
   STARTING_AREA,
@@ -240,7 +241,7 @@ for (const [areaId, map] of Object.entries(maps)) {
     for (const [name, spawn] of Object.entries(map.spawns)) {
       for (const enemy of map.enemies.filter((candidate) => !candidate.passive)) {
         const gap = distance(tileOfPixel(map, spawn), tileOfPixel(map, enemy));
-        assert.ok(gap > AGGRO_RANGE, `"${name}" nasce a ${gap} quadrados de ${enemy.id}`);
+        assert.equal(aggroedGroup(map, [enemy], tileOfPixel(map, spawn)), undefined, `"${name}" nasce à vista de ${enemy.id}, a ${gap} quadrados`);
       }
     }
   });
@@ -264,9 +265,11 @@ for (const [areaId, map] of Object.entries(maps)) {
     const [wolf] = map.enemies;
     const wolfTile = tileOfPixel(map, wolf);
     const playerTile = { x: wolfTile.x - 3, y: wolfTile.y };
+    // Ele olha pra quem vem pela trilha, da esquerda.
+    const watching = map.enemies.map((enemy) => ({ ...enemy, facing: "left" as const }));
 
-    assert.equal(aggroedGroup(map, map.enemies, { x: 3, y: 11 }), undefined);
-    assert.equal(aggroedGroup(map, map.enemies, playerTile), "cacadores");
+    assert.equal(aggroedGroup(map, watching, { x: 3, y: 11 }), undefined);
+    assert.equal(aggroedGroup(map, watching, playerTile), "cacadores");
 
     const group = map.enemies.filter((enemy) => enemy.group === "cacadores");
     const { encounter } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: playerTile }], group, 5);
@@ -581,13 +584,16 @@ test("inimigo passivo não percebe ninguém nem pode ser emboscado; o hostil se 
   assert.equal(ambushableGroup(map, enemies, { x: 5, y: 5 }), "lobo");
   assert.equal(ambushableGroup(map, [chief], { x: 2, y: 3 }), undefined);
 
-  // À vista: perto demais ele percebe primeiro; na faixa entre os dois alcances, quem ataca primeiro é o jogador.
+  // À vista: ele vê o que está no cone à frente (olha pra baixo, sem `facing`) e ouve quem passa colado, por qualquer lado.
   const open = room();
   const far = enemy("longe", 1, 1);
   const near = enemy("perto", 10, 10);
-  assert.ok(AMBUSH_RANGE > AGGRO_RANGE);
-  assert.equal(aggroedGroup(open, [far], { x: 1 + AGGRO_RANGE, y: 1 }), "longe");
-  assert.equal(aggroedGroup(open, [far], { x: 1 + AGGRO_RANGE + 1, y: 1 }), undefined);
+  assert.ok(AMBUSH_RANGE > SIGHT_RANGE);
+  assert.equal(aggroedGroup(open, [far], { x: 1, y: 1 + SIGHT_RANGE }), "longe");
+  assert.equal(aggroedGroup(open, [far], { x: 1, y: 1 + SIGHT_RANGE + 1 }), undefined);
+  assert.equal(aggroedGroup(open, [far], { x: 1 + HEAR_RANGE + 1, y: 1 }), undefined, "de lado, longe do ouvido");
+  assert.equal(aggroedGroup(open, [far], { x: 1 + HEAR_RANGE, y: 1 }), "longe", "de lado, mas colado");
+  assert.equal(aggroedGroup(open, [{ ...far, facing: "up" }], { x: 1, y: 1 + 4 }), undefined, "de costas");
   assert.equal(ambushableGroup(open, [far], { x: 1 + AMBUSH_RANGE, y: 1 }), "longe");
   assert.equal(ambushableGroup(open, [far], { x: 1 + AMBUSH_RANGE + 1, y: 1 }), undefined);
   // Com dois ao alcance, o mais próximo.

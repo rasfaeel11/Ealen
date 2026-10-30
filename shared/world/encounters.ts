@@ -13,6 +13,7 @@ import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
 import type { LearnedAbility, LevelUpResult } from "../types/levelUp";
 import { HERO_ID, auraOf, castOf, companionId, keepsVow, magicOf, supportOf } from "../party";
+import { watch } from "./stealth";
 import { CUE_ON_ENEMIES, tileOfPixel, type AreaCue, type AreaEnemy, type AreaMap, type AreaProp, type PixelPos } from "./tiledMap";
 
 /**
@@ -56,22 +57,20 @@ export function standAreaProps(
   return standing;
 }
 
-/** A quantos quadrados um inimigo percebe o jogador (precisa também enxergá-lo). */
-export const AGGRO_RANGE = 5;
-
-/** O grupo que percebeu o jogador em `playerTile`, se algum. `enemies` são só os que ainda estão de pé. */
+/**
+ * O grupo que percebeu o jogador em `playerTile`, andando à vista, se algum:
+ * quem o tem no olhar ou o ouve de perto (ver `watch` em ./stealth.ts).
+ * `enemies` são só os que ainda estão de pé.
+ */
 export function aggroedGroup(map: AreaMap, enemies: AreaEnemy[], playerTile: Pos): string | undefined {
-  return enemies.find((enemy) => {
-    if (enemy.passive) return false;
-    const tile = tileOfPixel(map, enemy);
-    return distance(tile, playerTile) <= AGGRO_RANGE && hasLineOfSight(map.grid, tile, playerTile);
-  })?.group;
+  const seen = watch(map, enemies, playerTile, false, 0, {});
+  return seen.kind === "unseen" ? undefined : seen.group;
 }
 
 /**
- * De quão longe dá pra armar uma emboscada. Maior que AGGRO_RANGE: a faixa
- * entre os dois é de onde se ataca à vista sem ter sido visto. Mais perto
- * que isso, só fora da linha de visão (atrás de uma parede, de uma árvore).
+ * De quão longe dá pra armar uma emboscada. Maior que o olhar de um inimigo
+ * (SIGHT_RANGE, em ./stealth.ts): dá pra começar a luta de onde ele ainda
+ * não vê. Escondido, é emboscada; à vista, investida (quem decide é quem chama).
  */
 export const AMBUSH_RANGE = 9;
 
@@ -245,7 +244,8 @@ export function fightCues(
  * apoio que oferecem (quem não oferece nenhum é ignorado); `lasting`, as
  * condições com que alguém já chega e que duram a luta toda, pelo id (o que
  * a história pôs com `afflict`); `opening`, o golpe dado de fora da luta que
- * a começa (ver Opening no motor e openingStrikes em ./field.ts).
+ * a começa (ver Opening no motor e openingStrikes em ./field.ts); `charge`, o
+ * lado que a começou à vista, de propósito (a investida, ver ./stealth.ts).
  *
  * O estilo e o que cada um do grupo sabe além do kit vêm do elenco
  * (../party.ts); os das criaturas, do bestiário.
@@ -261,6 +261,7 @@ export function startAreaEncounter(
   onlookers: readonly Character[] = [],
   lasting: Record<string, readonly StatusId[]> = {},
   opening?: Opening,
+  charge?: TeamId,
 ): { encounter: Encounter; events: TacticalEvent[] } {
   const supporters = onlookers.flatMap((character) => {
     const support = supportOf(character);
@@ -285,7 +286,7 @@ export function startAreaEncounter(
   // Mexer num objeto vale uma vez por luta: o que se mexeu numa luta anterior da área está pronto de novo.
   for (const prop of props) delete prop.used;
   const flood = enemies.find((enemy) => enemy.flood)?.flood;
-  return startEncounter({ grid: map.grid, units, props, surprised, cues, supporters, lasting, opening, seed, ...(flood ? { flood } : {}) });
+  return startEncounter({ grid: map.grid, units, props, surprised, charge, cues, supporters, lasting, opening, seed, ...(flood ? { flood } : {}) });
 }
 
 /**

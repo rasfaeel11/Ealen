@@ -8,7 +8,6 @@ import {
   STARTING_SPAWN,
   StoryRunner,
   aftermath,
-  aggroedGroup,
   ambushableGroup,
   brokenInArea,
   distance,
@@ -51,6 +50,10 @@ import {
   placeParty,
   presentCompanions,
   restoreParty,
+  sightTiles,
+  wary,
+  watch,
+  type Suspicion,
   SHORT_RESTS,
   camp,
   campMeals,
@@ -118,6 +121,8 @@ import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
 const ZOOM = 3;
 /** Pixels do mapa por segundo (6 quadrados de 16px). */
 const WALK_SPEED = 96;
+/** Esgueirando, anda-se na metade. */
+const SNEAK_FACTOR = 0.5;
 /** Quem segue anda mais rápido que quem vai na frente: é o que o deixa alcançar depois de ficar pra trás. */
 const FOLLOW_SPEED = WALK_SPEED * 1.6;
 /** A caixa dos pés: mais estreita que um quadrado, pra passar em corredor de um de largura. */
@@ -145,6 +150,10 @@ const EXPLORE_HINT = "WASD ou setas: andar  ·  Z: descansar  ·  C: ficha  ·  
 const AIM_HINT = "←/→: trocar de alvo  ·  Enter ou clique: atacar  ·  Esc: desistir";
 /** As marcas de quem mira um golpe de abertura: por cima do chão, por baixo de quem está de pé. */
 const AIM_DEPTH = -1;
+/** O olhar pintado no chão de quem se esgueira. */
+const SIGHT_ALPHA = 0.14;
+/** O "?" de quem desconfia fica por cima de todo mundo. */
+const WARY_DEPTH = 100000;
 const AIM_TARGET_COLOR = 0xe0566c;
 const AIM_STEP_COLOR = 0x6fa8dc;
 /** O que a história rola nos testes dela. Um dado por sessão de jogo basta. */
@@ -194,6 +203,14 @@ export default class WorldScene extends Phaser.Scene {
    */
   private enemies: AreaEnemy[] = [];
   private enemyActors = new Map<string, MapActor>();
+  /** Esgueirando (`Q`): devagar, agachado, e quem olha desconfia antes de ver (ver shared/world/stealth.ts). */
+  private sneaking = false;
+  /** O quanto cada inimigo já desconfia, de 0 a 1, pelo id. */
+  private suspicion: Suspicion = {};
+  /** O olhar dos inimigos pintado no chão, enquanto se esgueira. */
+  private sightMarks?: Phaser.GameObjects.Graphics;
+  /** O "?" em cima de quem desconfia, pelo id. */
+  private wariness = new Map<string, Phaser.GameObjects.Text>();
   private npcs: AreaNpc[] = [];
   private npcActors = new Map<string, MapActor>();
   private exits: AreaExit[] = [];
@@ -255,6 +272,10 @@ export default class WorldScene extends Phaser.Scene {
     this.trail = [];
     this.enemies = [];
     this.enemyActors = new Map();
+    this.sneaking = false;
+    this.suspicion = {};
+    this.sightMarks = undefined;
+    this.wariness = new Map();
     this.npcs = [];
     this.npcActors = new Map();
     this.exits = [];
@@ -327,6 +348,7 @@ export default class WorldScene extends Phaser.Scene {
     keyboard.on("keydown-Z", this.openRest, this);
     keyboard.on("keydown-E", this.interact, this);
     keyboard.on("keydown-F", this.ambush, this);
+    keyboard.on("keydown-Q", this.toggleSneak, this);
     keyboard.on("keydown", this.onKey, this);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onAimPointer, this);
     // O botão direito cancela a mira no combate; o menu do navegador só atrapalharia.
@@ -360,6 +382,8 @@ export default class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (this.lookout(delta)) return;
+
     const dx = Number(this.keys.right.isDown || this.keys.d.isDown) - Number(this.keys.left.isDown || this.keys.a.isDown);
     const dy = Number(this.keys.down.isDown || this.keys.s.isDown) - Number(this.keys.up.isDown || this.keys.w.isDown);
     if (dx === 0 && dy === 0) {
@@ -370,7 +394,8 @@ export default class WorldScene extends Phaser.Scene {
     }
 
     // Na diagonal o passo é dividido entre os eixos: não se anda mais rápido de lado.
-    const step = (WALK_SPEED * Math.min(delta, MAX_FRAME_MS)) / 1000 / Math.hypot(dx, dy);
+    const speed = this.sneaking ? WALK_SPEED * SNEAK_FACTOR : WALK_SPEED;
+    const step = (speed * Math.min(delta, MAX_FRAME_MS)) / 1000 / Math.hypot(dx, dy);
     const from = this.pos;
     this.pos = walk(this.map, this.pos, dx * step, dy * step, BODY);
     this.player.place(this.pos);
@@ -392,11 +417,6 @@ export default class WorldScene extends Phaser.Scene {
       return;
     }
 
-    const group = aggroedGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos));
-    if (group) {
-      this.startCombat(group);
-      return;
-    }
     this.refreshHint();
   }
 
@@ -537,6 +557,8 @@ export default class WorldScene extends Phaser.Scene {
     const standing = this.npcs.filter((npc) => npc.look !== undefined);
     this.syncActors(this.npcActors, standing, (npc) => lookSpriteKey(npc.look!));
     this.syncActors(this.enemyActors, this.enemies, (enemy) => creatureSpriteKey(enemy.creature));
+    for (const enemy of this.enemies) this.enemyActors.get(enemy.id)?.face(enemy.facing ?? "down");
+    this.drawSight();
     // O bicho de rio parado no mapa: meio corpo na água, ou inteiro no seco.
     for (const enemy of this.enemies) {
       if (!BESTIARY[enemy.creature]?.river) continue;
@@ -658,8 +680,10 @@ export default class WorldScene extends Phaser.Scene {
     const journal = this.story.journal().length > 0 ? "  ·  J: diário" : "";
     // A segunda linha: o que o protagonista sabe fazer daqui, sem estar em luta.
     const skills = this.fieldAbilities().map((ability, index) => `${index + 1}: ${ability.name}`);
+    const charge = prey === undefined ? "" : this.hidden(prey) ? "  ·  F: emboscar" : "  ·  F: investida";
+    const sneak = `  ·  Q: ${this.sneaking ? "levantar" : "esgueirar"}`;
     this.hintText.setText(
-      EXPLORE_HINT + journal + talk + (prey ? "  ·  F: emboscar" : "") + (skills.length > 0 ? `\n${skills.join("  ·  ")}` : ""),
+      EXPLORE_HINT + sneak + journal + talk + charge + (skills.length > 0 ? `\n${skills.join("  ·  ")}` : ""),
     );
   }
 
@@ -885,11 +909,105 @@ export default class WorldScene extends Phaser.Scene {
 
   // ----------------------------------------------------------------- combate
 
-  /** `F`: ataca primeiro o grupo mais próximo que ainda não percebeu o personagem. Ele entra na luta surpreso. */
+  /**
+   * `F`: começa a luta com o grupo mais próximo que ainda não percebeu o
+   * personagem. Escondido, é emboscada: ele entra Surpreso. À vista, é a
+   * investida: o grupo do jogador age antes, e a Força pode abalar o outro.
+   */
   private ambush(): void {
     if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
     const group = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos), this.character);
-    if (group !== undefined) this.startCombat(group, "enemy");
+    if (group === undefined) return;
+    if (this.hidden(group)) this.startCombat(group, "enemy");
+    else this.startCombat(group, undefined, undefined, "party");
+  }
+
+  /** O grupo `group` não sabe do personagem: ele se esgueira e ninguém dali desconfia. */
+  private hidden(group: string): boolean {
+    return this.sneaking && !wary(this.enemies, group, this.suspicion);
+  }
+
+  /** `Q`: agacha e anda devagar, ou levanta. */
+  private toggleSneak(): void {
+    if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
+    this.sneaking = !this.sneaking;
+    this.player.setSneaking(this.sneaking);
+    for (const follower of this.followers) follower.actor.setSneaking(this.sneaking);
+    this.drawSight();
+    this.refreshHint();
+  }
+
+  /**
+   * O olhar dos inimigos, a cada quadro fora de luta (ver shared/world/stealth.ts).
+   * Andando à vista, quem vê começa a luta; esgueirando, desconfia, e quem
+   * pega o grupo no meio do bote o pega Surpreso. Devolve se a luta começou.
+   */
+  private lookout(delta: number): boolean {
+    const seen = watch(
+      this.map,
+      this.enemies,
+      tileOfPixel(this.map, this.pos),
+      this.sneaking,
+      Math.min(delta, MAX_FRAME_MS) / 1000,
+      this.suspicion,
+    );
+    this.showWariness();
+    if (seen.kind === "unseen") {
+      if (this.sneaking) this.refreshHint();
+      return false;
+    }
+    if (seen.kind === "caught") {
+      this.showBanner("Pegos!");
+      this.startCombat(seen.group, "party");
+    } else {
+      this.startCombat(seen.group);
+    }
+    return true;
+  }
+
+  /** O "?" em cima de quem desconfia: mais forte e mais vermelho quanto mais perto de ver. */
+  private showWariness(): void {
+    for (const [id, mark] of this.wariness) {
+      if (this.suspicion[id] !== undefined) continue;
+      mark.destroy();
+      this.wariness.delete(id);
+    }
+    for (const [id, level] of Object.entries(this.suspicion)) {
+      const actor = this.enemyActors.get(id);
+      if (!actor) continue;
+      let mark = this.wariness.get(id);
+      if (!mark) {
+        mark = this.addWorld(
+          addTitleText(this, 0, 0, "?", { fontSize: "12px" }).setOrigin(0.5, 1).setResolution(ZOOM).setDepth(WARY_DEPTH),
+        );
+        this.wariness.set(id, mark);
+      }
+      const { x, y } = actor.top;
+      mark.setPosition(x, y - 3).setAlpha(0.4 + level * 0.6).setColor(level > 0.6 ? TEXT_COLORS.danger : TEXT_COLORS.goldBright);
+    }
+  }
+
+  /** Esgueirando, o chão que cada inimigo vê fica pintado: dá pra planejar a volta. */
+  private drawSight(): void {
+    this.sightMarks?.destroy();
+    this.sightMarks = undefined;
+    if (!this.sneaking || this.combat) return;
+    const size = this.map.tileSize;
+    const marks = this.addWorld(this.add.graphics()).setDepth(AIM_DEPTH);
+    marks.fillStyle(COLORS.hpLow, SIGHT_ALPHA);
+    for (const enemy of this.enemies) {
+      if (enemy.passive) continue;
+      for (const tile of sightTiles(this.map, enemy)) marks.fillRect(tile.x * size, tile.y * size, size, size);
+    }
+    this.sightMarks = marks;
+  }
+
+  /** Começou uma luta: ninguém mais desconfia de nada, e o chão não mostra olhar. */
+  private forgetSuspicion(): void {
+    this.suspicion = {};
+    this.showWariness();
+    this.sightMarks?.destroy();
+    this.sightMarks = undefined;
   }
 
   /**
@@ -899,7 +1017,8 @@ export default class WorldScene extends Phaser.Scene {
    * grupo, a luta tem roteiro: elas entram junto. Com `opening`, ela abre com
    * o golpe que o personagem deu de fora (ver `aimOpening`).
    */
-  private startCombat(group: string, surprised?: TeamId, opening?: Opening): void {
+  private startCombat(group: string, surprised?: TeamId, opening?: Opening, charge?: TeamId): void {
+    this.forgetSuspicion();
     const fighters = this.enemies.filter((enemy) => enemy.group === group);
     const cues = this.map.cues.filter((cue) => cue.group === group && isActive(cue, this.flag));
     this.fightSteps = [];
@@ -953,6 +1072,7 @@ export default class WorldScene extends Phaser.Scene {
       // O que a história pôs em alguém e que dura entre lutas entra com ele.
       this.story.afflictions(),
       opening,
+      charge,
     );
 
     this.statusText.setVisible(false);
@@ -1347,7 +1467,8 @@ export default class WorldScene extends Phaser.Scene {
     const { ability, strikes, index } = this.aiming!;
     const strike = strikes[index];
     this.stopAiming();
-    this.startCombat(strike.enemy.group, "enemy", {
+    // Escondido, o golpe pega o grupo surpreso; à vista, só o golpe.
+    this.startCombat(strike.enemy.group, this.hidden(strike.enemy.group) ? "enemy" : undefined, {
       unitId: this.character.id,
       abilityId: ability.id,
       target: strike.target,

@@ -113,6 +113,11 @@ export class MapActor {
     this.face(Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up");
   }
 
+  /** Agachado, esgueirando (ver shared/world/stealth.ts): mais baixo e mais apagado. */
+  setSneaking(sneaking: boolean): void {
+    this.sprite.setAlpha(sneaking ? 0.6 : 1).setScale(1, sneaking ? 0.88 : 1);
+  }
+
   setWalking(walking: boolean): void {
     if (walking) {
       this.sprite.anims.play(walkAnimKey(this.sheet, this.facing), true);
