@@ -28,8 +28,15 @@ bestiário (`creature:encounter-castelao`); o Ykuruã fora d'água tem a folha s
 
 ## O gerador
 
-`art/gerar_arte.py` pede as imagens à API de imagens da OpenAI (modelo `gpt-image-1`, ou o de `OPENAI_IMAGE_MODEL`)
-com os prompts de `art/manifest.json`, e converte:
+`art/gerar_arte.py` pede as imagens com os prompts de `art/manifest.json` e converte. Quem gera (`--via`):
+
+- **`agy`, o padrão**: o Antigravity CLI, pelo subagente `image-generator` dele (Imagen 3), na assinatura do autor.
+  Cada imagem é pedida numa pasta temporária fora do projeto (`%TEMP%/jogo-arte/<id>`), com permissão de escrita só
+  lá, e leva perto de um minuto e meio. O Imagen não faz fundo transparente: pede-se verde puro, e o script o recorta
+  (`key_green`). O prompt é escrito aqui, no manifesto; o Antigravity só desenha.
+- **`openai`**: a API de imagens da OpenAI (`gpt-image-1`, ou o de `OPENAI_IMAGE_MODEL`), com `OPENAI_API_KEY`.
+
+A conversão:
 
 - a folha: a API desenha a grade em 1024x1024; o script recorta cada quadro pelo corpo, põe todos na mesma escala, o
   pé no meio da base, faz da linha da direita o espelho da esquerda (a API erra o lado), reduz a paleta a 32 cores e

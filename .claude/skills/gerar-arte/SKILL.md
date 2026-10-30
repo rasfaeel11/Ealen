@@ -1,6 +1,6 @@
 ---
 name: gerar-arte
-description: Gera a arte do jogo com a API de imagens da OpenAI (gpt-image): retratos pintados, folhas de sprite 48x48 em pixel art, splash arts e o mapa do mundo, a partir de art/manifest.json, e registra no código. Use quando pedirem pra gerar, refazer ou acrescentar arte, retrato, sprite, splash ou mapa.
+description: Gera a arte do jogo pelo Antigravity (Imagen, na assinatura do autor) ou pela API de imagens da OpenAI: retratos pintados, folhas de sprite 48x48 em pixel art, splash arts e o mapa do mundo, a partir de art/manifest.json, e registra no código. Use quando pedirem pra gerar, refazer ou acrescentar arte, retrato, sprite, splash ou mapa.
 ---
 
 # Gerar arte
@@ -19,10 +19,11 @@ A regra completa (tamanhos, escala, como cada tipo entra no jogo) está em `docs
    tem aparência proposta pelo co-autor e ainda não conferida com a ficha (`historiav2/fichas`): avise o autor disso
    ao gerar. Com `needsSheet: true` o script se recusa a gerar: a aparência tem de vir da ficha (o Thrykar espera a
    do povo demônio). Nunca invente traço de povo, marca, símbolo ou vestígio (§1.1).
-2. Precisa de `OPENAI_API_KEY` no ambiente. Sem ela, peça ao usuário que a defina (no PowerShell:
-   `$env:OPENAI_API_KEY = "..."`, ou de vez com `setx OPENAI_API_KEY "..."`, e reabrir o terminal). Nunca escreva a
-   chave em arquivo do repositório.
-3. Cada imagem custa dinheiro (qualidade alta). Gere só o que foi pedido; `--all` só quando o usuário pedir tudo.
+2. O padrão é `--via agy`: o Antigravity CLI (`agy`, logado na assinatura do autor) gera pelo subagente
+   `image-generator`, numa pasta temporária fora do projeto, cerca de um minuto e meio por imagem. Rode lotes grandes
+   em segundo plano. `--via openai` usa a API da OpenAI e precisa de `OPENAI_API_KEY` (nunca a escreva em arquivo do
+   repositório).
+3. Gere só o que foi pedido; `--all` só quando o usuário pedir tudo.
 
 ## Comandos
 

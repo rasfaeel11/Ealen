@@ -1,6 +1,6 @@
 """
-A arte gerada do jogo: lê art/manifest.json, pede as imagens à API de imagens
-da OpenAI e as converte pro que o jogo usa. Ver docs/arte.md.
+A arte gerada do jogo: lê art/manifest.json, pede as imagens a quem gera e as
+converte pro que o jogo usa. Ver docs/arte.md.
 
     python art/gerar_arte.py list                  o que existe e o que falta
     python art/gerar_arte.py gen endyru jarupa     gera (retrato, folha, splash) de quem for pedido
@@ -10,8 +10,14 @@ da OpenAI e as converte pro que o jogo usa. Ver docs/arte.md.
     python art/gerar_arte.py process --all         refaz a conversão a partir do bruto, sem chamar a API
     python art/gerar_arte.py register              reescreve client/src/game/generatedArt.ts
 
-Precisa da variável OPENAI_API_KEY (e, se quiser outro modelo, OPENAI_IMAGE_MODEL;
-o padrão é gpt-image-1). Só usa a biblioteca padrão e o Pillow.
+Quem gera (`--via`):
+  - agy     (o padrão) o Antigravity CLI, pelo subagente image-generator dele (Imagen),
+            na assinatura do autor. Roda numa pasta temporária fora do projeto, uma
+            imagem por vez. O Imagen não faz fundo transparente: pede-se fundo verde
+            puro, e o script o recorta.
+  - openai  a API de imagens da OpenAI. Precisa de OPENAI_API_KEY (e, se quiser
+            outro modelo, OPENAI_IMAGE_MODEL; o padrão é gpt-image-1).
+Só usa a biblioteca padrão e o Pillow.
 
 O bruto (a imagem como veio, 1024 ou 1536 px) fica em art/raw/, fora do git: é
 de onde `process` refaz a conversão. A conversão vai pra client/public/:
@@ -28,7 +34,10 @@ import io
 import json
 import mimetypes
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 import uuid
@@ -44,6 +53,25 @@ REGISTRY = ROOT / "client" / "src" / "game" / "generatedArt.ts"
 
 API = "https://api.openai.com/v1/images"
 MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
+
+# A pasta de trabalho do Antigravity: fora do projeto, pra ele não ter o repositório ao alcance.
+AGY_STAGE = Path(tempfile.gettempdir()) / "jogo-arte"
+AGY_TIMEOUT = "15m"
+# A proporção que se pede ao Imagen, por tipo (ele não aceita tamanho em pixels).
+AGY_ASPECT = {
+    "portrait": "3:4 (portrait)",
+    "sheet": "1:1 (square)",
+    "beast": "1:1 (square)",
+    "beast_dry": "1:1 (square)",
+    "splash": "16:9 (landscape)",
+    "scene": "16:9 (landscape)",
+    "map": "4:3 (landscape)",
+}
+GREEN_SCREEN = (
+    "BACKGROUND: a solid, flat, pure green (#00FF00) everywhere behind the figure(s), with no gradient, no floor, "
+    "no shadow and no green anywhere on the figure, so it can be keyed out. This overrides any mention of a "
+    "transparent background."
+)
 
 # A densidade da arte do mapa (ver ART_PX_PER_TILE em client/src/game/mapSprites.ts).
 TILE = 48
@@ -179,6 +207,75 @@ def edit(prompt, size, transparent, reference):
     )
     parts.append(f"--{boundary}--\r\n".encode("utf-8"))
     return request(f"{API}/edits", b"".join(parts), f"multipart/form-data; boundary={boundary}")
+
+
+# ---------------------------------------------------------------- Antigravity
+
+def agy_binary():
+    found = shutil.which("agy")
+    if found:
+        return found
+    local = Path(os.environ.get("LOCALAPPDATA", "")) / "agy" / "bin" / "agy.exe"
+    if local.exists():
+        return str(local)
+    sys.exit("Não achei o agy (Antigravity CLI) no PATH.")
+
+
+def generate_agy(job_id, kind, prompt, transparent, reference):
+    """
+    Pede a imagem ao subagente image-generator do Antigravity, numa pasta só
+    dela fora do projeto (com a referência copiada pra lá, se houver), e devolve
+    os bytes do PNG. O fundo verde, quem tira é key_green.
+    """
+    stage = AGY_STAGE / job_id
+    shutil.rmtree(stage, ignore_errors=True)
+    stage.mkdir(parents=True)
+    out_name = "imagem.png"
+    lines = [
+        f"Use your image-generator subagent to create exactly ONE image and save it in the current folder as {out_name}.",
+        "Do not create, edit or delete anything else, and do not touch any other folder.",
+        f"Aspect ratio: {AGY_ASPECT[kind]}, at the highest resolution available.",
+    ]
+    if reference is not None:
+        shutil.copy(reference, stage / "referencia.png")
+        lines.append(
+            "Use referencia.png in the current folder as the reference image: the same character, same face, "
+            "same outfit and colors, redrawn as described below."
+        )
+    lines += ["", prompt]
+    if transparent:
+        lines += ["", GREEN_SCREEN]
+    lines += ["", f"When done, reply only with the file name and its pixel size."]
+    (stage / "pedido.txt").write_text("\n".join(lines), encoding="utf-8")
+
+    result = subprocess.run(
+        [agy_binary(), "-p", "\n".join(lines), "--mode", "accept-edits", "--sandbox", "--output-format", "json",
+         "--print-timeout", AGY_TIMEOUT],
+        cwd=stage, capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    try:
+        reply = json.loads(result.stdout[result.stdout.index("{"):])
+    except ValueError:
+        sys.exit(f"O agy não respondeu JSON:\n{result.stdout[-2000:]}\n{result.stderr[-2000:]}")
+    image = stage / out_name
+    if reply.get("status") != "SUCCESS" or not image.exists():
+        sys.exit(f"O agy não gerou {job_id} ({reply.get('status')}): {str(reply.get('response'))[:1500]}")
+    return image.read_bytes()
+
+
+def key_green(image):
+    """Tira o fundo verde puro (o do Imagen, que não faz transparência) e o verde que vazou nas bordas."""
+    rgba = image.convert("RGBA")
+    pixels = rgba.load()
+    for y in range(rgba.height):
+        for x in range(rgba.width):
+            r, g, b, a = pixels[x, y]
+            if g > 120 and g > r * 1.35 and g > b * 1.35:
+                pixels[x, y] = (0, 0, 0, 0)
+            elif g > max(r, b):
+                # A franja: o verde do fundo refletido na borda volta à cor do resto.
+                pixels[x, y] = (r, max(r, b), b, a)
+    return rgba
 
 
 # ------------------------------------------------------------------ conversão
@@ -354,10 +451,9 @@ SIZES = {
 
 
 def selected(all_jobs, args):
-    wanted = [arg for arg in args if not arg.startswith("--")]
+    values = {args[args.index(flag) + 1] for flag in ("--only", "--via") if flag in args}
+    wanted = [arg for arg in args if not arg.startswith("--") and arg not in values]
     only = args[args.index("--only") + 1] if "--only" in args else None
-    if only in wanted:
-        wanted.remove(only)
     chosen = []
     for job_id, kind, who in all_jobs:
         owner, part = job_id.split(".")
@@ -378,6 +474,9 @@ def command_list(manifest):
 
 
 def command_gen(manifest, args):
+    via = args[args.index("--via") + 1] if "--via" in args else "agy"
+    if via not in ("agy", "openai"):
+        sys.exit("--via é agy ou openai.")
     all_jobs = jobs(manifest)
     # O retrato vem antes da folha: ela o usa de referência.
     order = {"portrait": 0, "sheet": 1}
@@ -393,10 +492,17 @@ def command_gen(manifest, args):
             size, transparent = SIZES[kind]
             prompt = prompt_for(manifest, kind, who)
             reference = raw_path(f"{who['id']}.portrait") if kind == "sheet" else None
-            print(f"{job_id}: gerando ({MODEL}, {size}{', com o retrato de referência' if reference and reference.exists() else ''})...")
-            data = edit(prompt, size, transparent, reference) if reference and reference.exists() else generate(prompt, size, transparent)
+            if reference is not None and not reference.exists():
+                reference = None
+            print(f"{job_id}: gerando ({via if via == 'agy' else MODEL}{', com o retrato de referência' if reference else ''})...")
             raw.parent.mkdir(parents=True, exist_ok=True)
-            raw.write_bytes(data)
+            if via == "agy":
+                data = generate_agy(job_id, kind, prompt, transparent, reference)
+                image = Image.open(io.BytesIO(data))
+                (key_green(image) if transparent else image.convert("RGB")).save(raw)
+            else:
+                data = edit(prompt, size, transparent, reference) if reference else generate(prompt, size, transparent)
+                raw.write_bytes(data)
         save(convert(kind, Image.open(raw)), output_path(job_id, kind))
         print(f"{job_id}: -> {output_path(job_id, kind).relative_to(ROOT)}")
     register(manifest)

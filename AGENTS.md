@@ -296,7 +296,7 @@ Texto novo de história vai como proposta pro autor antes de entrar (§1).
 | # | Task | O que é |
 |---|---|---|
 | 20 | **Conferir a aparência com as fichas** | Toda aparência de `art/manifest.json` é proposta (`proposal`): confira com a ficha de cada um e acerte o `look` antes (ou depois) de gerar. O Thrykar só se gera com o `look` da ficha do povo demônio. O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
-| 47 | **Gerar a arte** | O pipeline está pronto (ver Feito, a arte gerada); falta a chave `OPENAI_API_KEY` na máquina e rodar `python art/gerar_arte.py gen --all` (a skill `gerar-arte` guia). Olhar cada folha: a que sair torta se refaz. |
+| 47 | **Gerar a arte** | O pipeline gera pelo Antigravity (ver Feito, a arte gerada). Endyru já tem retrato e folha; falta rodar o resto (`python art/gerar_arte.py gen --all`, a skill `gerar-arte` guia) e olhar cada folha: a que sair torta se refaz. |
 | 48 | **Os mapas em 48** | Quando os tiles do autor chegarem (task 15, em 48x48): mapas de quadrados de 48, câmera em zoom 1, e o que o client mede em pixels de 16 (passo, corpo, o que a luta desenha) passa a sair do tamanho do quadrado (`docs/arte.md`). |
 
 ### P2 e P3
@@ -560,8 +560,10 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
   de 48x48 em pixel art (a folha sai do retrato, pra ter a mesma cara), o Ykuruã em 96x96 com a folha seca, as
   splash arts do trio, de Oryndu, do título e dos baixios, e o mapa do mundo. Converte, guarda o bruto fora do git e
   escreve `client/src/game/generatedArt.ts`, que o jogo lê. A tela de título usa a ilustração, a caixa de diálogo o
-  retrato pintado, e `M` (ou Mapa, na pausa) abre o mapa do mundo. A skill `gerar-arte` tem os comandos. Nada foi
-  gerado ainda: falta a chave (task 47), e as aparências são proposta (task 20).
+  retrato pintado, e `M` (ou Mapa, na pausa) abre o mapa do mundo. A skill `gerar-arte` tem os comandos. Quem desenha,
+  por padrão, é o Antigravity (`--via agy`, o Imagen da assinatura do autor), numa pasta fora do projeto, com fundo
+  verde que o script recorta; a OpenAI ficou como alternativa. O retrato e a folha de Endyru já saíram; o resto é a
+  task 47, e as aparências são proposta (task 20).
 - **As peças guardadas na mochila** (do ramo `worktree-equipamento`, de 2026-10-09). O equipamento daquele ramo já
   estava todo no `main`, refeito; só faltava isto: a mochila (`I`) lista, depois dos itens, as peças que ninguém
   veste — as espadas temperadas de Thrykar, o que cai de inimigo —, com o que cada uma faz, e Enter leva à ficha pra
@@ -588,6 +590,9 @@ O Antigravity CLI (`agy`, o sucessor do Gemini CLI) está disponível pelo subag
   repetitivos, conversão de formatos.
 - Não delegue: planejamento, arquitetura, refactors delicados, bugs sutis, mudanças que dependam de entender o
   projeto inteiro, e a revisão final. Nem texto do jogo ou fato do mundo: o cânone (§1) não passa por ele.
+- A arte é a exceção que escreve arquivo: `art/gerar_arte.py --via agy` pede cada imagem ao `image-generator` dele,
+  numa pasta temporária fora do projeto. O prompt (a aparência, que é cânone) vem de `art/manifest.json`, escrito
+  aqui; ele só desenha, e cada imagem é olhada antes de entrar.
 - Só delegue quando a tarefa for grande e bem isolada. Em tarefa pequena, faça você mesmo: o custo de montar o
   contexto não compensa.
 - Todo código vindo do Antigravity é rascunho: leia, compare com as convenções do projeto, rode typecheck, lint
