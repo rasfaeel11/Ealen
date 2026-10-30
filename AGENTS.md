@@ -32,8 +32,8 @@ em `jogo.md` e nas fichas e referências da §9). Fato novo continua indo pro au
   (ex-colega de Endyru em Kuatiarape, filho de gente com dinheiro) e o ferreiro demônio é **Thrykar**. O
   `jogo.md` sugeria Thrymkel, mas nome de demônio macho termina em -r, -ar, -vald ou -grim (`alfabeto.md`).
   A conselheira, o mercador e o mestre da guilda continuam pelo papel.
-- O repositório da história não está nesta máquina: estes nomes e o Jurendy ainda precisam ser gravados lá
-  (task 14).
+- O autor aprovou esses nomes em 2026-10-30. O repositório da história não está nesta máquina: os nomes e o
+  Jurendy ainda precisam ser gravados lá (task 14).
 
 ## 1. De onde vem o cânone
 
@@ -279,7 +279,7 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P1 — o conteúdo
 | # | Task | O que é |
 |---|---|---|
-| 14 | **Gravar os nomes na história** | Mbyraku, Castelo da Volta, Jurendy (e o fato de ser ex-colega de Endyru) e Thrykar foram decididos (ver Decisões do co-autor) e já valem pro jogo; falta gravar as fichas e a lista de nomes no repositório da história, que não está nesta máquina. |
+| 14 | **Gravar os nomes na história** | Mbyraku, Castelo da Volta, Jurendy (e o fato de ser ex-colega de Endyru) e Thrykar foram decididos (ver Decisões do co-autor), o autor os aprovou em 2026-10-30, e já valem pro jogo; falta gravar as fichas e a lista de nomes no repositório da história, que não está nesta máquina. |
 | 15 | **Retoque dos mapas no Tiled** | Os quatro mapas saíram de um gerador, com os placeholders; o desenho de verdade é do autor (o contrato do Tiled está em `docs/motor.md`). |
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
@@ -537,6 +537,8 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
   os testes do motor exercitam virou kit de teste (`abrir`, `rede`), e os mapas de teste viraram `campo`, `trilha` e
   `porao`, com gente neutra. A ficha não fala mais em Ordem ("Isso não é arma de quem ele é"), e a arma diz quem a
   usa por `classes`. O `docs/motor.md` foi reescrito com os nomes deste jogo.
+- **O bundle dividido** (task 40 do `docs/motor.md`). O build sai em quatro arquivos: o Phaser (1,4 MB, que não se
+  divide), o Ink, a regra (`shared/`) e o jogo. O aviso de tamanho ficou no limite do Phaser.
 - **As peças guardadas na mochila** (do ramo `worktree-equipamento`, de 2026-10-09). O equipamento daquele ramo já
   estava todo no `main`, refeito; só faltava isto: a mochila (`I`) lista, depois dos itens, as peças que ninguém
   veste — as espadas temperadas de Thrykar, o que cai de inimigo —, com o que cada uma faz, e Enter leva à ficha pra

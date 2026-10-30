@@ -290,7 +290,7 @@ Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz fa
 | 9 | **Mochila completa** | Descartar, ordenar, itens-chave (que não se gastam nem se jogam fora), materiais, limite por peso ou espaço que importe, item usado em luta escolhendo o alvo. |
 | 10 | **Dinheiro e comércio** | Cobre e prata já existem (`shared/purse.ts`), e a banca do cais vende pelo texto. Falta loja de verdade (comprar, vender, estoque), preço por lugar. |
 | 11 | **Descanso de verdade** | `R` cura tudo de graça em qualquer lugar. Trocar por acampamento/estalagem, com custo, lugar certo e quanto Fôlego cada tipo de descanso devolve (hoje devolve tudo); item que devolve Fôlego. |
-| 12 | **Furtividade** | A emboscada hoje é só distância e parede. Falta cone de visão e de que lado o inimigo olha, andar agachado, ruído, e o inimigo que desconfia antes de perceber. |
+| 12 | **Furtividade** (o autor quer, 2026-10-30) | A emboscada hoje é só distância e parede. Falta cone de visão e de que lado o inimigo olha, andar agachado, ruído, e o inimigo que desconfia antes de perceber. |
 | 13 | **Golpe de abertura, o resto** | Balancear (hoje é golpe grátis MAIS a surpresa, e deixa o `F` sem graça); companheiro dar o primeiro golpe; mirar um quadrado com área; acertar destrutível fora de luta (o barril de óleo); mouse na ficha e na mochila. |
 | 14 | **Mais condições e tipos de dano** | Veneno, sangramento, atordoado, preso, silenciado, medo, cego; dano com tipo (corte, perfuração, o de cada conceito de magia) e resistência/fraqueza por criatura. |
 | 15 | **Mais verbos de combate** | Empurrar, derrubar, agarrar, disparada, esconder-se no meio da luta, ajudar um aliado, preparar uma ação pra depois; reações além do ataque de oportunidade (aparar, interceptar). |
@@ -326,7 +326,6 @@ Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz fa
 | 37 | **Save na nuvem** | Não existe servidor: seria do zero, e o jogo não pode depender dele. |
 | 38 | **Jogo novo com o que se levou** | New Game+. Falta tudo. |
 | 39 | **Tradução e acessibilidade** | Texto fora do código (o do jogo já está em Ink; o da interface não), daltonismo, leitor de tela onde der. |
-| 40 | **Casa em ordem** | O pacote do client passa de 500 kB num arquivo só (dividir). |
 
 ## Referência: atributos
 

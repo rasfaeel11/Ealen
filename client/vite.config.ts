@@ -36,6 +36,21 @@ export default defineConfig({
   // (é o que um empacotador tipo Electron carrega).
   base: "./",
   plugins: [inkStory()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Um arquivo pra cada coisa que muda num ritmo: o Phaser quase nunca,
+        // o Ink e a regra (`shared/`) às vezes, o jogo toda hora.
+        manualChunks(id) {
+          if (id.includes("node_modules/phaser")) return "phaser";
+          if (id.includes("node_modules/inkjs")) return "ink";
+          if (id.includes("/shared/")) return "regra";
+        },
+      },
+    },
+    // O Phaser sozinho passa de 1,4 MB minificado e não se divide; o limite é o dele.
+    chunkSizeWarningLimit: 1500,
+  },
   server: {
     port: 5173,
   },
