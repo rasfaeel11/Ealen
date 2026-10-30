@@ -5,3 +5,4 @@ export * from "./encounters";
 export * from "./presence";
 export * from "./follow";
 export * from "./field";
+export * from "./rest";

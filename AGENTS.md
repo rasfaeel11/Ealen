@@ -322,7 +322,7 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
 - **5. Recitada e Gravada.** Magia é recitada: o comando só a declara (gasta a ação), e ela sai no começo do próximo
   turno de quem a leu, seguindo o alvo, pagando a mana ali. Apanhar no meio pode quebrar (d20 + Ul contra 10 mais
   metade do golpe); alvo que some ou vez perdida também. Uma recitação de cada vez. A gravada é escrita no descanso
-  (o `R` abre o painel de gravar), uma por gravação até o nível de mago, num objeto ou círculo: na luta sai na hora,
+  (o acampamento abre o painel de gravar), uma por gravação até o nível de mago, num objeto ou círculo: na luta sai na hora,
   serve uma vez, e é a única magia que abre luta — o círculo preparado antes. O círculo não tem lugar no mapa: é o
   texto pronto, não um quadrado marcado.
 - **6. A cura cobra o paciente.** Cada 3 de vida que a cura devolve custa 1 de Fôlego a quem a recebe, e ela não vai
@@ -539,6 +539,11 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
   usa por `classes`. O `docs/motor.md` foi reescrito com os nomes deste jogo.
 - **O bundle dividido** (task 40 do `docs/motor.md`). O build sai em quatro arquivos: o Phaser (1,4 MB, que não se
   divide), o Ink, a regra (`shared/`) e o jogo. O aviso de tamanho ficou no limite do Phaser.
+- **O descanso de verdade** (task 11 do `docs/motor.md`). Em qualquer lugar, mas na tecla `Z` (ou Descansar, na pausa),
+  e sempre escolhendo. A pausa curta devolve o Fôlego e metade da vida que falta, duas entre um acampamento e outro,
+  sem gastar a Cheia. O acampamento come um Pão de Viagem a cada duas bocas de quem luta; quem fica sem acorda com
+  metade do que faltava e com Fome, e a noite gasta a Cheia. Endyru começa com dois pães; a banca do cais vende mais.
+  O save foi pra versão 8 (`shortRests`).
 - **As peças guardadas na mochila** (do ramo `worktree-equipamento`, de 2026-10-09). O equipamento daquele ramo já
   estava todo no `main`, refeito; só faltava isto: a mochila (`I`) lista, depois dos itens, as peças que ninguém
   veste — as espadas temperadas de Thrykar, o que cai de inimigo —, com o que cada uma faz, e Enter leva à ficha pra

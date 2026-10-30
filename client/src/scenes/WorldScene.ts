@@ -51,6 +51,11 @@ import {
   placeParty,
   presentCompanions,
   restoreParty,
+  SHORT_RESTS,
+  camp,
+  campMeals,
+  campMouths,
+  shortRest,
   restSavedStory,
   samePos,
   sheetAbilities,
@@ -136,7 +141,7 @@ const SORTED_LAYER_PREFIX = "sorted";
 /** Camadas cujo nome começa com isto são desenhadas POR CIMA de tudo (pontes altas, telhados). */
 const ABOVE_LAYER_PREFIX = "above";
 
-const EXPLORE_HINT = "WASD ou setas: andar  ·  R: descansar  ·  C: ficha  ·  I: mochila  ·  Esc: pausa";
+const EXPLORE_HINT = "WASD ou setas: andar  ·  Z: descansar  ·  C: ficha  ·  I: mochila  ·  Esc: pausa";
 const AIM_HINT = "←/→: trocar de alvo  ·  Enter ou clique: atacar  ·  Esc: desistir";
 /** As marcas de quem mira um golpe de abertura: por cima do chão, por baixo de quem está de pé. */
 const AIM_DEPTH = -1;
@@ -319,7 +324,7 @@ export default class WorldScene extends Phaser.Scene {
       s: Phaser.Input.Keyboard.KeyCodes.S,
       d: Phaser.Input.Keyboard.KeyCodes.D,
     }) as MoveKeys;
-    keyboard.on("keydown-R", this.rest, this);
+    keyboard.on("keydown-Z", this.openRest, this);
     keyboard.on("keydown-E", this.interact, this);
     keyboard.on("keydown-F", this.ambush, this);
     keyboard.on("keydown", this.onKey, this);
@@ -672,25 +677,108 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * Provisório, no lugar de acampamento/estalagem: recupera todo o HP, o Fôlego e a mana do grupo, em qualquer lugar
-   * fora de luta. A marca leve da mana passa junto.
+   * `Z`: o descanso, em qualquer lugar fora de luta (a regra é de
+   * shared/world/rest.ts). Abre a escolha entre a pausa curta e o
+   * acampamento, com o que cada um custa: descansar nunca sai por acaso.
    */
-  private rest(): void {
+  private openRest(): void {
     if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
-    restoreParty(this.character, this.save.companions);
+    this.halt();
+    sfx("uiOpen");
+    const width = 620;
+    const height = 420;
+    const x = (GAME_WIDTH - width) / 2;
+    const y = (GAME_HEIGHT - height) / 2;
+    const meals = campMeals(this.character);
+    const mouths = campMouths(this.character, this.save.companions);
+    const left = this.save.shortRests;
+    const night = this.story.clock() ? " A noite gasta o tempo da Cheia." : "";
+    const detail = addBodyText(this, x + 40, y + 250, "", {
+      fontSize: "17px",
+      lineSpacing: 4,
+      color: TEXT_COLORS.inkDim,
+      wordWrap: { width: width - 80 },
+    });
+    const objects = [
+      this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.bg, 0.6).setOrigin(0),
+      addPanel(this, x, y, width, height),
+      addTitleText(this, GAME_WIDTH / 2, y + 48, "DESCANSAR", { fontSize: "32px" }).setOrigin(0.5),
+      detail,
+    ].map((object) => this.addHud(object));
+
+    const hunger = mouths - Math.min(meals, mouths);
+    const menu = new Menu(
+      this,
+      x + 60,
+      y + 100,
+      [
+        {
+          label: `Pausa curta  ·  ${left}/${SHORT_RESTS}`,
+          disabled: left <= 0,
+          onFocus: () =>
+            detail.setText(
+              left > 0
+                ? "Água, atadura, fôlego. Volta o Fôlego e metade da vida que falta. A mana e a marca ficam pra noite."
+                : "As pausas acabaram: o corpo pede uma noite.",
+            ),
+          onSelect: () => this.restShort(),
+        },
+        {
+          label: `Acampar  ·  ${Math.min(meals, mouths)}/${mouths} refeições`,
+          onFocus: () =>
+            detail.setText(
+              (hunger === 0
+                ? "Fogo, comida e uma noite. Volta tudo, a marca e a fome passam, e quem conjura grava."
+                : `Fogo e uma noite, mas falta comida pra ${hunger}: quem não come acorda com metade do que faltava, e com fome.`) +
+                night,
+            ),
+          onSelect: () => this.restCamp(),
+        },
+        { label: "Seguir", onFocus: () => detail.setText(""), onSelect: () => this.closePause() },
+      ],
+      { lineHeight: 44, fontSize: 24, onCancel: () => this.closePause(), adopt: (item) => this.addHud(item) },
+    );
+    this.pause = {
+      destroy: () => {
+        menu.destroy();
+        for (const object of objects) object.destroy();
+      },
+    };
+  }
+
+  /** A pausa curta: Fôlego e metade da vida que falta. Não gasta o relógio. */
+  private restShort(): void {
+    if (this.save.shortRests <= 0) return;
+    this.closePause(true);
+    shortRest(this.character, this.save.companions);
+    this.save.shortRests -= 1;
     sfx("rest");
-    const healed = this.story.rest();
-    // Descansar gasta o tempo do relógio, se a história disse que gasta — e o que o tempo fecha, fecha.
-    if (this.story.spend("rest")) {
-      this.save.story = this.story.save();
-      this.clockBar.set(this.story.clock());
-      this.syncPresence();
-    } else if (healed) {
-      this.save.story = this.story.save();
-    }
     this.persist();
     this.refreshStatus();
-    this.showBanner("Você descansa.");
+    this.showBanner("Uma pausa na estrada.");
+  }
+
+  /**
+   * O acampamento: come da mochila, volta tudo pra quem comeu, a marca e a
+   * fome passam; quem não comeu acorda com fome. Gasta o relógio, se a
+   * história disse que gasta — e o que o tempo fecha, fecha.
+   */
+  private restCamp(): void {
+    this.closePause(true);
+    const { hungry } = camp(this.character, this.save.companions);
+    this.save.shortRests = SHORT_RESTS;
+    sfx("rest");
+    let changed = this.story.rest();
+    for (const id of hungry) changed = this.story.mark(id, HUNGER) || changed;
+    if (this.story.spend("rest")) {
+      this.clockBar.set(this.story.clock());
+      this.syncPresence();
+      changed = true;
+    }
+    if (changed) this.save.story = this.story.save();
+    this.persist();
+    this.refreshStatus();
+    this.showBanner(hungry.length > 0 ? "Uma noite de barriga vazia." : "Uma noite inteira.");
     this.openEngrave();
   }
 
@@ -1284,7 +1372,7 @@ export default class WorldScene extends Phaser.Scene {
     this.halt();
     sfx("uiOpen");
     const width = 420;
-    const height = 394;
+    const height = 438;
     const x = (GAME_WIDTH - width) / 2;
     const y = (GAME_HEIGHT - height) / 2;
     const objects = [
@@ -1299,6 +1387,7 @@ export default class WorldScene extends Phaser.Scene {
       y + 100,
       [
         { label: "Voltar ao jogo", onSelect: () => this.closePause() },
+        { label: "Descansar", onSelect: () => this.swapPause(() => this.openRest()) },
         { label: "Ficha", onSelect: () => this.swapPause(() => this.openSheet()) },
         { label: "Mochila", onSelect: () => this.swapPause(() => this.openBag()) },
         { label: "Diário", onSelect: () => this.swapPause(() => this.openJournal()) },

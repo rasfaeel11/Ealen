@@ -6,6 +6,7 @@ import { RACE_INFO } from "../types/race";
 import { STARTING_STASH, castSheet, fights, startingLoadout, type PartyMember } from "../party";
 import { packStory, unpackStory } from "../story/memory";
 import { AREAS } from "../world/areas";
+import { SHORT_RESTS } from "../world/rest";
 
 /**
  * O save do jogo: UM objeto com tudo que uma partida é — o personagem, onde
@@ -17,7 +18,7 @@ import { AREAS } from "../world/areas";
  * Campo novo no save: acrescentar em `GameSave`, subir `SAVE_VERSION` e
  * escrever em `MIGRATIONS` como um save da versão anterior ganha esse campo.
  */
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 /** Onde o personagem está: a área e o ponto do mapa dela, em pixels. */
 export interface SaveLocation {
@@ -39,6 +40,8 @@ export interface GameSave {
   broken: string[];
   /** O estado da história (flags, trechos lidos, escolhas gastas), como o StoryRunner o entrega. */
   story: string | null;
+  /** Quantas pausas curtas ainda cabem antes do próximo acampamento (ver ../world/rest.ts). */
+  shortRests: number;
   /** Tempo de jogo, em milissegundos. */
   playTimeMs: number;
   /** Quando foi gravado pela última vez (ms desde 1970). 0 = nunca, ou não se sabe. */
@@ -114,6 +117,8 @@ const MIGRATIONS: Record<number, (old: Json) => Json> = {
       ? old.companions.map((member) => (isObject(member) ? { ...member, character: reitem(member.character) } : member))
       : old.companions,
   }),
+  // A versão 7 não contava as pausas curtas: quem vem dela tem todas.
+  7: (old) => ({ ...old, version: 8, shortRests: SHORT_RESTS }),
 };
 
 /** O id antigo de cada item da mochila no id de agora. */
@@ -218,6 +223,7 @@ export function newGame(character: Character): GameSave {
     defeated: [],
     broken: [],
     story: null,
+    shortRests: SHORT_RESTS,
     playTimeMs: 0,
     savedAt: 0,
   };
@@ -264,6 +270,7 @@ export function parseSave(raw: unknown): ParsedSave {
       defeated: readKeys(current.defeated),
       broken: readKeys(current.broken),
       story,
+      shortRests: Math.min(SHORT_RESTS, readCount(current.shortRests)),
       playTimeMs: readCount(current.playTimeMs),
       savedAt: readCount(current.savedAt),
     },

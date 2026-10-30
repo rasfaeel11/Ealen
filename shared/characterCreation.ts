@@ -5,8 +5,11 @@ import type { ConsumableItem, Inventory } from "./types/inventory";
 import { ITEMS } from "./data/items";
 
 const STARTING_INVENTORY_MAX_SLOTS = 12;
-const STARTING_ITEM_ID = "item-unguento-de-barqueiro";
-const STARTING_ITEM_QUANTITY = 2;
+/** O que Endyru traz na mochila, pela ordem: unguento pros cortes e pão pra descida (duas refeições cada). */
+const STARTING_ITEMS: { id: string; quantity: number }[] = [
+  { id: "item-unguento-de-barqueiro", quantity: 2 },
+  { id: "item-pao-de-viagem", quantity: 2 },
+];
 
 /**
  * Atributos de cada classe no nível 1, antes do modificador do povo. São
@@ -31,15 +34,11 @@ export function startingMaxHp(attributes: Attributes): number {
   return 20 + attributes.vigor * 4;
 }
 
-/** Mochila inicial de Endyru: uns potes de unguento de barqueiro, o que se leva pra descer o rio. */
+/** Mochila inicial de Endyru: uns potes de unguento de barqueiro e pão de viagem, o que se leva pra descer o rio. */
 export function createStartingInventory(): Inventory<ConsumableItem> {
-  const startingItem = ITEMS.find((item) => item.id === STARTING_ITEM_ID);
-  if (!startingItem) {
-    return { slots: [], maxSlots: STARTING_INVENTORY_MAX_SLOTS };
-  }
-
-  return {
-    maxSlots: STARTING_INVENTORY_MAX_SLOTS,
-    slots: [{ slotIndex: 0, item: structuredClone(startingItem), quantity: STARTING_ITEM_QUANTITY }],
-  };
+  const slots = STARTING_ITEMS.flatMap(({ id, quantity }) => {
+    const item = ITEMS.find((candidate) => candidate.id === id);
+    return item ? [{ item: structuredClone(item), quantity }] : [];
+  }).map((slot, slotIndex) => ({ slotIndex, ...slot }));
+  return { maxSlots: STARTING_INVENTORY_MAX_SLOTS, slots };
 }

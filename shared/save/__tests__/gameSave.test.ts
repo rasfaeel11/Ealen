@@ -270,3 +270,10 @@ test("save da versão 6 troca os ids do Eälen dos dois itens do jogo pelos de a
     [["item-unguento-de-barqueiro", 2], ["item-pao-de-viagem", 2], ["item-outro", 2]],
   );
 });
+
+test("o save da versão 7 ganha as pausas curtas todas", () => {
+  const { shortRests, ...old } = newGame(makeCharacter());
+  const parsed = parseSave({ ...old, version: 7 });
+  assert.ok(parsed.ok);
+  assert.equal(parsed.save.shortRests, shortRests);
+});
