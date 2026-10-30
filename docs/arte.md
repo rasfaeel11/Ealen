@@ -53,6 +53,21 @@ O bruto fica em `art/raw/` (fora do git) e `process` refaz a conversão sem cham
 (`client/src/game/generatedArt.ts`) é escrito pelo script com o que existe em `client/public/`. A skill
 `gerar-arte` (`.claude/skills/gerar-arte`) tem os comandos.
 
+## Pelo navegador
+
+O jeito de gerar sem API: o Gemini na web (Nano Banana Pro). `python art/gerar_arte.py prompts` escreve
+`art/PROMPTS.md`, com cada prompt pronto pra colar, na ordem, e o nome com que salvar cada imagem. Por personagem,
+uma conversa:
+
+1. a **ficha de design** (`<id>.design`): o corpo inteiro de frente, de 3/4, de perfil e de costas, com a paleta. É
+   a referência de tudo e fica em `art/design/`, no git;
+2. o **retrato** (`<id>.portrait`), a partir da ficha;
+3. a **folha de sprite** (`<id>.sheet`), a partir da ficha, que já mostra todos os lados;
+4. a **splash**, pra quem tem.
+
+`python art/gerar_arte.py importar <pasta>` pega o que foi baixado (png, jpg ou webp; o " (1)" que o navegador põe
+no nome repetido é ignorado), recorta o fundo verde, converte e registra no jogo.
+
 ## A direção de arte
 
 O primeiro lote saiu genérico: os prompts pediam "retrato de RPG pintado" e uma descrição curta, e é isso que dá rosto

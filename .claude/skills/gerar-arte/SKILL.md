@@ -27,6 +27,9 @@ A regra completa (tamanhos, escala, como cada tipo entra no jogo) está em `docs
 
 ## Comandos
 
+O autor gera pelo navegador (Gemini na web, Nano Banana Pro): `prompts` escreve `art/PROMPTS.md` com cada prompt e o
+nome do arquivo, e `importar <pasta>` traz o que ele baixou. Mudou o manifesto, rode `prompts` de novo.
+
 ```
 python art/gerar_arte.py list                    # o que existe, o que falta, o que é proposta
 python art/gerar_arte.py gen endyru              # retrato, folha e splash de Endyru (o retrato primeiro)

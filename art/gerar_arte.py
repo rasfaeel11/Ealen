@@ -10,6 +10,11 @@ converte pro que o jogo usa. Ver docs/arte.md.
     python art/gerar_arte.py process --all         refaz a conversão a partir do bruto, sem chamar a API
     python art/gerar_arte.py register              reescreve client/src/game/generatedArt.ts
 
+Pelo navegador (Gemini / Nano Banana Pro na web), sem API:
+    python art/gerar_arte.py prompts               escreve art/PROMPTS.md: cada prompt, na ordem, com o nome do arquivo
+    python art/gerar_arte.py importar <pasta>      pega os arquivos baixados (endyru.design.png, endyru.portrait.jpg...),
+                                                   recorta o fundo verde, converte e registra no jogo
+
 Quem gera (`--via`):
   - agy     (o padrão) o Antigravity CLI, pelo subagente image-generator dele (Imagen),
             na assinatura do autor. Roda numa pasta temporária fora do projeto, uma
@@ -69,6 +74,8 @@ AGY_ASPECT = {
     "splash": "16:9 (landscape)",
     "scene": "16:9 (landscape)",
     "map": "4:3 (landscape)",
+    "design": "16:9 (landscape)",
+    "beast_design": "16:9 (landscape)",
 }
 GREEN_SCREEN = (
     "BACKGROUND: a solid, flat, pure green (#00FF00) everywhere behind the figure(s), with no gradient, no floor, "
@@ -94,6 +101,7 @@ def jobs(manifest):
     """Cada imagem que o manifesto pede, como (id da imagem, tipo, de quem)."""
     out = []
     for who in manifest["characters"]:
+        out.append((f"{who['id']}.design", "design", who))
         if who.get("portrait"):
             out.append((f"{who['id']}.portrait", "portrait", who))
         if who.get("sheet"):
@@ -101,6 +109,7 @@ def jobs(manifest):
         if who.get("splash"):
             out.append((f"{who['id']}.splash", "splash", who))
     for beast in manifest["beasts"]:
+        out.append((f"{beast['id']}.design", "beast_design", beast))
         out.append((f"{beast['id']}.sheet", "beast", beast))
         if beast.get("dry"):
             out.append((f"{beast['id']}.seco", "beast_dry", beast))
@@ -113,6 +122,8 @@ def jobs(manifest):
 
 def output_path(job_id, kind):
     who, part = job_id.split(".")
+    if kind in ("design", "beast_design"):
+        return ROOT / "art" / "design" / f"{who}.jpg"
     if kind == "portrait":
         return PUBLIC / "sprites" / "portraits" / f"{who}.png"
     if kind == "sheet":
@@ -133,11 +144,15 @@ def raw_path(job_id):
 def prompt_for(manifest, kind, who):
     style = manifest["style"]
     world = style["world"]
+    if kind == "design":
+        return f"{style['design']}\n\n{world}\n\nThe character: {who['look']}"
+    if kind == "beast_design":
+        return f"{style['beast_design']}\n\n{who['look']}"
     if kind == "portrait":
         return f"{style['portrait']}\n\n{world}\n\nThe character: {who['look']}"
     if kind == "sheet":
         return (
-            f"{style['sheet']}\n\n{world}\n\nThe character, exactly as in the reference portrait: {who['look']}"
+            f"{style['sheet']}\n\n{world}\n\nThe character, exactly as in the reference: {who['look']}"
         )
     if kind == "splash":
         return f"{style['splash']}\n\n{world}\n\n{who['splash']}\n\nThe character: {who['look']}"
@@ -405,7 +420,23 @@ def to_sheet(raw, cell):
     return pixelize(sheet)
 
 
+def needs_key(kind):
+    """O que entra no jogo sem fundo: retrato e folha."""
+    return kind in ("portrait", "sheet", "beast", "beast_dry")
+
+
+def has_alpha(image):
+    return image.mode == "RGBA" and image.getchannel("A").getextrema()[0] < 255
+
+
 def convert(kind, raw):
+    # Imagem sem transparência (a do navegador, a do Imagen) vem com o fundo verde: recorta antes.
+    if needs_key(kind) and not has_alpha(raw):
+        raw = key_green(raw)
+    if kind in ("design", "beast_design"):
+        image = raw.convert("RGB")
+        image.thumbnail((2048, 2048))
+        return image
     if kind == "portrait":
         return to_portrait(raw)
     if kind == "sheet":
@@ -497,6 +528,8 @@ SIZES = {
     "splash": ("1536x1024", False),
     "scene": ("1536x1024", False),
     "map": ("1536x1024", False),
+    "design": ("1536x1024", False),
+    "beast_design": ("1536x1024", False),
 }
 
 
@@ -577,6 +610,102 @@ def command_process(manifest, args):
     register(manifest)
 
 
+BROWSER_REFERENCE = {
+    "portrait": "Use the character design sheet above (or attached) as the reference: the same person, same face, hair, outfit and colors.",
+    "sheet": "Use the character design sheet above (or attached) as the reference for every direction: front, sides and back, same outfit and colors.",
+    "beast": "Use the creature design sheet above (or attached) as the reference for every direction.",
+    "beast_dry": "Use the creature design sheet above (or attached) as the reference for every direction.",
+    "splash": "Use the character design sheet above (or attached) as the reference for the character.",
+}
+
+STEP_NAME = {
+    "design": "Ficha de design (frente, 3/4, perfil, costas)",
+    "beast_design": "Ficha de design da criatura",
+    "portrait": "Retrato (caixa de diálogo)",
+    "sheet": "Folha de sprite 4x4",
+    "beast": "Folha de sprite 4x4",
+    "beast_dry": "Folha de sprite 4x4, fora d'água",
+    "splash": "Splash art",
+    "scene": "Ilustração",
+    "map": "Mapa do mundo",
+}
+
+
+def browser_prompt(manifest, kind, who):
+    """O prompt como se cola na web: com a referência da ficha de design e o fundo verde no lugar da transparência."""
+    parts = []
+    if kind in BROWSER_REFERENCE:
+        parts.append(BROWSER_REFERENCE[kind])
+    parts.append(prompt_for(manifest, kind, who).replace(" Fully transparent background.", ""))
+    if needs_key(kind):
+        parts.append(GREEN_SCREEN)
+    parts.append(f"Aspect ratio {AGY_ASPECT[kind].split(' ')[0]}, at the highest resolution you can.")
+    return "\n\n".join(parts)
+
+
+def command_prompts(manifest):
+    """Escreve art/PROMPTS.md: cada prompt, na ordem, com o nome com que o arquivo deve ser salvo."""
+    lines = [
+        "# Prompts da arte",
+        "",
+        "Gerado por `python art/gerar_arte.py prompts` a partir de `art/manifest.json`: não edite aqui, edite o manifesto",
+        "e gere de novo.",
+        "",
+        "## Como usar (Gemini na web, Nano Banana Pro)",
+        "",
+        "1. Uma conversa nova por personagem. Cole os prompts dele NA ORDEM: a ficha de design primeiro; o retrato e a",
+        "   folha usam a ficha que acabou de sair (se a conversa perder o fio, anexe a ficha de novo).",
+        "2. Baixe cada imagem com o nome indicado (`endyru.design.png`, `endyru.portrait.png`...), todas na mesma pasta.",
+        "   Pode ser png, jpg ou webp.",
+        "3. Rode `python art/gerar_arte.py importar <a pasta>`: recorta o fundo verde, converte (o retrato pra 640x800, a",
+        "   folha pra 48x48 em pixel art) e registra no jogo. Depois, `npm run dev` e veja.",
+        "4. Ficou ruim? Gere de novo na mesma conversa (\"de novo, mas...\") e importe por cima.",
+        "",
+        "O que está marcado *proposta* tem aparência proposta pelo co-autor, ainda não conferida com a ficha da história.",
+        "",
+    ]
+    current = None
+    for job_id, kind, who in jobs(manifest):
+        owner = job_id.split(".")[0]
+        if owner != current:
+            current = owner
+            title = who.get("name", owner)
+            note = f" — **não gere**: {blocked(who)}" if blocked(who) else (" — *proposta*" if who.get("proposal") else "")
+            lines += ["", f"## {title}{note}", ""]
+        if blocked(who):
+            continue
+        lines += [f"### {STEP_NAME[kind]} → salve como `{job_id}.png`", "", "```", browser_prompt(manifest, kind, who), "```", ""]
+    out = ROOT / "art" / "PROMPTS.md"
+    out.write_text("\n".join(lines), encoding="utf-8", newline="\n")
+    print(f"escrito: {out.relative_to(ROOT)}")
+
+
+def command_import(manifest, args):
+    """Pega da pasta `args[0]` os arquivos com nome de imagem do manifesto, guarda como bruto, converte e registra."""
+    if not args:
+        sys.exit("Diga a pasta: python art/gerar_arte.py importar <pasta>")
+    folder = Path(args[0]).expanduser()
+    known = {job_id: kind for job_id, kind, _ in jobs(manifest)}
+    found = 0
+    for file in sorted(folder.iterdir()):
+        job_id = file.stem
+        # O navegador às vezes acrescenta " (1)" ao nome repetido: o último baixado vale.
+        job_id = job_id.split(" (")[0]
+        if job_id not in known or file.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+            continue
+        kind = known[job_id]
+        image = Image.open(file)
+        image.load()
+        RAW.mkdir(parents=True, exist_ok=True)
+        (image if image.mode in ("RGB", "RGBA") else image.convert("RGBA")).save(raw_path(job_id))
+        save(convert(kind, Image.open(raw_path(job_id))), output_path(job_id, kind))
+        print(f"{job_id}: -> {output_path(job_id, kind).relative_to(ROOT)}")
+        found += 1
+    if found == 0:
+        print("Nenhum arquivo com nome conhecido (ex: endyru.portrait.png). Rode 'list' pra ver os nomes.")
+    register(manifest)
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     if len(sys.argv) < 2:
@@ -591,6 +720,10 @@ def main():
         command_process(manifest, args)
     elif command == "register":
         register(manifest)
+    elif command == "prompts":
+        command_prompts(manifest)
+    elif command == "importar":
+        command_import(manifest, args)
     else:
         sys.exit(__doc__)
 
