@@ -15,6 +15,9 @@ Quem gera (`--via`):
             na assinatura do autor. Roda numa pasta temporária fora do projeto, uma
             imagem por vez. O Imagen não faz fundo transparente: pede-se fundo verde
             puro, e o script o recorta.
+  - gemini  a API do Gemini direto (o Nano Banana Pro, gemini-3-pro-image-preview, ou o
+            de GEMINI_IMAGE_MODEL), com GEMINI_API_KEY (do Google AI Studio). Também não
+            faz fundo transparente: verde puro, recortado como no agy.
   - openai  a API de imagens da OpenAI. Precisa de OPENAI_API_KEY (e, se quiser
             outro modelo, OPENAI_IMAGE_MODEL; o padrão é gpt-image-1).
 Só usa a biblioteca padrão e o Pillow.
@@ -207,6 +210,49 @@ def edit(prompt, size, transparent, reference):
     )
     parts.append(f"--{boundary}--\r\n".encode("utf-8"))
     return request(f"{API}/edits", b"".join(parts), f"multipart/form-data; boundary={boundary}")
+
+
+# --------------------------------------------------------------------- Gemini
+
+GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models"
+BLANK_LINE = chr(10) * 2
+GEMINI_MODEL = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3-pro-image-preview")
+
+
+def generate_gemini(kind, prompt, transparent, reference):
+    """O Nano Banana Pro pela API do Gemini: texto (e a referência, se houver) entra, a imagem sai em 2K."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        sys.exit("Falta GEMINI_API_KEY no ambiente (Google AI Studio > Get API key).")
+    text = prompt + (BLANK_LINE + GREEN_SCREEN if transparent else "")
+    parts = [{"text": text}]
+    if reference is not None:
+        parts.append({"inline_data": {"mime_type": "image/png", "data": base64.b64encode(reference.read_bytes()).decode()}})
+        parts[0]["text"] = (
+            "Use the attached image as the reference: the same character, same face, same outfit and colors, "
+            "redrawn as described below." + BLANK_LINE + text
+        )
+    body = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "responseModalities": ["IMAGE"],
+            "imageConfig": {"aspectRatio": AGY_ASPECT[kind].split(" ")[0], "imageSize": "2K"},
+        },
+    }
+    req = urllib.request.Request(f"{GEMINI_API}/{GEMINI_MODEL}:generateContent", data=json.dumps(body).encode(), method="POST")
+    req.add_header("x-goog-api-key", key)
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=600) as response:
+            data = json.loads(response.read())
+    except urllib.error.HTTPError as error:
+        raise GenerationFailed(f"O Gemini recusou ({error.code}): {error.read().decode('utf-8', 'replace')[:1500]}")
+    for candidate in data.get("candidates", []):
+        for part in candidate.get("content", {}).get("parts", []):
+            inline = part.get("inlineData") or part.get("inline_data")
+            if inline:
+                return base64.b64decode(inline["data"])
+    raise GenerationFailed(f"O Gemini não devolveu imagem: {json.dumps(data)[:1500]}")
 
 
 # ---------------------------------------------------------------- Antigravity
@@ -479,8 +525,8 @@ def command_list(manifest):
 
 def command_gen(manifest, args):
     via = args[args.index("--via") + 1] if "--via" in args else "agy"
-    if via not in ("agy", "openai"):
-        sys.exit("--via é agy ou openai.")
+    if via not in ("agy", "gemini", "openai"):
+        sys.exit("--via é agy, gemini ou openai.")
     all_jobs = jobs(manifest)
     # O retrato vem antes da folha: ela o usa de referência.
     order = {"portrait": 0, "sheet": 1}
@@ -498,11 +544,15 @@ def command_gen(manifest, args):
             reference = raw_path(f"{who['id']}.portrait") if kind == "sheet" else None
             if reference is not None and not reference.exists():
                 reference = None
-            print(f"{job_id}: gerando ({via if via == 'agy' else MODEL}{', com o retrato de referência' if reference else ''})...")
+            print(f"{job_id}: gerando ({ {'agy': 'agy', 'gemini': GEMINI_MODEL}.get(via, MODEL)}{', com o retrato de referência' if reference else ''})...")
             raw.parent.mkdir(parents=True, exist_ok=True)
-            if via == "agy":
+            if via in ("agy", "gemini"):
                 try:
-                    data = generate_agy(job_id, kind, prompt, transparent, reference)
+                    data = (
+                        generate_agy(job_id, kind, prompt, transparent, reference)
+                        if via == "agy"
+                        else generate_gemini(kind, prompt, transparent, reference)
+                    )
                 except GenerationFailed as failure:
                     print(failure)
                     print("O lote parou aqui; o que já saiu fica registrado. Rode o mesmo comando de novo pra continuar.")

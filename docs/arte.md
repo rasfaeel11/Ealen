@@ -30,10 +30,14 @@ bestiário (`creature:encounter-castelao`); o Ykuruã fora d'água tem a folha s
 
 `art/gerar_arte.py` pede as imagens com os prompts de `art/manifest.json` e converte. Quem gera (`--via`):
 
-- **`agy`, o padrão**: o Antigravity CLI, pelo subagente `image-generator` dele (Imagen 3), na assinatura do autor.
+- **`agy`, o padrão**: o Antigravity CLI, pelo subagente `image-generator` dele, na assinatura do autor. Ele só gera
+  com o `gemini-3.1-flash-image` (o Nano Banana Pro não está disponível pra ele), e a cota desse modelo é à parte da
+  dos modelos de texto: na primeira vez, acabou depois de 9 imagens e voltou em umas 5 horas.
   Cada imagem é pedida numa pasta temporária fora do projeto (`%TEMP%/jogo-arte/<id>`), com permissão de escrita só
   lá, e leva perto de um minuto e meio. O Imagen não faz fundo transparente: pede-se verde puro, e o script o recorta
   (`key_green`). O prompt é escrito aqui, no manifesto; o Antigravity só desenha.
+- **`gemini`**: a API do Gemini direto, com o Nano Banana Pro (`gemini-3-pro-image-preview`, ou o de
+  `GEMINI_IMAGE_MODEL`), em 2K, com `GEMINI_API_KEY` (Google AI Studio). Fundo verde recortado, como no `agy`.
 - **`openai`**: a API de imagens da OpenAI (`gpt-image-1`, ou o de `OPENAI_IMAGE_MODEL`), com `OPENAI_API_KEY`.
 
 A conversão:
@@ -48,6 +52,14 @@ A conversão:
 O bruto fica em `art/raw/` (fora do git) e `process` refaz a conversão sem chamar a API. O registro
 (`client/src/game/generatedArt.ts`) é escrito pelo script com o que existe em `client/public/`. A skill
 `gerar-arte` (`.claude/skills/gerar-arte`) tem os comandos.
+
+## A direção de arte
+
+O primeiro lote saiu genérico: os prompts pediam "retrato de RPG pintado" e uma descrição curta, e é isso que dá rosto
+de banco de imagem. Desde 2026-10-30 o manifesto pede óleo expressionista (empaste, pincelada à vista, claro-escuro de
+uma luz só, paleta de lodo, ferrugem, osso e ardósia com uma cor de cada um) e descreve cada pessoa pelo que a faz
+ela: o rosto assimétrico, o gesto, a roupa remendada, a cor. Os 7 retratos do primeiro lote são do prompt antigo e
+devem ser refeitos (`gen <id> --only portrait --force`), e as folhas a partir deles.
 
 ## O cânone
 
