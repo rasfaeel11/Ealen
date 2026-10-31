@@ -15,7 +15,7 @@ e gere de novo.
 4. Ficou ruim? Gere de novo na mesma conversa ("de novo, mas...") e importe por cima. Saiu velho demais?
    Diga "the same character, ten years younger, no lines on the face", ou recomece numa conversa nova.
 
-O que está marcado *proposta* tem aparência proposta pelo co-autor, ainda não conferida com a ficha da história.
+O que está marcado *proposta* o autor ainda não viu desenhado.
 
 
 ## Endyru — *proposta*
