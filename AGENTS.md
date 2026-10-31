@@ -296,7 +296,7 @@ Texto novo de história vai como proposta pro autor antes de entrar (§1).
 | # | Task | O que é |
 |---|---|---|
 | 20 | **Conferir a aparência com as fichas** | Toda aparência de `art/manifest.json` é proposta (`proposal`): confira com a ficha de cada um e acerte o `look` antes (ou depois) de gerar. O Thrykar só se gera com o `look` da ficha do povo demônio. O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
-| 47 | **Gerar a arte** | O autor gera pelo navegador (Nano Banana Pro) com os prompts de `art/PROMPTS.md` (ficha de design, retrato, folha e splash de cada um) e o script importa (`importar <pasta>`). Os 7 retratos e a folha de Endyru do primeiro lote são do prompt antigo, genérico, e devem ser refeitos. Olhar cada folha: a que sair torta se refaz. |
+| 47 | **Gerar a arte** | O autor gera pelo navegador (Nano Banana Pro) com os prompts de `art/PROMPTS.md` (ficha de design, retrato, folha e splash de cada um) e o script importa (`importar <pasta>`). Os retratos de Endyru, Jarupã e Xanduí e a folha de Endyru são do primeiro lote, do prompt antigo, e devem ser refeitos. Do lote de 2026-10-31 entraram Oryndu, a conselheira, o mestre da guilda, a família, o mercador, a vendedora, o sargento, Mbyraku e o retrato do escrivão. Olhar cada folha: a que sair torta se refaz. |
 | 48 | **Os mapas em 48** | Quando os tiles do autor chegarem (task 15, em 48x48): mapas de quadrados de 48, câmera em zoom 1, e o que o client mede em pixels de 16 (passo, corpo, o que a luta desenha) passa a sair do tamanho do quadrado (`docs/arte.md`). |
 
 ### P2 e P3

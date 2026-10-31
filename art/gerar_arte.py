@@ -384,6 +384,18 @@ def pixelize(sheet):
     return out
 
 
+def body_center(figure):
+    """O meio do corpo na horizontal: a mediana do que é opaco, que a vara ou a espada para o lado não desloca."""
+    alpha = figure.getchannel("A").point(lambda a: 255 if a > 40 else 0)
+    columns = [sum(alpha.crop((x, 0, x + 1, figure.height)).tobytes()) for x in range(figure.width)]
+    half, total = sum(columns) / 2, 0
+    for x, column in enumerate(columns):
+        total += column
+        if total >= half:
+            return x
+    return figure.width // 2
+
+
 def to_sheet(raw, cell):
     """
     A grade 4x4 que veio da API vira a folha do jogo: cada quadro recortado pelo
@@ -414,7 +426,8 @@ def to_sheet(raw, cell):
         if figure is None:
             continue
         small = figure.resize((max(1, round(figure.width * scale)), max(1, round(figure.height * scale))), Image.LANCZOS)
-        x = col * cell + (cell - small.width) // 2
+        x = col * cell + cell // 2 - round(body_center(figure) * scale)
+        x = max(col * cell, min(x, (col + 1) * cell - small.width))
         y = row * cell + cell - small.height - 1
         sheet.paste(small, (x, y), small)
     return pixelize(sheet)

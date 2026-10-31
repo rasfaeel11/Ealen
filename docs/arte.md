@@ -43,7 +43,8 @@ bestiário (`creature:encounter-castelao`); o Ykuruã fora d'água tem a folha s
 A conversão:
 
 - a folha: a API desenha a grade em 1024x1024; o script recorta cada quadro pelo corpo, põe todos na mesma escala, o
-  pé no meio da base, faz da linha da direita o espelho da esquerda (a API erra o lado), reduz a paleta a 32 cores e
+  pé no meio da base (o meio do corpo, sem contar a vara ou a espada que sai pro lado), faz da linha da direita o
+  espelho da esquerda (a API erra o lado), reduz a paleta a 32 cores e
   deixa a transparência de tudo ou nada. É pixel art de verdade, mas não é a mão de um artista: quadro que sair torto
   se refaz ou se retoca.
 - a folha sai do retrato: a API recebe o retrato bruto como referência, pra o boneco ter a mesma cara.
@@ -73,8 +74,8 @@ no nome repetido é ignorado), recorta o fundo verde, converte e registra no jog
 O primeiro lote saiu genérico: os prompts pediam "retrato de RPG pintado" e uma descrição curta, e é isso que dá rosto
 de banco de imagem. Desde 2026-10-30 o manifesto pede óleo expressionista (empaste, pincelada à vista, claro-escuro de
 uma luz só, paleta de lodo, ferrugem, osso e ardósia com uma cor de cada um) e descreve cada pessoa pelo que a faz
-ela: o rosto assimétrico, o gesto, a roupa remendada, a cor. Os 7 retratos do primeiro lote são do prompt antigo e
-devem ser refeitos (`gen <id> --only portrait --force`), e as folhas a partir deles.
+ela: o rosto assimétrico, o gesto, a roupa remendada, a cor. Do primeiro lote, do prompt antigo, ainda estão no jogo os
+retratos de Endyru, Jarupã e Xanduí e a folha de Endyru: devem ser refeitos, e as folhas a partir deles.
 
 ## O cânone
 
