@@ -35,6 +35,8 @@ export interface Arm {
   dice: Dice;
   range: number;
   toHit: number;
+  /** Quantas vezes cada golpe dela sai por luta, se for contado. */
+  ammo?: number;
 }
 
 const D6: Dice = { count: 1, sides: 6 };
@@ -71,7 +73,7 @@ export function wornItem(character: Wearer, slot: EquipmentSlot): EquipmentItem 
 export function armOf(character: Pick<Character, "characterClass" | "equipment">): Arm {
   const weapon = wornItem(character, "weapon")?.data;
   if (weapon?.slot !== "weapon") return BARE[character.characterClass];
-  return { dice: weapon.dice, range: weapon.range, toHit: weapon.toHit ?? 0 };
+  return { dice: weapon.dice, range: weapon.range, toHit: weapon.toHit ?? 0, ...(weapon.ammo !== undefined ? { ammo: weapon.ammo } : {}) };
 }
 
 /** O que a armadura de `character` soma na defesa dele. */

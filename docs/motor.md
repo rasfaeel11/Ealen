@@ -97,6 +97,8 @@ Cada pessoa tem três lugares — `weapon`, `armor`, `accessory` — em `Charact
 
 Peça nova é uma entrada em `EQUIPMENT`. `npm test` acusa peça com id repetido ou igual ao de um consumível, e quem (classe, elenco, criatura, guardado de começo, `drops`) aponta pra peça que não existe, no lugar errado ou que a classe não usa.
 
+**Tiro** (`isShot` em `attack.ts`): golpe de arma com alcance de 3 ou mais. Perde `LONG_SHOT_TO_HIT` na segunda metade do alcance e `POINT_BLANK_TO_HIT` com inimigo colado, e alcança um quadrado a mais de um chão mais alto. A arma com `ammo` limita cada golpe dela por luta. **Cair e levantar**: quem chega a 0 fica caído, sem ocupar o quadrado; o comando `lift` (`liftable` em `targeting.ts`) o põe de pé. **Dificuldade**: `applyDifficulty` só mexe na vida do outro lado, ao abrir a luta. **Cinto**: cada um leva o próprio `inventory` pra luta; `passItem` move um item entre fichas, e `benched` guarda o que fica de fora.
+
 ### O mundo (`shared/world/` + `WorldScene`)
 
 Cada área é um mapa do Tiled (`.tmj`) em `client/public/maps/`, registrado em `shared/world/areas.ts`. O grafo do mundo é o que as saídas dos mapas formam — não existe lista de conexões fora deles. As quatro áreas são as do cânone (`ymonha`, o rio e o Castelo da Volta; `ybytugua`, a cidade; `baixios`; `floresta`). O que aparece na tela não é o tile: é o cenário que `art/pintar_cenario.py` pinta a partir do mapa (`docs/arte.md`). Os tilesets `placeholder` (chão, 16x16), `placeholder-tall` (coisas de pé, 16x32, caixote, barril, sino e guincho inclusive), `placeholder-high` (chão elevado, face do degrau e escada, 16x16) e `placeholder-water` (água rasa, lodo e a corrente) só servem pra editar o mapa no Tiled: o jogo não os desenha.

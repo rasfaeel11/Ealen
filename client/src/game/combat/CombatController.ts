@@ -39,6 +39,8 @@ import {
   type Ability,
   HERO_ID,
   LIFT_SHARE,
+  LONG_SHOT_TO_HIT,
+  POINT_BLANK_TO_HIT,
   liftable,
   type AreaMap,
   type AttackOutcome,
@@ -211,7 +213,7 @@ export function describeAbility(ability: Ability): string {
 }
 
 /** O que a posição e o confronto de escolas fizeram a um ataque, em palavras: "flanqueado +2", "cobertura +2 na defesa"... */
-function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 | 1; style: -1 | 0 | 1 }): string[] {
+function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 | 1; style: -1 | 0 | 1; far?: boolean; crowded?: boolean }): string[] {
   const notes: string[] = [];
   if (edge.style > 0) notes.push(`escola leva vantagem +${STYLE_TO_HIT}`);
   if (edge.style < 0) notes.push(`escola em desvantagem -${STYLE_TO_HIT}`);
@@ -219,6 +221,8 @@ function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 |
   if (edge.height > 0) notes.push(`de cima +${HEIGHT_TO_HIT}`);
   if (edge.height < 0) notes.push(`de baixo -${HEIGHT_TO_HIT}`);
   if (edge.cover) notes.push(`cobertura +${COVER_DEFENSE} na defesa`);
+  if (edge.far) notes.push(`longe -${LONG_SHOT_TO_HIT}`);
+  if (edge.crowded) notes.push(`atirando colado -${POINT_BLANK_TO_HIT}`);
   return notes;
 }
 

@@ -178,14 +178,14 @@ test("reforço não é gasto no caminho: só com o inimigo ao alcance", () => {
 
 // --- Escolher onde ficar ----------------------------------------------------
 
-test("quem luta de longe para no limite do alcance, não em cima do inimigo", () => {
+test("quem luta de longe vem até onde o tiro não perde, e não para em cima do inimigo", () => {
   const { encounter } = setup(["A........E"], (at) => [
     makeUnit("A", "enemy", at("A"), { equipment: { weapon: "gear-besta" }, attributes: { olho: FIRST } }),
     makeUnit("E", "party", at("E")),
   ]);
 
   const plan = planTurn(encounter);
-  assert.equal(distance(plan.tile, findUnit(encounter, "E")!.pos), 6);
+  assert.equal(distance(plan.tile, findUnit(encounter, "E")!.pos), 3);
   assert.ok(plan.action, "chegou ao alcance e não atacou");
 });
 

@@ -864,6 +864,8 @@ function rollAttack(
     cover: edge.cover,
     flanked: edge.flanked,
     height: edge.height,
+    far: edge.far,
+    crowded: edge.crowded,
     style: edge.style,
   });
 

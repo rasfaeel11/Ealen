@@ -3,6 +3,7 @@ import { isBreakable, propAt, propTemplate, type Prop } from "./props";
 import { isSworn } from "./styles";
 import type { Supporter } from "./supports";
 import type { Ability, Encounter, Unit } from "./types";
+import { isShot } from "./attack";
 import { isAlive, unitAt } from "./units";
 
 /** Quanto da vida volta a quem é levantado no meio da luta. */
@@ -22,7 +23,9 @@ export function liftable(encounter: Encounter, unit: Unit): Unit[] {
  */
 
 function canTarget(encounter: Encounter, unit: Unit, ability: Ability, pos: Pos): boolean {
-  return distance(unit.pos, pos) <= ability.range && hasLineOfSight(encounter.grid, unit.pos, pos);
+  // Quem atira de um chão mais alto alcança um quadrado a mais.
+  const above = isShot(ability) && (tileAt(encounter.grid, unit.pos)?.elevation ?? 0) > (tileAt(encounter.grid, pos)?.elevation ?? 0);
+  return distance(unit.pos, pos) <= ability.range + (above ? 1 : 0) && hasLineOfSight(encounter.grid, unit.pos, pos);
 }
 
 /** Se `unit` pode mirar o quadrado `pos` com uma habilidade de `targets: "tile"`, de onde está. */

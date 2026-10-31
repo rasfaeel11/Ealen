@@ -84,7 +84,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Arco atravessado numa coronha, com manivela. Qualquer um aprende a usar numa tarde; é por isso que os castelos gostam.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 6, classes: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 6, classes: ["espadachim"], ammo: 12 },
   },
   // --- Armaduras ------------------------------------------------------------
   {

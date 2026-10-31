@@ -290,7 +290,7 @@ Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz fa
 ### P0 — sem isto não há capítulo
 | # | Task | O que é |
 |---|---|---|
-| 57 | **Combate à distância de verdade** | Hoje distância é só um `range` maior. Falta: munição, alcance curto/longo com penalidade, desvantagem atirando colado num inimigo, cobertura parcial e total, altura alongando o alcance, arremesso de item (em aliado e em inimigo), tiro de reação em quem entra no alcance (vigia). |
+| 57 | **Combate à distância, o resto** | O tiro já entrou (ver Feito). Falta: arremesso de item (em aliado e em inimigo), tiro de reação em quem entra no alcance (vigia), e virote como item que se compra e se recolhe (hoje a munição só se conta por luta). |
 | 58 | **Progressão** | Subir de nível soma atributos e dá as Técnicas da classe no nível marcado, sem escolha. Falta: ESCOLHER o que se aprende (mais Técnicas por classe, ou um ramo), o GRAU do estilo valer alguma coisa (hoje só aparece na tela) e subir, e pontos de atributo pra distribuir. |
 
 ### P1 — pedidos do autor (2026-10-31)
@@ -632,6 +632,8 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 - **56. O cinto e o que cada um leva.** A mochila continua sendo a do grupo, com a protagonista; cada companheiro tem um cinto de 3 lugares (`BELT_SLOTS`), que nasce quando recebe o primeiro item. A mochila (`I`) mostra uma pessoa por vez (`Tab`), e dali se usa ou se passa um item (`passItem`). Na luta, cada um usa na vez dele só o que leva. O acampamento come também do cinto. Na ficha, `X` deixa uma habilidade de fora das lutas (`benched` na ficha, `toggleBenched`), menos o último golpe que a pessoa sabe. Por enquanto não há limite de quantas se levam, então a escolha ainda não aperta: o limite é da task 80. O save não mudou de versão: os dois campos são opcionais.
 
 - **64. Cair e levantar.** Quem chega a 0 fica caído e não ocupa o quadrado. Um aliado colado gasta a ação e o põe de pé com um quarto da vida, sem as condições, e ele volta à ordem dos turnos (`lift` no motor, `liftable` em `targeting.ts`). Enquanto houver alguém do grupo caído, a barra mostra Levantar quem caiu, e diz o que falta. O outro lado não se levanta. Se ninguém levanta, continua como era: numa luta vencida ele acorda com 1 de vida; se o grupo inteiro cai, é a derrota. Levantar por item ou por cura ainda não existe, e o caminho foi testado no motor, não numa luta na tela.
+
+- **57. O tiro, a primeira parte.** Golpe de arma com alcance de 3 ou mais é um tiro (`isShot` em `attack.ts`; magia não é). Na segunda metade do alcance ele perde 2 de acerto, e com um inimigo colado em quem atira, mais 2. De um chão mais alto, alcança um quadrado a mais. A besta tem 12 virotes por luta, contados em cada golpe (`ammo` na arma). A chance na tela e a IA usam a mesma conta: o besteiro agora chega até a metade do alcance em vez de atirar do limite, e fica atrás da pedra quando ela está nessa distância. Cobertura parcial (+2 na defesa) e total (a pedra alta que corta a vista) já existiam. Ninguém do grupo usa besta hoje, então isto aparece nos inimigos. O resto ficou na task 57.
 
 ## 9. Onde isto está no cânone
 

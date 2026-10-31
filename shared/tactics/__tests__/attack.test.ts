@@ -116,7 +116,7 @@ test("aliado caído não flanqueia, e flanco é só de corpo a corpo", () => {
 });
 
 test("o flanco entra no total da rolagem", () => {
-  const alone = duel(["AE"], undefined);
+  const alone = pincer(["AE.B"]);
   const flanking = pincer(["AEB"]);
   // Três iniciativas roladas em vez de duas: iguala o dado pra comparar a mesma rolagem.
   flanking.rngState = alone.rngState;
@@ -135,7 +135,7 @@ test("o flanco entra no total da rolagem", () => {
 // --- Altura -----------------------------------------------------------------
 
 test("atacar de cima soma no ataque; de baixo, tira o mesmo tanto", () => {
-  const { encounter } = setup(["A....E"], (at) => [
+  const { encounter } = setup(["A..E"], (at) => [
     makeUnit("A", "party", at("A"), { equipment: { weapon: "gear-besta" }, attributes: { olho: FIRST } }),
     makeUnit("E", "enemy", at("E"), { equipment: { weapon: "gear-besta" } }),
   ]);
@@ -151,7 +151,7 @@ test("atacar de cima soma no ataque; de baixo, tira o mesmo tanto", () => {
   );
 
   const [roll] = eventsOf(
-    run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: { x: 5, y: 0 } }),
+    run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: { x: 3, y: 0 } }),
     "attackRoll",
   );
   assert.equal(roll.height, 1);
@@ -208,11 +208,11 @@ test("a IA que atira prefere o chão alto", () => {
 });
 
 test("a IA sob fogo atira de trás da pedra", () => {
-  const { encounter } = setup(["A....o...R", "..........", ".........."], (at) => [
+  const { encounter } = setup(["A..o.R", "......", "......"], (at) => [
     makeUnit("A", "enemy", at("A"), { equipment: { weapon: "gear-besta" }, attributes: { olho: FIRST } }),
     makeUnit("R", "party", at("R"), { equipment: { weapon: "gear-besta" } }),
   ]);
   const plan = planTurn(encounter);
-  assert.deepEqual(plan.tile, { x: 4, y: 0 });
+  assert.deepEqual(plan.tile, { x: 2, y: 0 });
   assert.ok(plan.action, "de trás da pedra ainda alcança o alvo");
 });

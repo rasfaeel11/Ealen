@@ -464,6 +464,8 @@ export type TacticalEvent =
       /** A posição, já contada em `total` e `defense` (ver ./attack.ts). */
       cover: boolean;
       flanked: boolean;
+      far?: boolean;
+      crowded?: boolean;
       height: -1 | 0 | 1;
       /** O confronto de estilos: 1 = quem ataca leva vantagem, -1 = desvantagem (ver ./styles.ts). */
       style: -1 | 0 | 1;

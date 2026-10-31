@@ -68,7 +68,7 @@ function heavy(arm: Arm): Damage {
 
 /** De onde e com que acerto sai um golpe de arma num inimigo. */
 function wield(arm: Arm, toHit = 0): Pick<Body, "range" | "targets" | "attack"> {
-  return { range: arm.range, targets: "enemy", attack: { toHit: toHit + arm.toHit } };
+  return { range: arm.range, targets: "enemy", attack: { toHit: toHit + arm.toHit }, ...(arm.ammo !== undefined ? { limit: arm.ammo } : {}) };
 }
 
 /** Só quem luta de perto pune quem sai de perto. */

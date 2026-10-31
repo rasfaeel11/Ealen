@@ -20,6 +20,10 @@ import { defenseBonus, effectiveAttribute, isAlive, primaryAttribute } from "./u
  * - ESTILO: quem ataca um estilo que o dele vence soma no ataque; quem ataca
  *   o estilo que vence o dele perde o mesmo tanto. Só entre lados opostos.
  *
+ * - TIRO (golpe de arma com alcance de 3 ou mais, ver `isShot`): na segunda
+ *   metade do alcance perde acerto; com um inimigo colado, também. De um chão
+ *   mais alto, alcança um quadrado a mais (ver canTarget em ./targeting.ts).
+ *
  * Numa área, a cobertura é medida a partir do ponto de impacto, não de quem
  * a lançou, e não existe flanco.
  */
@@ -30,6 +34,17 @@ export const COVER_DEFENSE = 2;
 export const FLANK_TO_HIT = 2;
 /** Quanto atacar de cima soma no ataque (e atacar de baixo tira). */
 export const HEIGHT_TO_HIT = 2;
+/** Quanto o tiro perde na segunda metade do alcance. */
+export const LONG_SHOT_TO_HIT = 2;
+/** Quanto o tiro perde com um inimigo colado em quem atira. */
+export const POINT_BLANK_TO_HIT = 2;
+/** O alcance a partir do qual um golpe de arma é um tiro. */
+const SHOT_RANGE = 3;
+
+/** Um tiro: golpe de arma que vai longe. Magia não é tiro: quem recita não mira, lê. */
+export function isShot(ability: Ability): boolean {
+  return ability.attack !== undefined && ability.range >= SHOT_RANGE && !ability.mana && ability.radius === undefined;
+}
 
 export interface AttackEdge {
   cover: boolean;
@@ -38,6 +53,10 @@ export interface AttackEdge {
   height: -1 | 0 | 1;
   /** 1 = o estilo de quem ataca vence o do alvo; -1 = perde pra ele; 0 = neutro. */
   style: -1 | 0 | 1;
+  /** Tiro na segunda metade do alcance. */
+  far: boolean;
+  /** Tiro com um inimigo colado em quem atira. */
+  crowded: boolean;
   /** O que tudo isso soma na rolagem de ataque. */
   toHit: number;
   /** O que tudo isso soma na defesa do alvo. */
@@ -80,13 +99,18 @@ export function attackEdge(
   const rise = (tileAt(encounter.grid, actor.pos)?.elevation ?? 0) - (tileAt(encounter.grid, target.pos)?.elevation ?? 0);
   const height = Math.sign(rise) as -1 | 0 | 1;
   const style = actor.team !== target.team ? styleMatchup(actor.style, target.style) : 0;
+  const shot = isShot(ability);
+  const far = shot && distance(actor.pos, aim) > Math.ceil(ability.range / 2);
+  const crowded = shot && encounter.units.some((other) => other.team !== actor.team && isAlive(other) && distance(other.pos, actor.pos) === 1);
 
   return {
     cover,
     flanked,
     height,
     style,
-    toHit: (flanked ? FLANK_TO_HIT : 0) + height * HEIGHT_TO_HIT + style * STYLE_TO_HIT,
+    far,
+    crowded,
+    toHit: (flanked ? FLANK_TO_HIT : 0) + height * HEIGHT_TO_HIT + style * STYLE_TO_HIT - (far ? LONG_SHOT_TO_HIT : 0) - (crowded ? POINT_BLANK_TO_HIT : 0),
     defense: cover ? COVER_DEFENSE : 0,
   };
 }
