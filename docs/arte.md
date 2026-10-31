@@ -50,6 +50,19 @@ A conversão:
 - a folha sai do retrato: a API recebe o retrato bruto como referência, pra o boneco ter a mesma cara.
 - o resto é recorte e escala.
 
+- o recorte: na folha some só o que é da cor do fundo (`key_sheet`), pra não furar nem desbotar quem veste verde; o
+  retrato, de pincelada solta, usa o `key_green`, mais largo. A paleta da folha é octree de 64 cores, que guarda a cor
+  rara: a faixa azul na manga, o brasão no peito.
+- o passo: nos quadros pares o corpo sobe um pixel. Folha cujo perfil vem com as pernas paradas ganha um quadro de
+  passagem, com as canelas juntas, montado no bruto: passada, passagem, passada, passagem.
+
+As folhas vêm do Gemini com erros: quadro virado pro lado errado, sem a arma, sem a capa, coluna a mais. Cada bruto em
+`art/raw/` foi montado só com os quadros bons. O Escudeiro é o guarda do pedágio recolorido, e o guarda do portão é a
+mesma folha do guarda.
+
+O mapa (`mundo`) foi retocado à mão sobre o que o autor gerou: saíram "Ice guide", "Camps" e a Kuatiarape repetida, e
+Kuatiarape e Ybytuguá foram pro Ymonhã. Gerar de novo perde o retoque.
+
 O bruto fica em `art/raw/` (fora do git) e `process` refaz a conversão sem chamar a API. O registro
 (`client/src/game/generatedArt.ts`) é escrito pelo script com o que existe em `client/public/`. A skill
 `gerar-arte` (`.claude/skills/gerar-arte`) tem os comandos.
@@ -75,7 +88,7 @@ O primeiro lote saiu genérico: os prompts pediam "retrato de RPG pintado" e uma
 de banco de imagem. Desde 2026-10-30 o manifesto pede óleo expressionista (empaste, pincelada à vista, claro-escuro de
 uma luz só, paleta de lodo, ferrugem, osso e ardósia com uma cor de cada um) e descreve cada pessoa pelo que a faz
 ela: o rosto assimétrico, o gesto, a roupa remendada, a cor. Do primeiro lote, do prompt antigo, os retratos de Jarupã
-e Xanduí ficam: têm a idade e a arma certas, e as folhas saem deles. O retrato e a folha de Endyru ficam até os novos chegarem.
+e Xanduí ficam: têm a idade e a arma certas, e as folhas saem deles.
 
 Só entra na conta o que a tela usa: a ficha de design é referência e pode faltar pra quem não tem retrato, as splash de
 personagem e a dos baixios nenhuma tela mostra ainda, e quem é NPC fica parado no mapa, então só o quadro de pé importa.

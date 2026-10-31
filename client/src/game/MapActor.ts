@@ -12,7 +12,7 @@ const HP_TRAIL_MS = 300;
 /** Quanto do corpo fica abaixo da linha d'água quando submerso. */
 const SUBMERGED_SHARE = 0.5;
 const WATER_COLOR = 0x9fd8e8;
-/** O sangue da marca: de quanto em quanto tempo pinga, e a que altura da cabeça fica o nariz. */
+/** O sangue da marca: de quanto em quanto tempo pinga, e a que altura da cabeça fica o nariz (em pixels da folha). */
 const DRIP_EVERY_MS = 1100;
 const NOSE_FROM_TOP = 9;
 const BLOOD_COLOR = 0xa8202a;
@@ -176,8 +176,8 @@ export class MapActor {
   private drip(): void {
     // De costas, o nariz não aparece.
     if (this.facing === "up" || !this.sprite.visible) return;
-    const side = this.facing === "left" ? -2 : this.facing === "right" ? 2 : 0;
-    const at = { x: this.feet.x + side, y: this.top.y + NOSE_FROM_TOP };
+    const side = (this.facing === "left" ? -6 : this.facing === "right" ? 6 : 0) * this.scale;
+    const at = { x: this.feet.x + side, y: this.top.y + NOSE_FROM_TOP * this.scale };
     this.scene.tweens.killTweensOf(this.drop);
     this.drop.setPosition(at.x, at.y).setDepth(this.feet.y + 0.2).setAlpha(1).setVisible(true);
     this.scene.tweens.add({
@@ -255,8 +255,8 @@ export class MapActor {
       this.scene.tweens.add({
         targets: this.sprite,
         alpha: 0,
-        scaleX: 1.35,
-        scaleY: 0.2,
+        scaleX: this.scale * 1.35,
+        scaleY: this.scale * 0.2,
         duration,
         ease: "Cubic.easeIn",
         onComplete: () => resolve(),
@@ -267,7 +267,7 @@ export class MapActor {
   /** Desfaz `collapse`: quem caiu numa luta vencida está de pé de novo. */
   rise(): void {
     this.scene.tweens.killTweensOf([this.sprite, this.shadow]);
-    this.sprite.clearTint().setAlpha(1).setScale(1);
+    this.sprite.clearTint().setAlpha(1).setScale(this.scale);
     this.shadow.setAlpha(1);
   }
 

@@ -88,7 +88,11 @@ TILE = 48
 BEAST_TILES = 2
 PORTRAIT_SIZE = (640, 800)
 SPLASH_SIZE = (1280, 720)
-SHEET_COLORS = 32
+SHEET_COLORS = 64
+# O recorte da folha: quão perto da cor do fundo some, e a largura da franja que perde o verde.
+SHEET_KEY_DISTANCE = 85
+SHEET_FRINGE = 3
+MAP_LONGEST_SIDE = 1536
 
 
 # ------------------------------------------------------------------ manifesto
@@ -345,6 +349,44 @@ def key_green(image):
     return rgba
 
 
+def key_sheet(image):
+    """
+    O recorte da folha de sprite: só some o que é da cor do fundo (a da borda da
+    imagem), e só a franja que encosta nele perde o verde. key_green apagaria o
+    tabardo verde de quem veste verde; a folha tem contorno preto, e aguenta um
+    recorte mais justo. O retrato, de pincelada solta, fica com key_green.
+    """
+    rgba = image.convert("RGBA")
+    pixels = rgba.load()
+    width, height = rgba.size
+    border = [pixels[x, y] for x in range(0, width, 7) for y in (0, height - 1)]
+    border += [pixels[x, y] for y in range(0, height, 7) for x in (0, width - 1)]
+    background = tuple(sorted(pixel[channel] for pixel in border)[len(border) // 2] for channel in range(3))
+    keyed = bytearray(width * height)
+    for y in range(height):
+        for x in range(width):
+            r, g, b, _ = pixels[x, y]
+            near = (r - background[0]) ** 2 + (g - background[1]) ** 2 + (b - background[2]) ** 2 < SHEET_KEY_DISTANCE ** 2
+            if near:
+                keyed[y * width + x] = 1
+                pixels[x, y] = (0, 0, 0, 0)
+    for y in range(height):
+        for x in range(width):
+            if keyed[y * width + x]:
+                continue
+            r, g, b, a = pixels[x, y]
+            if g <= max(r, b):
+                continue
+            around = range(-SHEET_FRINGE, SHEET_FRINGE + 1)
+            if any(
+                0 <= x + dx < width and 0 <= y + dy < height and keyed[(y + dy) * width + x + dx]
+                for dx in around
+                for dy in around
+            ):
+                pixels[x, y] = (r, max(r, b), b, a)
+    return rgba
+
+
 # ------------------------------------------------------------------ conversão
 
 def fit_cover(image, size):
@@ -380,7 +422,8 @@ def pixelize(sheet):
     alpha = sheet.getchannel("A").point(lambda a: 255 if a >= 128 else 0)
     rgb = Image.new("RGB", sheet.size, (0, 0, 0))
     rgb.paste(sheet.convert("RGB"), mask=alpha)
-    quantized = rgb.quantize(colors=SHEET_COLORS, method=Image.Quantize.MEDIANCUT).convert("RGB")
+    # A octree guarda a cor rara: a faixa azul na manga, o peixe dourado no tabardo.
+    quantized = rgb.quantize(colors=SHEET_COLORS, method=Image.Quantize.FASTOCTREE).convert("RGB")
     out = quantized.convert("RGBA")
     out.putalpha(alpha)
     return out
@@ -430,7 +473,8 @@ def to_sheet(raw, cell):
         small = figure.resize((max(1, round(figure.width * scale)), max(1, round(figure.height * scale))), Image.LANCZOS)
         x = col * cell + cell // 2 - round(body_center(figure) * scale)
         x = max(col * cell, min(x, (col + 1) * cell - small.width))
-        y = row * cell + cell - small.height - 1
+        # Nos quadros pares do passo o corpo sobe um pixel: o balanço de quem anda.
+        y = row * cell + cell - small.height - 1 - col % 2
         sheet.paste(small, (x, y), small)
     return pixelize(sheet)
 
@@ -447,7 +491,7 @@ def has_alpha(image):
 def convert(kind, raw):
     # Imagem sem transparência (a do navegador, a do Imagen) vem com o fundo verde: recorta antes.
     if needs_key(kind) and not has_alpha(raw):
-        raw = key_green(raw)
+        raw = key_green(raw) if kind == "portrait" else key_sheet(raw)
     if kind in ("design", "beast_design"):
         image = raw.convert("RGB")
         image.thumbnail((2048, 2048))
@@ -460,7 +504,9 @@ def convert(kind, raw):
         return to_sheet(raw, TILE * BEAST_TILES)
     if kind in ("splash", "scene"):
         return fit_cover(raw.convert("RGB"), SPLASH_SIZE)
-    return raw.convert("RGB")
+    image = raw.convert("RGB")
+    image.thumbnail((MAP_LONGEST_SIDE, MAP_LONGEST_SIDE), Image.LANCZOS)
+    return image
 
 
 def save(image, path):
