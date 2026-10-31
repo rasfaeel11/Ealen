@@ -79,8 +79,28 @@ retratos de Endyru, Jarupã e Xanduí e a folha de Endyru: devem ser refeitos, e
 
 ## O cânone
 
-O `look` de cada um é a aparência, e o que a tela mostra vira cânone (AGENTS.md §1). Hoje toda aparência do
-manifesto é **proposta** (`proposal: true`): o que o `jogo.md` garante (idade, ofício, arma, roupa de estrada) mais o
-que o co-autor propôs (cabelo, rosto, cores). Confira com a ficha antes de gerar, ou gere e confira depois. O
-**Thrykar** não se gera até o `look` vir da ficha do povo demônio (`needsSheet`). As cores da libré de Ymboripe
-(azul-ardósia e preto) e a do Castelo da Volta também são proposta.
+O `look` de cada um é a aparência, e o que a tela mostra vira cânone (AGENTS.md §1). O autor aprovou em 2026-10-31 a
+arte de quem já entrou; `proposal: true` marca quem ele ainda não viu desenhado. O **Thrykar** segue a ficha do povo
+demônio: gente, sem chifre nem rabo, com a orelha e a unha um pouco mais pontudas e os olhos de cores diferentes.
+
+## Os brasões
+
+Antes da unificação cada casa tem o seu, em cores fortes: a heráldica é a única coisa berrante num mundo de lama.
+Quem serve a Ymboripe leva a cor da própria família no tabardo e a marca do ducado numa faixa na manga, como o texto diz.
+A folha sai pelo nome de quem está no mapa, então duas casas no mesmo grupo são dois nomes (`Espada` e `Espada do vale`).
+
+| De quem | Brasão | Quem veste |
+|---|---|---|
+| Ymboripe, depois o reino | azul forte, montanha branca de três picos sobre linha d'água branca | Jurendy; a faixa na manga dos vassalos |
+| Castelo da Volta | amarelo-mostarda, corrente preta | Mbyraku, o sargento, os guardas, o besteiro |
+| Casa vassala | vermelho, lúcio dourado | `Espada` |
+| Casa vassala | verde, garça branca | `Espada do vale` |
+| Casa vassala | branco, lontra preta | `Lança` |
+| Casa vassala | laranja, javali preto | `Lança da serra` |
+| Família menor | vinho, roda de moinho dourada | `Escudeiro` |
+
+## Pra quem é jovem não sair velho
+
+O rosto velho vinha do estilo, que pedia pele curtida e "história no rosto" pra todo mundo, e isso vencia o "vinte anos"
+da descrição. Agora a idade é de cada um, e quem é jovem leva `young: true`, que acrescenta o bloco `style.young` no fim
+do prompt. Quem é redesenhado começa em conversa nova, sem imagem antiga anexada.

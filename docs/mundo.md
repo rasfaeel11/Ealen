@@ -1,8 +1,8 @@
 # O mapa do mundo
 
 Descrição do autor (2026-10-30), em inglês, como foi dada. É o prompt do mapa (`mundo` em `art/manifest.json`) e a
-referência pra qualquer outro desenho do mundo. Como fato do mundo, ainda precisa ir pro repositório da história
-(`historiav2`), junto com os nomes da task 14.
+referência pra qualquer outro desenho do mundo. Como fato do mundo, está também na história, em
+`referencias/mapa-do-mundo.md`.
 
 O jogo se passa num canto dele: Xerumbetyba, no interior de Yrandupe, no trecho do Ymonhã entre Kuatiarape e os
 baixios de Ybytuguá.

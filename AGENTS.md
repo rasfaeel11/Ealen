@@ -1,7 +1,8 @@
 # Jogo — Três na Estrada (título provisório)
 
 O autor aprovou tudo em 2026-10-19, e os fatos do mundo estão gravados no repositório da história (`historiav2`,
-em `jogo.md` e nas fichas e referências da §9). Fato novo continua indo pro autor antes de entrar (§1).
+em `Documents/historiav2`, nas fichas e referências da §9). O roteiro (`jogo.md`) mora aqui. Fato novo continua indo
+pro autor antes de entrar (§1).
 
 > RPG tático pra navegador, de 2 a 4 horas, passado no mundo da série de Karuã, uns 25 anos antes do Livro 1.
 > Quem joga é **Endyru** jovem, o pai de Karuã. No caminho, forma o grupo com **Jarupã** e **Xanduí**, os pais de Exandy.
@@ -32,8 +33,12 @@ em `jogo.md` e nas fichas e referências da §9). Fato novo continua indo pro au
   (ex-colega de Endyru em Kuatiarape, filho de gente com dinheiro) e o ferreiro demônio é **Thrykar**. O
   `jogo.md` sugeria Thrymkel, mas nome de demônio macho termina em -r, -ar, -vald ou -grim (`alfabeto.md`).
   A conselheira, o mercador e o mestre da guilda continuam pelo papel.
-- O autor aprovou esses nomes em 2026-10-30. O repositório da história não está nesta máquina: os nomes e o
-  Jurendy ainda precisam ser gravados lá (task 14).
+- O autor aprovou esses nomes em 2026-10-30, e estão gravados na história.
+
+## Decisões do autor (2026-10-31)
+
+- Antes da unificação cada casa tem o próprio brasão, colorido; depois dela, todos passam ao de Ymboripe. A tabela
+  está em `docs/arte.md`.
 
 ## 1. De onde vem o cânone
 
@@ -279,7 +284,6 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P1 — o conteúdo
 | # | Task | O que é |
 |---|---|---|
-| 14 | **Gravar os nomes na história** | Mbyraku, Castelo da Volta, Jurendy (e o fato de ser ex-colega de Endyru) e Thrykar foram decididos (ver Decisões do co-autor), o autor os aprovou em 2026-10-30, e já valem pro jogo; falta gravar as fichas e a lista de nomes no repositório da história, que não está nesta máquina. O mapa do mundo que o autor descreveu (`docs/mundo.md`) também vai pra lá. |
 | 15 | **Retoque dos mapas no Tiled** | Os quatro mapas saíram de um gerador, com os placeholders; o desenho de verdade é do autor (o contrato do Tiled está em `docs/motor.md`). |
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
@@ -295,8 +299,7 @@ Texto novo de história vai como proposta pro autor antes de entrar (§1).
 
 | # | Task | O que é |
 |---|---|---|
-| 20 | **Conferir a aparência com as fichas** | Toda aparência de `art/manifest.json` é proposta (`proposal`): confira com a ficha de cada um e acerte o `look` antes (ou depois) de gerar. O Thrykar só se gera com o `look` da ficha do povo demônio. O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). |
-| 47 | **Gerar a arte** | O autor gera pelo navegador (Nano Banana Pro) com os prompts de `art/PROMPTS.md` (ficha de design, retrato, folha e splash de cada um) e o script importa (`importar <pasta>`). Os retratos de Endyru, Jarupã e Xanduí e a folha de Endyru são do primeiro lote, do prompt antigo, e devem ser refeitos. Do lote de 2026-10-31 entraram Oryndu, a conselheira, o mestre da guilda, a família, o mercador, a vendedora, o sargento, Mbyraku e o retrato do escrivão. Olhar cada folha: a que sair torta se refaz. |
+| 47 | **Gerar a arte** | O autor gera pelo navegador (Nano Banana Pro) com os prompts de `art/PROMPTS.md` (ficha de design, retrato, folha e splash de cada um) e o script importa (`importar <pasta>`). Os retratos de Endyru, Jarupã e Xanduí e a folha de Endyru são do primeiro lote, do prompt antigo, e devem ser refeitos. Do lote de 2026-10-31 entraram Oryndu, a conselheira, o mestre da guilda, a família, o mercador, a vendedora, o sargento, Mbyraku e o retrato do escrivão. O que falta é o que `list` marca como `falta`, e quem tem `proposal` o autor ainda não viu desenhado. O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). Olhar cada folha: a que sair torta se refaz. |
 | 48 | **Os mapas em 48** | Quando os tiles do autor chegarem (task 15, em 48x48): mapas de quadrados de 48, câmera em zoom 1, e o que o client mede em pixels de 16 (passo, corpo, o que a luta desenha) passa a sair do tamanho do quadrado (`docs/arte.md`). |
 
 ### P2 e P3
@@ -563,7 +566,13 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
   retrato pintado, e `M` (ou Mapa, na pausa) abre o mapa do mundo. A skill `gerar-arte` tem os comandos. Quem desenha,
   por padrão, é o Antigravity (`--via agy`, o Imagen da assinatura do autor), numa pasta fora do projeto, com fundo
   verde que o script recorta; a OpenAI ficou como alternativa. O retrato e a folha de Endyru já saíram; o resto é a
-  task 47, e as aparências são proposta (task 20).
+  task 47.
+- **14. Os nomes na história** (2026-10-31). Fichas de `mbyraku`, `jurendy`, `thrykar` e `castelo-da-volta`, os nomes
+  em `alfabeto.md`, os brasões em `ymboripe` e `xerumbetyba`, e o mapa do autor em `referencias/mapa-do-mundo.md`.
+- **20. A aparência conferida** (2026-10-31). As fichas não descrevem rosto, então o autor aprovou o que viu. O Thrykar
+  ganhou `look` da ficha do povo demônio. Os prompts mudaram: a idade é de cada um (`young`), a espada de Jarupã não é
+  mais enxada, o escrivão tem um livro só, e Endyru foi redesenhado. A floresta ganhou `Espada do vale` e `Lança da
+  serra`, pra casas diferentes no mesmo grupo (`docs/arte.md`).
 - **As peças guardadas na mochila** (do ramo `worktree-equipamento`, de 2026-10-09). O equipamento daquele ramo já
   estava todo no `main`, refeito; só faltava isto: a mochila (`I`) lista, depois dos itens, as peças que ninguém
   veste — as espadas temperadas de Thrykar, o que cai de inimigo —, com o que cada uma faz, e Enter leva à ficha pra
@@ -578,6 +587,7 @@ Gravado no repositório da história com a aprovação de 2026-10-19:
 - Fichas que mudaram: `xerumbetyba`, `endyru`, `jarupa`, `xandui`.
 - `alfabeto.md`, `estado.md` e a bíblia (nomes aprovados).
 - A `mesa-dos-contratos`: o balcão onde o contrato de Ybytuguá se registra (nome da companhia, nível, fiança).
+- Em 2026-10-31: `mbyraku`, `jurendy`, `thrykar`, `castelo-da-volta`, os brasões e `referencias/mapa-do-mundo.md`.
 
 O que o jogo ainda quiser e não estiver lá (nome de gente, criatura nova) vai como proposta, e até a aprovação
 o jogo usa o papel no lugar do nome: o castelão, o mercador, a conselheira, o ferreiro.

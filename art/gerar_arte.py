@@ -144,18 +144,20 @@ def raw_path(job_id):
 def prompt_for(manifest, kind, who):
     style = manifest["style"]
     world = style["world"]
+    # O bloco de juventude vai por último: é a última coisa que o gerador lê sobre o rosto.
+    look = f"{who['look']}\n\n{style['young']}" if who.get("young") else who.get("look")
     if kind == "design":
-        return f"{style['design']}\n\n{world}\n\nThe character: {who['look']}"
+        return f"{style['design']}\n\n{world}\n\nThe character: {look}"
     if kind == "beast_design":
         return f"{style['beast_design']}\n\n{who['look']}"
     if kind == "portrait":
-        return f"{style['portrait']}\n\n{world}\n\nThe character: {who['look']}"
+        return f"{style['portrait']}\n\n{world}\n\nThe character: {look}"
     if kind == "sheet":
         return (
-            f"{style['sheet']}\n\n{world}\n\nThe character, exactly as in the reference: {who['look']}"
+            f"{style['sheet']}\n\n{world}\n\nThe character, exactly as in the reference: {look}"
         )
     if kind == "splash":
-        return f"{style['splash']}\n\n{world}\n\n{who['splash']}\n\nThe character: {who['look']}"
+        return f"{style['splash']}\n\n{world}\n\n{who['splash']}\n\nThe character: {look}"
     if kind == "beast":
         return f"{style['beast']}\n\n{who['look']}"
     if kind == "beast_dry":
@@ -667,12 +669,14 @@ def command_prompts(manifest):
         "## Como usar (Gemini na web, Nano Banana Pro)",
         "",
         "1. Uma conversa nova por personagem. Cole os prompts dele NA ORDEM: a ficha de design primeiro; o retrato e a",
-        "   folha usam a ficha que acabou de sair (se a conversa perder o fio, anexe a ficha de novo).",
+        "   folha usam a ficha que acabou de sair (se a conversa perder o fio, anexe a ficha de novo). Quem foi",
+        "   redesenhado começa do zero: em conversa nova, sem anexar nenhuma imagem antiga, ou o rosto velho volta.",
         "2. Baixe cada imagem com o nome indicado (`endyru.design.png`, `endyru.portrait.png`...), todas na mesma pasta.",
         "   Pode ser png, jpg ou webp.",
         "3. Rode `python art/gerar_arte.py importar <a pasta>`: recorta o fundo verde, converte (o retrato pra 640x800, a",
         "   folha pra 48x48 em pixel art) e registra no jogo. Depois, `npm run dev` e veja.",
-        "4. Ficou ruim? Gere de novo na mesma conversa (\"de novo, mas...\") e importe por cima.",
+        "4. Ficou ruim? Gere de novo na mesma conversa (\"de novo, mas...\") e importe por cima. Saiu velho demais?",
+        "   Diga \"the same character, ten years younger, no lines on the face\", ou recomece numa conversa nova.",
         "",
         "O que está marcado *proposta* tem aparência proposta pelo co-autor, ainda não conferida com a ficha da história.",
         "",

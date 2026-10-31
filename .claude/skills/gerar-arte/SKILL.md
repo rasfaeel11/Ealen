@@ -16,9 +16,9 @@ A regra completa (tamanhos, escala, como cada tipo entra no jogo) está em `docs
 ## Antes de gerar
 
 1. **Cânone primeiro (AGENTS.md §1).** O `look` vira cânone quando aparece na tela. Personagem com `proposal: true`
-   tem aparência proposta pelo co-autor e ainda não conferida com a ficha (`historiav2/fichas`): avise o autor disso
-   ao gerar. Com `needsSheet: true` o script se recusa a gerar: a aparência tem de vir da ficha (o Thrykar espera a
-   do povo demônio). Nunca invente traço de povo, marca, símbolo ou vestígio (§1.1).
+   ainda não foi visto desenhado pelo autor: avise disso ao gerar. Com `needsSheet: true` o script se recusa a gerar: a
+   aparência tem de vir da ficha (`historiav2/fichas`). Nunca invente traço de povo, marca, símbolo ou vestígio (§1.1).
+   Brasão novo entra na tabela de `docs/arte.md` e na ficha do lugar.
 2. O padrão é `--via agy`: o Antigravity CLI (`agy`, logado na assinatura do autor) gera pelo subagente
    `image-generator`, numa pasta temporária fora do projeto, cerca de um minuto e meio por imagem. Rode lotes grandes
    em segundo plano. `--via openai` usa a API da OpenAI e precisa de `OPENAI_API_KEY` (nunca a escreva em arquivo do
