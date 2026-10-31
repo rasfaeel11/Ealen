@@ -47,24 +47,15 @@ function mapTextureKey(areaId: string): string {
 }
 
 /**
- * O minimapa de uma área: cada quadrado do chão vira um pixel, tirado do próprio
- * tile (o canvas tira a média ao encolher), e o que barra a vista escurece.
+ * O minimapa de uma área: o chão pintado, encolhido até cada quadrado virar um
+ * pixel, e o que barra a vista escurece.
  */
-function paintMinimap(c: CanvasRenderingContext2D, map: AreaMap, tilemap: Phaser.Tilemaps.Tilemap): void {
+function paintMinimap(c: CanvasRenderingContext2D, map: AreaMap, ground: CanvasImageSource): void {
   c.imageSmoothingEnabled = true;
-  c.fillStyle = "#17120e";
+  // O chão pintado é furado onde há água: a cor de baixo é a do rio.
+  c.fillStyle = "#3a4d44";
   c.fillRect(0, 0, map.grid.width, map.grid.height);
-  for (const layer of tilemap.layers) {
-    if (!layer.tilemapLayer) continue;
-    for (const row of layer.data) {
-      for (const tile of row) {
-        const set = tile.index > 0 ? tile.tileset : null;
-        const at = set?.getTileTextureCoordinates(tile.index) as { x: number; y: number } | null | undefined;
-        const source = set?.image?.getSourceImage() as CanvasImageSource | undefined;
-        if (set && at && source) c.drawImage(source, at.x, at.y, set.tileWidth, set.tileHeight, tile.x, tile.y, 1, 1);
-      }
-    }
-  }
+  c.drawImage(ground, 0, 0, map.grid.width, map.grid.height);
   c.fillStyle = "rgba(10, 8, 7, 0.75)";
   for (let y = 0; y < map.grid.height; y++) {
     for (let x = 0; x < map.grid.width; x++) {
@@ -106,7 +97,7 @@ export class WorldHud {
     private readonly scene: Phaser.Scene,
     addHud: AddHud,
     private readonly map: AreaMap,
-    tilemap: Phaser.Tilemaps.Tilemap,
+    ground: CanvasImageSource,
     areaId: string,
     areaName: string,
     clockShown: boolean,
@@ -172,7 +163,7 @@ export class WorldHud {
       const texture = scene.textures.createCanvas(key, map.grid.width, map.grid.height);
       const c = texture?.getContext();
       if (texture && c) {
-        paintMinimap(c, map, tilemap);
+        paintMinimap(c, map, ground);
         texture.refresh();
         texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
       }

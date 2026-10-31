@@ -7,17 +7,32 @@ Decisão do co-autor (2026-10-30, com a autorização do autor): **48x48**.
 - **Um quadrado do mapa tem 48 pixels de arte.** O boneco de gente é 48x48; o Ykuruã é 96x96 (dois quadrados de
   largura na tela, um só na regra). A câmera do mundo amplia o mapa até um quadrado ter 48 pixels na tela, então a
   arte de 48 aparece pixel por pixel, nítida, na resolução interna (1280x720).
-- Os mapas ainda são de quadrados de 16 (os tilesets provisórios). O ator se encolhe pro quadrado do mapa
-  (`sheetScale` em `client/src/game/mapSprites.ts`): arte de 48 num mapa de 16 sai na escala 1/3, que a câmera
-  (zoom 3) devolve a 1. O provisório, desenhado a 16, sai na escala 1.
-- **Tiles**: o retoque dos mapas (task 15) deve vir em 48x48. Quando vier, o mapa passa a ter quadrados de 48 e a
-  câmera, zoom 1; o que está em pixels de 16 no client (velocidade de andar, o corpo, o que a luta desenha) passa a
-  sair do tamanho do quadrado. Até lá, os mapas ficam em 16.
+- Os mapas continuam em quadrados de 16: é a medida da regra. Tudo que se desenha por cima deles, boneco ou cenário, sai na escala 1/3 (`sheetScale` em `client/src/game/mapSprites.ts`, `scale` em `Scenery.ts`), e a câmera (zoom 3) devolve a 1. O provisório, desenhado a 16, sai na escala 1.
+- **Tiles**: não há. O cenário é pintado por `art/pintar_cenario.py` (abaixo). Os tilesets `placeholder` só servem pra abrir e editar os mapas no Tiled.
 - **Retratos da caixa de diálogo**: pintados, não pixel art, em 640x800 (o dobro do busto na tela, 320x400), fundo
   transparente, o busto encostado na borda de baixo. Escalam com suavização (`smooth`).
 - **Ilustrações** (título, splash de cada um do grupo, os baixios): 1280x720. **Mapa do mundo**: 1536x1024, aberto
   com `M` (ou Mapa, na pausa).
 - **Ícones de habilidade**: 32x32, quando houver (a barra de luta ainda é de texto).
+
+## O cenário
+
+`python art/pintar_cenario.py` (só precisa do Pillow; `--previa <pasta>` monta uma imagem de cada área) lê os `.tmj` e escreve em
+`client/public/scenes/`. O mapa manda na regra, e o script só lê o que há em cada quadrado: mudou o mapa, rode de novo. A semente é fixa, e cada área
+tem a dela. Quem desenha na tela é `client/src/game/Scenery.ts`, e a regra nunca lê nada de lá.
+
+- **O chão** (`<area>.ground.png`): uma imagem só, sem tile repetido, com a borda de cada terreno torta. A água é um furo: `agua.png` e `agua-brilho.png`
+  correm por baixo em velocidades diferentes, e na beira o chão vai ficando transparente, que é o raso.
+- **O que fica de pé** (`<area>.atlas.png` + `<area>.json`): árvore, casa, torre, cada uma com o pé num ponto e ordenada por Y junto com os personagens.
+  Cada quadrado de árvore do mapa ganha uma, sorteada; na primeira linha do mapa, sebe, porque a câmera cortaria a copa.
+- **`fade`**: um retângulo em quadrados. Com alguém dentro, a peça some (o telhado, até 0) ou clareia (o muro do pátio, `fadeTo`), na exploração e na luta.
+  O prédio de que se entra tem o corte pintado no chão: piso, parede do fundo e o topo das outras.
+- **`unless`**: a peça sai de cena com aquela variável da história (o barco de Oryndu, depois da cheia). **`smoke`**: de onde sobe a fumaça.
+- **Peça nova que barra**: pinte no script e ponha no mapa um tile que barre o passo (o `gid` 12, que o pintor não desenha). O pintor não muda a regra sozinho.
+- **Os destrutíveis** (`props.png`): pelo `kind`, não pelo tile que o mapa usa.
+
+O que a região pede, e o script segue: terra como a Alemanha antes da unificação (AGENTS.md, decisões do autor), céu nublado de cheia, paleta de lodo. Cidade tem
+terreiro e horta, não gramado. O castelo é o da ficha. O estandarte da cidade não tem brasão, porque o cânone não deu um. Nada de letra legível em placa.
 
 ## A folha de sprite
 

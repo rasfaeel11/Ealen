@@ -284,7 +284,7 @@ Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar u
 ### P1 — o conteúdo
 | # | Task | O que é |
 |---|---|---|
-| 15 | **Retoque dos mapas no Tiled** | Os quatro mapas saíram de um gerador, com os placeholders; o desenho de verdade é do autor (o contrato do Tiled está em `docs/motor.md`). |
+| 15 | **Retoque dos mapas no Tiled** | Só se o autor quiser mudar a disposição: os mapas mandam na regra, o cenário sai deles. Mexeu no mapa, rode `art/pintar_cenario.py` (`docs/arte.md`). |
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 
 ### P1 — o roteiro completo (`jogo.md`, 2026-10-27)
@@ -300,7 +300,6 @@ Texto novo de história vai como proposta pro autor antes de entrar (§1).
 | # | Task | O que é |
 |---|---|---|
 | 47 | **Gerar a arte** | O autor gera pelo navegador (Nano Banana Pro) com os prompts de `art/PROMPTS.md` (ficha de design, retrato, folha e splash de cada um) e o script importa (`importar <pasta>`). Os retratos de Jarupã e Xanduí, do primeiro lote, ficam. Toda a gente do jogo já tem folha, e quem fala muito tem retrato. Faltam o Ykuruã (a folha, e a seca sai dela), a tela de título e, se o autor quiser, os retratos dos saqueadores, da Contratada e do guarda do portão, que falam pouco. O que falta é o que `list` marca como `falta`, e quem tem `proposal` o autor ainda não viu desenhado. O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). Olhar cada folha: a que sair torta se refaz. |
-| 48 | **Os mapas em 48** | Quando os tiles do autor chegarem (task 15, em 48x48): mapas de quadrados de 48, câmera em zoom 1, e o que o client mede em pixels de 16 (passo, corpo, o que a luta desenha) passa a sair do tamanho do quadrado (`docs/arte.md`). |
 
 ### P2 e P3
 Arte final, som gravado, balanceamento (`balance:matrix` com as escolas), tutorial, opções e o empacotamento
@@ -581,6 +580,8 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
 - **A interface nova** (pedida pelo autor em 2026-10-31, parecida com a de BG3). A coluna do grupo à esquerda, com retrato, vida, Fôlego, mana, nível e condições, na exploração e na luta. A barra embaixo em grade de quadrados com ícone, tecla, custo (verde a ação, laranja o bônus), quantidade e recarga; o que cada um faz aparece num cartão ao passar o mouse, e apagado ele diz por quê. Na luta, a ordem dos turnos no alto com o rosto de cada um, o registro à direita, os recursos do turno, o botão redondo de encerrar e a chance de acerto junto do cursor. Andando, o minimapa e as ações ao alcance numa pílula. A conversa virou uma faixa de lado a lado, com o selo do teste na escolha. Ficha com abas, retrato, lugares do corpo e atributos em quadros; mochila em grade (`Tab` troca de pessoa na ficha, no lugar de ←/→, que agora andam na grade). Título, saves, diário, gravar, som, descanso, pausa e mapa na mesma moldura. Os ícones são desenhados em canvas, provisórios (`icons.ts`), e a tela de título usa a splash de Oryndu até a do título existir (task 47). O motor e o save não mudaram. Detalhe em `docs/motor.md`.
 
 - **O parado de verdade** (pedido pelo autor em 2026-10-31). O "parado" de perfil era uma passada da caminhada, e o boneco parava no meio do passo. Agora a pose de pé sai da própria folha, sem arte nova (`client/src/game/idlePose.ts`), e toda folha que entrar já vem com isso. Em cima dela, todo mundo respira, cada um no seu ritmo, e quem fica parado faz um gesto de vez em quando: suspira, pende o corpo ou olha em volta. Na luta o fôlego encurta e os gestos param; o Ykuruã só respira. Detalhe em `docs/motor.md`.
+
+- **O cenário pintado** (pedido pelo autor em 2026-10-31: "muito feio e genérico"). `art/pintar_cenario.py` lê os mapas e pinta as quatro áreas em 48 pixels por quadrado, a mesma densidade dos bonecos: rio de margem torta com a água correndo por baixo, casas de enxaimel com telhado íngreme, o Castelo da Volta da ficha (pedra embaixo, madeira em cima, o pano amarelo com a corrente), barcos virados no barro do cais, a torre do cais, hortas e terreiro em vez de gramado, lavoura e vinha na margem sul do Ymonhã, junco e bruma nos baixios, faia e abeto na floresta. Quem entra numa casa vê o telhado sumir, na luta também. Os mapas continuam em quadrados de 16 e mandam na regra; 31 quadrados novos barram o passo, pra ninguém atravessar a torre, a Mesa ou a forja (a conta de quem se alcança não mudou). Enxaimel, vinha e guindaste de roda vieram da decisão de "uma terra como a Alemanha", e ainda não estão nas fichas. Detalhe em `docs/arte.md`.
 
 ## 9. Onde isto está no cânone
 

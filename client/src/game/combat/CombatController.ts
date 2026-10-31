@@ -307,6 +307,11 @@ export class CombatController {
     await this.proceed();
   }
 
+  /** Onde cada um está agora, em quadrados: quem luta dentro de uma casa tira o telhado dela da frente. */
+  positions(): Pos[] {
+    return this.encounter.units.map((unit) => unit.pos);
+  }
+
   showResult(title: string, lines: string[], titleColor: string): Promise<void> {
     return this.hud.showResult(title, lines, titleColor);
   }

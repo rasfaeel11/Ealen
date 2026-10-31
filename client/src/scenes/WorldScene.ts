@@ -122,7 +122,8 @@ import { SoundPanel } from "../game/SoundPanel";
 import { classSpriteKey, creatureSpriteKey, lookSpriteKey, ownSpriteKey, sheetScale, type Facing, standingFrame } from "../game/mapSprites";
 import type { GameSession } from "../game/session";
 import { Menu, addBodyText, addHeading, addModalDim, addPanel, addTitleText, portraitRef } from "../game/ui";
-import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
+import { Scenery } from "../game/Scenery";
+import { STORY_KEY, mapKey } from "../game/worldAssets";
 
 /** Quantos pixels de tela vale um pixel do mapa. Com tiles de 16px, cabem ~27 x 15 quadrados na tela. */
 const ZOOM = 3;
@@ -139,19 +140,6 @@ const FADE_MS = 220;
 const FOOTSTEP_PX = 15;
 /** Um quadro mais longo que isto (aba em segundo plano) não vira um salto pelo mapa. */
 const MAX_FRAME_MS = 50;
-
-/**
- * A profundidade é o que dá altura a um mapa chapado. Tudo que fica de pé
- * (personagem, árvore, parede) é desenhado na ordem do Y da própria BASE:
- * quem está mais ao sul cobre quem está mais ao norte. É assim que o
- * personagem passa por trás de uma copa e pela frente do tronco.
- */
-const FLOOR_DEPTH = -1000;
-const ABOVE_DEPTH = 1_000_000;
-/** Camadas cujo nome começa com isto ficam de pé e entram na ordenação por Y, junto com os personagens. */
-const SORTED_LAYER_PREFIX = "sorted";
-/** Camadas cujo nome começa com isto são desenhadas POR CIMA de tudo (pontes altas, telhados). */
-const ABOVE_LAYER_PREFIX = "above";
 
 const AIM_HINT = "←/→: trocar de alvo  ·  Enter ou clique: atacar  ·  Esc: desistir";
 /** As marcas de quem mira um golpe de abertura: por cima do chão, por baixo de quem está de pé. */
@@ -235,7 +223,6 @@ export default class WorldScene extends Phaser.Scene {
   /** Destrutíveis ainda de pé nesta área (já escritos na grade), e a imagem de cada um. */
   private props: Prop[] = [];
   private propImages = new Map<string, Phaser.GameObjects.Image>();
-  private tilesets: Phaser.Tilemaps.Tileset[] = [];
   private combat?: CombatController;
   private story!: StoryRunner;
   /** Verdadeiro enquanto uma conversa está na tela: o mundo espera. */
@@ -260,7 +247,7 @@ export default class WorldScene extends Phaser.Scene {
   /** Pra avisar uma vez só, e não a cada gravação, que o dispositivo não está gravando. */
   private saveFailed = false;
   private hud!: WorldHud;
-  private tilemap!: Phaser.Tilemaps.Tilemap;
+  private scenery!: Scenery;
 
   constructor() {
     super(SCENES.world);
@@ -325,7 +312,7 @@ export default class WorldScene extends Phaser.Scene {
       this,
       (object) => this.addHud(object),
       this.map,
-      this.tilemap,
+      this.scenery.groundSource,
       this.area.id,
       this.area.name,
       this.clockBar.visible,
@@ -378,6 +365,7 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    this.scenery.tick(delta, this.combat ? this.combat.positions() : [tileOfPixel(this.map, this.pos)]);
     // Quadro longo demais é aba em segundo plano: não conta como tempo de jogo.
     if (!this.pause) this.save.playTimeMs += Math.min(delta, MAX_FRAME_MS);
     if (!this.combat) this.hud.tick(delta, this.minimapDots());
@@ -469,52 +457,13 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   private drawMap(): void {
-    const tilemap = this.make.tilemap({ key: mapKey(this.area.id) });
-    const tilesets = tilemap.tilesets
-      .map((tileset) => tilemap.addTilesetImage(tileset.name, tilesetKey(tileset.name)))
-      .filter((tileset): tileset is Phaser.Tilemaps.Tileset => tileset !== null);
-    this.tilesets = tilesets;
-
-    this.tilemap = tilemap;
-    tilemap.layers.forEach((data, index) => {
-      if (data.name.startsWith(SORTED_LAYER_PREFIX)) {
-        this.drawSortedLayer(tilemap, data);
-        return;
-      }
-      const layer = tilemap.createLayer(data.name, tilesets);
-      if (!layer) return;
-      layer.setDepth((data.name.startsWith(ABOVE_LAYER_PREFIX) ? ABOVE_DEPTH : FLOOR_DEPTH) + index);
-      this.addWorld(layer);
-    });
-  }
-
-  /**
-   * Uma camada "de pé": cada tile vira uma imagem solta, ancorada na base do
-   * próprio quadrado e com a profundidade dessa base. Tiles mais altos que
-   * um quadrado (árvore, parede) sobem por cima do quadrado ao norte.
-   */
-  private drawSortedLayer(tilemap: Phaser.Tilemaps.Tilemap, data: Phaser.Tilemaps.LayerData): void {
-    for (const tile of data.data.flat()) this.standTile(tile.index, tile.x, tile.y, tilemap.tileWidth);
-  }
-
-  /**
-   * Um tile de pé no quadrado (x, y): uma imagem solta, ancorada na base do
-   * quadrado e com a profundidade dela. Undefined se o gid não é de nenhum
-   * tileset (o quadrado vazio de uma camada).
-   */
-  private standTile(gid: number, x: number, y: number, tileSize: number): Phaser.GameObjects.Image | undefined {
-    const tileset = this.tilesets.find((candidate) => candidate.containsTileIndex(gid));
-    const coordinates = tileset?.getTileTextureCoordinates(gid) as { x: number; y: number } | null | undefined;
-    if (!tileset?.image || !coordinates) return undefined;
-
-    // O tileset é uma imagem só; cada tile usado ganha um quadro com nome nela.
-    const frame = `tile:${gid - tileset.firstgid}`;
-    if (!tileset.image.has(frame)) {
-      tileset.image.add(frame, 0, coordinates.x, coordinates.y, tileset.tileWidth, tileset.tileHeight);
-    }
-
-    const base = (y + 1) * tileSize;
-    return this.addWorld(this.add.image(x * tileSize, base, tileset.image.key, frame).setOrigin(0, 1).setDepth(base));
+    this.scenery = new Scenery(
+      this,
+      this.area.id,
+      (object) => this.addWorld(object),
+      this.map.grid.width * this.map.tileSize,
+      this.map.grid.height * this.map.tileSize,
+    );
   }
 
   /**
@@ -538,9 +487,7 @@ export default class WorldScene extends Phaser.Scene {
     const standing = new Set(this.props.map((prop) => prop.id));
     const fresh = standAreaProps(this.map, broken, (prop) => wanted.has(prop.id) && !standing.has(prop.id));
     for (const prop of fresh) {
-      const { gid } = this.map.props.find((candidate) => candidate.id === prop.id)!;
-      const image = this.standTile(gid, prop.pos.x, prop.pos.y, this.map.tileSize);
-      if (image) this.propImages.set(prop.id, image);
+      this.propImages.set(prop.id, this.scenery.standProp(prop.kind, prop.pos.x, prop.pos.y, this.map.tileSize));
     }
     this.props.push(...fresh);
   }
@@ -556,6 +503,7 @@ export default class WorldScene extends Phaser.Scene {
    * único lugar que decide quem está de pé.
    */
   private syncPresence(): void {
+    this.scenery.sync(this.flag);
     this.standProps();
     this.npcs = this.map.npcs.filter((npc) => isActive(npc, this.flag));
     this.exits = this.map.exits.filter((exit) => isActive(exit, this.flag));

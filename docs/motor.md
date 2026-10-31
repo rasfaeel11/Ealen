@@ -99,15 +99,15 @@ Peça nova é uma entrada em `EQUIPMENT`. `npm test` acusa peça com id repetido
 
 ### O mundo (`shared/world/` + `WorldScene`)
 
-Cada área é um mapa do Tiled (`.tmj`) em `client/public/maps/`, registrado em `shared/world/areas.ts`. O grafo do mundo é o que as saídas dos mapas formam — não existe lista de conexões fora deles. As quatro áreas são as do cânone (`ymonha`, o rio e o Castelo da Volta; `ybytugua`, a cidade; `baixios`; `floresta`), saídas de um gerador, à espera do desenho do autor. Os tilesets `placeholder` (chão, 16x16), `placeholder-tall` (coisas de pé, 16x32, caixote, barril, sino e guincho inclusive), `placeholder-high` (chão elevado, face do degrau e escada, 16x16) e `placeholder-water` (água rasa, lodo e a corrente) são provisórios.
+Cada área é um mapa do Tiled (`.tmj`) em `client/public/maps/`, registrado em `shared/world/areas.ts`. O grafo do mundo é o que as saídas dos mapas formam — não existe lista de conexões fora deles. As quatro áreas são as do cânone (`ymonha`, o rio e o Castelo da Volta; `ybytugua`, a cidade; `baixios`; `floresta`). O que aparece na tela não é o tile: é o cenário que `art/pintar_cenario.py` pinta a partir do mapa (`docs/arte.md`). Os tilesets `placeholder` (chão, 16x16), `placeholder-tall` (coisas de pé, 16x32, caixote, barril, sino e guincho inclusive), `placeholder-high` (chão elevado, face do degrau e escada, 16x16) e `placeholder-water` (água rasa, lodo e a corrente) só servem pra editar o mapa no Tiled: o jogo não os desenha.
 
 O contrato de quem desenha um mapa (detalhado em `shared/world/tiledMap.ts`):
 
-- Tiles de 16px, mapa ortogonal e finito, camadas em CSV, **tileset embutido no mapa** e registrado pelo nome em `client/src/game/worldAssets.ts`.
+- Tiles de 16px, mapa ortogonal e finito, camadas em CSV, **tileset embutido no mapa** (é dele que vêm as propriedades de cada tile).
 - Colisão vem de propriedades do tile, definidas no tileset: `blocksMove`, `blocksSight`, `moveCost`. Não há camada de colisão. É a mesma grade que o combate usa.
 - Terreno de combate também: `cover` (pedra, mureta — barra o passo, não a visão) e `elevation` (altura do chão, em degraus). A altura é só vantagem de combate: um patamar se fecha com tiles de face (`blocksMove`) e se abre com a escada, que é um quadrado comum. O porão dos mapas de teste tem um.
-- Camada cujo nome começa com `sorted` fica "de pé": cada tile é ordenado pelo Y da própria base junto com os personagens, então se passa por trás de uma copa e pela frente do tronco. Coisas altas vêm de um tileset de tiles mais altos que o quadrado (ex: 16x32), com a base no quadrado que ocupam; parede se desenha com o topo em cima e a face frontal embaixo.
-- Camada cujo nome começa com `above` é desenhada por cima de tudo; as demais são chão.
+- A camada `sorted` guarda o que fica de pé (árvore, parede, pedra). Barra pelas propriedades do tile; na tela, cada quadrado vira uma peça pintada, ordenada pelo Y da própria base junto com os personagens (`Scenery.ts`). Parede de prédio se desenha com a porta como um vão no lado de baixo.
+- As camadas `ground` e `sorted` são as que o pintor lê; tile novo nelas só aparece se ele souber o que é.
 - Objetos: `spawn` (ponto; o nome é o id), `exit` (retângulo; propriedades `area` e `spawn`), `enemy` (ponto; propriedades `creature`, a chave no bestiário, e `group`; opcionais `passive`, `dialog` e `onDefeat`, ver abaixo), `trigger` (retângulo; propriedade `dialog`, o trecho da história que abre quando se pisa nele, e `once`, que só precisa ser posta pra dizer `false`), `cue` (ponto, em qualquer lugar; uma deixa de luta: propriedades `group`, `when` e, opcionais, `dialog`, `ends`, `apply`/`on` e `goal` — ver "Lutas com roteiro" abaixo), `npc` (ponto; o nome é o que aparece na caixa, `dialog` é o trecho da história que a conversa abre e `look`, opcional, é uma classe ou uma das caras de `NPC_LOOKS`, cujo boneco ele usa por enquanto — com `look` ocupa o quadrado, sem `look` é só um ponto pra examinar, como uma inscrição na parede) e `prop` (um destrutível: um TILE posto como objeto — Insert Tile, não pintado numa camada — com a propriedade `kind`, a chave em `PROPS`; o que ele barra vem de `kind`, o tile é só o desenho).
 
 `parseTiledMap` devolve a grade SEM os destrutíveis; `standAreaProps` (`encounters.ts`) põe de pé nela os que ainda não foram quebrados, e a partir daí eles barram quem explora e quem luta do mesmo jeito. A luta recebe esses mesmos objetos e a mesma grade, então o que quebra em combate abre o caminho no mundo sem mais nada.
@@ -206,7 +206,7 @@ Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/
 
 ### Cenas (`client/src/scenes/`)
 
-`Boot` (carrega sprites, mapas e tilesets) → `Title` → `World`. Não há prólogo nem escolha de classe: o jogo novo (`client/src/game/newGame.ts`) já entra no mundo. `Saves` (a lista de espaços de save) e `Som` (os volumes) abrem a partir do título. No mundo: `E` fala, `Q` esgueira, `F` embosca (ou dá a investida, à vista), `Z` descansa (pausa curta ou acampamento, que abre o painel de gravar pra quem conjura), `M` abre o mapa do mundo, `C` abre a ficha, `I` a mochila, `J` o diário, `1`-`9` miram uma habilidade pra abrir uma luta, `Esc` pausa.
+`Boot` (carrega sprites, mapas e cenário) → `Title` → `World`. Não há prólogo nem escolha de classe: o jogo novo (`client/src/game/newGame.ts`) já entra no mundo. `Saves` (a lista de espaços de save) e `Som` (os volumes) abrem a partir do título. No mundo: `E` fala, `Q` esgueira, `F` embosca (ou dá a investida, à vista), `Z` descansa (pausa curta ou acampamento, que abre o painel de gravar pra quem conjura), `M` abre o mapa do mundo, `C` abre a ficha, `I` a mochila, `J` o diário, `1`-`9` miram uma habilidade pra abrir uma luta, `Esc` pausa.
 
 A `WorldScene` é exploração e combate na mesma cena, com duas câmeras: a do mundo (zoom 3x, segue o personagem) e a da interface (sem zoom). Todo objeto criado passa por `addWorld` ou `addHud`. O combate em si mora em `client/src/game/combat/`: `CombatController` (entrada → comando, eventos → animação) e `CombatHud` (ordem de turnos, registro, barra de ações, resultado).
 
@@ -308,7 +308,7 @@ Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz fa
 
 | # | Task | O que é |
 |---|---|---|
-| 24 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). Faltam os tilesets em 48, animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
+| 24 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
 | 25 | **Relíquias e runas** | Itens que não se gastam: efeito passivo além de atributo (o acessório de hoje só soma atributo), encaixe em equipamento. As armas lendárias da história entram aqui. |
 | 26 | **Coleta e preparo** | Materiais no mapa e no espólio; receitas de consumível. |
 | 27 | **Companheiros como gente** | Afinidade, conversa de acampamento, comentário no meio do diálogo dos outros, missão pessoal, discordar de uma escolha. |
