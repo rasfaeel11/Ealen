@@ -30,7 +30,7 @@ Monorepo com npm workspaces:
 
 O que entrou, e quando, está no histórico do git e no Feito do AGENTS.md.
 
-O que ainda falta está em **Tasks**, no fim deste arquivo, por prioridade.
+O que ainda falta está nas Tasks do `AGENTS.md` (§8), por prioridade.
 
 ### A regra central do combate
 
@@ -273,62 +273,6 @@ npm run balance:matrix                          # taxa de vitória de cada class
 - A versão em React (mapa em React Flow, combate em Framer Motion, login por Supabase) está na tag `v0-codice`.
 - O combate 1 contra 1 por posturas, com tela de batalha própria, e a integração com o balanceador em Python `ealen-IA` (política de Q-learning, `iaTuning.json`) foram removidos na fase 3 e estão no histórico do git, até o commit `7d16c97`. O `ealen-IA` está aposentado: balanceamento agora é rodar o motor real (`balance:matrix`). Dele sobraram só os atributos iniciais por classe, fixados em `shared/characterCreation.ts`.
 - O servidor Express + Supabase (rotas de personagem e de um mapa de nós), o documento do mundo do Eälen (`LORE.md`) e o resto do jogo de antes saíram na limpeza de 2026-10-29; estão no histórico do git.
-
-## Tasks
-
-O que falta, por prioridade. **Tudo que existe hoje é placeholder** (cenários, nomes, falas, números): a lista é de SISTEMAS, não de conteúdo. Ao terminar uma task, tire-a daqui e descreva o que entrou na seção de arquitetura.
-
-Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz falta em qualquer RPG, entra logo depois · **P2** = dá corpo ao jogo, pode esperar · **P3** = produto e acabamento.
-
-### P0 — sem isto não há capítulo
-
-| # | Task | O que é | Depende de |
-|---|---|---|---|
-| 4 | **Inventário e habilidades dos companheiros** | Hoje a mochila é uma só e companheiro não carrega nem usa item. Equipar cada um já dá (o guardado é do grupo). Falta: cada um com o que leva pra luta (cinto de itens), usar item em luta com a vez dele, passar item de um pro outro, e escolher que habilidades cada um leva. | — |
-| 5 | **Combate à distância de verdade** | Hoje distância é só um `range` maior. Falta: munição, alcance curto/longo com penalidade, desvantagem atirando colado num inimigo, cobertura parcial e total, altura alongando o alcance, arremesso de item (em aliado e em inimigo), tiro de reação em quem entra no alcance (vigia). | 3 |
-| 6 | **Progressão** | Subir de nível soma atributos e dá as Técnicas da classe no nível marcado, sem escolha. Falta: ESCOLHER o que se aprende (mais Técnicas por classe, ou um ramo), o GRAU do estilo valer alguma coisa (hoje só aparece na tela) e subir, e pontos de atributo pra distribuir. | 1 |
-
-### P1 — o que todo RPG tem
-
-| # | Task | O que é |
-|---|---|---|
-| 9 | **Mochila completa** | Descartar, ordenar, itens-chave (que não se gastam nem se jogam fora), materiais, limite por peso ou espaço que importe, item usado em luta escolhendo o alvo. |
-| 10 | **Dinheiro e comércio** | Cobre e prata já existem (`shared/purse.ts`), e a banca do cais vende pelo texto. Falta loja de verdade (comprar, vender, estoque), preço por lugar. |
-| 13 | **Golpe de abertura, o resto** | Balancear (escondido, ainda é golpe grátis MAIS a surpresa); inimigo que vira a cabeça ou anda de ronda; companheiro dar o primeiro golpe; mirar um quadrado com área; acertar destrutível fora de luta (o barril de óleo); mouse na ficha e na mochila. |
-| 14 | **Mais condições e tipos de dano** | Veneno, sangramento, atordoado, preso, silenciado, medo, cego; dano com tipo (corte, perfuração, o de cada conceito de magia) e resistência/fraqueza por criatura. |
-| 15 | **Mais verbos de combate** | Empurrar, derrubar, agarrar, disparada, esconder-se no meio da luta, ajudar um aliado, preparar uma ação pra depois; reações além do ataque de oportunidade (aparar, interceptar). |
-| 16 | **Cair e levantar** | Quem chega a 0 some da luta. Falta o caído que ainda pode ser levantado (por item, por cura, por um aliado colado) e o que acontece se ninguém levanta. |
-| 17 | **Registro de missões** | O diário guarda fatos soltos. Falta a lista do que há pra fazer (aberta, feita, falhada), com o que cada uma pede, sem dizer a conclusão ao jogador. |
-| 19 | **Mapa** | O mapa do mundo já abre com `M` (a ilustração `mundo`, ver `docs/arte.md`). Falta o mapa da área, o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
-| 21 | **Relógio dentro da luta** | O tempo já corre por rodada, mas o que ele fecha só se confere no fim. Falta a deixa que espera o relógio (`when: clock N`) e o relógio que anda sozinho fora de luta (por passo, por área). |
-| 22 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
-| 23 | **IA de companheiro** | Companheiro é sempre comandado pelo jogador. Falta a opção de deixá-lo por conta própria, com ordens simples (guardar, avançar, proteger alguém). |
-
-### P2 — corpo
-
-| # | Task | O que é |
-|---|---|---|
-| 24 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
-| 25 | **Relíquias e runas** | Itens que não se gastam: efeito passivo além de atributo (o acessório de hoje só soma atributo), encaixe em equipamento. As armas lendárias da história entram aqui. |
-| 26 | **Coleta e preparo** | Materiais no mapa e no espólio; receitas de consumível. |
-| 27 | **Companheiros como gente** | Afinidade, conversa de acampamento, comentário no meio do diálogo dos outros, missão pessoal, discordar de uma escolha. |
-| 28 | **Reputação** | Como cada facção e cada lugar vê o grupo, e o que isso abre ou fecha (preço, diálogo, saída). |
-| 29 | **Códice** | O que o jogador já viu: bestiário (com o que descobriu de cada criatura — estilo, mania, fraqueza), gente, lugares. |
-| 30 | **Mais apoios** | Hoje só existe Ler a água (Oryndu). Apoio novo é uma linha em `SUPPORTS`, mas faltam os tipos (curar de fora, distrair, avisar). |
-| 31 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
-| 32 | **Terreno que muda** | A água e a cheia já existem. Falta lama, ponte que cai, porta que se fecha no meio da luta; luz e escuro pesando na visão; hora do dia e clima. |
-| 33 | **Tutorial** | Ensinar movimento, ação, bônus, reação, cobertura, flanco, estilo e emboscada dentro do jogo, na ordem em que aparecem. |
-| 34 | **Opções** | Dificuldade, velocidade das animações, teclas remapeáveis, controle, tamanho da letra. |
-| 35 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1. O herói já entra com o equipamento de começo da classe. Falta grupo x grupo, por nível (é onde as Técnicas aparecem), com item; os números dos kits e das peças, que são os primeiros a conferir; e os números do Fôlego (quanto cada coisa custa, quanto a guarda devolve — hoje dá pra enrolar o fim de uma luta em guarda pra sair dela cheio). |
-
-### P3 — produto
-
-| # | Task | O que é |
-|---|---|---|
-| 36 | **Empacotar** | Electron, página na Steam, conquistas. O build já usa caminhos relativos. |
-| 37 | **Save na nuvem** | Não existe servidor: seria do zero, e o jogo não pode depender dele. |
-| 38 | **Jogo novo com o que se levou** | New Game+. Falta tudo. |
-| 39 | **Tradução e acessibilidade** | Texto fora do código (o do jogo já está em Ink; o da interface não), daltonismo, leitor de tela onde der. |
 
 ## Referência: atributos
 

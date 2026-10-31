@@ -281,29 +281,77 @@ Steam.
 Ao terminar uma, tire-a daqui e descreva o que entrou. **Toda vez que terminar uma task, faça o commit. O push
 é do autor.**
 
+Esta é a lista única: as tasks que estavam em `docs/motor.md` vieram pra cá (2026-10-31), com número novo. Texto novo
+de história vai como proposta pro autor antes de entrar (§1).
+
+Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz falta em qualquer RPG, entra logo depois ·
+**P2** = dá corpo ao jogo, pode esperar · **P3** = produto e acabamento.
+
+### P0 — sem isto não há capítulo
+| # | Task | O que é |
+|---|---|---|
+| 56 | **Inventário e habilidades dos companheiros** | Hoje a mochila é uma só e companheiro não carrega nem usa item. Equipar cada um já dá (o guardado é do grupo). Falta: cada um com o que leva pra luta (cinto de itens), usar item em luta com a vez dele, passar item de um pro outro, e escolher que habilidades cada um leva. |
+| 57 | **Combate à distância de verdade** | Hoje distância é só um `range` maior. Falta: munição, alcance curto/longo com penalidade, desvantagem atirando colado num inimigo, cobertura parcial e total, altura alongando o alcance, arremesso de item (em aliado e em inimigo), tiro de reação em quem entra no alcance (vigia). |
+| 58 | **Progressão** | Subir de nível soma atributos e dá as Técnicas da classe no nível marcado, sem escolha. Falta: ESCOLHER o que se aprende (mais Técnicas por classe, ou um ramo), o GRAU do estilo valer alguma coisa (hoje só aparece na tela) e subir, e pontos de atributo pra distribuir. |
+
+### P1 — pedidos do autor (2026-10-31)
+Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
+
+| # | Task | O que é |
+|---|---|---|
+| 48 | **O `M` mostra a região** | O `M` abre só o mapa da região em si, não o do mundo inteiro, que aqui não faz sentido. |
+| 49 | **Bonecos maiores** | Os visuais estão bonitos, mas os bonecos estão muito pequenos. Aumentar, no estilo de Sea of Stars. |
+| 50 | **O segundo card cortado** | O segundo card aparece bugado, cortado ao meio. O autor não disse qual é: achar na tela e corrigir. |
+| 51 | **Tela mais limpa** | Tem informação demais na tela, e duas barras pretas laterais. Tirar as barras e enxugar o que aparece. |
+| 52 | **Passagens sem destino** | Há regiões e passagens que não levam a lugar nenhum. Cada uma passa a levar a algum lugar ou deixa de parecer passagem. |
+| 53 | **Sem parede invisível** | Trocar parede invisível por bloqueio que se vê, no estilo de Pokémon: árvore ou pessoa barrando o caminho por algum motivo. |
+| 54 | **Voz ao abrir o diálogo** | Um barulho de pessoa quando a tela de diálogo abre, que se liga e desliga no menu. |
+| 55 | **Tudo customizável no menu** | Tudo vira opção no menu: o jogo deve ser o máximo customizável possível. Entre elas, dificuldade, velocidade das animações, teclas remapeáveis, controle e tamanho da letra. |
+
 ### P1 — o conteúdo
 | # | Task | O que é |
 |---|---|---|
 | 15 | **Retoque dos mapas no Tiled** | Só se o autor quiser mudar a disposição: os mapas mandam na regra, o cenário sai deles. Mexeu no mapa, rode `art/pintar_cenario.py` (`docs/arte.md`). |
 | 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
-
-### P1 — o roteiro completo (`jogo.md`, 2026-10-27)
-O texto em Ink segue a §6 em linhas gerais; o `jogo.md` tem as cenas inteiras, e o jogo ainda não. As tasks
-21 a 24 da análise de 2026-10-26 entraram aqui (21 na 41, 22 e 23 na 38, 24 na 37). Ordem sugerida: 31, 32,
-33, 34, 36, 37, 38, 40, 42, 39, 41, 43, 44, 45, 35, 46. As tasks de motor (40, 41, 42, 46) testam a regra no
-`shared/` antes de a cena usar. Os nomes do `jogo.md` estão decididos (ver Decisões do co-autor). Todas entraram
-(ver Feito).
-
-### P1 — da análise de 2026-10-26 (`ANALISE_PROJETO_E_ROTEIRO.md`)
-Texto novo de história vai como proposta pro autor antes de entrar (§1).
-
-| # | Task | O que é |
-|---|---|---|
 | 47 | **Gerar a arte** | O autor gera pelo navegador (Nano Banana Pro) com os prompts de `art/PROMPTS.md` (ficha de design, retrato, folha e splash de cada um) e o script importa (`importar <pasta>`). Os retratos de Jarupã e Xanduí, do primeiro lote, ficam. Toda a gente do jogo já tem folha, e quem fala muito tem retrato. Faltam o Ykuruã (a folha, e a seca sai dela), a tela de título e, se o autor quiser, os retratos dos saqueadores, da Contratada e do guarda do portão, que falam pouco. O que falta é o que `list` marca como `falta`, e quem tem `proposal` o autor ainda não viu desenhado. O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). Olhar cada folha: a que sair torta se refaz. |
 
-### P2 e P3
-Arte final, som gravado, balanceamento (`balance:matrix` com as escolas), tutorial, opções e o empacotamento
-estão nas Tasks de `docs/motor.md` (24 a 40).
+### P1 — o que todo RPG tem
+| # | Task | O que é |
+|---|---|---|
+| 59 | **Mochila completa** | Descartar, ordenar, itens-chave (que não se gastam nem se jogam fora), materiais, limite por peso ou espaço que importe, item usado em luta escolhendo o alvo. |
+| 60 | **Dinheiro e comércio** | Cobre e prata já existem (`shared/purse.ts`), e a banca do cais vende pelo texto. Falta loja de verdade (comprar, vender, estoque), preço por lugar. |
+| 61 | **Golpe de abertura, o resto** | Balancear (escondido, ainda é golpe grátis MAIS a surpresa); inimigo que vira a cabeça ou anda de ronda; companheiro dar o primeiro golpe; mirar um quadrado com área; acertar destrutível fora de luta (o barril de óleo); mouse na ficha e na mochila. |
+| 62 | **Mais condições e tipos de dano** | Veneno, sangramento, atordoado, preso, silenciado, medo, cego; dano com tipo (corte, perfuração, o de cada conceito de magia) e resistência/fraqueza por criatura. |
+| 63 | **Mais verbos de combate** | Empurrar, derrubar, agarrar, disparada, esconder-se no meio da luta, ajudar um aliado, preparar uma ação pra depois; reações além do ataque de oportunidade (aparar, interceptar). |
+| 64 | **Cair e levantar** | Quem chega a 0 some da luta. Falta o caído que ainda pode ser levantado (por item, por cura, por um aliado colado) e o que acontece se ninguém levanta. |
+| 65 | **Registro de missões** | O diário guarda fatos soltos. Falta a lista do que há pra fazer (aberta, feita, falhada), com o que cada uma pede, sem dizer a conclusão ao jogador. |
+| 66 | **Mapa, o resto** | O mapa da região é a task 48. Falta o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
+| 67 | **Relógio dentro da luta** | O tempo já corre por rodada, mas o que ele fecha só se confere no fim. Falta a deixa que espera o relógio (`when: clock N`) e o relógio que anda sozinho fora de luta (por passo, por área). |
+| 68 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
+| 69 | **IA de companheiro** | Companheiro é sempre comandado pelo jogador. Falta a opção de deixá-lo por conta própria, com ordens simples (guardar, avançar, proteger alguém). |
+
+### P2 — corpo
+| # | Task | O que é |
+|---|---|---|
+| 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
+| 71 | **Relíquias e runas** | Itens que não se gastam: efeito passivo além de atributo (o acessório de hoje só soma atributo), encaixe em equipamento. As armas lendárias da história entram aqui. |
+| 72 | **Coleta e preparo** | Materiais no mapa e no espólio; receitas de consumível. |
+| 73 | **Companheiros como gente** | Afinidade, conversa de acampamento, comentário no meio do diálogo dos outros, missão pessoal, discordar de uma escolha. |
+| 74 | **Reputação** | Como cada facção e cada lugar vê o grupo, e o que isso abre ou fecha (preço, diálogo, saída). |
+| 75 | **Códice** | O que o jogador já viu: bestiário (com o que descobriu de cada criatura — estilo, mania, fraqueza), gente, lugares. |
+| 76 | **Mais apoios** | Hoje só existe Ler a água (Oryndu). Apoio novo é uma linha em `SUPPORTS`, mas faltam os tipos (curar de fora, distrair, avisar). |
+| 77 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
+| 78 | **Terreno que muda** | A água e a cheia já existem. Falta lama, ponte que cai, porta que se fecha no meio da luta; luz e escuro pesando na visão; hora do dia e clima. |
+| 79 | **Tutorial** | Ensinar movimento, ação, bônus, reação, cobertura, flanco, estilo e emboscada dentro do jogo, na ordem em que aparecem. |
+| 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1. O herói já entra com o equipamento de começo da classe. Falta grupo x grupo, por nível (é onde as Técnicas aparecem), com item; os números dos kits e das peças, que são os primeiros a conferir; e os números do Fôlego (quanto cada coisa custa, quanto a guarda devolve — hoje dá pra enrolar o fim de uma luta em guarda pra sair dela cheio). |
+
+### P3 — produto
+| # | Task | O que é |
+|---|---|---|
+| 81 | **Empacotar** | Electron, página na Steam, conquistas. O build já usa caminhos relativos. |
+| 82 | **Save na nuvem** | Não existe servidor: seria do zero, e o jogo não pode depender dele. |
+| 83 | **Jogo novo com o que se levou** | New Game+. Falta tudo. |
+| 84 | **Tradução e acessibilidade** | Texto fora do código (o do jogo já está em Ink; o da interface não), daltonismo, leitor de tela onde der. |
 
 ### Feito
 - **1. A descrição técnica mudou de casa.** O AGENTS.md do Eälen está inteiro em `docs/motor.md`, sem mudança.
@@ -541,14 +589,14 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
   os testes do motor exercitam virou kit de teste (`abrir`, `rede`), e os mapas de teste viraram `campo`, `trilha` e
   `porao`, com gente neutra. A ficha não fala mais em Ordem ("Isso não é arma de quem ele é"), e a arma diz quem a
   usa por `classes`. O `docs/motor.md` foi reescrito com os nomes deste jogo.
-- **O bundle dividido** (task 40 do `docs/motor.md`). O build sai em quatro arquivos: o Phaser (1,4 MB, que não se
+- **O bundle dividido** (a 40 da antiga lista do `docs/motor.md`). O build sai em quatro arquivos: o Phaser (1,4 MB, que não se
   divide), o Ink, a regra (`shared/`) e o jogo. O aviso de tamanho ficou no limite do Phaser.
-- **O descanso de verdade** (task 11 do `docs/motor.md`). Em qualquer lugar, mas na tecla `Z` (ou Descansar, na pausa),
+- **O descanso de verdade** (a 11 da antiga lista do `docs/motor.md`). Em qualquer lugar, mas na tecla `Z` (ou Descansar, na pausa),
   e sempre escolhendo. A pausa curta devolve o Fôlego e metade da vida que falta, duas entre um acampamento e outro,
   sem gastar a Cheia. O acampamento come um Pão de Viagem a cada duas bocas de quem luta; quem fica sem acorda com
   metade do que faltava e com Fome, e a noite gasta a Cheia. Endyru começa com dois pães; a banca do cais vende mais.
   O save foi pra versão 8 (`shortRests`).
-- **A furtividade** (task 12 do `docs/motor.md`, pedida pelo autor em 2026-10-30). Nada obriga a se esconder, e cada
+- **A furtividade** (a 12 da antiga lista do `docs/motor.md`, pedida pelo autor em 2026-10-30). Nada obriga a se esconder, e cada
   jeito de começar a luta tem o seu preço. Cada inimigo olha pra um lado (`facing` no Tiled) num cone de 6 quadrados, e
   ouve quem anda à vista a 2. Com `Q` o grupo se agacha e anda devagar: o olhar deles fica pintado no chão, e quem tem o
   grupo no olhar desconfia antes de ver (um "?" que vai do dourado ao vermelho). Escondido, `F` embosca e o outro lado
