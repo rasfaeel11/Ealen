@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { BESTIARY, CLASS_INFO, NPC_LOOKS, type CharacterClass } from "@jogo/shared";
 import { GENERATED_SHEETS } from "./generatedArt";
+import { IDLE_COLUMNS, idleColumns, standingPose, type Cell } from "./idlePose";
 
 /**
  * Sprites de quem está no mapa — personagens e criaturas, andando ou
@@ -14,7 +15,9 @@ import { GENERATED_SHEETS } from "./generatedArt";
  *
  * Pra trocar pela arte final: salve a folha em client/public/sprites/ e
  * registre em MAP_SHEETS, com a chave de quem ela representa. O pé fica no
- * meio da base do quadro. O quadro pode ser maior que o quadrado do mapa (o
+ * meio da base do quadro. Quem está parado não usa estes quadros direto: a pose
+ * de pé, a respiração e os gestos saem deles (ver ./idlePose.ts e registerIdle).
+ * O quadro pode ser maior que o quadrado do mapa (o
  * Ykuruã ocupa dois de largura): a regra continua pondo cada um num quadrado só.
  *
  * A ESCALA: a arte final é desenhada a ART_PX_PER_TILE (48) pixels por
@@ -32,6 +35,11 @@ export type Facing = "down" | "left" | "right" | "up";
 const FACINGS: Facing[] = ["down", "left", "right", "up"];
 const FRAMES_PER_FACING = 4;
 const WALK_FRAME_RATE = 8;
+/** Pra onde cada direção olha quando olha em volta. */
+const LOOKS_AROUND: Record<Facing, Facing[]> = { down: ["left", "right"], up: ["left", "right"], left: ["down"], right: ["down"] };
+const FIDGETS = ["suspiro", "pender", "olhar"] as const;
+/** A base das animações de quem está parado: cada quadro diz quanto dura, somado a ela. */
+const IDLE_TICK_MS = 100;
 
 export interface MapSheetDef {
   /** Caminho relativo a client/public (ex: "sprites/espadachim.png"). */
@@ -102,6 +110,16 @@ export function drySpriteKey(spriteKey: string): string {
 
 export function walkAnimKey(spriteKey: string, facing: Facing): string {
   return `${spriteKey}:${facing}`;
+}
+
+/** A respiração de quem está parado: o laço que toca enquanto nada acontece. */
+export function idleAnimKey(spriteKey: string, facing: Facing): string {
+  return `${spriteKey}:${facing}:parado`;
+}
+
+/** O que alguém faz quando fica parado muito tempo. Toca uma vez e volta a respirar. */
+export function fidgetAnimKeys(spriteKey: string, facing: Facing): string[] {
+  return FIDGETS.map((fidget) => `${spriteKey}:${facing}:${fidget}`);
 }
 
 /** O quadro de "parado" olhando pra `facing`. */
@@ -267,6 +285,71 @@ function createPlaceholderSheet(
   texture.refresh();
 }
 
+/** Os quadros de `spriteKey`, em pixels: pra tirar deles a pose de pé. */
+function readSteps(scene: Phaser.Scene, spriteKey: string): Cell[][] {
+  const texture = scene.textures.get(spriteKey);
+  const source = texture.getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+  const canvas = document.createElement("canvas");
+  canvas.width = source.width;
+  canvas.height = source.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(source, 0, 0);
+  return FACINGS.map((_, row) =>
+    Array.from({ length: FRAMES_PER_FACING }, (_, step) => {
+      const { cutX, cutY, cutWidth, cutHeight } = texture.get(row * FRAMES_PER_FACING + step);
+      return { width: cutWidth, height: cutHeight, data: ctx.getImageData(cutX, cutY, cutWidth, cutHeight).data };
+    }),
+  );
+}
+
+/**
+ * Tira da folha a textura de quem está parado (`<folha>:parado`, uma linha por
+ * direção) e as animações dela. Toda folha respira; só quem anda em duas pernas
+ * (`biped`) fecha as pernas e tem gestos: o bicho de rio não olha em volta.
+ */
+function registerIdle(scene: Phaser.Scene, spriteKey: string, biped: boolean): void {
+  const rows = readSteps(scene, spriteKey).map((steps, row) => {
+    const profile = FACINGS[row] === "left" || FACINGS[row] === "right";
+    return idleColumns(standingPose(steps, profile, biped));
+  });
+  const { width, height } = rows[0][0];
+  const textureKey = `${spriteKey}:parado`;
+  const texture = scene.textures.createCanvas(textureKey, width * IDLE_COLUMNS, height * FACINGS.length);
+  if (!texture) return;
+  const ctx = texture.getContext();
+  rows.forEach((columns, row) => {
+    columns.forEach((cell, column) => {
+      const image = ctx.createImageData(width, height);
+      image.data.set(cell.data);
+      ctx.putImageData(image, column * width, row * height);
+      texture.add(row * IDLE_COLUMNS + column, 0, column * width, row * height, width, height);
+    });
+  });
+  texture.refresh();
+  texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+
+  const animate = (key: string, facing: Facing, beats: [column: number, ms: number, looking?: Facing][], repeat = 0) => {
+    scene.anims.create({
+      key,
+      frames: beats.map(([column, ms, looking]) => ({
+        key: textureKey,
+        frame: FACINGS.indexOf(looking ?? facing) * IDLE_COLUMNS + column,
+        duration: ms - IDLE_TICK_MS,
+      })),
+      frameRate: 1000 / IDLE_TICK_MS,
+      repeat,
+    });
+  };
+  for (const facing of FACINGS) {
+    animate(idleAnimKey(spriteKey, facing), facing, [[0, 1000], [1, 400], [2, 1000], [1, 400]], -1);
+    if (!biped) continue;
+    const [sigh, lean, look] = fidgetAnimKeys(spriteKey, facing);
+    animate(sigh, facing, [[1, 150], [2, 180], [3, 800], [2, 220], [1, 220]]);
+    animate(lean, facing, [[5, 170], [4, 1000], [5, 170], [0, 240], [6, 170], [7, 1000], [6, 170]]);
+    animate(look, facing, LOOKS_AROUND[facing].flatMap((looking): [number, number, Facing?][] => [[0, 800, looking], [0, 300]]));
+  }
+}
+
 /** Enfileira no loader as folhas de arte final registradas. Chamado no preload da cena de boot. */
 export function preloadMapSheets(scene: Phaser.Scene): void {
   for (const [spriteKey, def] of Object.entries(MAP_SHEETS)) {
@@ -276,11 +359,11 @@ export function preloadMapSheets(scene: Phaser.Scene): void {
 
 /**
  * Garante que toda classe, toda cara de NPC e toda criatura do bestiário tenha textura e
- * animações de caminhada: usa a folha carregada quando existe, senão gera
- * o provisório. Chamado uma vez, no create da cena de boot.
+ * animações de caminhada e de quem está parado: usa a folha carregada quando
+ * existe, senão gera o provisório. Chamado uma vez, no create da cena de boot.
  */
 export function registerMapSprites(scene: Phaser.Scene): void {
-  const placeholders: Record<string, { draw: DrawFrame; width?: number; height?: number }> = {};
+  const placeholders: Record<string, { draw: DrawFrame; width?: number; height?: number; beast?: boolean }> = {};
   for (const characterClass of Object.keys(CLASS_INFO) as CharacterClass[]) {
     placeholders[classSpriteKey(characterClass)] = { draw: humanoid(CLASS_COLOR[characterClass]) };
   }
@@ -289,16 +372,16 @@ export function registerMapSprites(scene: Phaser.Scene): void {
     const color = CREATURE_COLOR;
     const spriteKey = creatureSpriteKey(creatureId);
     if (!entry.river) {
-      placeholders[spriteKey] = { draw: entry.person ? humanoid(color) : creature(color) };
+      placeholders[spriteKey] = { draw: entry.person ? humanoid(color) : creature(color), beast: !entry.person };
       continue;
     }
-    placeholders[spriteKey] = { draw: riverBeast(color, false), width: RIVER_WIDTH, height: RIVER_HEIGHT };
+    placeholders[spriteKey] = { draw: riverBeast(color, false), width: RIVER_WIDTH, height: RIVER_HEIGHT, beast: true };
     // A seca provisória só acompanha a normal provisória: arte final sem folha seca usa a normal (ver drySpriteKey).
     if (!scene.textures.exists(spriteKey)) {
-      placeholders[drySpriteKey(spriteKey)] = { draw: riverBeast(DRY_MUD, true), width: RIVER_WIDTH, height: RIVER_HEIGHT };
+      placeholders[drySpriteKey(spriteKey)] = { draw: riverBeast(DRY_MUD, true), width: RIVER_WIDTH, height: RIVER_HEIGHT, beast: true };
     } else if (scene.textures.exists(drySpriteKey(spriteKey))) {
       // A folha seca da arte final já está carregada: aqui ela só ganha as animações.
-      placeholders[drySpriteKey(spriteKey)] = { draw: riverBeast(DRY_MUD, true) };
+      placeholders[drySpriteKey(spriteKey)] = { draw: riverBeast(DRY_MUD, true), beast: true };
     }
   }
 
@@ -307,7 +390,7 @@ export function registerMapSprites(scene: Phaser.Scene): void {
     if (spriteKey.startsWith("person:") && scene.textures.exists(spriteKey)) placeholders[spriteKey] = { draw: () => undefined };
   }
 
-  for (const [spriteKey, { draw, width, height }] of Object.entries(placeholders)) {
+  for (const [spriteKey, { draw, width, height, beast }] of Object.entries(placeholders)) {
     if (!scene.textures.exists(spriteKey)) createPlaceholderSheet(scene, spriteKey, draw, width, height);
     // Pixel art: sem suavização ao ampliar (o resto do jogo, texto incluso, fica suave).
     scene.textures.get(spriteKey).setFilter(Phaser.Textures.FilterMode.NEAREST);
@@ -321,5 +404,6 @@ export function registerMapSprites(scene: Phaser.Scene): void {
         repeat: -1,
       });
     }
+    registerIdle(scene, spriteKey, !beast);
   }
 }

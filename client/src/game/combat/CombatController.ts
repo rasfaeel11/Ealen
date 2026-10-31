@@ -300,6 +300,7 @@ export class CombatController {
 
   /** Reproduz a abertura da luta (iniciativa, primeiro turno) e entrega a vez a quem for. */
   async start(events: TacticalEvent[]): Promise<void> {
+    for (const actor of this.host.actors.values()) actor.setAlert(true);
     const ambush = events.some((event) => event.type === "battleStarted" && event.surprised === "enemy");
     this.hud.log(ambush ? "Emboscada! Eles perdem a primeira vez." : "Combate!");
     await this.play(events);
@@ -321,6 +322,7 @@ export class CombatController {
       actor.hideHp();
       actor.setTurn(false);
       actor.setBleeding(false);
+      actor.setAlert(false);
     }
     scene.tweens.killTweensOf(this.ground);
     this.ground.destroy();

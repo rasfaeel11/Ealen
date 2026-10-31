@@ -21,8 +21,9 @@ Decisão do co-autor (2026-10-30, com a autorização do autor): **48x48**.
 
 ## A folha de sprite
 
-4 linhas x 4 colunas, um quadro por célula: frente, esquerda, direita, costas, quatro passos de caminhada cada, o
-primeiro de cada linha servindo de "parado". O pé fica no meio da base do quadro. Quem tem arte própria além da classe
+4 linhas x 4 colunas, um quadro por célula: frente, esquerda, direita, costas, quatro passos de caminhada cada. Não
+precisa desenhar o parado: o jogo o tira dos passos (`client/src/game/idlePose.ts`), com a pose de pé, a respiração e
+os gestos. O pé fica no meio da base do quadro. Quem tem arte própria além da classe
 é registrado pelo nome, como está no mapa e na ficha (`person:Jarupã`, `person:Contratada`); inimigo, pela criatura do
 bestiário (`creature:encounter-castelao`); o Ykuruã fora d'água tem a folha seca (`creature:...:seco`).
 

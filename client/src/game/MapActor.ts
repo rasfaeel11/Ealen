@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import type { PixelPos } from "@jogo/shared";
 import { COLORS } from "./config";
-import { drySpriteKey, standingFrame, walkAnimKey, type Facing } from "./mapSprites";
+import { drySpriteKey, fidgetAnimKeys, idleAnimKey, standingFrame, walkAnimKey, type Facing } from "./mapSprites";
 
 /** A barra de vida fica por cima de tudo: não pode sumir atrás de uma árvore. */
 const HP_BAR_DEPTH = 2_000_000;
@@ -16,6 +16,13 @@ const WATER_COLOR = 0x9fd8e8;
 const DRIP_EVERY_MS = 1100;
 const NOSE_FROM_TOP = 9;
 const BLOOD_COLOR = 0xa8202a;
+/** Quanto a caminhada ainda toca depois de parar: quem hesita um instante (o companheiro na fila) não fica piscando. */
+const WALK_SETTLE_MS = 90;
+/** De quanto em quanto tempo quem está parado faz um gesto. */
+const FIDGET_MIN_MS = 7000;
+const FIDGET_MAX_MS = 15000;
+/** Na luta, o fôlego é mais curto. */
+const ALERT_PACE = 1.5;
 
 /** Onde o corpo está em relação à água: só o bicho de rio muda disso. */
 export type Immersion = "none" | "submerged" | "beached";
@@ -50,6 +57,17 @@ export class MapActor {
   /** Quantos pixels do corpo ficam abaixo dos pés (o que a água esconde). */
   private sink = 0;
   private bleeding?: Phaser.Time.TimerEvent;
+  private walking = false;
+  /** A caminhada acabou, e ela ainda toca até este tempo passar. */
+  private settling?: Phaser.Time.TimerEvent;
+  /** O próximo gesto de quem está parado. */
+  private fidget?: Phaser.Time.TimerEvent;
+  /** Cada um respira no seu ritmo, pra multidão não subir e descer junta. */
+  private readonly pace = Phaser.Math.FloatBetween(0.88, 1.12);
+  /** Em luta: fôlego curto e nenhum gesto, que ninguém olha em volta com uma espada na frente. */
+  private alert = false;
+  private crouched = false;
+  private fallen = false;
 
   /**
    * `scale`: quanto a folha encolhe pra caber no quadrado do mapa (ver
@@ -74,6 +92,9 @@ export class MapActor {
     this.hpBar = scene.add.graphics().setDepth(HP_BAR_DEPTH);
     this.feet = { ...pos };
     this.place(pos);
+    // Gesto acabado volta a respirar. Só o que não é laço chega ao fim.
+    this.sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.idle());
+    this.idle();
   }
 
   /** Tudo que este ator pôs na cena (pra câmera da interface ignorar). */
@@ -111,8 +132,9 @@ export class MapActor {
   }
 
   face(facing: Facing): void {
+    if (facing === this.facing) return;
     this.facing = facing;
-    if (!this.sprite.anims.isPlaying) this.sprite.setFrame(standingFrame(facing));
+    this.idle();
   }
 
   /** Vira pra um ponto do mapa. No empate entre os eixos, prefere o horizontal. */
@@ -125,16 +147,55 @@ export class MapActor {
 
   /** Agachado, esgueirando (ver shared/world/stealth.ts): mais baixo e mais apagado. */
   setSneaking(sneaking: boolean): void {
+    this.crouched = sneaking;
     this.sprite.setAlpha(sneaking ? 0.6 : 1).setScale(this.scale, this.scale * (sneaking ? 0.88 : 1));
   }
 
   setWalking(walking: boolean): void {
     if (walking) {
-      this.sprite.anims.play(walkAnimKey(this.sheet, this.facing), true);
-    } else {
+      this.settling?.remove();
+      this.settling = undefined;
+      this.fidget?.remove();
+      this.walking = true;
+      this.sprite.anims.play({ key: walkAnimKey(this.sheet, this.facing), timeScale: 1 }, true);
+    } else if (this.walking && !this.settling) {
+      this.settling = this.scene.time.delayedCall(WALK_SETTLE_MS, () => {
+        this.settling = undefined;
+        this.walking = false;
+        this.idle();
+      });
+    }
+  }
+
+  /** Em luta (ou fora dela): ver `alert`. */
+  setAlert(alert: boolean): void {
+    if (alert === this.alert) return;
+    this.alert = alert;
+    this.idle();
+  }
+
+  /** De pé e respirando, olhando pra onde olha. Cada um entra num ponto qualquer do laço. */
+  private idle(): void {
+    if (this.walking || this.fallen) return;
+    this.fidget?.remove();
+    const key = idleAnimKey(this.sheet, this.facing);
+    if (!this.scene.anims.exists(key)) {
       this.sprite.anims.stop();
       this.sprite.setFrame(standingFrame(this.facing));
+      return;
     }
+    const timeScale = this.pace * (this.alert ? ALERT_PACE : 1);
+    this.sprite.anims.play({ key, timeScale, startFrame: Phaser.Math.Between(0, 3) });
+    this.fidget = this.scene.time.delayedCall(Phaser.Math.Between(FIDGET_MIN_MS, FIDGET_MAX_MS), () => this.playFidget());
+  }
+
+  private playFidget(): void {
+    const fidgets = fidgetAnimKeys(this.sheet, this.facing).filter((key) => this.scene.anims.exists(key));
+    if (this.alert || this.crouched || fidgets.length === 0) {
+      this.idle();
+      return;
+    }
+    this.sprite.anims.play({ key: Phaser.Utils.Array.GetRandom(fidgets), timeScale: 1 });
   }
 
   /**
@@ -149,10 +210,10 @@ export class MapActor {
     const dry = drySpriteKey(this.spriteKey);
     const sheet = immersion === "beached" && this.scene.textures.exists(dry) ? dry : this.spriteKey;
     if (sheet !== this.sheet) {
-      const walking = this.sprite.anims.isPlaying;
       this.sheet = sheet;
       this.sprite.setTexture(sheet, standingFrame(this.facing));
-      if (walking) this.sprite.anims.play(walkAnimKey(sheet, this.facing));
+      if (this.walking) this.sprite.anims.play({ key: walkAnimKey(sheet, this.facing), timeScale: 1 });
+      else this.idle();
     }
 
     // O corte é no quadro da folha; o que afunda, em pixels do mapa.
@@ -250,6 +311,12 @@ export class MapActor {
 
   /** Cai: clareia, achata contra o chão e some. */
   collapse(duration: number): Promise<void> {
+    this.fallen = true;
+    this.walking = false;
+    this.settling?.remove();
+    this.settling = undefined;
+    this.fidget?.remove();
+    this.sprite.anims.stop();
     this.hideHp();
     this.setTurn(false);
     this.setBleeding(false);
@@ -274,11 +341,15 @@ export class MapActor {
     this.scene.tweens.killTweensOf([this.sprite, this.shadow]);
     this.sprite.clearTint().setAlpha(1).setScale(this.scale);
     this.shadow.setAlpha(1);
+    this.fallen = false;
+    this.idle();
   }
 
   destroy(): void {
     this.hpTween?.stop();
     this.bleeding?.remove();
+    this.settling?.remove();
+    this.fidget?.remove();
     this.scene.tweens.killTweensOf([this.turnRing, this.sprite, this.shadow, this.ripple, this.drop]);
     this.sprite.destroy();
     this.shadow.destroy();
