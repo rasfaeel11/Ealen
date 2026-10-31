@@ -118,7 +118,9 @@ import { JournalPanel } from "../game/JournalPanel";
 import { RegionMapPanel } from "../game/RegionMapPanel";
 import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
-import { SoundPanel } from "../game/SoundPanel";
+import { OptionsPanel } from "../game/OptionsPanel";
+import { setPadMode } from "../game/gamepad";
+import { isAction, keyLabel, keyOf, settings } from "../game/settings";
 import { classSpriteKey, creatureSpriteKey, lookSpriteKey, ownSpriteKey, sheetScale, type Facing, standingFrame } from "../game/mapSprites";
 import type { GameSession } from "../game/session";
 import { Menu, addBodyText, addHeading, addModalDim, addPanel, addTitleText, portraitRef } from "../game/ui";
@@ -126,10 +128,8 @@ import { Scenery } from "../game/Scenery";
 import { setPlaying } from "../game/viewport";
 import { STORY_KEY, mapKey } from "../game/worldAssets";
 
-/** Quantos pixels de tela vale um pixel do mapa. Com tiles de 16px, cabem ~27 x 15 quadrados na tela. */
+/** A escala do "?" de quem desconfia: acompanha o zoom da câmera de sempre, pra não borrar. */
 const ZOOM = 3;
-/** O boneco é maior que o quadrado dele, com o pé no quadrado: a cabeça sobe por cima do de trás. */
-const ACTOR_SIZE = 1.5;
 /** Pixels do mapa por segundo (6 quadrados de 16px). */
 const WALK_SPEED = 96;
 /** Esgueirando, anda-se na metade. */
@@ -326,7 +326,8 @@ export default class WorldScene extends Phaser.Scene {
     playMusic(areaMusic(this.area.id));
 
     const camera = this.cameras.main;
-    camera.setZoom(ZOOM);
+    // Quantos pixels de tela vale um pixel do mapa. Com tiles de 16px e zoom 3, cabem ~27 x 15 quadrados na tela.
+    camera.setZoom(settings().zoom);
     camera.setBounds(0, 0, this.map.grid.width * this.map.tileSize, this.map.grid.height * this.map.tileSize);
     camera.startFollow(this.player.followTarget, true, 0.2, 0.2);
     camera.fadeIn(FADE_MS);
@@ -337,15 +338,11 @@ export default class WorldScene extends Phaser.Scene {
       down: Phaser.Input.Keyboard.KeyCodes.DOWN,
       left: Phaser.Input.Keyboard.KeyCodes.LEFT,
       right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
-      w: Phaser.Input.Keyboard.KeyCodes.W,
-      a: Phaser.Input.Keyboard.KeyCodes.A,
-      s: Phaser.Input.Keyboard.KeyCodes.S,
-      d: Phaser.Input.Keyboard.KeyCodes.D,
+      w: keyOf("up").keyCode,
+      a: keyOf("left").keyCode,
+      s: keyOf("down").keyCode,
+      d: keyOf("right").keyCode,
     }) as MoveKeys;
-    keyboard.on("keydown-Z", this.openRest, this);
-    keyboard.on("keydown-E", this.interact, this);
-    keyboard.on("keydown-F", this.ambush, this);
-    keyboard.on("keydown-Q", this.toggleSneak, this);
     keyboard.on("keydown", this.onKey, this);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onAimPointer, this);
     // O botão direito cancela a mira no combate; o menu do navegador só atrapalharia.
@@ -369,6 +366,7 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    setPadMode(this.combat && !this.talking ? "fight" : this.pause || this.talking || this.leaving || this.aiming || this.combat ? "menu" : "field");
     this.scenery.tick(delta, this.combat ? this.combat.positions() : [tileOfPixel(this.map, this.pos)]);
     // Quadro longo demais é aba em segundo plano: não conta como tempo de jogo.
     if (!this.pause) this.save.playTimeMs += Math.min(delta, MAX_FRAME_MS);
@@ -387,6 +385,7 @@ export default class WorldScene extends Phaser.Scene {
 
     const dx = Number(this.keys.right.isDown || this.keys.d.isDown) - Number(this.keys.left.isDown || this.keys.a.isDown);
     const dy = Number(this.keys.down.isDown || this.keys.s.isDown) - Number(this.keys.up.isDown || this.keys.w.isDown);
+    this.hud.setWalking(dx !== 0 || dy !== 0, delta);
     if (dx === 0 && dy === 0) {
       this.player.setWalking(false);
       // Parado, quem ficou pra trás ainda chega.
@@ -436,7 +435,7 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   private addActor(spriteKey: string, pos: PixelPos): MapActor {
-    const actor = new MapActor(this, spriteKey, pos, sheetScale(spriteKey, this.map.tileSize) * ACTOR_SIZE);
+    const actor = new MapActor(this, spriteKey, pos, sheetScale(spriteKey, this.map.tileSize) * settings().actorSize);
     for (const object of actor.objects) this.addWorld(object);
     return actor;
   }
@@ -668,8 +667,8 @@ export default class WorldScene extends Phaser.Scene {
     const talker = this.talkerInReach();
     const prey = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos), this.character);
     const prompts: FieldPrompt[] = [];
-    if (talker) prompts.push({ key: "E", label: `${talker.stands ? "Falar com" : "Examinar"} ${talker.name}`, onClick: () => this.interact() });
-    if (prey !== undefined) prompts.push({ key: "F", label: this.hidden(prey) ? "Emboscar" : "Investida", onClick: () => this.ambush() });
+    if (talker) prompts.push({ key: keyLabel("interact"), label: `${talker.stands ? "Falar com" : "Examinar"} ${talker.name}`, onClick: () => this.interact() });
+    if (prey !== undefined) prompts.push({ key: keyLabel("ambush"), label: this.hidden(prey) ? "Emboscar" : "Investida", onClick: () => this.ambush() });
     this.hud.setPrompts(prompts);
 
     const abilities = this.fieldAbilities().map(
@@ -692,15 +691,15 @@ export default class WorldScene extends Phaser.Scene {
       ...extra,
     });
     this.hud.setButtons(abilities, [
-      menu("sneak", this.sneaking ? "Levantar" : "Esgueirar", "Q", () => this.toggleSneak(), {
+      menu("sneak", this.sneaking ? "Levantar" : "Esgueirar", keyLabel("sneak"), () => this.toggleSneak(), {
         selected: this.sneaking,
         body: "Agachado o grupo anda devagar, e o olhar de quem vigia fica pintado no chão.",
       }),
-      menu("camp", "Descansar", "Z", () => this.openRest()),
-      menu("sheet", "Ficha", "C", () => this.openSheet()),
-      menu("bag", "Mochila", "I", () => this.openBag()),
-      menu("book", "Diário", "J", () => this.openJournal()),
-      menu("map", "Mapa", "M", () => this.openRegionMap()),
+      menu("camp", "Descansar", keyLabel("rest"), () => this.openRest()),
+      menu("sheet", "Ficha", keyLabel("sheet"), () => this.openSheet()),
+      menu("bag", "Mochila", keyLabel("bag"), () => this.openBag()),
+      menu("book", "Diário", keyLabel("journal"), () => this.openJournal()),
+      menu("map", "Mapa", keyLabel("map"), () => this.openRegionMap()),
       menu("gear", "Pausa", "Esc", () => this.openPause()),
     ]);
   }
@@ -1090,6 +1089,7 @@ export default class WorldScene extends Phaser.Scene {
       this.story.afflictions(),
       opening,
       charge,
+      settings().difficulty,
     );
 
     this.hud.setVisible(false);
@@ -1270,10 +1270,14 @@ export default class WorldScene extends Phaser.Scene {
     }
     if (this.pause || this.combat || this.leaving || this.talking) return;
     if (event.code === "Escape") this.openPause();
-    else if (event.code === "KeyJ") this.openJournal();
-    else if (event.code === "KeyM") this.openRegionMap();
-    else if (event.code === "KeyC") this.openSheet();
-    else if (event.code === "KeyI") this.openBag();
+    else if (isAction(event, "interact")) this.interact();
+    else if (isAction(event, "ambush")) this.ambush();
+    else if (isAction(event, "sneak")) this.toggleSneak();
+    else if (isAction(event, "rest")) this.openRest();
+    else if (isAction(event, "journal")) this.openJournal();
+    else if (isAction(event, "map")) this.openRegionMap();
+    else if (isAction(event, "sheet")) this.openSheet();
+    else if (isAction(event, "bag")) this.openBag();
     // 1, 2, 3...: a habilidade de mesmo número na barra.
     else if (/^(Digit|Numpad)[1-9]$/.test(event.code)) this.useFieldAbility(Number(event.code.slice(-1)) - 1);
   }
@@ -1525,9 +1529,22 @@ export default class WorldScene extends Phaser.Scene {
     this.pause = panel;
   }
 
-  /** Os volumes, a partir da pausa. */
-  private openSound(): void {
-    this.pause = new SoundPanel(this, (object) => this.addHud(object), () => this.closePause());
+  /** As opções, a partir da pausa. O que os bonecos e a câmera já receberam só muda abrindo a cena de novo. */
+  private openOptions(): void {
+    const { actorSize, zoom, keys } = settings();
+    this.pause = new OptionsPanel(this, (object) => this.addHud(object), () => {
+      this.closePause();
+      const now = settings();
+      if (now.actorSize !== actorSize || now.zoom !== zoom || now.keys !== keys) {
+        this.persist();
+        this.leaving = true;
+        this.scene.restart({} satisfies WorldSceneData);
+        return;
+      }
+      this.hud.applySettings();
+      this.refreshStatus();
+      this.refreshHint();
+    });
   }
 
   private openPause(): void {
@@ -1552,7 +1569,7 @@ export default class WorldScene extends Phaser.Scene {
         { label: "Mochila", onSelect: () => this.swapPause(() => this.openBag()) },
         { label: "Diário", onSelect: () => this.swapPause(() => this.openJournal()) },
         { label: "Mapa", onSelect: () => this.swapPause(() => this.openRegionMap()) },
-        { label: "Som", onSelect: () => this.swapPause(() => this.openSound()) },
+        { label: "Opções", onSelect: () => this.swapPause(() => this.openOptions()) },
         // Ao fechar, a cena grava o jogo (SHUTDOWN chama persist).
         { label: "Salvar e sair pro título", onSelect: () => this.scene.start(SCENES.title) },
       ],

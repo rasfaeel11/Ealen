@@ -6,7 +6,8 @@ import { GameSession } from "../game/session";
 import { takeResumeSlot } from "../game/viewport";
 import { playMusic } from "../game/audio";
 import { splashKey } from "../game/splashes";
-import { SoundPanel } from "../game/SoundPanel";
+import { OptionsPanel } from "../game/OptionsPanel";
+import { setPadMode } from "../game/gamepad";
 import { Menu, addBodyText, addTitleText, drawDiamond } from "../game/ui";
 import type { SaveSlotsData } from "./SaveSlotsScene";
 
@@ -62,7 +63,8 @@ export default class TitleScene extends Phaser.Scene {
     }
 
     playMusic("title");
-    let sound: SoundPanel | undefined;
+    setPadMode("menu");
+    let options: OptionsPanel | undefined;
     const menu: Menu = new Menu(
       this,
       50,
@@ -96,13 +98,13 @@ export default class TitleScene extends Phaser.Scene {
           onSelect: () => this.scene.start(SCENES.saves),
         },
         {
-          label: "Som",
+          label: "Opções",
           onSelect: () => {
             // Com o painel aberto, o menu de baixo espera.
             menu.setActive(false);
-            sound = new SoundPanel(this, (object) => object, () => {
-              sound?.destroy();
-              sound = undefined;
+            options = new OptionsPanel(this, (object) => object, () => {
+              options?.destroy();
+              options = undefined;
               menu.setActive(true);
             });
           },

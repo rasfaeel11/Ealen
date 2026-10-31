@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { activeUnit, isAlive, styleLabel, type Encounter, type Unit } from "@jogo/shared";
 import { sfx } from "../audio";
 import { RIGHT_COLUMN_LEFT, RIGHT_COLUMN_WIDTH } from "../ClockBar";
+import { settings, textPx } from "../settings";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { PartyColumn, type PartyEntry } from "../hud/PartyColumn";
 import { iconKey, type IconName } from "../icons";
@@ -84,8 +85,8 @@ const TILE_W = 48;
 const TILE_H = 60;
 const TILE_GAP = 4;
 const TILE_Y = 12;
-const LOG_LINES = 5;
-const LOG_HEIGHT = 104;
+/** O tamanho do registro, conforme as opções. */
+const LOG_SIZES = { curto: { lines: 5, height: 104 }, longo: { lines: 12, height: 196 }, nenhum: { lines: 0, height: 0 } } as const;
 
 /** Um quadro da ordem dos turnos: rosto, cor do lado e a vida embaixo. Anda sozinho quando a ordem gira. */
 class TurnTile {
@@ -182,6 +183,7 @@ export class CombatHud {
   private endHover = false;
   private rows = 0;
   private logLines: string[] = [];
+  private readonly logSize: { lines: number; height: number };
   private readonly resultObjects: Phaser.GameObjects.GameObject[] = [];
   private hasGoals = false;
   private detailText = "";
@@ -212,10 +214,11 @@ export class CombatHud {
       addTitleText(scene, 0, TILE_Y + TILE_H / 2, "", { fontSize: "14px", align: "center" }).setOrigin(1, 0.5).setShadow(0, 2, "#000000", 4),
     );
 
-    this.logFrame = add(addPanel(scene, RIGHT_COLUMN_LEFT - 110, logTop, RIGHT_COLUMN_WIDTH + 110, LOG_HEIGHT, true));
+    this.logSize = LOG_SIZES[settings().log];
+    this.logFrame = add(addPanel(scene, RIGHT_COLUMN_LEFT - 110, logTop, RIGHT_COLUMN_WIDTH + 110, this.logSize.height, true));
     this.logText = add(
       addBodyText(scene, RIGHT_COLUMN_LEFT - 98, logTop + 10, "", {
-        fontSize: "13px",
+        fontSize: textPx(13),
         lineSpacing: 2,
         color: TEXT_COLORS.inkDim,
         wordWrap: { width: RIGHT_COLUMN_WIDTH + 86 },
@@ -275,6 +278,7 @@ export class CombatHud {
       if (this.endEnabled) this.onEnd?.();
     });
     this.layoutBar(1);
+    this.logFrame.setVisible(this.logSize.lines > 0);
 
     this.detail = add(
       addBodyText(scene, GAME_WIDTH / 2 + 80, BAR_Y - 6, "", {
@@ -551,10 +555,11 @@ export class CombatHud {
   // ---------------------------------------------------------------- o registro
 
   log(line: string): void {
-    this.logLines = [...this.logLines, line].slice(-LOG_LINES);
+    if (this.logSize.lines === 0) return;
+    this.logLines = [...this.logLines, line].slice(-this.logSize.lines);
     this.logText.setText(this.logLines.join("\n"));
     // Fala comprida quebra em mais de uma linha: o que passa do quadro sai por cima.
-    while (this.logText.height > LOG_HEIGHT - 20 && this.logLines.length > 1) {
+    while (this.logText.height > this.logSize.height - 20 && this.logLines.length > 1) {
       this.logLines.shift();
       this.logText.setText(this.logLines.join("\n"));
     }
@@ -666,6 +671,7 @@ export class CombatHud {
   setVisible(visible: boolean): void {
     this.shown = visible;
     for (const object of this.fixedObjects) object.setVisible(visible);
+    this.logFrame.setVisible(visible && this.logSize.lines > 0);
     this.slots.forEach((slot, i) => slot.root.setVisible(visible && this.buttons[i] !== undefined));
     this.party.setVisible(visible);
     this.goals.setVisible(visible && this.hasGoals);

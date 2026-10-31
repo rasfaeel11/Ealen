@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import type { JournalEntry } from "@jogo/shared";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
+import { isAction } from "./settings";
 import { addBodyText, addCloseButton, addHeading, addModalDim, addPanel, type AddHud } from "./ui";
 
 const WIDTH = 820;
@@ -132,7 +133,7 @@ export class JournalPanel {
 
   private onKey(event: KeyboardEvent): void {
     if (this.scene.time.now - this.openedAt < INPUT_GRACE_MS) return;
-    if (event.code === "Escape" || event.code === "KeyJ" || event.code === "Enter" || event.code === "Space") {
+    if (event.code === "Escape" || isAction(event, "journal") || event.code === "Enter" || event.code === "Space") {
       this.onClose();
       return;
     }

@@ -2,6 +2,7 @@ import { addItemToInventory, findItem, giveItem, type GameItem } from "../invent
 import { applyXpGain, xpForEnemy } from "../leveling";
 import { creaturePlacement, findBestiaryEntry, spawnCreature } from "../data/bestiary";
 import { findItemTemplate } from "../data/items";
+import { applyDifficulty, type Difficulty } from "../tactics/difficulty";
 import { startEncounter, type Opening } from "../tactics/engine";
 import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from "../tactics/grid";
 import { isPropId, standProp, type Prop } from "../tactics/props";
@@ -262,6 +263,7 @@ export function startAreaEncounter(
   lasting: Record<string, readonly StatusId[]> = {},
   opening?: Opening,
   charge?: TeamId,
+  difficulty: Difficulty = "normal",
 ): { encounter: Encounter; events: TacticalEvent[] } {
   const supporters = onlookers.flatMap((character) => {
     const support = supportOf(character);
@@ -283,6 +285,7 @@ export function startAreaEncounter(
       }),
     );
   }
+  applyDifficulty(units, difficulty);
   // Mexer num objeto vale uma vez por luta: o que se mexeu numa luta anterior da área está pronto de novo.
   for (const prop of props) delete prop.used;
   const flood = enemies.find((enemy) => enemy.flood)?.flood;

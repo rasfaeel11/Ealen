@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { tileAt, type AreaMap, type PixelPos } from "@jogo/shared";
 import { CLOCK_BAR_BOTTOM, RIGHT_COLUMN_LEFT, RIGHT_COLUMN_TOP, RIGHT_COLUMN_WIDTH } from "../ClockBar";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
+import { settings } from "../settings";
 import type { IconName } from "../icons";
 import { Tooltip, UiSlot, addBodyText, addPanel, drawPanel, type AddHud, type TipContent } from "../ui";
 import { PartyColumn, type PartyEntry } from "./PartyColumn";
@@ -39,6 +40,8 @@ const BAR_Y = GAME_HEIGHT - BAR_HEIGHT - 8;
 const MAP_HEIGHT = 124;
 /** De quanto em quanto tempo o minimapa redesenha os pontos. */
 const MINIMAP_MS = 120;
+/** Com a barra "só parado", quanto tempo parado até ela voltar. */
+const BAR_BACK_MS = 300;
 
 function mapTextureKey(areaId: string): string {
   return `minimap:${areaId}`;
@@ -88,6 +91,7 @@ export class WorldHud {
   private sinceDots = 0;
   private buttonsKey = "";
   private shown = true;
+  private stillFor = BAR_BACK_MS;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -156,6 +160,34 @@ export class WorldHud {
     };
     this.mapImage = add(scene.add.image(this.mapOrigin.x, this.mapOrigin.y, key).setOrigin(0).setScale(this.mapScale));
     this.mapDots = add(scene.add.graphics());
+    this.applySettings();
+  }
+
+  /** O que as opções mudam: o minimapa e a barra aparecem, ou não. */
+  applySettings(): void {
+    this.setVisible(this.shown);
+  }
+
+  /** O grupo está andando agora: a barra "só parado" sai da frente, e volta quando ele para. */
+  setWalking(walking: boolean, delta: number): void {
+    this.stillFor = walking ? 0 : this.stillFor + delta;
+    if (settings().bar === "parado") this.showBar();
+  }
+
+  private get barOn(): boolean {
+    const mode = settings().bar;
+    return this.shown && (mode === "sempre" || (mode === "parado" && this.stillFor >= BAR_BACK_MS));
+  }
+
+  private showBar(): void {
+    const on = this.barOn;
+    if (this.barFrame.visible === on) return;
+    this.barFrame.setVisible(on);
+    this.barZone.setVisible(on);
+    if (on) this.barZone.setInteractive();
+    else this.barZone.disableInteractive();
+    this.slots.forEach((slot, i) => slot.root.setVisible(on && this.buttons[i] !== undefined));
+    if (!on) this.tip.hide();
   }
 
   setParty(entries: PartyEntry[]): void {
@@ -188,7 +220,7 @@ export class WorldHud {
     let x = left + PAD;
     this.slots.forEach((slot, i) => {
       if (i === ABILITY_SLOTS) x += gap;
-      slot.root.setVisible(this.shown && this.buttons[i] !== undefined);
+      slot.root.setVisible(this.barOn && this.buttons[i] !== undefined);
       if (!this.buttons[i]) return;
       slot.root.setX(x);
       x += SLOT + SLOT_GAP;
@@ -247,10 +279,11 @@ export class WorldHud {
   setVisible(visible: boolean): void {
     this.shown = visible;
     this.party.setVisible(visible);
-    for (const object of [this.barFrame, this.barZone, this.mapFrame, this.mapImage, this.mapDots]) {
-      (object as unknown as Phaser.GameObjects.Components.Visible).setVisible(visible);
+    for (const object of [this.mapFrame, this.mapImage, this.mapDots]) {
+      (object as unknown as Phaser.GameObjects.Components.Visible).setVisible(visible && settings().minimap);
     }
-    this.slots.forEach((slot, i) => slot.root.setVisible(visible && this.buttons[i] !== undefined));
+    this.barFrame.setVisible(!this.barOn);
+    this.showBar();
     this.prompt.setVisible(visible && this.prompt.text !== "");
     this.promptFrame.setVisible(visible && this.prompt.text !== "");
     this.promptZone.setVisible(visible);

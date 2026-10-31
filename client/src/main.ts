@@ -4,6 +4,7 @@ import BootScene from "./scenes/BootScene";
 import TitleScene from "./scenes/TitleScene";
 import SaveSlotsScene from "./scenes/SaveSlotsScene";
 import WorldScene from "./scenes/WorldScene";
+import { watchGamepad } from "./game/gamepad";
 import { watchWindowShape } from "./game/viewport";
 
 const FONT_LOAD_TIMEOUT_MS = 3000;
@@ -26,6 +27,7 @@ async function waitForFonts(): Promise<void> {
 
 void waitForFonts().then(() => {
   watchWindowShape();
+  watchGamepad();
   new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game",

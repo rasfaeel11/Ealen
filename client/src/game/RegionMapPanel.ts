@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { AREAS, type AreaExit, type AreaMap, type PixelPos } from "@jogo/shared";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
 import type { Scenery } from "./Scenery";
+import { isAction } from "./settings";
 import { addBodyText, addCloseButton, addHeading, drawDiamond, type AddHud } from "./ui";
 
 /** Quanto da tela o mapa pode ocupar. */
@@ -122,6 +123,6 @@ export class RegionMapPanel {
 
   private onKey(event: KeyboardEvent): void {
     if (this.scene.time.now - this.openedAt < INPUT_GRACE_MS) return;
-    if (event.code === "Escape" || event.code === "KeyM" || event.code === "Enter") this.onClose();
+    if (event.code === "Escape" || isAction(event, "map") || event.code === "Enter") this.onClose();
   }
 }

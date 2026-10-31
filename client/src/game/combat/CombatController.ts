@@ -55,6 +55,7 @@ import {
 } from "@jogo/shared";
 import { sfx } from "../audio";
 import { COLORS, TEXT_COLORS } from "../config";
+import { settings } from "../settings";
 import type { PartyEntry } from "../hud/PartyColumn";
 import { abilityIcon, itemIcon } from "../icons";
 import type { MapActor } from "../MapActor";
@@ -296,6 +297,19 @@ export class CombatController {
     scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     scene.input.keyboard?.on("keydown", this.onKey, this);
+    // A velocidade das opções vale pra tudo que anda durante a luta: os golpes, as esperas e a vez dos inimigos.
+    this.setSpeed(settings().animSpeed);
+  }
+
+  private setSpeed(speed: number): void {
+    const { scene } = this.host;
+    scene.tweens.timeScale = speed;
+    scene.time.timeScale = speed;
+    scene.anims.globalTimeScale = speed;
+  }
+
+  private shake(ms: number, intensity: number): void {
+    if (settings().shake) this.host.scene.cameras.main.shake(ms, intensity);
   }
 
   /** Reproduz a abertura da luta (iniciativa, primeiro turno) e entrega a vez a quem for. */
@@ -322,7 +336,7 @@ export class CombatController {
     scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     scene.input.keyboard?.off("keydown", this.onKey, this);
 
-    scene.tweens.timeScale = 1;
+    this.setSpeed(1);
     for (const actor of this.host.actors.values()) {
       actor.hideHp();
       actor.setTurn(false);
@@ -1007,7 +1021,7 @@ export class CombatController {
         // Mana demais de uma vez: o corpo cobra na hora, e o chão sente. A marca vem logo depois, como condição.
         const actor = this.actor(event.unit);
         sfx("burst");
-        this.host.scene.cameras.main.shake(320, 0.008);
+        this.shake(320, 0.008);
         if (actor) {
           actor.flash(0xffffff, 140);
           this.ring(actor.pos, COLOR_WATER);
@@ -1132,7 +1146,7 @@ export class CombatController {
         this.refreshRoster();
 
         if (actor) this.spark(this.center(actor), critical ? COLORS.goldBright : 0xffffff, 6 + 8 * weight + (critical ? 4 : 0));
-        this.host.scene.cameras.main.shake(heavy ? 200 : 120, 0.002 + 0.01 * weight + (critical ? 0.004 : 0));
+        this.shake(heavy ? 200 : 120, 0.002 + 0.01 * weight + (critical ? 0.004 : 0));
         await this.hitStop(heavy ? HEAVY_HIT_STOP_MS : HIT_STOP_MS);
         await this.recoil(event.target, this.blow.actor, 2 + 5 * weight);
         await this.wait(170);
@@ -1174,7 +1188,7 @@ export class CombatController {
       case "slammed": {
         const name = this.unit(event.unit).name;
         sfx("block");
-        this.host.scene.cameras.main.shake(140, 0.006);
+        this.shake(140, 0.006);
         this.hud.log(
           event.into === "wall" ? `${name} bate na parede.` : `${name} bate ${event.into === "prop" ? "no" : "em"} ${event.name}.`,
         );
@@ -1252,7 +1266,7 @@ export class CombatController {
         this.host.props.delete(event.prop);
         sfx("propBreak");
         this.spark(at, 0xd9c7a0, 14);
-        this.host.scene.cameras.main.shake(140, 0.004);
+        this.shake(140, 0.004);
         this.hud.log(`${event.name} se despedaça.`);
         await this.wait(220);
         return;
@@ -1405,7 +1419,7 @@ export class CombatController {
     const { tweens } = this.host.scene;
     tweens.timeScale = 0;
     await this.wait(ms);
-    tweens.timeScale = 1;
+    tweens.timeScale = settings().animSpeed;
   }
 
   /** Um tranco curto pra longe de `from`, e de volta. */

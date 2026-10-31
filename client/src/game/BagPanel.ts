@@ -11,6 +11,7 @@ import {
 } from "@jogo/shared";
 import { SLOT_LABEL, describeEquipment } from "./SheetPanel";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
+import { isAction, keyLabel } from "./settings";
 import { gearIcon, iconKey, itemIcon, type IconName } from "./icons";
 import { Menu, SlotGrid, addBodyText, addCloseButton, addHeading, addModalDim, addPanel, addTitleText, type AddHud, type GridOption, type MenuOption } from "./ui";
 
@@ -117,7 +118,7 @@ export class BagPanel {
       this.detail,
       this.notice,
       addHud(
-        addBodyText(scene, X + WIDTH - 30, Y + HEIGHT - 42, "Setas: item  ·  Enter: usar  ·  C: ficha  ·  Esc: fechar", {
+        addBodyText(scene, X + WIDTH - 30, Y + HEIGHT - 42, `Setas: item  ·  Enter: usar  ·  ${keyLabel("sheet")}: ficha  ·  Esc: fechar`, {
           fontSize: "14px",
           color: TEXT_COLORS.inkDim,
         }).setOrigin(1, 0.5),
@@ -240,7 +241,7 @@ export class BagPanel {
 
   private onKey(event: KeyboardEvent): void {
     if (this.scene.time.now - this.openedAt < INPUT_GRACE_MS) return;
-    if (event.code === "KeyI") this.host.onClose();
-    else if (event.code === "KeyC") this.host.onSheet();
+    if (isAction(event, "bag")) this.host.onClose();
+    else if (isAction(event, "sheet")) this.host.onSheet();
   }
 }

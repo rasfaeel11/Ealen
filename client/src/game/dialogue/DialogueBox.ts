@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
-import { sfx } from "../audio";
+import { sfx, voice } from "../audio";
+import { isAction, settings, textPx } from "../settings";
 import {
   ATTRIBUTE_NAMES,
   faceOf,
@@ -149,6 +150,10 @@ export class DialogueBox {
   /** O que a próxima tecla de "seguir" faz; null enquanto as escolhas estão na tela. */
   private onAdvance: (() => void) | null = null;
   private onChoose: ((index: number) => void) | null = null;
+  /** Quem falou por último: a voz só sai quando quem fala muda. */
+  private lastVoice: string | null = null;
+  /** A fala que passa sozinha, se as opções pediram. */
+  private autoTimer?: Phaser.Time.TimerEvent;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -165,10 +170,10 @@ export class DialogueBox {
     const bust = () => addHud(scene.add.image(PORTRAIT_X, GAME_HEIGHT, "__DEFAULT").setOrigin(0, 1).setVisible(false));
     this.leaving = bust();
     this.portrait = bust();
-    this.speaker = addHud(addTitleText(scene, TEXT_X, SPEAKER_Y, "", { fontSize: "22px", color: TEXT_COLORS.goldBright }));
+    this.speaker = addHud(addTitleText(scene, TEXT_X, SPEAKER_Y, "", { fontSize: textPx(22), color: TEXT_COLORS.goldBright }));
     this.body = addHud(
       addBodyText(scene, TEXT_X, TEXT_Y, "", {
-        fontSize: "21px",
+        fontSize: textPx(21),
         lineSpacing: 6,
         wordWrap: { width: TEXT_WIDTH },
       }),
@@ -198,6 +203,7 @@ export class DialogueBox {
         this.showBeat(beat);
         await new Promise<void>((resolve) => (this.onAdvance = resolve));
         this.onAdvance = null;
+        this.autoTimer?.remove();
       }
       done?.();
     }
@@ -213,6 +219,7 @@ export class DialogueBox {
   destroy(): void {
     this.scene.input.keyboard?.off("keydown", this.onKey, this);
     this.scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
+    this.autoTimer?.remove();
     this.clearChoices();
     this.scene.tweens.killTweensOf([this.portrait, this.leaving]);
     for (const object of [this.panel, this.portrait, this.leaving, this.speaker, this.body, this.hint]) object.destroy();
@@ -234,7 +241,10 @@ export class DialogueBox {
 
   private showBeat(beat: DialogueBeat): void {
     this.hint.setVisible(true);
+    this.armAutoAdvance(beat.kind === "line" ? beat.text : (describeEvent(beat.event)?.text ?? ""));
     if (beat.kind === "line") {
+      if (beat.speaker && beat.speaker !== this.lastVoice && settings().voice) voice(beat.speaker);
+      this.lastVoice = beat.speaker ?? this.lastVoice;
       this.showPortrait(beat.speaker ?? null, faceOf(beat));
       this.speaker.setText(beat.speaker ?? "");
       // Narração vem em itálico e mais apagada: dá pra ver de longe que ninguém está falando.
@@ -251,6 +261,13 @@ export class DialogueBox {
     this.speaker.setText("");
     this.body.setText(text).setFontStyle("normal").setColor(color);
     this.fitBody();
+  }
+
+  /** Com a opção ligada, a fala passa sozinha, num tempo que depende do tamanho dela. */
+  private armAutoAdvance(text: string): void {
+    const perLetter = settings().autoAdvance;
+    if (perLetter <= 0) return;
+    this.autoTimer = this.scene.time.delayedCall(1200 + text.length * perLetter, () => this.onAdvance?.());
   }
 
   /** Fala comprida: a faixa cresce o que faltar pra caber. */
@@ -272,7 +289,7 @@ export class DialogueBox {
 
     const width = GAME_WIDTH - this.textLeft - 40;
     this.rows = choices.map((choice, position) => {
-      const number = this.addHud(addTitleText(this.scene, 0, 0, `${position + 1}`, { fontSize: "15px", color: TEXT_COLORS.gold }).setOrigin(0.5));
+      const number = this.addHud(addTitleText(this.scene, 0, 0, `${position + 1}`, { fontSize: textPx(15), color: TEXT_COLORS.gold }).setOrigin(0.5));
       const badge = choice.check
         ? this.addHud(
             addBodyText(
@@ -280,13 +297,13 @@ export class DialogueBox {
               0,
               0,
               `${ATTRIBUTE_LABEL(choice.check.attribute)} ${choice.check.difficulty} · ${Math.round(choice.check.chance * 100)}%`,
-              { fontSize: "14px", color: TEXT_COLORS.goldBright, backgroundColor: "rgba(201, 161, 90, 0.2)", padding: { x: 6, y: 2 } },
+              { fontSize: textPx(14), color: TEXT_COLORS.goldBright, backgroundColor: "rgba(201, 161, 90, 0.2)", padding: { x: 6, y: 2 } },
             ).setOrigin(0, 0),
           )
         : undefined;
       const indent = 30 + (badge ? badge.width + 8 : 0);
       const text = this.addHud(
-        addBodyText(this.scene, 0, 0, choice.text, { fontSize: "19px", lineSpacing: 2, wordWrap: { width: width - indent - 10 } }),
+        addBodyText(this.scene, 0, 0, choice.text, { fontSize: textPx(19), lineSpacing: 2, wordWrap: { width: width - indent - 10 } }),
       );
       const band = this.addHud(this.scene.add.rectangle(0, 0, width, text.height + CHOICE_PAD * 2, COLORS.gold, 0).setOrigin(0));
       // A faixa fica atrás do que vai escrito nela.
@@ -427,7 +444,7 @@ export class DialogueBox {
 
   private onKey(event: KeyboardEvent): void {
     if (!this.ready()) return;
-    const confirm = event.code === "Space" || event.code === "Enter" || event.code === "NumpadEnter" || event.code === "KeyE";
+    const confirm = event.code === "Space" || event.code === "Enter" || event.code === "NumpadEnter" || isAction(event, "interact");
 
     if (this.onAdvance) {
       if (confirm) this.advance();

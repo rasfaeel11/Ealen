@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { COLORS, TEXT_COLORS } from "../config";
-import { Tooltip, addTitleText, drawBar, fitFace, hpColor, type AddHud, type FaceRef } from "../ui";
+import { settings } from "../settings";
+import { Tooltip, addBodyText, addTitleText, drawBar, fitFace, hpColor, type AddHud, type FaceRef } from "../ui";
 
 /** Uma pessoa na coluna do grupo. Sem `hp`, acompanha sem lutar: o cartão não tem barras, e mostra o apoio. */
 export interface PartyEntry {
@@ -43,6 +44,7 @@ class PartyCard {
   private readonly frame: Phaser.GameObjects.Graphics;
   private readonly face: Phaser.GameObjects.Image;
   private readonly bars: Phaser.GameObjects.Graphics;
+  private readonly hpText: Phaser.GameObjects.Text;
   private readonly flash: Phaser.GameObjects.Rectangle;
   private chips: Phaser.GameObjects.GameObject[] = [];
   private lastHp?: number;
@@ -60,11 +62,14 @@ class PartyCard {
     fitFace(this.face, entry.face, 1, 1, WIDTH - 2, faceHeight, entry.name);
     this.bars = scene.add.graphics();
     this.flash = scene.add.rectangle(1, 1, WIDTH - 2, faceHeight, COLORS.hpLow, 1).setOrigin(0).setAlpha(0);
+    this.hpText = addBodyText(scene, WIDTH / 2, faceHeight + 3, "", { fontSize: "13px", color: TEXT_COLORS.white })
+      .setOrigin(0.5, 0)
+      .setShadow(0, 1, "#000000", 3);
     const zone = scene.add.zone(0, 0, WIDTH, this.height).setOrigin(0).setInteractive({ useHandCursor: handlers.down !== undefined });
     zone.on(Phaser.Input.Events.POINTER_OVER, () => handlers.over(this));
     zone.on(Phaser.Input.Events.POINTER_OUT, () => handlers.out());
     if (handlers.down) zone.on(Phaser.Input.Events.POINTER_DOWN, () => handlers.down!(this.entry.id));
-    this.root = scene.add.container(0, 0, [this.frame, this.face, this.flash, this.bars, zone]);
+    this.root = scene.add.container(0, 0, [this.frame, this.face, this.flash, this.bars, this.hpText, zone]);
     this.set(entry);
   }
 
@@ -94,6 +99,7 @@ class PartyCard {
     if (entry.hp) {
       const ratio = entry.hp.max > 0 ? entry.hp.now / entry.hp.max : 0;
       drawBar(bars, 1, y + 1, WIDTH - 2, HP_HEIGHT, ratio, hpColor(ratio));
+      this.hpText.setText(settings().hpNumbers ? `${entry.hp.now}/${entry.hp.max}` : "");
       y += HP_HEIGHT + 3;
       if (this.lastHp !== undefined && entry.hp.now < this.lastHp) {
         // O golpe aparece no rosto também: é por aqui que se sabe quem apanhou fora de vista.

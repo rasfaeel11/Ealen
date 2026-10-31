@@ -293,6 +293,48 @@ export function sfx(name: SfxName): void {
   for (const part of recipe.noises ?? []) noise(audio, audio.sfx, now, part);
 }
 
+// --------------------------------------------------------------------- voz
+
+/** Quem fala, numa altura só dele: o mesmo nome soa sempre igual. */
+function voicePitch(name: string): number {
+  let hash = 0;
+  for (const letter of name) hash = (hash * 31 + (letter.codePointAt(0) ?? 0)) >>> 0;
+  return 105 + (hash % 120);
+}
+
+/** Uma sílaba de gente: uma corda grave passada por duas bocas, que escorrega no fim. */
+function syllable({ ctx }: Engine, out: AudioNode, at: number, pitch: number, dur: number, gain: number): void {
+  const amp = envelope(ctx, out, at, dur, gain, 0.025);
+  for (const [formant, q, share] of [[620, 5, 1], [1250, 7, 0.55]] as const) {
+    const mouth = ctx.createBiquadFilter();
+    mouth.type = "bandpass";
+    mouth.frequency.setValueAtTime(formant, at);
+    mouth.frequency.linearRampToValueAtTime(formant * 0.82, at + dur);
+    mouth.Q.value = q;
+    const part = ctx.createGain();
+    part.gain.value = share;
+    const cord = ctx.createOscillator();
+    cord.type = "sawtooth";
+    cord.frequency.setValueAtTime(pitch, at);
+    cord.frequency.exponentialRampToValueAtTime(pitch * 0.86, at + dur);
+    cord.connect(mouth);
+    mouth.connect(part);
+    part.connect(amp);
+    cord.start(at);
+    cord.stop(at + dur + 0.02);
+  }
+}
+
+/** O som de alguém começando a falar: duas sílabas sem palavra, na altura de quem fala. */
+export function voice(name: string): void {
+  const audio = boot();
+  if (!audio || audio.ctx.state !== "running") return;
+  const now = audio.ctx.currentTime;
+  const pitch = voicePitch(name);
+  syllable(audio, audio.sfx, now, pitch, 0.11, 0.5);
+  syllable(audio, audio.sfx, now + 0.12, pitch * 1.08, 0.14, 0.42);
+}
+
 // ------------------------------------------------------------------- música
 
 /**

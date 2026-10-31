@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { sfx } from "./audio";
 import { COLORS, FONT_BODY, FONT_TITLE, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
+import { textPx } from "./settings";
 import { portraitKey } from "./dialogue/portraits";
 import { iconKey, type IconName } from "./icons";
 
@@ -217,10 +218,10 @@ export class Tooltip {
   constructor(scene: Phaser.Scene) {
     const wrap = { wordWrap: { width: TIP_WIDTH - TIP_PAD * 2 } };
     this.frame = scene.add.graphics();
-    this.title = addTitleText(scene, TIP_PAD, TIP_PAD, "", { fontSize: "18px", color: TEXT_COLORS.goldBright, ...wrap });
-    this.meta = addBodyText(scene, TIP_PAD, 0, "", { fontSize: "14px", color: TEXT_COLORS.gold, ...wrap });
-    this.body = addBodyText(scene, TIP_PAD, 0, "", { fontSize: "15px", lineSpacing: 3, ...wrap });
-    this.warn = addBodyText(scene, TIP_PAD, 0, "", { fontSize: "15px", color: TEXT_COLORS.danger, ...wrap });
+    this.title = addTitleText(scene, TIP_PAD, TIP_PAD, "", { fontSize: textPx(18), color: TEXT_COLORS.goldBright, ...wrap });
+    this.meta = addBodyText(scene, TIP_PAD, 0, "", { fontSize: textPx(14), color: TEXT_COLORS.gold, ...wrap });
+    this.body = addBodyText(scene, TIP_PAD, 0, "", { fontSize: textPx(15), lineSpacing: 3, ...wrap });
+    this.warn = addBodyText(scene, TIP_PAD, 0, "", { fontSize: textPx(15), color: TEXT_COLORS.danger, ...wrap });
     this.root = scene.add.container(0, 0, [this.frame, this.title, this.meta, this.body, this.warn]).setVisible(false);
   }
 

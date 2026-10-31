@@ -1,4 +1,5 @@
 export * from "./rng";
+export * from "./difficulty";
 export * from "./grid";
 export * from "./statuses";
 export * from "./surfaces";

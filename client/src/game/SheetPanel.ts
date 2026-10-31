@@ -45,6 +45,7 @@ import {
 } from "@jogo/shared";
 import { describeAbility } from "./combat/CombatController";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
+import { isAction, keyLabel } from "./settings";
 import { abilityIcon, gearIcon, type IconName } from "./icons";
 import { classSpriteKey, ownSpriteKey, standingFrame } from "./mapSprites";
 import {
@@ -503,7 +504,7 @@ export class SheetPanel {
       this.detailName.setText("");
       this.detail.setY(this.detailName.y).setText("Não aprendeu nada que sirva numa luta.");
     }
-    this.setFooter("Setas: habilidade  ·  Enter: usar  ·  E: equipar  ·  I: mochila  ·  Esc: fechar");
+    this.setFooter(`Setas: habilidade  ·  Enter: usar  ·  ${keyLabel("interact")}: equipar  ·  ${keyLabel("bag")}: mochila  ·  Esc: fechar`);
   }
 
   /** `E`: a coluna da direita vira a dos três lugares do corpo. */
@@ -640,9 +641,9 @@ export class SheetPanel {
 
   private onKey(event: KeyboardEvent): void {
     if (this.scene.time.now - this.openedAt < INPUT_GRACE_MS) return;
-    if (event.code === "KeyC") this.host.onClose();
-    else if (event.code === "KeyI") this.host.onBag();
-    else if (event.code === "KeyE" && !this.targeting) this.listSlots();
+    if (isAction(event, "sheet")) this.host.onClose();
+    else if (isAction(event, "bag")) this.host.onBag();
+    else if (isAction(event, "interact") && !this.targeting) this.listSlots();
     else if (event.code === "Tab" && !this.targeting && this.host.members.length > 1) {
       event.preventDefault();
       this.index = (this.index + 1) % this.host.members.length;
