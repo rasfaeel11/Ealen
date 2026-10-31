@@ -25,7 +25,7 @@
       "id": "jarupa",
       "name": "Jarupã",
       "proposal": true,
-      "look": "Jarupã, a young man of twenty-three who escorts river barges with his sword: a big, heavy-boned farm boy gone to the road, thick neck and huge forearms, sunburnt nose and neck on a broad, round, cheerful young face, a wide gap-toothed grin, a blunt nose, short-cropped sandy-brown hair with a full hairline, and a patchy young beard that will not grow in. A fresh shallow cut on the forearm he has not bothered to wrap. A sweat-stained linen shirt with the sleeves rolled to the shoulder, a scarred oxblood leather jerkin left unlaced, a rope belt. His weapon is a long, heavy two-handed greatsword: a perfectly straight double-edged steel blade ending in a sharp point, a plain cross guard, a long grip, a few small nicks along the edge. He carries it flat across one shoulder, one hand on the grip. It is unmistakably a sword in every view, with nothing at the tip: no hook, no axe head, no hoe blade. Loud, cheerful, utterly sure of a bad idea. Accent color: oxblood red.",
+      "look": "Jarupã, a young man of twenty-three who escorts river barges with his sword: a big, heavy-boned farm boy gone to the road, thick neck and huge forearms, sunburnt nose and neck on a broad, round, cheerful young face, a wide gap-toothed grin, a blunt nose, short brown hair with a full hairline, and a patchy young beard that will not grow in. A fresh shallow cut on the forearm he has not bothered to wrap. A sweat-stained linen shirt with the sleeves rolled to the shoulder, a scarred brown leather jerkin left open, a rope belt. His weapon is a long, heavy two-handed greatsword: a perfectly straight double-edged steel blade ending in a sharp point, a plain cross guard, a long grip, a few small nicks along the edge. He carries it flat across one shoulder, one hand on the grip. It is unmistakably a sword in every view, with nothing at the tip: no hook, no axe head, no hoe blade. Loud, cheerful, utterly sure of a bad idea. Accent color: worn brown.",
       "portrait": true,
       "sheet": true,
       "splash": "Jarupã, big and young, charges first across a wet stone bridge in the rain, the long two-handed greatsword already swinging, grinning; soldiers of different noble houses, in bright mismatched tabards of crimson, green and white, each with the same blue band on the sleeve, brace at the far end.",
@@ -59,8 +59,7 @@
     {
       "id": "escrivao",
       "name": "Escrivão da Mesa",
-      "proposal": true,
-      "look": "An old clerk of a contracts office, a man of about seventy. Bald and spotted, thin white wisps over the ears, a long nose with a drip at the end, small wet watchful eyes. A grey goose quill behind one ear, black ink crusted under every nail. A long, threadbare black wool overcoat too big for him, matte cloth gone shiny only at the elbows and cuffs, buttoned to the neck with a small plain collar, no lapels, not leather; soft old shoes. Under one arm, always the same arm, he clutches exactly one heavy register book with iron corners: one book only, in every view, never two. Accent color: iron-gall ink black.",
+      "look": "An old clerk of a contracts office, a man of about seventy. Bald and spotted, thin white wisps over the ears, a long nose, small wet watchful eyes. A grey goose quill behind one ear, black ink crusted under every nail. A shiny, worn black overcoat too big for him. Under one arm he clutches exactly one heavy register book with metal corners. Accent color: iron-gall ink black.",
       "portrait": true,
       "sheet": true
     },

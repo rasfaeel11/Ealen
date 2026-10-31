@@ -74,8 +74,11 @@ no nome repetido é ignorado), recorta o fundo verde, converte e registra no jog
 O primeiro lote saiu genérico: os prompts pediam "retrato de RPG pintado" e uma descrição curta, e é isso que dá rosto
 de banco de imagem. Desde 2026-10-30 o manifesto pede óleo expressionista (empaste, pincelada à vista, claro-escuro de
 uma luz só, paleta de lodo, ferrugem, osso e ardósia com uma cor de cada um) e descreve cada pessoa pelo que a faz
-ela: o rosto assimétrico, o gesto, a roupa remendada, a cor. Do primeiro lote, do prompt antigo, ainda estão no jogo os
-retratos de Endyru, Jarupã e Xanduí e a folha de Endyru: devem ser refeitos, e as folhas a partir deles.
+ela: o rosto assimétrico, o gesto, a roupa remendada, a cor. Do primeiro lote, do prompt antigo, os retratos de Jarupã
+e Xanduí ficam: têm a idade e a arma certas, e as folhas saem deles. O retrato e a folha de Endyru ficam até os novos chegarem.
+
+Só entra na conta o que a tela usa: a ficha de design é referência e pode faltar pra quem não tem retrato, as splash de
+personagem e a dos baixios nenhuma tela mostra ainda, e quem é NPC fica parado no mapa, então só o quadro de pé importa.
 
 ## O cânone
 

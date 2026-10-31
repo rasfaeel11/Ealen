@@ -6,6 +6,7 @@ export const GENERATED_SHEETS: Record<string, MapSheetDef> = {
   "person:Endyru": { url: "sprites/endyru.png", frameWidth: 48, frameHeight: 48 },
   "person:Oryndu": { url: "sprites/oryndu.png", frameWidth: 48, frameHeight: 48 },
   "person:Conselheira": { url: "sprites/conselheira.png", frameWidth: 48, frameHeight: 48 },
+  "person:Escrivão da Mesa": { url: "sprites/escrivao.png", frameWidth: 48, frameHeight: 48 },
   "person:Mestre da guilda": { url: "sprites/mestre_da_guilda.png", frameWidth: 48, frameHeight: 48 },
   "person:Mercador": { url: "sprites/mercador.png", frameWidth: 48, frameHeight: 48 },
   "person:Família no cais": { url: "sprites/familia.png", frameWidth: 48, frameHeight: 48 },
