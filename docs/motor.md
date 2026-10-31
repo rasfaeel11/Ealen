@@ -206,7 +206,7 @@ Tudo que se conversa é um trecho (knot) de UMA história em Ink: `client/story/
 
 ### Cenas (`client/src/scenes/`)
 
-`Boot` (carrega sprites, mapas e cenário) → `Title` → `World`. Não há prólogo nem escolha de classe: o jogo novo (`client/src/game/newGame.ts`) já entra no mundo. `Saves` (a lista de espaços de save) e `Som` (os volumes) abrem a partir do título. No mundo: `E` fala, `Q` esgueira, `F` embosca (ou dá a investida, à vista), `Z` descansa (pausa curta ou acampamento, que abre o painel de gravar pra quem conjura), `M` abre o mapa do mundo, `C` abre a ficha, `I` a mochila, `J` o diário, `1`-`9` miram uma habilidade pra abrir uma luta, `Esc` pausa.
+`Boot` (carrega sprites, mapas e cenário) → `Title` → `World`. Não há prólogo nem escolha de classe: o jogo novo (`client/src/game/newGame.ts`) já entra no mundo. `Saves` (a lista de espaços de save) e `Som` (os volumes) abrem a partir do título. No mundo: `E` fala, `Q` esgueira, `F` embosca (ou dá a investida, à vista), `Z` descansa (pausa curta ou acampamento, que abre o painel de gravar pra quem conjura), `M` abre o mapa da região (`RegionMapPanel`), `C` abre a ficha, `I` a mochila, `J` o diário, `1`-`9` miram uma habilidade pra abrir uma luta, `Esc` pausa.
 
 A `WorldScene` é exploração e combate na mesma cena, com duas câmeras: a do mundo (zoom 3x, segue o personagem) e a da interface (sem zoom). Todo objeto criado passa por `addWorld` ou `addHud`. O combate em si mora em `client/src/game/combat/`: `CombatController` (entrada → comando, eventos → animação) e `CombatHud` (ordem de turnos, registro, barra de ações, resultado).
 

@@ -158,6 +158,31 @@ export class Scenery {
     return this.scene.textures.get(groundKey(this.areaId)).getSourceImage() as CanvasImageSource;
   }
 
+  /**
+   * A área inteira numa tela só, pro mapa da região: a água, o chão e o que está
+   * de pé, cada coisa onde está. Os telhados ficam: ninguém vê dentro das casas no mapa.
+   */
+  paintRegion(c: CanvasRenderingContext2D, width: number, height: number, flag: (name: string) => unknown): void {
+    const { scale, frames } = this.data;
+    c.imageSmoothingEnabled = true;
+    c.imageSmoothingQuality = "high";
+    // O chão pintado é furado onde há água: a cor de baixo é a do rio.
+    c.fillStyle = "#3a4d44";
+    c.fillRect(0, 0, width, height);
+    const ground = this.groundSource as HTMLImageElement;
+    c.drawImage(ground, 0, 0, width, height);
+    const per = width / (ground.width * scale);
+    const atlas = this.scene.textures.get(atlasKey(this.areaId)).getSourceImage() as HTMLImageElement;
+    const inOrder = [...this.data.stand].sort((a, b) => (a.depth ?? a.y) - (b.depth ?? b.y));
+    for (const entry of inOrder) {
+      if (entry.unless && flag(entry.unless)) continue;
+      const frame = frames[entry.frame];
+      const w = frame.w * scale;
+      const h = frame.h * scale;
+      c.drawImage(atlas, frame.x, frame.y, frame.w, frame.h, (entry.x - w / 2) * per, (entry.y - h) * per, w * per, h * per);
+    }
+  }
+
   /** O que a história tirou de cena (o barco que afundou) some; o que ela não tirou fica. */
   sync(flag: (name: string) => unknown): void {
     for (const { entry, image } of this.stands) {

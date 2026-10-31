@@ -299,7 +299,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 
 | # | Task | O que é |
 |---|---|---|
-| 48 | **O `M` mostra a região** | O `M` abre só o mapa da região em si, não o do mundo inteiro, que aqui não faz sentido. |
 | 52 | **Passagens sem destino** | Há regiões e passagens que não levam a lugar nenhum. Cada uma passa a levar a algum lugar ou deixa de parecer passagem. |
 | 53 | **Sem parede invisível** | Trocar parede invisível por bloqueio que se vê, no estilo de Pokémon: árvore ou pessoa barrando o caminho por algum motivo. |
 | 54 | **Voz ao abrir o diálogo** | Um barulho de pessoa quando a tela de diálogo abre, que se liga e desliga no menu. |
@@ -629,6 +628,8 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 - **O cenário pintado** (pedido pelo autor em 2026-10-31: "muito feio e genérico"). `art/pintar_cenario.py` lê os mapas e pinta as quatro áreas em 48 pixels por quadrado, a mesma densidade dos bonecos: rio de margem torta com a água correndo por baixo, casas de enxaimel com telhado íngreme, o Castelo da Volta da ficha (pedra embaixo, madeira em cima, o pano amarelo com a corrente), barcos virados no barro do cais, a torre do cais, hortas e terreiro em vez de gramado, lavoura e vinha na margem sul do Ymonhã, junco e bruma nos baixios, faia e abeto na floresta. Quem entra numa casa vê o telhado sumir, na luta também. Os mapas continuam em quadrados de 16 e mandam na regra; 31 quadrados novos barram o passo, pra ninguém atravessar a torre, a Mesa ou a forja (a conta de quem se alcança não mudou). Enxaimel, vinha e guindaste de roda vieram da decisão de "uma terra como a Alemanha", e ainda não estão nas fichas. Detalhe em `docs/arte.md`.
 
 - **49, 50 e 51. Bonecos maiores, o card inteiro e a tela limpa** (pedidos do autor em 2026-10-31). Os bonecos saem a 1,5 vez o quadrado, com o pé no quadrado dele, e a regra não muda. O "segundo card" era o de Oryndu, que por não lutar tinha o rosto cortado ao meio; agora todo cartão tem o rosto inteiro. As barras pretas vinham do formato da janela: a largura interna agora acompanha a janela, de 1280 a 1728 (`widthForWindow` em `config.ts`), e se a janela muda de formato a página recarrega e volta de onde estava (`viewport.ts`), esperando acabar a luta ou a conversa. Saíram da tela os números de vida, o nível no cartão (ficam ao passar o mouse), os quadrados vazios, os itens repetidos na barra, o nome da área em cima do minimapa e a dica de teclas. Na luta, saíram o retrato repetido na barra, a segunda fileira quando ela não faz falta, a legenda do Mover e o rótulo de encerrar (fica no cartão), e o registro mostra 5 linhas em vez de 12.
+
+- **48. O `M` mostra a região** (pedido do autor em 2026-10-31). O painel (`RegionMapPanel.ts`) pinta a área em que o grupo está, com a água, o chão e o que está de pé (`paintRegion` em `Scenery.ts`), e marca o grupo, a gente da área e as saídas abertas, com o nome do destino. Inimigo não aparece, como no minimapa. A ilustração do mundo não abre mais em lugar nenhum do jogo; só sobra como reserva da tela de título, até a do título existir.
 
 ## 9. Onde isto está no cânone
 

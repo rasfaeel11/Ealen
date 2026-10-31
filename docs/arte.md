@@ -11,8 +11,8 @@ Decisão do co-autor (2026-10-30, com a autorização do autor): **48x48**.
 - **Tiles**: não há. O cenário é pintado por `art/pintar_cenario.py` (abaixo). Os tilesets `placeholder` só servem pra abrir e editar os mapas no Tiled.
 - **Retratos da caixa de diálogo**: pintados, não pixel art, em 640x800 (o dobro do busto na tela, 320x400), fundo
   transparente, o busto encostado na borda de baixo. Escalam com suavização (`smooth`).
-- **Ilustrações** (título, splash de cada um do grupo, os baixios): 1280x720. **Mapa do mundo**: 1536x1024, aberto
-  com `M` (ou Mapa, na pausa).
+- **Ilustrações** (título, splash de cada um do grupo, os baixios): 1280x720. **Mapa do mundo**: 1536x1024, guardado
+  como reserva da tela de título: o `M` abre o mapa da região, pintado do cenário.
 - **Ícones de habilidade**: 32x32, quando houver (a barra de luta ainda é de texto).
 
 ## O cenário

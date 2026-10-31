@@ -115,7 +115,7 @@ import { drawArea, drawBrackets, drawReach, drawStop } from "../game/combat/mark
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { JournalPanel } from "../game/JournalPanel";
-import { WorldMapPanel } from "../game/WorldMapPanel";
+import { RegionMapPanel } from "../game/RegionMapPanel";
 import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
 import { SoundPanel } from "../game/SoundPanel";
@@ -700,7 +700,7 @@ export default class WorldScene extends Phaser.Scene {
       menu("sheet", "Ficha", "C", () => this.openSheet()),
       menu("bag", "Mochila", "I", () => this.openBag()),
       menu("book", "Diário", "J", () => this.openJournal()),
-      menu("map", "Mapa", "M", () => this.openWorldMap()),
+      menu("map", "Mapa", "M", () => this.openRegionMap()),
       menu("gear", "Pausa", "Esc", () => this.openPause()),
     ]);
   }
@@ -1271,7 +1271,7 @@ export default class WorldScene extends Phaser.Scene {
     if (this.pause || this.combat || this.leaving || this.talking) return;
     if (event.code === "Escape") this.openPause();
     else if (event.code === "KeyJ") this.openJournal();
-    else if (event.code === "KeyM") this.openWorldMap();
+    else if (event.code === "KeyM") this.openRegionMap();
     else if (event.code === "KeyC") this.openSheet();
     else if (event.code === "KeyI") this.openBag();
     // 1, 2, 3...: a habilidade de mesmo número na barra.
@@ -1498,11 +1498,24 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   /** `J`: o diário de pistas, por cima do mundo parado. */
-  /** `M`: o mapa do mundo, por cima do mundo parado. */
-  private openWorldMap(): void {
+  /** `M`: o mapa da região, por cima do mundo parado. */
+  private openRegionMap(): void {
     this.halt();
     sfx("uiOpen");
-    this.pause = new WorldMapPanel(this, (object) => this.addHud(object), () => this.closePause());
+    this.pause = new RegionMapPanel(
+      this,
+      (object) => this.addHud(object),
+      {
+        name: this.area.name,
+        map: this.map,
+        scenery: this.scenery,
+        flag: this.flag,
+        pos: this.pos,
+        people: [...this.npcActors.values()].map((actor) => actor.pos),
+        exits: this.exits,
+      },
+      () => this.closePause(),
+    );
   }
 
   private openJournal(): void {
@@ -1538,7 +1551,7 @@ export default class WorldScene extends Phaser.Scene {
         { label: "Ficha", onSelect: () => this.swapPause(() => this.openSheet()) },
         { label: "Mochila", onSelect: () => this.swapPause(() => this.openBag()) },
         { label: "Diário", onSelect: () => this.swapPause(() => this.openJournal()) },
-        { label: "Mapa", onSelect: () => this.swapPause(() => this.openWorldMap()) },
+        { label: "Mapa", onSelect: () => this.swapPause(() => this.openRegionMap()) },
         { label: "Som", onSelect: () => this.swapPause(() => this.openSound()) },
         // Ao fechar, a cena grava o jogo (SHUTDOWN chama persist).
         { label: "Salvar e sair pro título", onSelect: () => this.scene.start(SCENES.title) },
