@@ -1,10 +1,7 @@
 import * as Phaser from "phaser";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
 import { splashKey } from "./splashes";
-import { addBodyText, addPanel, addTitleText } from "./ui";
-
-/** Põe um objeto na cena de modo que só a câmera da interface o desenhe. */
-type AddHud = <T extends Phaser.GameObjects.GameObject>(object: T) => T;
+import { addBodyText, addCloseButton, addPanel, addTitleText, type AddHud } from "./ui";
 
 const MARGIN = 40;
 /** A tecla que abriu o mapa não pode ser a mesma que o fecha. */
@@ -26,12 +23,14 @@ export class WorldMapPanel {
     addHud: AddHud,
     private readonly onClose: () => void,
   ) {
-    this.objects.push(addHud(scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.bg, 0.85).setOrigin(0)));
+    this.objects.push(addHud(scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.bg, 0.85).setOrigin(0).setInteractive()));
     const key = splashKey("mundo");
     if (scene.textures.exists(key)) {
       const image = addHud(scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 10, key));
       image.setScale(Math.min((GAME_WIDTH - MARGIN * 2) / image.width, (GAME_HEIGHT - MARGIN * 2 - 30) / image.height));
-      this.objects.push(image);
+      const frame = addHud(scene.add.rectangle(image.x, image.y, image.displayWidth + 8, image.displayHeight + 8).setStrokeStyle(2, COLORS.gold, 1));
+      const corner = { x: image.x + image.displayWidth / 2 - 14, y: image.y - image.displayHeight / 2 + 14 };
+      this.objects.push(image, frame, addHud(addCloseButton(scene, corner.x, corner.y, () => this.onClose())));
     } else {
       this.objects.push(
         addHud(addPanel(scene, GAME_WIDTH / 2 - 300, GAME_HEIGHT / 2 - 90, 600, 180)),

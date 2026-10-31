@@ -1,13 +1,16 @@
 import * as Phaser from "phaser";
-import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { beginNewGame } from "../game/newGame";
 import { firstEmptySlot, lastPlayedSlot, readSlots } from "../game/save";
 import { GameSession } from "../game/session";
 import { playMusic } from "../game/audio";
 import { splashKey } from "../game/splashes";
 import { SoundPanel } from "../game/SoundPanel";
-import { Menu, addBodyText, addTitleText } from "../game/ui";
+import { Menu, addBodyText, addTitleText, drawDiamond } from "../game/ui";
 import type { SaveSlotsData } from "./SaveSlotsScene";
+
+/** A coluna do menu, à esquerda, sobre a ilustração. */
+const COLUMN_WIDTH = 500;
 
 export default class TitleScene extends Phaser.Scene {
   constructor() {
@@ -15,16 +18,33 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
-    const centerX = GAME_WIDTH / 2;
+    const centerX = COLUMN_WIDTH / 2;
 
-    // A ilustração do título, quando existe (ver art/manifest.json), escurecida embaixo do texto.
-    if (this.textures.exists(splashKey("titulo"))) {
-      this.add.image(centerX, GAME_HEIGHT / 2, splashKey("titulo")).setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
-      this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.45).setOrigin(0);
+    // A ilustração do título, quando existe (ver art/manifest.json), inteira na tela.
+    // Enquanto a do título não existe, fica a primeira que houver.
+    const art = ["titulo", "baixios", "oryndu", "mundo"].map(splashKey).find((key) => this.textures.exists(key));
+    if (art) {
+      const image = this.add.image(GAME_WIDTH / 2 + COLUMN_WIDTH / 3, GAME_HEIGHT / 2, art);
+      image.setScale(Math.max(GAME_WIDTH / image.width, GAME_HEIGHT / image.height));
     }
+    // A coluna escura de onde o menu sai, sumindo pra direita em cima da ilustração.
+    const column = this.add.graphics();
+    column.fillStyle(COLORS.panelDeep, 0.94);
+    column.fillRect(0, 0, COLUMN_WIDTH, GAME_HEIGHT);
+    column.fillGradientStyle(COLORS.panelDeep, COLORS.panelDeep, COLORS.panelDeep, COLORS.panelDeep, 0.94, 0, 0.94, 0);
+    column.fillRect(COLUMN_WIDTH, 0, 240, GAME_HEIGHT);
 
     // Título provisório (ver AGENTS.md).
-    addTitleText(this, centerX, 240, "TRÊS NA ESTRADA", { fontSize: "84px" }).setOrigin(0.5);
+    addTitleText(this, centerX, 150, "TRÊS NA\nESTRADA", {
+      fontSize: "62px",
+      color: TEXT_COLORS.goldBright,
+      align: "center",
+      lineSpacing: 6,
+    }).setOrigin(0.5);
+    const rule = this.add.graphics();
+    rule.lineStyle(1, COLORS.gold, 0.7);
+    rule.lineBetween(centerX - 150, 244, centerX + 150, 244);
+    drawDiamond(rule, centerX, 244, 5);
 
     const slots = readSlots();
     const lastSlot = lastPlayedSlot(slots);
@@ -35,11 +55,11 @@ export default class TitleScene extends Phaser.Scene {
     let sound: SoundPanel | undefined;
     const menu: Menu = new Menu(
       this,
-      centerX - 110,
-      420,
+      50,
+      300,
       [
         {
-          label: save ? `Continuar — ${save.character.name}, nível ${save.character.level}` : "Continuar",
+          label: save ? `Continuar  ·  ${save.character.name}, nível ${save.character.level}` : "Continuar",
           disabled: !save,
           onSelect: () => {
             this.registry.set(REGISTRY_SESSION, new GameSession(lastSlot!, save!));
@@ -78,7 +98,7 @@ export default class TitleScene extends Phaser.Scene {
           },
         },
       ],
-      { lineHeight: 44, fontSize: 28 },
+      { lineHeight: 50, fontSize: 24, width: COLUMN_WIDTH - 100 },
     );
 
     addBodyText(this, centerX, GAME_HEIGHT - 40, "Setas e Enter, ou o mouse.", {

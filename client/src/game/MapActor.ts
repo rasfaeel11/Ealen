@@ -81,6 +81,11 @@ export class MapActor {
     return [this.shadow, this.turnRing, this.ripple, this.sprite, this.drop, this.hpBar];
   }
 
+  /** A folha de sprite: é dela que sai o rosto de quem não tem retrato. */
+  get sheetKey(): string {
+    return this.spriteKey;
+  }
+
   get pos(): PixelPos {
     return { ...this.feet };
   }

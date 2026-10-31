@@ -4,15 +4,19 @@ import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSION, SCEN
 import { beginNewGame } from "../game/newGame";
 import { deleteSlot, exportSlot, pickSaveFile, readSlots, writeSlot, type SlotState } from "../game/save";
 import { GameSession } from "../game/session";
-import { Menu, addBodyText, addTitleText, type MenuOption } from "../game/ui";
+import { Menu, addBodyText, addHeading, addPanel, type MenuOption } from "../game/ui";
 
 export interface SaveSlotsData {
   /** Um aviso no alto da tela, pra quem chega aqui sem ter pedido (ex: jogo novo sem espaço livre). */
   notice?: string;
 }
 
-const MENU_X = 170;
-const MENU_Y = 250;
+const PANEL_X = 110;
+const PANEL_Y = 50;
+const PANEL_W = GAME_WIDTH - PANEL_X * 2;
+const PANEL_H = GAME_HEIGHT - PANEL_Y * 2;
+const MENU_X = PANEL_X + 40;
+const MENU_Y = 210;
 const DEFAULT_NOTICE = "Cada espaço guarda um jogo inteiro. O jogo grava sozinho no espaço em que se joga.";
 
 const PROBLEM_TEXT = {
@@ -40,15 +44,16 @@ export default class SaveSlotsScene extends Phaser.Scene {
 
   create(data: SaveSlotsData): void {
     const centerX = GAME_WIDTH / 2;
-    addTitleText(this, centerX, 100, "JOGOS SALVOS", { fontSize: "48px" }).setOrigin(0.5);
-    this.notice = addBodyText(this, centerX, 160, "", { fontSize: "18px", color: TEXT_COLORS.inkDim }).setOrigin(0.5);
-    this.heading = addBodyText(this, MENU_X, MENU_Y - 50, "", { fontSize: "22px", color: TEXT_COLORS.gold });
-    addBodyText(this, centerX, GAME_HEIGHT - 40, "Setas e Enter, ou o mouse. Esc volta.", {
+    addPanel(this, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
+    addHeading(this, centerX, PANEL_Y + 44, "JOGOS SALVOS", PANEL_W - 120, 32);
+    this.notice = addBodyText(this, centerX, PANEL_Y + 84, "", { fontSize: "17px", color: TEXT_COLORS.inkDim }).setOrigin(0.5);
+    this.heading = addBodyText(this, MENU_X + 18, MENU_Y - 42, "", { fontSize: "20px", color: TEXT_COLORS.gold, wordWrap: { width: PANEL_W - 110 } });
+    addBodyText(this, centerX, PANEL_Y + PANEL_H - 28, "Setas e Enter, ou o mouse. Esc volta.", {
       fontSize: "16px",
       color: TEXT_COLORS.inkDim,
     }).setOrigin(0.5);
 
-    this.menu = new Menu(this, MENU_X, MENU_Y, [], { lineHeight: 46, fontSize: 22, onCancel: () => this.back() });
+    this.menu = new Menu(this, MENU_X, MENU_Y, [], { lineHeight: 50, fontSize: 19, width: PANEL_W - 80, onCancel: () => this.back() });
     this.showSlots(data?.notice ?? DEFAULT_NOTICE);
   }
 

@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { SCENES } from "../game/config";
 import { preloadPortraits, registerPortraits } from "../game/dialogue/portraits";
+import { registerIcons } from "../game/icons";
 import { preloadMapSheets, registerMapSprites } from "../game/mapSprites";
 import { preloadSplashes } from "../game/splashes";
 import { preloadWorld, prepareWorldTextures } from "../game/worldAssets";
@@ -21,6 +22,7 @@ export default class BootScene extends Phaser.Scene {
   create(): void {
     registerMapSprites(this);
     registerPortraits(this);
+    registerIcons(this);
     prepareWorldTextures(this);
     this.scene.start(SCENES.title);
   }

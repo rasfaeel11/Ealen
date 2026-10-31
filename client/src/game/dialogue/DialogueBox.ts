@@ -9,24 +9,28 @@ import {
   type DialogueStep,
   type StoryEvent,
 } from "@jogo/shared";
-import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
-import { addBodyText, addPanel, addTitleText } from "../ui";
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
+import { addBodyText, addTitleText, drawDiamond } from "../ui";
 import { PORTRAIT_WIDTH, portraitFor } from "./portraits";
 
 /** Põe um objeto na cena de modo que só a câmera da interface o desenhe. */
 type AddHud = <T extends Phaser.GameObjects.GameObject>(object: T) => T;
 
-const BOX_WIDTH = 920;
-const BOX_HEIGHT = 250;
-const BOX_X = (GAME_WIDTH - BOX_WIDTH) / 2;
-const BOX_Y = GAME_HEIGHT - BOX_HEIGHT - 24;
-const PADDING = 28;
-const TEXT_Y = BOX_Y + 58;
-const CHOICE_LINE_HEIGHT = 30;
-/** O busto encosta na borda de baixo da tela, à esquerda, e entra na caixa por cima. */
-const PORTRAIT_X = 60;
+/** A faixa vai de lado a lado, e o texto fica numa coluna no meio dela. */
+const BAND_HEIGHT = 236;
+const BAND_TOP = GAME_HEIGHT - BAND_HEIGHT;
+/** O escuro sobe além da faixa, sumindo aos poucos, pra o mapa não terminar numa linha. */
+const FADE_HEIGHT = 70;
+const TEXT_X = 150;
+const TEXT_WIDTH = 980;
+const SPEAKER_Y = BAND_TOP + 18;
+const TEXT_Y = BAND_TOP + 56;
+const CHOICE_GAP = 4;
+const CHOICE_PAD = 6;
+/** O busto encosta na borda de baixo da tela, à esquerda, e entra na faixa por cima. */
+const PORTRAIT_X = 40;
 /** Com busto na tela, o texto começa depois dele. */
-const PORTRAIT_INDENT = PORTRAIT_X + PORTRAIT_WIDTH + 16 - (BOX_X + PADDING);
+const PORTRAIT_LEFT = PORTRAIT_X + PORTRAIT_WIDTH + 20;
 /** O busto que entra vem deste tanto à esquerda, aparecendo. */
 const PORTRAIT_SLIDE = 60;
 const PORTRAIT_IN_MS = 220;
@@ -106,25 +110,27 @@ export function isSilent(step: DialogueStep): boolean {
   return step.choices.length === 0 && !step.beats.some(isShown);
 }
 
-function choiceLabel(choice: DialogueChoice, position: number): string {
-  const check = choice.check
-    ? `[${ATTRIBUTE_LABEL(choice.check.attribute)} ${choice.check.difficulty} · ${Math.round(choice.check.chance * 100)}%] `
-    : "";
-  return `${position + 1}. ${check}${choice.text}`;
+/** Uma escolha na tela: a faixa, o número, o selo do teste (se tem) e o texto. */
+interface ChoiceRow {
+  band: Phaser.GameObjects.Rectangle;
+  number: Phaser.GameObjects.Text;
+  badge?: Phaser.GameObjects.Text;
+  text: Phaser.GameObjects.Text;
 }
 
 /**
- * A caixa de diálogo: quem fala em cima, a fala no meio, as escolhas
- * embaixo, e o busto de quem fala à esquerda (ver portraits.ts). Mostra uma coisa por vez — fala, narração ou acontecimento — e só
- * oferece as escolhas depois da última. Não sabe nada de história: recebe um
- * trecho pronto (`DialogueStep`) e devolve o que foi escolhido.
+ * A conversa: uma faixa escura no pé da tela, de lado a lado, com quem fala em
+ * cima, a fala no meio, as escolhas embaixo, e o busto de quem fala à esquerda
+ * (ver portraits.ts). Mostra uma coisa por vez — fala, narração ou
+ * acontecimento — e só oferece as escolhas depois da última. Não sabe nada de
+ * história: recebe um trecho pronto (`DialogueStep`) e devolve o que foi escolhido.
  *
  * Espaço, Enter ou clique passam a fala; 1-9, setas + Enter ou clique
  * escolhem.
  */
 export class DialogueBox {
-  private panel: Phaser.GameObjects.Graphics;
-  /** Quanto a caixa cresceu pra cima pra caber a fala mais as escolhas. */
+  private readonly panel: Phaser.GameObjects.Graphics;
+  /** Quanto a faixa cresceu pra cima pra caber a fala mais as escolhas. */
   private lift = 0;
   private readonly speaker: Phaser.GameObjects.Text;
   /** O busto de quem tem a vez, e o de quem acabou de sair dela (escurecendo e sumindo). */
@@ -132,11 +138,11 @@ export class DialogueBox {
   private leaving: Phaser.GameObjects.Image;
   /** De quem é o busto na tela (aceso ou escuro), ou null sem busto. */
   private portraitSpeaker: string | null = null;
-  /** Quanto o texto anda pra direita pra não ficar embaixo do busto. */
-  private indent = 0;
+  /** Onde o texto começa e até onde vai: anda pra direita pra não ficar embaixo do busto. */
+  private textLeft = TEXT_X;
   private readonly body: Phaser.GameObjects.Text;
   private readonly hint: Phaser.GameObjects.Text;
-  private choiceTexts: Phaser.GameObjects.Text[] = [];
+  private rows: ChoiceRow[] = [];
   private choices: DialogueChoice[] = [];
   private focused = 0;
   private readonly openedAt: number;
@@ -155,25 +161,26 @@ export class DialogueBox {
      */
     private readonly onEvent?: (event: StoryEvent) => (() => void) | void,
   ) {
-    this.panel = addHud(addPanel(scene, BOX_X, BOX_Y, BOX_WIDTH, BOX_HEIGHT));
+    this.panel = addHud(scene.add.graphics());
     const bust = () => addHud(scene.add.image(PORTRAIT_X, GAME_HEIGHT, "__DEFAULT").setOrigin(0, 1).setVisible(false));
     this.leaving = bust();
     this.portrait = bust();
-    this.speaker = addHud(addTitleText(scene, BOX_X + PADDING, BOX_Y + 18, "", { fontSize: "24px" }));
+    this.speaker = addHud(addTitleText(scene, TEXT_X, SPEAKER_Y, "", { fontSize: "22px", color: TEXT_COLORS.goldBright }));
     this.body = addHud(
-      addBodyText(scene, BOX_X + PADDING, TEXT_Y, "", {
-        fontSize: "22px",
+      addBodyText(scene, TEXT_X, TEXT_Y, "", {
+        fontSize: "21px",
         lineSpacing: 6,
-        wordWrap: { width: BOX_WIDTH - PADDING * 2 },
+        wordWrap: { width: TEXT_WIDTH },
       }),
     );
     this.hint = addHud(
-      addBodyText(scene, BOX_X + BOX_WIDTH - PADDING, BOX_Y + BOX_HEIGHT - 34, "Espaço ▸", {
-        fontSize: "16px",
-        color: TEXT_COLORS.inkDim,
+      addBodyText(scene, GAME_WIDTH - 40, GAME_HEIGHT - 30, "Espaço ▸", {
+        fontSize: "15px",
+        color: TEXT_COLORS.gold,
       }).setOrigin(1, 0),
     );
     this.openedAt = scene.time.now;
+    this.drawBand();
 
     scene.input.keyboard?.on("keydown", this.onKey, this);
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
@@ -211,6 +218,20 @@ export class DialogueBox {
     for (const object of [this.panel, this.portrait, this.leaving, this.speaker, this.body, this.hint]) object.destroy();
   }
 
+  /** A faixa: escuro cheio embaixo, sumindo pra cima, com um fio dourado onde o texto começa. */
+  private drawBand(): void {
+    const top = BAND_TOP - this.lift;
+    const g = this.panel;
+    g.clear();
+    g.fillGradientStyle(COLORS.panelDeep, COLORS.panelDeep, COLORS.panelDeep, COLORS.panelDeep, 0, 0, 0.97, 0.97);
+    g.fillRect(0, top - FADE_HEIGHT, GAME_WIDTH, FADE_HEIGHT);
+    g.fillStyle(COLORS.panelDeep, 0.97);
+    g.fillRect(0, top, GAME_WIDTH, GAME_HEIGHT - top);
+    g.lineStyle(1, COLORS.gold, 0.5);
+    g.lineBetween(0, top, GAME_WIDTH, top);
+    drawDiamond(g, GAME_WIDTH / 2, top, 4);
+  }
+
   private showBeat(beat: DialogueBeat): void {
     this.hint.setVisible(true);
     if (beat.kind === "line") {
@@ -221,6 +242,7 @@ export class DialogueBox {
         .setText(beat.text)
         .setFontStyle(beat.speaker ? "normal" : "italic")
         .setColor(beat.speaker ? TEXT_COLORS.ink : TEXT_COLORS.inkDim);
+      this.fitBody();
       return;
     }
     const { text, color } = describeEvent(beat.event) ?? { text: "", color: TEXT_COLORS.ink };
@@ -228,6 +250,13 @@ export class DialogueBox {
     this.showPortrait(null);
     this.speaker.setText("");
     this.body.setText(text).setFontStyle("normal").setColor(color);
+    this.fitBody();
+  }
+
+  /** Fala comprida: a faixa cresce o que faltar pra caber. */
+  private fitBody(): void {
+    const needed = TEXT_Y - BAND_TOP + this.body.height + 44;
+    this.setLift(Math.max(0, needed - BAND_HEIGHT));
   }
 
   /** As escolhas entram embaixo da última fala — ou no lugar dela, se o trecho não trouxe fala nenhuma. */
@@ -241,21 +270,51 @@ export class DialogueBox {
     this.choices = choices;
     this.focused = 0;
 
-    // Fala comprida com muitas escolhas não cabe na caixa: ela cresce pra cima o que faltar.
-    const text = alone ? 0 : this.body.height + 14;
-    const needed = TEXT_Y - BOX_Y + text + choices.length * CHOICE_LINE_HEIGHT + 20;
-    this.setLift(Math.max(0, needed - BOX_HEIGHT));
-
-    const top = Math.max(TEXT_Y - this.lift + text, BOX_Y + BOX_HEIGHT - 20 - choices.length * CHOICE_LINE_HEIGHT);
-    this.choiceTexts = choices.map((choice, position) => {
+    const width = GAME_WIDTH - this.textLeft - 40;
+    this.rows = choices.map((choice, position) => {
+      const number = this.addHud(addTitleText(this.scene, 0, 0, `${position + 1}`, { fontSize: "15px", color: TEXT_COLORS.gold }).setOrigin(0.5));
+      const badge = choice.check
+        ? this.addHud(
+            addBodyText(
+              this.scene,
+              0,
+              0,
+              `${ATTRIBUTE_LABEL(choice.check.attribute)} ${choice.check.difficulty} · ${Math.round(choice.check.chance * 100)}%`,
+              { fontSize: "14px", color: TEXT_COLORS.goldBright, backgroundColor: "rgba(201, 161, 90, 0.2)", padding: { x: 6, y: 2 } },
+            ).setOrigin(0, 0),
+          )
+        : undefined;
+      const indent = 30 + (badge ? badge.width + 8 : 0);
       const text = this.addHud(
-        addBodyText(this.scene, BOX_X + PADDING + this.indent, top + position * CHOICE_LINE_HEIGHT, "", { fontSize: "20px" }),
+        addBodyText(this.scene, 0, 0, choice.text, { fontSize: "19px", lineSpacing: 2, wordWrap: { width: width - indent - 10 } }),
       );
-      text.setInteractive({ useHandCursor: true });
-      text.on(Phaser.Input.Events.POINTER_OVER, () => this.focus(position));
-      text.on(Phaser.Input.Events.POINTER_DOWN, () => this.pick(position));
-      return text;
+      const band = this.addHud(this.scene.add.rectangle(0, 0, width, text.height + CHOICE_PAD * 2, COLORS.gold, 0).setOrigin(0));
+      // A faixa fica atrás do que vai escrito nela.
+      for (const object of [number, ...(badge ? [badge] : []), text]) this.scene.children.moveAbove(object as never, band as never);
+      band.setInteractive({ useHandCursor: true });
+      band.on(Phaser.Input.Events.POINTER_OVER, () => this.focus(position));
+      band.on(Phaser.Input.Events.POINTER_DOWN, () => this.pick(position));
+      return { band, number, badge, text };
     });
+
+    // Fala comprida com muitas escolhas não cabe na faixa: ela cresce pra cima o que faltar.
+    const listHeight = this.rows.reduce((sum, row) => sum + row.band.height + CHOICE_GAP, 0);
+    const speech = alone ? 0 : this.body.height + 14;
+    const needed = TEXT_Y - BAND_TOP + speech + listHeight + 18;
+    this.setLift(Math.max(0, needed - BAND_HEIGHT));
+
+    let y = TEXT_Y - this.lift + speech;
+    for (const row of this.rows) {
+      row.band.setPosition(this.textLeft, y);
+      row.number.setPosition(this.textLeft + 15, y + CHOICE_PAD + 12);
+      let x = this.textLeft + 30;
+      if (row.badge) {
+        row.badge.setPosition(x, y + CHOICE_PAD + 2);
+        x += row.badge.width + 8;
+      }
+      row.text.setPosition(x, y + CHOICE_PAD);
+      y += row.band.height + CHOICE_GAP;
+    }
     this.focus(0);
   }
 
@@ -294,9 +353,9 @@ export class DialogueBox {
       this.scene.tweens.add({ targets: this.portrait, x: PORTRAIT_X, alpha: 1, duration: PORTRAIT_IN_MS, ease: "Cubic.Out" });
     }
 
-    this.indent = shown ? PORTRAIT_INDENT : 0;
-    this.speaker.setX(BOX_X + PADDING + this.indent);
-    this.body.setX(BOX_X + PADDING + this.indent).setWordWrapWidth(BOX_WIDTH - PADDING * 2 - this.indent);
+    this.textLeft = shown ? PORTRAIT_LEFT : TEXT_X;
+    this.speaker.setX(this.textLeft);
+    this.body.setX(this.textLeft).setWordWrapWidth(GAME_WIDTH - this.textLeft - (shown ? 60 : TEXT_X));
   }
 
   /** O busto na tela passa pra quem sai: escurece e some, e o lugar fica livre pro próximo. */
@@ -324,29 +383,33 @@ export class DialogueBox {
   }
 
   private clearChoices(): void {
-    for (const text of this.choiceTexts) text.destroy();
-    this.choiceTexts = [];
+    for (const { band, number, badge, text } of this.rows) {
+      band.destroy();
+      number.destroy();
+      badge?.destroy();
+      text.destroy();
+    }
+    this.rows = [];
     this.choices = [];
     this.setLift(0);
   }
 
-  /** Estica a caixa `lift` pixels pra cima, levando junto o nome e a fala. */
+  /** Estica a faixa `lift` pixels pra cima, levando junto o nome e a fala. */
   private setLift(lift: number): void {
     if (lift === this.lift) return;
     this.lift = lift;
-    this.panel.destroy();
-    this.panel = this.addHud(addPanel(this.scene, BOX_X, BOX_Y - lift, BOX_WIDTH, BOX_HEIGHT + lift));
-    // O painel novo nasce por cima do texto que já estava lá.
-    this.panel.setDepth(this.speaker.depth - 1);
-    this.speaker.setY(BOX_Y + 18 - lift);
+    this.drawBand();
+    this.speaker.setY(SPEAKER_Y - lift);
     this.body.setY(TEXT_Y - lift);
   }
 
   private focus(position: number): void {
     this.focused = position;
-    this.choiceTexts.forEach((text, i) => {
+    this.rows.forEach(({ band, number, text }, i) => {
       const focused = i === position;
-      text.setText(`${focused ? "▸ " : "   "}${choiceLabel(this.choices[i], i)}`);
+      band.setFillStyle(COLORS.gold, focused ? 0.16 : 0);
+      band.setStrokeStyle(1, COLORS.gold, focused ? 0.5 : 0);
+      number.setColor(focused ? TEXT_COLORS.goldBright : TEXT_COLORS.gold);
       text.setColor(focused ? TEXT_COLORS.goldBright : TEXT_COLORS.ink);
     });
   }

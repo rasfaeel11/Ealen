@@ -1,10 +1,7 @@
 import * as Phaser from "phaser";
 import type { JournalEntry } from "@jogo/shared";
-import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
-import { addBodyText, addPanel, addTitleText } from "./ui";
-
-/** Põe um objeto na cena de modo que só a câmera da interface o desenhe. */
-type AddHud = <T extends Phaser.GameObjects.GameObject>(object: T) => T;
+import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
+import { addBodyText, addCloseButton, addHeading, addModalDim, addPanel, type AddHud } from "./ui";
 
 const WIDTH = 820;
 const HEIGHT = 560;
@@ -49,10 +46,12 @@ export class JournalPanel {
     private readonly entries: readonly JournalEntry[],
     private readonly onClose: () => void,
   ) {
+    this.objects.push(addHud(addModalDim(scene)), addHud(addPanel(scene, X, Y, WIDTH, HEIGHT)));
+    const heading = addHeading(scene, GAME_WIDTH / 2, Y + 46, "DIÁRIO", WIDTH - 120, 28);
     this.objects.push(
-      addHud(scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.bg, 0.6).setOrigin(0)),
-      addHud(addPanel(scene, X, Y, WIDTH, HEIGHT)),
-      addHud(addTitleText(scene, GAME_WIDTH / 2, Y + 48, "DIÁRIO", { fontSize: "32px" }).setOrigin(0.5)),
+      addHud(heading.rule),
+      addHud(heading.label),
+      addHud(addCloseButton(scene, X + WIDTH - 28, Y + 28, () => this.onClose())),
     );
     this.footer = addHud(
       addBodyText(scene, GAME_WIDTH / 2, Y + HEIGHT - 36, "", { fontSize: "16px", color: TEXT_COLORS.inkDim }).setOrigin(0.5),

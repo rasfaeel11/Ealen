@@ -55,7 +55,11 @@ import {
 } from "@jogo/shared";
 import { sfx } from "../audio";
 import { COLORS, TEXT_COLORS } from "../config";
+import type { PartyEntry } from "../hud/PartyColumn";
+import { abilityIcon, itemIcon } from "../icons";
 import type { MapActor } from "../MapActor";
+import { standingFrame } from "../mapSprites";
+import { portraitRef, type FaceRef } from "../ui";
 import { CombatHud, type ActionButton, type AddHud } from "./CombatHud";
 import { drawArea, drawBrackets, drawReach, drawStop, drawTrail } from "./marks";
 
@@ -76,8 +80,25 @@ export interface CombatHost {
   onRound?: (round: number) => void;
   /** Os objetivos da luta: o texto de cada deixa que tem um (`goal` no mapa), pelo id dela. */
   goals?: { cue: string; text: string }[];
-  /** A altura da tela em que a caixa dos objetivos começa, quando o alto dela já tem dono (o relógio). */
-  goalsTop?: number;
+  /** A altura da tela em que o registro começa: embaixo do relógio, quando há relógio. */
+  logTop: number;
+}
+
+/** As condições de uma unidade como a coluna do grupo as mostra. O que atrapalha vem em vermelho. */
+function statusChips(unit: Unit): NonNullable<PartyEntry["statuses"]> {
+  return unit.statuses.map((status) => {
+    const note = describeStatus(status);
+    const bad =
+      status.skipsTurn === true ||
+      status.harm !== undefined ||
+      status.hunger === true ||
+      status.noHeal === true ||
+      (status.toHit ?? 0) < 0 ||
+      (status.speed ?? 0) < 0 ||
+      (status.damageTaken ?? 0) > 0 ||
+      Object.values(status.attributeBonus ?? {}).some((points) => (points ?? 0) < 0);
+    return { name: status.name, bad, note: note || undefined };
+  });
 }
 
 /** Entre o chão e tudo que fica de pé: as marcas no chão passam por baixo de árvores e personagens. */
@@ -230,6 +251,8 @@ export class CombatController {
   /** O que cada inimigo anotado pretende fazer na vez dele: onde parar e o que vai atingir. Some quando a vez dele passa. */
   private readonly foreseen = new Map<string, { tile: Pos; areas: { target: Pos; radius: number }[] }>();
   private readonly foresight: Phaser.GameObjects.Graphics;
+  /** A marca no chão de quem está sob o mouse, na ordem dos turnos. */
+  private readonly hoverMark: Phaser.GameObjects.Graphics;
   /** Os objetivos ainda em aberto: as deixas com `goal` que não dispararam. */
   private goals: { id: string; text: string; when: CueWhen }[] = [];
   /** A rodada e os objetos usados como os eventos os mostraram até agora — é o que os objetivos contam. */
@@ -238,6 +261,8 @@ export class CombatController {
   /** Os quadrados clicáveis no modo atual. Não se desenham todos: ver `drawOptions`. */
   private options: Pos[] = [];
   private hover: Pos | null = null;
+  /** Onde o cursor está na TELA: é onde a etiqueta dele aparece. */
+  private chipAt?: { x: number; y: number };
 
   constructor(
     private readonly host: CombatHost,
@@ -246,13 +271,15 @@ export class CombatController {
     private readonly onEnd: (winner: TeamId | undefined) => void,
   ) {
     const { scene } = host;
-    this.hud = new CombatHud(scene, host.addHud, host.goalsTop);
+    this.hud = new CombatHud(scene, host.addHud, host.logTop, (unit) => this.faceOf(unit));
+    this.hud.onHoverUnit = (unit) => this.markUnit(unit);
     this.ground = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH - 1));
     scene.tweens.add({ targets: this.ground, alpha: { from: 1, to: 0.6 }, duration: 650, yoyo: true, repeat: -1 });
     this.overlay = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH));
     this.cursor = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 1));
     this.intent = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 2));
     this.foresight = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 2));
+    this.hoverMark = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH + 3));
 
     // Quem não tem vida pra perder não mostra barra de vida.
     for (const unit of encounter.units) {
@@ -301,6 +328,7 @@ export class CombatController {
     this.cursor.destroy();
     this.intent.destroy();
     this.foresight.destroy();
+    this.hoverMark.destroy();
     this.hud.destroy();
   }
 
@@ -341,7 +369,7 @@ export class CombatController {
     }
 
     if (isOver(encounter)) {
-      this.hud.setTurnOrder(encounter);
+      this.refreshRoster();
       this.onEnd(encounter.winner);
       return;
     }
@@ -401,7 +429,7 @@ export class CombatController {
   private onKey(event: KeyboardEvent): void {
     if (this.busy) return;
 
-    if (event.code.startsWith("Digit")) this.hud.press(Number(event.code.slice(5)) - 1);
+    if (event.code.startsWith("Digit")) this.hud.press((Number(event.code.slice(5)) + 9) % 10);
     else if (event.code === "Space" || event.code === "Enter") this.endTurn();
     else if (event.code === "Escape") this.select(null);
   }
@@ -413,11 +441,108 @@ export class CombatController {
 
   private onPointerMove(pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]): void {
     // Em cima de um botão a explicação é dele, não do quadrado que está embaixo.
-    if (over.length > 0) return;
+    if (over.length > 0) {
+      this.hud.setChip("");
+      return;
+    }
     const tile = this.tileUnder(pointer);
-    if (this.hover && samePos(this.hover, tile)) return;
+    this.chipAt = { x: pointer.x, y: pointer.y };
+    if (this.hover && samePos(this.hover, tile)) {
+      this.drawChip();
+      return;
+    }
     this.hover = tile;
     this.drawCursor();
+  }
+
+  /** Junto do cursor: a chance de acertar quem está na mira, ou quem é quem está ali. */
+  private drawChip(): void {
+    const unit = activeUnit(this.encounter);
+    const under = !this.busy && this.hover ? unitAt(this.encounter, this.hover) : undefined;
+    if (!unit || !under || !this.chipAt) {
+      this.hud.setChip("");
+      return;
+    }
+    const aiming = this.selected;
+    const inRange = this.options.some((option) => samePos(option, this.hover!));
+    if (aiming?.attack && aiming.radius === undefined && inRange && !under.invulnerable) {
+      const odds = attackOdds(this.encounter, unit, aiming, under);
+      this.hud.setChip(`${Math.round((odds.hit + odds.crit) * 100)}%  ·  ${under.name}`, this.chipAt.x, this.chipAt.y);
+      return;
+    }
+    const life = under.invulnerable ? "" : `  ${under.currentHp}/${under.maxHp}`;
+    this.hud.setChip(`${under.name}${life}`, this.chipAt.x, this.chipAt.y);
+  }
+
+  /** Marca no mapa quem está sob o mouse, na ordem dos turnos. */
+  private markUnit(unit: Unit | null): void {
+    this.hoverMark.clear();
+    if (unit) drawBrackets(this.hoverMark, unit.pos, this.host.map.tileSize, COLORS.goldBright, 1);
+  }
+
+  /** O rosto de quem luta: o retrato pelo nome; sem retrato, o quadro parado do boneco no mapa. */
+  private faceOf(unit: Unit): FaceRef {
+    const portrait = portraitRef(this.host.scene, unit.name);
+    if (portrait) return portrait;
+    const sheet = this.actor(unit.id)?.sheetKey;
+    return sheet ? { key: sheet, frame: standingFrame("down") } : { key: "__DEFAULT" };
+  }
+
+  /** O grupo e a ordem dos turnos, como a luta os deixou agora. */
+  private refreshRoster(): void {
+    const { encounter } = this;
+    const active = activeUnit(encounter);
+    this.hud.setTurnOrder(encounter);
+    const entries: PartyEntry[] = encounter.units
+      .filter((unit) => unit.team === "party")
+      .map((unit) => ({
+        id: unit.id,
+        name: unit.name,
+        face: this.faceOf(unit),
+        level: unit.level,
+        hp: { now: unit.currentHp, max: unit.maxHp },
+        breath: { now: unit.breath, max: unit.maxBreath },
+        mana: unit.mana !== undefined ? { now: unit.mana, max: unit.maxMana ?? unit.mana } : undefined,
+        active: unit === active,
+        down: !isAlive(unit),
+        statuses: statusChips(unit),
+        calling: unit.style ? styleLabel(unit) : undefined,
+      }));
+    // Quem acompanha sem lutar fica no fim: mostra se o apoio dele ainda vale nesta rodada.
+    for (const supporter of encounter.supporters) {
+      entries.push({
+        id: supporter.id,
+        name: supporter.name,
+        face: portraitRef(this.host.scene, supporter.name) ?? { key: "__DEFAULT" },
+        support: { name: SUPPORTS[supporter.support].name, ready: supporter.ready },
+      });
+    }
+    this.hud.setParty(entries);
+  }
+
+  /** O que a barra mostra de `unit`. Sem `withTurn`, a vez é do outro lado e os recursos do turno não são da conta de ninguém. */
+  private resourcesOf(unit: Unit, withTurn: boolean) {
+    return {
+      name: unit.name,
+      style: unit.style ? styleLabel(unit) : undefined,
+      face: this.faceOf(unit),
+      hp: unit.currentHp,
+      maxHp: unit.maxHp,
+      turn: withTurn
+        ? {
+            movement: unit.turn.movement,
+            speed: unit.speed,
+            action: unit.turn.action,
+            bonus: unit.turn.bonus,
+            breath: unit.breath,
+            maxBreath: unit.maxBreath,
+            mana:
+              unit.mana !== undefined
+                ? { now: unit.mana, max: unit.maxMana ?? unit.mana, spent: unit.manaSpent ?? 0, limit: unit.manaLimit ?? 0 }
+                : undefined,
+          }
+        : undefined,
+    };
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]): void {
@@ -448,11 +573,13 @@ export class CombatController {
   // ------------------------------------------------------------- interface
 
   private refreshHud(): void {
-    this.hud.setTurnOrder(this.encounter);
+    this.refreshRoster();
     const unit = activeUnit(this.encounter);
     if (!unit || unit.team !== "party" || this.busy) {
-      this.hud.setActions([], unit ? `Vez de ${unit.name}` : "");
+      // Uma jogada se reproduzindo ainda é de quem jogou: a barra continua com a cara dele, sem o que clicar.
+      this.hud.setActions([], unit ? this.resourcesOf(unit, unit.team === "party") : null);
       this.hud.setDetail("");
+      this.hud.setChip("");
     }
   }
 
@@ -460,21 +587,19 @@ export class CombatController {
   private refresh(): void {
     const { encounter } = this;
     const unit = activeUnit(encounter)!;
-    this.hud.setTurnOrder(encounter);
+    this.refreshRoster();
 
     const canPay = (ability: Ability) => readiness(unit, ability) === "ready";
-    // O que ela custa, à vista no botão: a ação, o Fôlego e, em recarga, em quantos turnos volta. O golpe que o voto
-    // da Ipojy segura diz por que está apagado.
+    // O que ela custa, no cartão do quadrado: a ação, o Fôlego e, em recarga, em quantos turnos volta.
     const price = (ability: Ability) => {
       const wait = cooldownLeft(unit, ability);
       return [
         ability.cost === "action" ? "Ação" : "Bônus",
-        ...(ability.breath ? [`${ability.breath} fôlego`] : []),
-        ...(ability.mana ? [`${ability.mana} mana`] : []),
-        ...(isRecited(ability) ? ["recita"] : []),
+        ...(ability.breath ? [`${ability.breath} de fôlego`] : []),
+        ...(ability.mana ? [`${ability.mana} de mana`] : []),
+        ...(isRecited(ability) ? ["recitada"] : []),
         ...(wait > 0 ? [`volta em ${wait}`] : []),
-        ...(isBlow(ability) && vowForbids(encounter, unit) ? ["o voto: não bate primeiro"] : []),
-      ].join(" · ");
+      ].join("  ·  ");
     };
     // Por que o botão de uma habilidade está apagado: o voto primeiro, depois o que falta pagar, depois o alvo.
     const why = (ability: Ability): string | undefined => {
@@ -505,63 +630,72 @@ export class CombatController {
     const buttons: ActionButton[] = [
       {
         label: "Mover",
+        icon: "move",
+        tag: `${unit.turn.movement} de ${unit.speed} de passo`,
+        body: "Aponte pra onde ir: a linha mostra o caminho, até onde o movimento deste turno alcança.",
         enabled: unit.turn.movement > 0,
         why: "O movimento deste turno acabou.",
         selected: this.selected === null && !this.aim,
         onClick: () => this.select(null),
       },
-      ...unit.abilities.map((ability) => ({
-        label: ability.name,
-        tag: price(ability),
-        enabled: canPay(ability) && abilityTargets(encounter, unit, ability).length > 0,
-        why: why(ability),
-        selected: this.selected?.id === ability.id,
-        onClick: () => this.select(ability),
-      })),
+      ...unit.abilities.map(
+        (ability): ActionButton => ({
+          label: ability.name,
+          icon: abilityIcon(ability),
+          tag: price(ability),
+          cost: ability.cost === "action" ? "action" : "bonus",
+          wait: cooldownLeft(unit, ability) || undefined,
+          body: `${ability.flavor}\n${describeAbility(ability)}`,
+          enabled: canPay(ability) && abilityTargets(encounter, unit, ability).length > 0,
+          why: why(ability),
+          selected: this.selected?.id === ability.id,
+          onClick: () => this.select(ability),
+        }),
+      ),
       ...(usable.length > 0
         ? [
             {
               label: `${propTemplate(inReach[0] ?? usable[0]).interact}: ${propTemplate(inReach[0] ?? usable[0]).name}`,
+              icon: "use",
               tag: "Ação",
+              cost: "action",
               enabled: unit.turn.action && inReach.length > 0,
               why: unit.turn.action ? "Chegue perto pra mexer." : "A ação deste turno já foi gasta.",
               selected: this.aim?.kind === "interact",
               onClick: () => this.chooseInteract(),
-            },
+            } satisfies ActionButton,
           ]
         : []),
       // Quem acompanha sem lutar: o apoio de cada um, uma vez por rodada, sem gastar nada de quem chama.
-      ...encounter.supporters.map((supporter) => ({
-        label: `${SUPPORTS[supporter.support].name} (${supporter.name})`,
-        tag: "1 por rodada",
-        enabled: supportTargets(encounter, unit, supporter).length > 0,
-        why: `${supporter.name} não tem o que fazer agora (é uma vez por rodada).`,
-        selected: this.aim?.kind === "support" && this.aim.supporter.id === supporter.id,
-        onClick: () => this.chooseSupport(supporter),
-      })),
-      ...(unit.inventory?.slots ?? []).map((slot) => ({
-        label: `${slot.item.name} ×${slot.quantity}`,
-        tag: "Bônus",
-        enabled: unit.turn.bonus,
-        why: "A ação bônus deste turno já foi gasta.",
-        onClick: () => void this.issue({ type: "useItem", unitId: unit.id, itemId: slot.item.id }),
-      })),
-      { label: "Encerrar turno (Espaço)", enabled: true, onClick: () => this.endTurn() },
+      ...encounter.supporters.map(
+        (supporter): ActionButton => ({
+          label: `${SUPPORTS[supporter.support].name} (${supporter.name})`,
+          icon: "wave",
+          tag: "Uma vez por rodada  ·  não gasta a sua ação",
+          cost: "free",
+          body: SUPPORTS[supporter.support].flavor,
+          enabled: supportTargets(encounter, unit, supporter).length > 0,
+          why: `${supporter.name} não tem o que fazer agora (é uma vez por rodada).`,
+          selected: this.aim?.kind === "support" && this.aim.supporter.id === supporter.id,
+          onClick: () => this.chooseSupport(supporter),
+        }),
+      ),
+      ...(unit.inventory?.slots ?? []).map(
+        (slot): ActionButton => ({
+          label: slot.item.name,
+          icon: itemIcon(slot.item.id),
+          tag: "Bônus",
+          cost: "bonus",
+          count: slot.quantity,
+          body: slot.item.description,
+          enabled: unit.turn.bonus,
+          why: "A ação bônus deste turno já foi gasta.",
+          onClick: () => void this.issue({ type: "useItem", unitId: unit.id, itemId: slot.item.id }),
+        }),
+      ),
     ];
 
-    const dot = (available: boolean) => (available ? "●" : "○");
-    this.hud.setActions(
-      buttons,
-      [
-        `${unit.name}${unit.style ? ` (${styleLabel(unit)})` : ""}`,
-        `Movimento ${unit.turn.movement}/${unit.speed}`,
-        `Ação ${dot(unit.turn.action)}`,
-        `Bônus ${dot(unit.turn.bonus)}`,
-        `Fôlego ${unit.breath}/${unit.maxBreath}`,
-        // Quem conjura vê a mana e quanto do limite do turno já gastou: passar dele cobra do corpo.
-        ...(unit.mana !== undefined ? [`Mana ${unit.mana}/${unit.maxMana}  (turno ${unit.manaSpent ?? 0}/${unit.manaLimit})`] : []),
-      ].join("   ·   "),
-    );
+    this.hud.setActions(buttons, this.resourcesOf(unit, true), () => this.endTurn());
     if (this.aim?.kind === "interact") this.options = inReach.map((prop) => prop.pos);
     else if (this.aim?.kind === "support") {
       this.options = supportTargets(encounter, unit, this.aim.supporter).map((target) => target.pos);
@@ -684,6 +818,7 @@ export class CombatController {
     const unit = activeUnit(this.encounter)!;
     const hover = this.hover && this.options.some((option) => samePos(option, this.hover!)) ? this.hover : null;
     this.hud.setDetail(this.detailFor(unit, hover));
+    this.drawChip();
     if (!hover) return;
 
     const size = this.host.map.tileSize;
@@ -834,7 +969,7 @@ export class CombatController {
         sfx("uiOpen");
         this.floatOver(event.unit, "Recitando...", TEXT_COLORS.goldBright, -30, 20);
         this.hud.log(`${this.unit(event.unit).name} começa a recitar ${event.name}.`);
-        this.hud.setTurnOrder(this.encounter);
+        this.refreshRoster();
         await this.wait(200);
         return;
       }
@@ -844,7 +979,7 @@ export class CombatController {
         const why = { hit: "o golpe quebrou o texto", lost: "o alvo sumiu", skipped: "perdeu a vez", spent: "faltou com que pagar" }[event.reason];
         this.floatOver(event.unit, "Recitação perdida", TEXT_COLORS.inkDim, -30, 20);
         this.hud.log(`${this.unit(event.unit).name} perde ${event.name}: ${why}.`);
-        this.hud.setTurnOrder(this.encounter);
+        this.refreshRoster();
         await this.wait(220);
         return;
       }
@@ -988,7 +1123,7 @@ export class CombatController {
         actor?.setHp(event.remainingHp, unit.maxHp);
         this.floatOver(event.target, `-${event.amount}`, TEXT_COLORS.danger, 0, 24 + Math.round(18 * weight) + (critical ? 8 : 0));
         this.hud.log(`${unit.name} sofre ${event.amount} de dano.`);
-        this.hud.setTurnOrder(this.encounter);
+        this.refreshRoster();
 
         if (actor) this.spark(this.center(actor), critical ? COLORS.goldBright : 0xffffff, 6 + 8 * weight + (critical ? 4 : 0));
         this.host.scene.cameras.main.shake(heavy ? 200 : 120, 0.002 + 0.01 * weight + (critical ? 0.004 : 0));
@@ -1017,7 +1152,7 @@ export class CombatController {
         actor?.setHp(event.remainingHp, unit.maxHp);
         this.floatOver(event.target, `+${event.amount}`, TEXT_COLORS.hp);
         this.hud.log(`${unit.name} recupera ${event.amount} de HP.`);
-        this.hud.setTurnOrder(this.encounter);
+        this.refreshRoster();
         await this.wait(320);
         return;
       }
@@ -1048,14 +1183,14 @@ export class CombatController {
         sfx("status");
         this.floatOver(event.target, event.name, TEXT_COLORS.guard, -22);
         this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
-        this.hud.setTurnOrder(this.encounter);
+        this.refreshRoster();
         await this.wait(200);
         return;
       }
 
       case "statusExpired":
         this.wear(event.target, event.statusId, false);
-        this.hud.setTurnOrder(this.encounter);
+        this.refreshRoster();
         return;
 
       case "surfaceCreated":
@@ -1165,7 +1300,7 @@ export class CombatController {
       case "supporterLost": {
         // A deixa já contou o que houve; aqui some quem era e o apoio que ele dava.
         sfx("deny");
-        this.hud.setTurnOrder(this.encounter);
+        this.refreshRoster();
         await this.actor(event.id)?.collapse(420);
         return;
       }

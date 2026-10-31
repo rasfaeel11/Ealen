@@ -1,6 +1,9 @@
 import * as Phaser from "phaser";
 import {
   AREAS,
+  CLASS_INFO,
+  STATUSES,
+  castOf,
   BESTIARY,
   FOLLOW_GAP,
   HUNGER,
@@ -103,7 +106,10 @@ import {
 import { areaMusic, playMusic, sfx } from "../game/audio";
 import { BagPanel } from "../game/BagPanel";
 import { EngravePanel } from "../game/EngravePanel";
-import { CLOCK_BAR_BOTTOM, ClockBar } from "../game/ClockBar";
+import { CLOCK_BAR_BOTTOM, ClockBar, RIGHT_COLUMN_TOP } from "../game/ClockBar";
+import { WorldHud, type FieldButton, type FieldPrompt } from "../game/hud/WorldHud";
+import type { PartyEntry } from "../game/hud/PartyColumn";
+import { abilityIcon, itemIcon } from "../game/icons";
 import { CombatController } from "../game/combat/CombatController";
 import { drawArea, drawBrackets, drawReach, drawStop } from "../game/combat/marks";
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
@@ -113,9 +119,9 @@ import { WorldMapPanel } from "../game/WorldMapPanel";
 import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
 import { SoundPanel } from "../game/SoundPanel";
-import { classSpriteKey, creatureSpriteKey, lookSpriteKey, ownSpriteKey, sheetScale, type Facing } from "../game/mapSprites";
+import { classSpriteKey, creatureSpriteKey, lookSpriteKey, ownSpriteKey, sheetScale, type Facing, standingFrame } from "../game/mapSprites";
 import type { GameSession } from "../game/session";
-import { Menu, addBodyText, addPanel, addTitleText } from "../game/ui";
+import { Menu, addBodyText, addHeading, addModalDim, addPanel, addTitleText, portraitRef } from "../game/ui";
 import { STORY_KEY, mapKey, tilesetKey } from "../game/worldAssets";
 
 /** Quantos pixels de tela vale um pixel do mapa. Com tiles de 16px, cabem ~27 x 15 quadrados na tela. */
@@ -147,7 +153,6 @@ const SORTED_LAYER_PREFIX = "sorted";
 /** Camadas cujo nome começa com isto são desenhadas POR CIMA de tudo (pontes altas, telhados). */
 const ABOVE_LAYER_PREFIX = "above";
 
-const EXPLORE_HINT = "WASD ou setas: andar  ·  Z: descansar  ·  C: ficha  ·  I: mochila  ·  M: mapa  ·  Esc: pausa";
 const AIM_HINT = "←/→: trocar de alvo  ·  Enter ou clique: atacar  ·  Esc: desistir";
 /** As marcas de quem mira um golpe de abertura: por cima do chão, por baixo de quem está de pé. */
 const AIM_DEPTH = -1;
@@ -254,8 +259,8 @@ export default class WorldScene extends Phaser.Scene {
   private clockBar!: ClockBar;
   /** Pra avisar uma vez só, e não a cada gravação, que o dispositivo não está gravando. */
   private saveFailed = false;
-  private statusText!: Phaser.GameObjects.Text;
-  private hintText!: Phaser.GameObjects.Text;
+  private hud!: WorldHud;
+  private tilemap!: Phaser.Tilemaps.Tilemap;
 
   constructor() {
     super(SCENES.world);
@@ -314,16 +319,18 @@ export default class WorldScene extends Phaser.Scene {
     this.trail = [{ ...this.pos }];
     this.syncPresence();
 
-    this.statusText = this.addHud(
-      addBodyText(this, 24, 20, "", { fontSize: "18px", color: TEXT_COLORS.gold }).setShadow(0, 2, "#000000", 4),
-    );
-    this.hintText = this.addHud(
-      addBodyText(this, 24, GAME_HEIGHT - 18, EXPLORE_HINT, { fontSize: "16px", lineSpacing: 4, color: TEXT_COLORS.inkDim })
-        .setOrigin(0, 1)
-        .setShadow(0, 2, "#000000", 4),
-    );
     this.clockBar = new ClockBar(this, (object) => this.addHud(object));
     this.clockBar.set(this.story.clock());
+    this.hud = new WorldHud(
+      this,
+      (object) => this.addHud(object),
+      this.map,
+      this.tilemap,
+      this.area.id,
+      this.area.name,
+      this.clockBar.visible,
+      (id) => this.onMemberClick(id),
+    );
     this.refreshStatus();
     this.refreshHint();
     this.showBanner(this.area.name);
@@ -373,6 +380,7 @@ export default class WorldScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     // Quadro longo demais é aba em segundo plano: não conta como tempo de jogo.
     if (!this.pause) this.save.playTimeMs += Math.min(delta, MAX_FRAME_MS);
+    if (!this.combat) this.hud.tick(delta, this.minimapDots());
     if (this.leaving || this.combat || this.talking || this.pause || this.aiming) return;
     if (this.peoplePending) this.occupy();
 
@@ -467,6 +475,7 @@ export default class WorldScene extends Phaser.Scene {
       .filter((tileset): tileset is Phaser.Tilemaps.Tileset => tileset !== null);
     this.tilesets = tilesets;
 
+    this.tilemap = tilemap;
     tilemap.layers.forEach((data, index) => {
       if (data.name.startsWith(SORTED_LAYER_PREFIX)) {
         this.drawSortedLayer(tilemap, data);
@@ -658,15 +667,43 @@ export default class WorldScene extends Phaser.Scene {
   // -------------------------------------------------------------- interface
 
   private refreshStatus(): void {
-    const { name, level, currentHp, maxHp } = this.character;
-    // Quem acompanha sem lutar não tem vida que importe mostrar.
-    const company = this.followers.map(({ character }) =>
-      fights(character) ? `   |   ${character.name}  ${character.currentHp}/${character.maxHp}` : `   |   ${character.name}`,
-    );
-    const breath = `Fôlego ${breathOf(this.character)}/${maxBreath(this.character)}`;
-    const magic = magicOf(this.character);
-    const mana = magic ? `  ·  Mana ${manaOf(this.character, magic)}/${maxMana(this.character, magic)}` : "";
-    this.statusText.setText(`${name}  ·  Nível ${level}  ·  HP ${currentHp}/${maxHp}  ·  ${breath}${mana}${company.join("")}`);
+    const afflictions = this.story.afflictions();
+    const entries = this.company().map((member): PartyEntry => {
+      const face = portraitRef(this, member.name) ?? {
+        key: ownSpriteKey(this, member.name, classSpriteKey(member.characterClass)),
+        frame: standingFrame("down"),
+      };
+      const statuses = (afflictions[member.id] ?? []).map((id) => ({ name: STATUSES[id].name, bad: true }));
+      if (!fights(member)) return { id: member.id, name: member.name, face, calling: castOf(member)?.calling, statuses };
+      const magic = magicOf(member);
+      return {
+        id: member.id,
+        name: member.name,
+        face,
+        level: member.level,
+        hp: { now: member.currentHp, max: member.maxHp },
+        breath: { now: breathOf(member), max: maxBreath(member) },
+        mana: magic ? { now: manaOf(member, magic), max: maxMana(member, magic) } : undefined,
+        calling: castOf(member)?.calling ?? CLASS_INFO[member.characterClass].name,
+        statuses,
+      };
+    });
+    this.hud.setParty(entries);
+  }
+
+  /** Clique num retrato da coluna do grupo: abre a ficha dele. */
+  private onMemberClick(id: string): void {
+    if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
+    this.openSheet(Math.max(0, this.company().findIndex((member) => member.id === id)));
+  }
+
+  /** Os pontos do minimapa: o grupo em ouro e a gente da área. Inimigo não aparece: quem vê é o olho, não o mapa. */
+  private minimapDots(): { x: number; y: number; color: number; radius?: number }[] {
+    return [
+      ...[...this.npcActors.values()].map((actor) => ({ ...actor.pos, color: 0xcfc6b8, radius: 1.5 })),
+      ...this.followers.map((follower) => ({ x: follower.pos.x, y: follower.pos.y, color: COLORS.gold, radius: 1.5 })),
+      { x: this.pos.x, y: this.pos.y, color: COLORS.goldBright, radius: 2.5 },
+    ];
   }
 
   /** Com quem dá pra falar daqui, se houver alguém. */
@@ -674,19 +711,59 @@ export default class WorldScene extends Phaser.Scene {
     return npcInReach(this.map, this.pos, talkers(this.npcs, this.enemies));
   }
 
-  /** A dica do pé da tela: como andar e, conforme o que há por perto, como falar e como emboscar. */
+  /** A barra de quem anda: o que o protagonista sabe fazer daqui, os painéis e, em cima, o que está ao alcance. */
   private refreshHint(): void {
     const talker = this.talkerInReach();
-    const talk = talker ? `  ·  E: ${talker.stands ? "falar com" : "examinar"} ${talker.name}` : "";
     const prey = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos), this.character);
-    const journal = this.story.journal().length > 0 ? "  ·  J: diário" : "";
-    // A segunda linha: o que o protagonista sabe fazer daqui, sem estar em luta.
-    const skills = this.fieldAbilities().map((ability, index) => `${index + 1}: ${ability.name}`);
-    const charge = prey === undefined ? "" : this.hidden(prey) ? "  ·  F: emboscar" : "  ·  F: investida";
-    const sneak = `  ·  Q: ${this.sneaking ? "levantar" : "esgueirar"}`;
-    this.hintText.setText(
-      EXPLORE_HINT + sneak + journal + talk + charge + (skills.length > 0 ? `\n${skills.join("  ·  ")}` : ""),
+    const prompts: FieldPrompt[] = [];
+    if (talker) prompts.push({ key: "E", label: `${talker.stands ? "Falar com" : "Examinar"} ${talker.name}`, onClick: () => this.interact() });
+    if (prey !== undefined) prompts.push({ key: "F", label: this.hidden(prey) ? "Emboscar" : "Investida", onClick: () => this.ambush() });
+    this.hud.setPrompts(prompts);
+
+    const abilities = this.fieldAbilities().map(
+      (ability, index): FieldButton => ({
+        icon: abilityIcon(ability),
+        label: ability.name,
+        hotkey: `${index + 1}`,
+        meta: fieldUse(ability) === "mend" ? "Fora de luta: cura, pela ficha" : "Fora de luta: abre a luta",
+        body: ability.flavor,
+        onClick: () => this.useFieldAbility(index),
+      }),
     );
+    // Os itens da mochila vêm depois das habilidades: o que cura, se usa por ali.
+    const items = (this.character.inventory?.slots ?? []).map(
+      (slot): FieldButton => ({
+        icon: itemIcon(slot.item.id),
+        label: slot.item.name,
+        count: slot.quantity,
+        meta: "Mochila",
+        body: slot.item.description,
+        onClick: () => {
+          if (!(this.combat || this.leaving || this.talking || this.pause || this.aiming)) this.openBag();
+        },
+      }),
+    );
+    const menu = (icon: FieldButton["icon"], label: string, hotkey: string, onClick: () => void, extra: Partial<FieldButton> = {}): FieldButton => ({
+      icon,
+      label,
+      hotkey,
+      onClick: () => {
+        if (!(this.combat || this.leaving || this.talking || this.pause || this.aiming)) onClick();
+      },
+      ...extra,
+    });
+    this.hud.setButtons([...abilities, ...items], [
+      menu("sneak", this.sneaking ? "Levantar" : "Esgueirar", "Q", () => this.toggleSneak(), {
+        selected: this.sneaking,
+        body: "Agachado o grupo anda devagar, e o olhar de quem vigia fica pintado no chão.",
+      }),
+      menu("camp", "Descansar", "Z", () => this.openRest()),
+      menu("sheet", "Ficha", "C", () => this.openSheet()),
+      menu("bag", "Mochila", "I", () => this.openBag()),
+      menu("book", "Diário", "J", () => this.openJournal()),
+      menu("map", "Mapa", "M", () => this.openWorldMap()),
+      menu("gear", "Pausa", "Esc", () => this.openPause()),
+    ]);
   }
 
   /** As habilidades da protagonista que servem fora de luta, na ordem das teclas 1, 2, 3... */
@@ -697,7 +774,7 @@ export default class WorldScene extends Phaser.Scene {
   /** Um título no alto da tela, sumindo sozinho (nome da área, avisos). */
   private showBanner(text: string): void {
     const banner = this.addHud(
-      addTitleText(this, GAME_WIDTH / 2, 72, text, { fontSize: "36px" }).setOrigin(0.5).setShadow(0, 2, "#000000", 6),
+      addTitleText(this, GAME_WIDTH / 2, 56, text, { fontSize: "34px", color: TEXT_COLORS.goldBright }).setOrigin(0.5).setShadow(0, 2, "#000000", 8),
     );
     this.tweens.add({ targets: banner, alpha: 0, delay: 2000, duration: 800, onComplete: () => banner.destroy() });
   }
@@ -725,12 +802,10 @@ export default class WorldScene extends Phaser.Scene {
       color: TEXT_COLORS.inkDim,
       wordWrap: { width: width - 80 },
     });
-    const objects = [
-      this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.bg, 0.6).setOrigin(0),
-      addPanel(this, x, y, width, height),
-      addTitleText(this, GAME_WIDTH / 2, y + 48, "DESCANSAR", { fontSize: "32px" }).setOrigin(0.5),
-      detail,
-    ].map((object) => this.addHud(object));
+    const dimmed = [this.addHud(addModalDim(this)), this.addHud(addPanel(this, x, y, width, height))];
+    const heading = addHeading(this, GAME_WIDTH / 2, y + 46, "DESCANSAR", width - 80, 28);
+    this.children.bringToTop(detail);
+    const objects = [...dimmed, this.addHud(heading.rule), this.addHud(heading.label), this.addHud(detail)];
 
     const hunger = mouths - Math.min(meals, mouths);
     const menu = new Menu(
@@ -762,7 +837,7 @@ export default class WorldScene extends Phaser.Scene {
         },
         { label: "Seguir", onFocus: () => detail.setText(""), onSelect: () => this.closePause() },
       ],
-      { lineHeight: 44, fontSize: 24, onCancel: () => this.closePause(), adopt: (item) => this.addHud(item) },
+      { lineHeight: 44, fontSize: 22, width: width - 120, onCancel: () => this.closePause(), adopt: (item) => this.addHud(item) },
     );
     this.pause = {
       destroy: () => {
@@ -866,7 +941,8 @@ export default class WorldScene extends Phaser.Scene {
   private async read(knot: string): Promise<DialogueStep[]> {
     this.talking = true;
     const steps: DialogueStep[] = [];
-    const hud = [this.statusText, this.hintText].filter((text) => text.visible);
+    // Numa deixa da luta quem sai da frente é a interface dela; a de andar já não está na tela.
+    const walking = !this.combat;
     let box: DialogueBox | undefined;
     try {
       let step = this.story.start(knot);
@@ -874,7 +950,7 @@ export default class WorldScene extends Phaser.Scene {
         steps.push(step);
         // Um trecho que só mexe em flags (ou decide que não tem nada a dizer) passa sem abrir a caixa.
         if (!box && !isSilent(step)) {
-          for (const text of hud) text.setVisible(false);
+          if (walking) this.hud.setVisible(false);
           box = new DialogueBox(this, (object) => this.addHud(object), (event) => this.onStoryEvent(event));
         }
         const choice = box ? await box.play(step) : null;
@@ -884,7 +960,7 @@ export default class WorldScene extends Phaser.Scene {
     } finally {
       // Um erro no texto não pode deixar o jogador preso numa conversa que não fecha.
       box?.destroy();
-      for (const text of hud) text.setVisible(true);
+      if (walking) this.hud.setVisible(true);
       // Um trecho que passou sem abrir a caixa também pode ter mexido no relógio.
       this.clockBar.set(this.story.clock());
       this.talking = false;
@@ -1077,8 +1153,7 @@ export default class WorldScene extends Phaser.Scene {
       charge,
     );
 
-    this.statusText.setVisible(false);
-    this.hintText.setVisible(false);
+    this.hud.setVisible(false);
     playMusic("battle");
     sfx(surprised === "enemy" ? "ambush" : "fightStart");
     this.combat = new CombatController(
@@ -1095,7 +1170,7 @@ export default class WorldScene extends Phaser.Scene {
           if (this.story.spend("round")) this.clockBar.set(this.story.clock());
         },
         goals: cues.flatMap((cue) => (cue.goal !== undefined ? [{ cue: cue.id, text: cue.goal }] : [])),
-        goalsTop: this.clockBar.visible ? CLOCK_BAR_BOTTOM + 8 : undefined,
+        logTop: this.clockBar.visible ? CLOCK_BAR_BOTTOM : RIGHT_COLUMN_TOP,
       },
       encounter,
       (winner) => void this.endCombat(encounter, group, fighters, winner),
@@ -1237,8 +1312,7 @@ export default class WorldScene extends Phaser.Scene {
     this.syncPresence();
 
     this.cameras.main.startFollow(this.player.followTarget, true, 0.2, 0.2);
-    this.statusText.setVisible(true);
-    this.hintText.setVisible(true);
+    this.hud.setVisible(true);
     this.refreshStatus();
     this.refreshHint();
 
@@ -1261,17 +1335,21 @@ export default class WorldScene extends Phaser.Scene {
     else if (event.code === "KeyM") this.openWorldMap();
     else if (event.code === "KeyC") this.openSheet();
     else if (event.code === "KeyI") this.openBag();
-    else if (/^(Digit|Numpad)[1-9]$/.test(event.code)) {
-      // 1, 2, 3...: a habilidade de mesmo número na dica do pé da tela.
-      const ability = this.fieldAbilities()[Number(event.code.slice(-1)) - 1];
-      if (!ability) return;
-      if (fieldUse(ability) === "mend") this.openSheet();
-      else if (!canAfford(this.character, ability)) {
-        this.showBanner(missing(this.character, ability) === "mana" ? "Falta mana pra isso." : "Falta Fôlego pra isso.");
-      }
-      else if (keepsVow(this.character)) this.showBanner("Quem é da Espera não dá o primeiro golpe.");
-      else if (!this.aimOpening(ability)) this.showBanner("Ninguém ao alcance que ainda não tenha te percebido.");
+    // 1, 2, 3...: a habilidade de mesmo número na barra.
+    else if (/^(Digit|Numpad)[1-9]$/.test(event.code)) this.useFieldAbility(Number(event.code.slice(-1)) - 1);
+  }
+
+  /** Usa, fora de luta, a habilidade da posição `index` na barra. */
+  private useFieldAbility(index: number): void {
+    if (this.pause || this.combat || this.leaving || this.talking || this.aiming) return;
+    const ability = this.fieldAbilities()[index];
+    if (!ability) return;
+    if (fieldUse(ability) === "mend") this.openSheet();
+    else if (!canAfford(this.character, ability)) {
+      this.showBanner(missing(this.character, ability) === "mana" ? "Falta mana pra isso." : "Falta Fôlego pra isso.");
     }
+    else if (keepsVow(this.character)) this.showBanner("Quem é da Espera não dá o primeiro golpe.");
+    else if (!this.aimOpening(ability)) this.showBanner("Ninguém ao alcance que ainda não tenha te percebido.");
   }
 
   /** Quem a ficha e a mochila mostram: a protagonista e quem anda com ela agora. */
@@ -1280,12 +1358,13 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   /** `C`: a ficha do grupo, por cima do mundo parado. É dela que se usa uma habilidade fora de luta. */
-  private openSheet(): void {
+  private openSheet(start = 0): void {
     this.halt();
     sfx("uiOpen");
     this.pause = new SheetPanel(this, (object) => this.addHud(object), {
       owner: this.character,
       members: this.company(),
+      start,
       // Vestir e tirar valem na hora e ficam gravados, como usar um item.
       onEquip: (wearer, itemId) => {
         const result = equip(this.character, wearer, itemId);
@@ -1403,7 +1482,7 @@ export default class WorldScene extends Phaser.Scene {
     // A câmera fica entre quem bate e quem apanha: o alvo pode estar fora da tela.
     this.cameras.main.pan((this.pos.x + strike.enemy.x) / 2, (this.pos.y + strike.enemy.y) / 2, 160, "Sine.easeOut", true);
     const run = samePos(strike.from, here) ? "" : " (correndo até ele)";
-    this.hintText.setText(`${ability.name} em ${strike.enemy.name}${run}: o grupo dele perde a primeira vez.\n${AIM_HINT}`);
+    this.hud.setPrompts([{ key: "", label: `${ability.name} em ${strike.enemy.name}${run}: o grupo dele perde a primeira vez.\n${AIM_HINT}` }]);
   }
 
   private onAimKey(event: KeyboardEvent): void {
@@ -1506,16 +1585,14 @@ export default class WorldScene extends Phaser.Scene {
     const height = 482;
     const x = (GAME_WIDTH - width) / 2;
     const y = (GAME_HEIGHT - height) / 2;
-    const objects = [
-      this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.bg, 0.6).setOrigin(0),
-      addPanel(this, x, y, width, height),
-      addTitleText(this, GAME_WIDTH / 2, y + 48, "PAUSA", { fontSize: "32px" }).setOrigin(0.5),
-    ].map((object) => this.addHud(object));
+    const dimmed = [this.addHud(addModalDim(this)), this.addHud(addPanel(this, x, y, width, height))];
+    const heading = addHeading(this, GAME_WIDTH / 2, y + 46, "PAUSA", width - 60, 28);
+    const objects = [...dimmed, this.addHud(heading.rule), this.addHud(heading.label)];
 
     const menu = new Menu(
       this,
-      x + 60,
-      y + 100,
+      x + 40,
+      y + 88,
       [
         { label: "Voltar ao jogo", onSelect: () => this.closePause() },
         { label: "Descansar", onSelect: () => this.swapPause(() => this.openRest()) },
@@ -1527,7 +1604,7 @@ export default class WorldScene extends Phaser.Scene {
         // Ao fechar, a cena grava o jogo (SHUTDOWN chama persist).
         { label: "Salvar e sair pro título", onSelect: () => this.scene.start(SCENES.title) },
       ],
-      { lineHeight: 44, fontSize: 24, onCancel: () => this.closePause(), adopt: (item) => this.addHud(item) },
+      { lineHeight: 44, fontSize: 22, width: width - 80, onCancel: () => this.closePause(), adopt: (item) => this.addHud(item) },
     );
     this.pause = {
       destroy: () => {

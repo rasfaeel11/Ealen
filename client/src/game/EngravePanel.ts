@@ -1,11 +1,8 @@
 import * as Phaser from "phaser";
 import { engravable, engravingSlots, type Ability, type Character } from "@jogo/shared";
 import { describeAbility } from "./combat/CombatController";
-import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
-import { Menu, addBodyText, addPanel, addTitleText, type MenuOption } from "./ui";
-
-/** Põe um objeto na cena de modo que só a câmera da interface o desenhe. */
-type AddHud = <T extends Phaser.GameObjects.GameObject>(object: T) => T;
+import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
+import { Menu, addBodyText, addHeading, addModalDim, addPanel, type AddHud, type MenuOption } from "./ui";
 
 const WIDTH = 940;
 const HEIGHT = 580;
@@ -38,7 +35,7 @@ export interface EngraveHost {
 export class EngravePanel {
   private readonly frame: Phaser.GameObjects.GameObject[] = [];
   private menu?: Menu;
-  private readonly title: Phaser.GameObjects.Text;
+  private readonly title: ReturnType<typeof addHeading>;
   private readonly detail: Phaser.GameObjects.Text;
   private readonly openedAt: number;
   private index = 0;
@@ -48,16 +45,14 @@ export class EngravePanel {
     private readonly addHud: AddHud,
     private readonly host: EngraveHost,
   ) {
-    this.frame.push(
-      addHud(scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.bg, 0.6).setOrigin(0)),
-      addHud(addPanel(scene, X, Y, WIDTH, HEIGHT)),
-    );
-    this.title = addHud(addTitleText(scene, GAME_WIDTH / 2, Y + 48, "", { fontSize: "32px" }).setOrigin(0.5));
+    this.frame.push(addHud(addModalDim(scene)), addHud(addPanel(scene, X, Y, WIDTH, HEIGHT)));
+    this.title = addHeading(scene, GAME_WIDTH / 2, Y + 46, "GRAVAR", WIDTH - 120, 28);
     this.detail = addHud(
       addBodyText(scene, DETAIL_X, TOP, "", { fontSize: "18px", lineSpacing: 5, wordWrap: { width: DETAIL_WIDTH } }),
     );
     this.frame.push(
-      this.title,
+      addHud(this.title.rule),
+      addHud(this.title.label),
       this.detail,
       addHud(
         addBodyText(scene, GAME_WIDTH / 2, Y + HEIGHT - 34, "↑/↓: magia  ·  Enter: gravar  ·  ←/→: quem grava  ·  Esc: pronto", {
@@ -100,7 +95,8 @@ export class EngravePanel {
         disabled: full,
         onFocus: describe(spell),
         onSelect: () => {
-          if (this.host.onEngrave(caster, spell.id)) this.show();
+          // No quadro seguinte: a opção clicada ainda está no meio do próprio evento, e a troca a destrói.
+          if (this.host.onEngrave(caster, spell.id)) this.scene.time.delayedCall(0, () => this.show());
         },
       })),
       { label: "Pronto", onSelect: () => this.host.onClose() },
@@ -108,7 +104,8 @@ export class EngravePanel {
     this.menu?.destroy();
     this.menu = new Menu(this.scene, LIST_X, TOP, options, {
       lineHeight: LINE,
-      fontSize: 20,
+      fontSize: 19,
+      width: DETAIL_X - LIST_X - 30,
       onCancel: () => this.host.onClose(),
       adopt: (item) => this.addHud(item),
     });
