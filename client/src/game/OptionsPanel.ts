@@ -86,6 +86,15 @@ const TABS: { name: string; rows: () => Row[] }[] = [
         "A velocidade das animações e da vez dos inimigos.",
       ),
       option(
+        "companionsAuto",
+        "Companheiros na luta",
+        [
+          { value: false, label: "Eu comando" },
+          { value: true, label: "Por conta própria" },
+        ],
+        "Por conta própria, Jarupã e Xanduí jogam a vez deles sozinhos. Endyru é sempre seu.",
+      ),
+      option(
         "autoAdvance",
         "Conversa passa sozinha",
         [

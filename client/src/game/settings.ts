@@ -31,6 +31,8 @@ export interface Settings {
   textSize: number;
   /** A voz de quem começa a falar. */
   voice: boolean;
+  /** Os companheiros jogam a vez deles sozinhos. A protagonista é sempre do jogador. */
+  companionsAuto: boolean;
   /** Milissegundos por letra pra conversa passar sozinha; 0 espera o jogador. */
   autoAdvance: number;
   shake: boolean;
@@ -67,6 +69,7 @@ export const DEFAULT_SETTINGS: Settings = {
   zoom: 3,
   textSize: 1,
   voice: true,
+  companionsAuto: false,
   autoAdvance: 0,
   shake: true,
   minimap: true,

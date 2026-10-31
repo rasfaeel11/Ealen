@@ -6,7 +6,7 @@ import { PROPS, type PropTemplate } from "./props";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
 import { punishFactor, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
-import { abilityTargets, affectedProps, affectedUnits, canAimAt, isBlow, vowAllows, vowForbids } from "./targeting";
+import { abilityTargets, affectedProps, affectedUnits, canAimAt, isBlow, liftable, vowAllows, vowForbids } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
@@ -121,6 +121,9 @@ export interface AiPlan {
 export function chooseCommand(encounter: Encounter): Command {
   const unit = activeUnit(encounter);
   if (!unit) throw new Error("A luta acabou: não há quem comandar.");
+  // Companheiro por conta própria: aliado caído ao lado vem antes de tudo. O outro lado não se levanta.
+  const fallen = unit.team === "party" && unit.turn.action ? liftable(encounter, unit)[0] : undefined;
+  if (fallen) return { type: "lift", unitId: unit.id, targetId: fallen.id };
   const plan = planTurn(encounter);
 
   if (!samePos(plan.tile, unit.pos)) return { type: "move", unitId: unit.id, to: plan.tile };

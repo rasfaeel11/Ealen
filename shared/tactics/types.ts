@@ -397,6 +397,8 @@ export type Command =
   | { type: "interact"; unitId: string; target: Pos }
   /** Chama o apoio de quem acompanha sem lutar (ver ./supports.ts) sobre `target`. Não gasta nada de quem chama; uma vez por rodada. */
   | { type: "support"; unitId: string; supporterId: string; target: Pos }
+  /** Levanta um aliado caído, colado nele (ver `liftable` em ./targeting.ts). Custa a ação. */
+  | { type: "lift"; unitId: string; targetId: string }
   | { type: "endTurn"; unitId: string };
 
 export type AttackOutcome = "hit" | "miss" | "crit" | "fumble";
@@ -501,6 +503,8 @@ export type TacticalEvent =
   | { type: "propUsed"; unit: string; prop: string; name: string; verb: string; pos: Pos }
   | { type: "itemUsed"; unit: string; itemId: string; itemName: string; description: string }
   /** `supporter` (que não luta) deu o apoio dele, chamado por `unit`. O que o apoio fez vem logo depois. */
+  /** `unit` pôs `target` de pé, com `hp` de vida. */
+  | { type: "lifted"; unit: string; target: string; hp: number }
   | { type: "supportUsed"; supporter: string; supporterName: string; support: SupportId; name: string; unit: string }
   /** Quem acompanhava o grupo sem lutar saiu da luta por uma deixa (`dismiss`): o apoio dele não está mais lá. */
   | { type: "supporterLost"; id: string }

@@ -27,6 +27,8 @@ import {
   isBlow,
   supportTargets,
   vowForbids,
+  LIFT_SHARE,
+  liftable,
 } from "./targeting";
 import type {
   Ability,
@@ -253,6 +255,8 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
       return interact(encounter, unit, command.target, events);
     case "support":
       return support(encounter, unit, command.supporterId, command.target, events);
+    case "lift":
+      return lift(encounter, unit, command.targetId, events);
     case "endTurn":
       closeTurn(unit);
       events.push({ type: "turnEnded", unit: unit.id });
@@ -1263,6 +1267,19 @@ function revealIntent(encounter: Encounter, unit: Unit): TacticalEvent {
  * Usa um consumível da própria mochila. Custa a ação bônus: beber uma
  * poção não deveria custar o ataque do turno.
  */
+/** Levanta um aliado caído, colado em quem levanta. Volta sem as condições que tinha, e na vez dele na ordem. */
+function lift(encounter: Encounter, unit: Unit, targetId: string, events: TacticalEvent[]): CommandError | undefined {
+  if (!unit.turn.action) return "resource_spent";
+  const target = liftable(encounter, unit).find((other) => other.id === targetId);
+  if (!target) return "invalid_target";
+  unit.turn.action = false;
+  target.currentHp = Math.max(1, Math.ceil(target.maxHp * LIFT_SHARE));
+  target.statuses = [];
+  delete target.reciting;
+  events.push({ type: "lifted", unit: unit.id, target: target.id, hp: target.currentHp });
+  return undefined;
+}
+
 function useItem(unit: Unit, itemId: string, events: TacticalEvent[]): CommandError | undefined {
   const slot = findInventorySlot(unit, itemId);
   if (!slot || slot.quantity <= 0) return "item_unavailable";

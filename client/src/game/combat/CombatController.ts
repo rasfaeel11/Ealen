@@ -37,6 +37,9 @@ import {
   vowForbids,
   cooldownLeft,
   type Ability,
+  HERO_ID,
+  LIFT_SHARE,
+  liftable,
   type AreaMap,
   type AttackOutcome,
   type Command,
@@ -376,7 +379,7 @@ export class CombatController {
   private async proceed(): Promise<void> {
     const { encounter } = this;
 
-    while (!isOver(encounter) && activeUnit(encounter)?.team === "enemy") {
+    while (!isOver(encounter) && this.playsItself(activeUnit(encounter))) {
       this.refreshHud();
       const command = chooseCommand(encounter);
       await this.wait(ENEMY_THINK_MS);
@@ -399,6 +402,12 @@ export class CombatController {
     this.selected = null;
     this.aim = null;
     this.refresh();
+  }
+
+  /** A vez que o jogador não comanda: a do outro lado e, se as opções pedem, a dos companheiros. */
+  private playsItself(unit: Unit | undefined): boolean {
+    if (!unit) return false;
+    return unit.team === "enemy" || (settings().companionsAuto && unit.id !== HERO_ID);
   }
 
   // --------------------------------------------------------------- entrada
@@ -684,6 +693,21 @@ export class CombatController {
               why: unit.turn.action ? "Chegue perto pra mexer." : "A ação deste turno já foi gasta.",
               selected: this.aim?.kind === "interact",
               onClick: () => this.chooseInteract(),
+            } satisfies ActionButton,
+          ]
+        : []),
+      // Enquanto houver alguém do grupo caído, o botão fica à vista, e diz o que falta pra ele valer.
+      ...(encounter.units.some((other) => other.team === unit.team && !isAlive(other))
+        ? [
+            {
+              label: "Levantar quem caiu",
+              icon: "use",
+              tag: "Ação",
+              cost: "action",
+              body: `Põe de pé quem está caído ao lado, com ${Math.round(LIFT_SHARE * 100)}% da vida.`,
+              enabled: unit.turn.action && liftable(encounter, unit).length > 0,
+              why: unit.turn.action ? "Chegue colado em quem caiu." : "A ação deste turno já foi gasta.",
+              onClick: () => void this.issue({ type: "lift", unitId: unit.id, targetId: liftable(encounter, unit)[0].id }),
             } satisfies ActionButton,
           ]
         : []),
@@ -1289,6 +1313,16 @@ export class CombatController {
         return;
       }
 
+      case "lifted": {
+        const target = this.encounter.units.find((other) => other.id === event.target);
+        const actor = this.actor(event.target);
+        actor?.rise();
+        actor?.setHp(event.hp, target?.maxHp ?? event.hp);
+        sfx("heal");
+        if (target) this.hud.log(`${this.encounter.units.find((other) => other.id === event.unit)?.name} levanta ${target.name}.`);
+        await this.wait(350);
+        break;
+      }
       case "itemUsed": {
         const actor = this.actor(event.unit);
         this.hud.log(`${this.unit(event.unit).name} usa ${event.itemName}: ${event.description}`);

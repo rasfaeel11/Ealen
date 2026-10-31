@@ -5,6 +5,16 @@ import type { Supporter } from "./supports";
 import type { Ability, Encounter, Unit } from "./types";
 import { isAlive, unitAt } from "./units";
 
+/** Quanto da vida volta a quem é levantado no meio da luta. */
+export const LIFT_SHARE = 0.25;
+
+/** Os aliados caídos que `unit` alcança: colados nele, e com o quadrado livre pra ficar de pé. */
+export function liftable(encounter: Encounter, unit: Unit): Unit[] {
+  return encounter.units.filter(
+    (other) => other !== unit && other.team === unit.team && !isAlive(other) && distance(unit.pos, other.pos) === 1 && !unitAt(encounter, other.pos),
+  );
+}
+
 /**
  * Quem (ou onde) uma habilidade pode mirar, e quem ela acerta. A interface
  * usa isto pra acender os alvos; o motor usa pra validar o comando; a IA
