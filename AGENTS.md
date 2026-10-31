@@ -578,6 +578,8 @@ estão nas Tasks de `docs/motor.md` (24 a 40).
   veste — as espadas temperadas de Thrykar, o que cai de inimigo —, com o que cada uma faz, e Enter leva à ficha pra
   vestir. As peças do ramo eram do mundo do Eälen e não entraram.
 
+- **A interface nova** (pedida pelo autor em 2026-10-31, parecida com a de BG3). A coluna do grupo à esquerda, com retrato, vida, Fôlego, mana, nível e condições, na exploração e na luta. A barra embaixo em grade de quadrados com ícone, tecla, custo (verde a ação, laranja o bônus), quantidade e recarga; o que cada um faz aparece num cartão ao passar o mouse, e apagado ele diz por quê. Na luta, a ordem dos turnos no alto com o rosto de cada um, o registro à direita, os recursos do turno, o botão redondo de encerrar e a chance de acerto junto do cursor. Andando, o minimapa e as ações ao alcance numa pílula. A conversa virou uma faixa de lado a lado, com o selo do teste na escolha. Ficha com abas, retrato, lugares do corpo e atributos em quadros; mochila em grade (`Tab` troca de pessoa na ficha, no lugar de ←/→, que agora andam na grade). Título, saves, diário, gravar, som, descanso, pausa e mapa na mesma moldura. Os ícones são desenhados em canvas, provisórios (`icons.ts`), e a tela de título usa a splash de Oryndu até a do título existir (task 47). O motor e o save não mudaram. Detalhe em `docs/motor.md`.
+
 ## 9. Onde isto está no cânone
 
 Gravado no repositório da história com a aprovação de 2026-10-19:
