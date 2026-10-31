@@ -13,6 +13,7 @@ import {
   addTitleText,
   drawBar,
   drawDiamond,
+  drawPanel,
   fitFace,
   hpColor,
   type AddHud,
@@ -62,28 +63,29 @@ export interface TurnResources {
 
 /** Abaixo dos painéis e da caixa de diálogo, que abrem por cima sem precisar saber da barra. */
 const DEPTH = -50;
-const BAR_WIDTH = 900;
-const BAR_HEIGHT = 136;
-const BAR_X = (GAME_WIDTH - BAR_WIDTH) / 2;
-const BAR_Y = GAME_HEIGHT - BAR_HEIGHT - 8;
-const FACE_W = 88;
-const FACE_H = 92;
+const BAR_WIDTH = 740;
 const SLOT = 44;
 const SLOT_GAP = 4;
 const COLS = 13;
 const ROWS = 2;
-const GRID_X = BAR_X + 112;
-const GRID_Y = BAR_Y + 38;
-const END_X = BAR_X + BAR_WIDTH - 66;
-const END_Y = BAR_Y + 58;
-const END_R = 38;
+/** A barra tem as fileiras que precisa: uma, quase sempre. */
+const BAR_TOP_PAD = 38;
+const BAR_BOTTOM_PAD = 10;
+const barHeight = (rows: number) => BAR_TOP_PAD + rows * (SLOT + SLOT_GAP) - SLOT_GAP + BAR_BOTTOM_PAD;
+const BAR_X = (GAME_WIDTH - BAR_WIDTH) / 2;
+const BAR_BOTTOM = GAME_HEIGHT - 8;
+/** O topo da barra de uma fileira: é daí que se medem as linhas que ficam sobre ela. */
+const BAR_Y = BAR_BOTTOM - barHeight(1);
+const GRID_X = BAR_X + 12;
+const END_R = 30;
+const END_X = BAR_X + BAR_WIDTH - END_R - 12;
 /** A ordem dos turnos, no alto. */
 const TILE_W = 48;
 const TILE_H = 60;
 const TILE_GAP = 4;
 const TILE_Y = 12;
-const LOG_LINES = 12;
-const LOG_HEIGHT = 196;
+const LOG_LINES = 5;
+const LOG_HEIGHT = 104;
 
 /** Um quadro da ordem dos turnos: rosto, cor do lado e a vida embaixo. Anda sozinho quando a ordem gira. */
 class TurnTile {
@@ -148,8 +150,8 @@ class TurnTile {
 
 /**
  * A interface do combate: o grupo à esquerda, a ordem dos turnos no alto, o
- * registro à direita e, embaixo, a barra de quem tem a vez — rosto, recursos,
- * a grade de ações e o botão de encerrar. Vive em coordenadas de TELA (a
+ * registro à direita e, embaixo, a barra de quem tem a vez — recursos, as
+ * ações que ele tem e o botão de encerrar. Vive em coordenadas de TELA (a
  * câmera da interface não tem zoom) e não sabe nada de regra — recebe o que
  * mostrar e avisa o que foi clicado.
  */
@@ -163,15 +165,12 @@ export class CombatHud {
   private readonly goals: Phaser.GameObjects.Text;
   private readonly bar: Phaser.GameObjects.Graphics;
   private readonly barZone: Phaser.GameObjects.Zone;
-  private readonly face: Phaser.GameObjects.Image;
   private readonly resources: Phaser.GameObjects.Graphics;
   private readonly labels: Phaser.GameObjects.Text[] = [];
   private readonly who: Phaser.GameObjects.Text;
-  private readonly hpText: Phaser.GameObjects.Text;
   private readonly slots: UiSlot[];
   private readonly endFrame: Phaser.GameObjects.Graphics;
   private readonly endIcon: Phaser.GameObjects.Image;
-  private readonly endLabel: Phaser.GameObjects.Text;
   private readonly endZone: Phaser.GameObjects.Zone;
   private readonly detail: Phaser.GameObjects.Text;
   private readonly warning: Phaser.GameObjects.Text;
@@ -181,6 +180,7 @@ export class CombatHud {
   private onEnd?: () => void;
   private endEnabled = false;
   private endHover = false;
+  private rows = 0;
   private logLines: string[] = [];
   private readonly resultObjects: Phaser.GameObjects.GameObject[] = [];
   private hasGoals = false;
@@ -236,25 +236,18 @@ export class CombatHud {
         .setVisible(false),
     );
 
-    this.bar = add(addPanel(scene, BAR_X, BAR_Y, BAR_WIDTH, BAR_HEIGHT));
+    this.bar = add(scene.add.graphics());
     // A barra segura o clique: ela não é chão.
-    this.barZone = add(scene.add.zone(BAR_X, BAR_Y, BAR_WIDTH, BAR_HEIGHT).setOrigin(0).setInteractive());
-    this.face = add(scene.add.image(0, 0, "__DEFAULT").setVisible(false));
+    this.barZone = add(scene.add.zone(BAR_X, BAR_Y, BAR_WIDTH, barHeight(1)).setOrigin(0).setInteractive());
     this.resources = add(scene.add.graphics());
     this.who = add(
       addTitleText(scene, BAR_X + 12, BAR_Y - 6, "", { fontSize: "16px", color: TEXT_COLORS.goldBright }).setOrigin(0, 1).setShadow(0, 2, "#000000", 4),
-    );
-    this.hpText = add(
-      addBodyText(scene, BAR_X + 12 + FACE_W / 2, BAR_Y + 112, "", { fontSize: "14px", color: TEXT_COLORS.white })
-        .setOrigin(0.5, 0)
-        .setShadow(0, 1, "#000000", 3),
     );
 
     this.tip = new Tooltip(scene);
     this.slots = Array.from({ length: COLS * ROWS }, (_, i) => {
       const x = GRID_X + (i % COLS) * (SLOT + SLOT_GAP);
-      const y = GRID_Y + Math.floor(i / COLS) * (SLOT + SLOT_GAP);
-      const slot = new UiSlot(scene, x, y, SLOT, {
+      const slot: UiSlot = new UiSlot(scene, x, 0, SLOT, {
         over: () => this.showSlotTip(i, x + SLOT / 2),
         out: () => this.hideTip(),
         down: () => this.press(i),
@@ -264,21 +257,24 @@ export class CombatHud {
     });
 
     this.endFrame = add(scene.add.graphics());
-    this.endIcon = add(scene.add.image(END_X, END_Y - 2, iconKey("hourglass")).setDisplaySize(34, 34));
-    this.endLabel = add(addBodyText(scene, END_X, END_Y + END_R + 7, "Encerrar [Espaço]", { fontSize: "13px" }).setOrigin(0.5));
-    this.endZone = add(scene.add.zone(END_X - END_R, END_Y - END_R, END_R * 2, END_R * 2).setOrigin(0).setInteractive({ useHandCursor: true }));
+    this.endIcon = add(scene.add.image(END_X, 0, iconKey("hourglass")).setDisplaySize(28, 28));
+    this.endZone = add(scene.add.zone(END_X - END_R, 0, END_R * 2, END_R * 2).setOrigin(0).setInteractive({ useHandCursor: true }));
     this.endZone.on(Phaser.Input.Events.POINTER_OVER, () => {
       this.endHover = true;
       this.drawEnd();
+      this.tipShown = true;
+      this.detail.setVisible(false);
+      this.tip.show(END_X, this.barTop - 8, { title: "Encerrar o turno", meta: "Espaço" });
     });
     this.endZone.on(Phaser.Input.Events.POINTER_OUT, () => {
       this.endHover = false;
       this.drawEnd();
+      this.hideTip();
     });
     this.endZone.on(Phaser.Input.Events.POINTER_DOWN, () => {
       if (this.endEnabled) this.onEnd?.();
     });
-    this.drawEnd();
+    this.layoutBar(1);
 
     this.detail = add(
       addBodyText(scene, GAME_WIDTH / 2 + 80, BAR_Y - 6, "", {
@@ -384,11 +380,34 @@ export class CombatHud {
 
   // ------------------------------------------------------------------ a barra
 
-  /** Troca o que a barra mostra. Os nove primeiros quadrados ganham as teclas 1 a 9. */
+  private get barTop(): number {
+    return BAR_BOTTOM - barHeight(this.rows);
+  }
+
+  /** Acerta a barra pra ter `rows` fileiras. A segunda só aparece quando as ações não cabem numa. */
+  private layoutBar(rows: number): void {
+    if (rows === this.rows) return;
+    this.rows = rows;
+    const top = this.barTop;
+    const height = barHeight(rows);
+    this.bar.clear();
+    drawPanel(this.bar, BAR_X, top, BAR_WIDTH, height);
+    this.barZone.setY(top).setSize(BAR_WIDTH, height);
+    (this.barZone.input?.hitArea as Phaser.Geom.Rectangle | undefined)?.setSize(BAR_WIDTH, height);
+    this.slots.forEach((slot, i) => slot.root.setY(top + BAR_TOP_PAD + Math.floor(i / COLS) * (SLOT + SLOT_GAP)));
+    this.who.setY(top - 6);
+    const middle = top + height / 2;
+    this.endIcon.setY(middle - 1);
+    this.endZone.setY(middle - END_R);
+    this.drawEnd();
+  }
+
+  /** Troca o que a barra mostra. Os nove primeiros quadrados ganham as teclas 1 a 9. Quadrado vazio não aparece. */
   setActions(buttons: ActionButton[], resources: TurnResources | null, onEnd?: () => void): void {
     this.buttons = buttons.slice(0, this.slots.length);
     this.onEnd = onEnd;
     this.endEnabled = onEnd !== undefined;
+    this.layoutBar(this.buttons.length > COLS - 1 ? ROWS : 1);
     this.drawEnd();
     this.slots.forEach((slot, i) => {
       const button = this.buttons[i];
@@ -405,6 +424,7 @@ export class CombatHud {
             }
           : {},
       );
+      slot.root.setVisible(this.shown && button !== undefined);
     });
     this.drawResources(resources);
     this.hideTip();
@@ -415,21 +435,13 @@ export class CombatHud {
     g.clear();
     for (const label of this.labels) label.destroy();
     this.labels.length = 0;
-    this.face.setVisible(resources !== null && this.shown);
     this.who.setText("");
-    this.hpText.setText("");
     if (!resources) return;
 
-    fitFace(this.face, resources.face, BAR_X + 12, BAR_Y + 14, FACE_W, FACE_H, resources.name);
-    g.lineStyle(1, COLORS.gold, 1);
-    g.strokeRect(BAR_X + 12, BAR_Y + 14, FACE_W, FACE_H);
-    const ratio = resources.maxHp > 0 ? resources.hp / resources.maxHp : 0;
-    drawBar(g, BAR_X + 12, BAR_Y + 110, FACE_W, 18, ratio, hpColor(ratio));
-    this.hpText.setText(`${resources.hp}/${resources.maxHp}`);
     this.who.setText(`${resources.name}${resources.style ? `  ·  ${resources.style}` : ""}`);
 
     const { turn } = resources;
-    const top = BAR_Y + 12;
+    const top = this.barTop + 12;
     if (!turn) {
       this.label(GRID_X, top, `Vez de ${resources.name}`, TEXT_COLORS.inkDim, 15);
       return;
@@ -476,16 +488,16 @@ export class CombatHud {
     const g = this.endFrame;
     g.clear();
     const lit = this.endEnabled && this.endHover;
+    const y = this.barTop + barHeight(this.rows) / 2;
     g.fillStyle(0x0a0807, 1);
-    g.fillCircle(END_X, END_Y, END_R);
+    g.fillCircle(END_X, y, END_R);
     g.fillStyle(this.endEnabled ? 0x3a2a12 : 0x1a1512, 1);
-    g.fillCircle(END_X, END_Y, END_R - 5);
+    g.fillCircle(END_X, y, END_R - 4);
     g.lineStyle(2, lit ? COLORS.goldBright : COLORS.gold, this.endEnabled ? 1 : 0.4);
-    g.strokeCircle(END_X, END_Y, END_R);
+    g.strokeCircle(END_X, y, END_R);
     g.lineStyle(1, COLORS.bronze, 0.8);
-    g.strokeCircle(END_X, END_Y, END_R - 5);
+    g.strokeCircle(END_X, y, END_R - 4);
     this.endIcon?.setAlpha(this.endEnabled ? 1 : 0.3);
-    this.endLabel?.setColor(this.endEnabled ? TEXT_COLORS.ink : TEXT_COLORS.inkDim);
   }
 
   private showSlotTip(index: number, x: number): void {
@@ -493,7 +505,7 @@ export class CombatHud {
     if (!button) return;
     this.tipShown = true;
     this.detail.setVisible(false);
-    this.tip.show(x, BAR_Y - 8, {
+    this.tip.show(x, this.barTop - 8, {
       title: button.label,
       meta: button.tag,
       body: button.body,
@@ -641,14 +653,11 @@ export class CombatHud {
       this.barZone,
       this.resources,
       this.who,
-      this.hpText,
       this.endFrame,
       this.endIcon,
-      this.endLabel,
       this.endZone,
       this.warning,
       ...this.labels,
-      ...this.slots.map((slot) => slot.root),
       ...[...this.tiles.values()].map((tile) => tile.root),
     ];
   }
@@ -657,8 +666,8 @@ export class CombatHud {
   setVisible(visible: boolean): void {
     this.shown = visible;
     for (const object of this.fixedObjects) object.setVisible(visible);
+    this.slots.forEach((slot, i) => slot.root.setVisible(visible && this.buttons[i] !== undefined));
     this.party.setVisible(visible);
-    this.face.setVisible(visible && this.who.text !== "");
     this.goals.setVisible(visible && this.hasGoals);
     this.showDetail();
     if (!visible) {
@@ -681,13 +690,10 @@ export class CombatHud {
       this.goals,
       this.bar,
       this.barZone,
-      this.face,
       this.resources,
       this.who,
-      this.hpText,
       this.endFrame,
       this.endIcon,
-      this.endLabel,
       this.endZone,
       this.detail,
       this.warning,

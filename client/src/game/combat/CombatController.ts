@@ -800,9 +800,8 @@ export class CombatController {
       if (hover && level(hover) > level(unit.pos)) {
         return `Chão alto: +${HEIGHT_TO_HIT} pra acertar quem está embaixo, e quem está embaixo acerta menos.`;
       }
-      const cost = hover ? findPath(encounter, unit, hover)?.cost : undefined;
-      if (cost !== undefined) return `Andar até aqui gasta ${cost} de ${unit.turn.movement} de movimento.`;
-      return "Aponte pra onde ir: a linha mostra o caminho, até onde o movimento deste turno alcança.";
+      // Andar não precisa de legenda: a linha no chão já mostra o caminho, e o cartão do botão explica.
+      return "";
     }
 
     const prop = hover && selected.radius === undefined ? propAt(encounter, hover) : undefined;

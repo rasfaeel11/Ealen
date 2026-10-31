@@ -1,6 +1,15 @@
 /** Resolução interna do jogo. O Phaser escala isso pra caber na janela (Scale.FIT). */
-export const GAME_WIDTH = 1280;
 export const GAME_HEIGHT = 720;
+/** A tela mais estreita pra que a interface foi feita (16:9) e a mais larga que ainda faz sentido (21:9, com folga). */
+const MIN_WIDTH = 1280;
+const MAX_WIDTH = 1728;
+
+/** A largura interna que enche uma janela deste formato, sem barra preta dos lados. A altura é sempre a mesma. */
+export function widthForWindow(width: number, height: number): number {
+  return Math.round(Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, (GAME_HEIGHT * width) / Math.max(1, height))));
+}
+
+export const GAME_WIDTH = typeof window === "undefined" ? MIN_WIDTH : widthForWindow(window.innerWidth, window.innerHeight);
 
 /** Paleta do códice: fundo escuro, dourado como destaque. */
 export const COLORS = {

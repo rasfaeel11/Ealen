@@ -109,7 +109,7 @@ import { EngravePanel } from "../game/EngravePanel";
 import { CLOCK_BAR_BOTTOM, ClockBar, RIGHT_COLUMN_TOP } from "../game/ClockBar";
 import { WorldHud, type FieldButton, type FieldPrompt } from "../game/hud/WorldHud";
 import type { PartyEntry } from "../game/hud/PartyColumn";
-import { abilityIcon, itemIcon } from "../game/icons";
+import { abilityIcon } from "../game/icons";
 import { CombatController } from "../game/combat/CombatController";
 import { drawArea, drawBrackets, drawReach, drawStop } from "../game/combat/marks";
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
@@ -123,10 +123,13 @@ import { classSpriteKey, creatureSpriteKey, lookSpriteKey, ownSpriteKey, sheetSc
 import type { GameSession } from "../game/session";
 import { Menu, addBodyText, addHeading, addModalDim, addPanel, addTitleText, portraitRef } from "../game/ui";
 import { Scenery } from "../game/Scenery";
+import { setPlaying } from "../game/viewport";
 import { STORY_KEY, mapKey } from "../game/worldAssets";
 
 /** Quantos pixels de tela vale um pixel do mapa. Com tiles de 16px, cabem ~27 x 15 quadrados na tela. */
 const ZOOM = 3;
+/** O boneco é maior que o quadrado dele, com o pé no quadrado: a cabeça sobe por cima do de trás. */
+const ACTOR_SIZE = 1.5;
 /** Pixels do mapa por segundo (6 quadrados de 16px). */
 const WALK_SPEED = 96;
 /** Esgueirando, anda-se na metade. */
@@ -314,7 +317,6 @@ export default class WorldScene extends Phaser.Scene {
       this.map,
       this.scenery.groundSource,
       this.area.id,
-      this.area.name,
       this.clockBar.visible,
       (id) => this.onMemberClick(id),
     );
@@ -356,7 +358,9 @@ export default class WorldScene extends Phaser.Scene {
     };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", onHide);
+    setPlaying(session.slot, () => !this.combat && !this.talking && !this.leaving && !this.aiming);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      setPlaying(null);
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide);
       this.persist();
@@ -432,7 +436,7 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   private addActor(spriteKey: string, pos: PixelPos): MapActor {
-    const actor = new MapActor(this, spriteKey, pos, sheetScale(spriteKey, this.map.tileSize));
+    const actor = new MapActor(this, spriteKey, pos, sheetScale(spriteKey, this.map.tileSize) * ACTOR_SIZE);
     for (const object of actor.objects) this.addWorld(object);
     return actor;
   }
@@ -678,19 +682,6 @@ export default class WorldScene extends Phaser.Scene {
         onClick: () => this.useFieldAbility(index),
       }),
     );
-    // Os itens da mochila vêm depois das habilidades: o que cura, se usa por ali.
-    const items = (this.character.inventory?.slots ?? []).map(
-      (slot): FieldButton => ({
-        icon: itemIcon(slot.item.id),
-        label: slot.item.name,
-        count: slot.quantity,
-        meta: "Mochila",
-        body: slot.item.description,
-        onClick: () => {
-          if (!(this.combat || this.leaving || this.talking || this.pause || this.aiming)) this.openBag();
-        },
-      }),
-    );
     const menu = (icon: FieldButton["icon"], label: string, hotkey: string, onClick: () => void, extra: Partial<FieldButton> = {}): FieldButton => ({
       icon,
       label,
@@ -700,7 +691,7 @@ export default class WorldScene extends Phaser.Scene {
       },
       ...extra,
     });
-    this.hud.setButtons([...abilities, ...items], [
+    this.hud.setButtons(abilities, [
       menu("sneak", this.sneaking ? "Levantar" : "Esgueirar", "Q", () => this.toggleSneak(), {
         selected: this.sneaking,
         body: "Agachado o grupo anda devagar, e o olhar de quem vigia fica pintado no chão.",

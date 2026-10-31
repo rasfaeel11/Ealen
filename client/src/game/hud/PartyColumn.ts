@@ -1,8 +1,8 @@
 import * as Phaser from "phaser";
 import { COLORS, TEXT_COLORS } from "../config";
-import { Tooltip, addBodyText, addTitleText, drawBar, drawDiamond, fitFace, hpColor, type AddHud, type FaceRef } from "../ui";
+import { Tooltip, addTitleText, drawBar, fitFace, hpColor, type AddHud, type FaceRef } from "../ui";
 
-/** Uma pessoa na coluna do grupo. Sem `hp`, acompanha sem lutar: o cartão é menor, e mostra o apoio. */
+/** Uma pessoa na coluna do grupo. Sem `hp`, acompanha sem lutar: o cartão não tem barras, e mostra o apoio. */
 export interface PartyEntry {
   id: string;
   name: string;
@@ -33,17 +33,16 @@ const GAP = 10;
 const CHIP = 18;
 
 /**
- * Um cartão: o rosto, a vida por cima do pé dele, Fôlego e mana em filetes, o
- * nível num losango e as condições em fichas ao lado.
+ * Um cartão: o rosto, a vida por cima do pé dele, Fôlego e mana em filetes e as
+ * condições em fichas ao lado. Os números e o nível ficam no cartão de detalhe,
+ * ao passar o mouse. Quem só acompanha tem o mesmo rosto, sem as barras.
  */
 class PartyCard {
   readonly root: Phaser.GameObjects.Container;
   readonly height: number;
   private readonly frame: Phaser.GameObjects.Graphics;
   private readonly face: Phaser.GameObjects.Image;
-  private readonly hpText: Phaser.GameObjects.Text;
   private readonly bars: Phaser.GameObjects.Graphics;
-  private readonly level: Phaser.GameObjects.Text;
   private readonly flash: Phaser.GameObjects.Rectangle;
   private chips: Phaser.GameObjects.GameObject[] = [];
   private lastHp?: number;
@@ -54,22 +53,18 @@ class PartyCard {
     handlers: { over: (card: PartyCard) => void; out: () => void; down?: (id: string) => void },
   ) {
     const fights = entry.hp !== undefined;
-    const faceHeight = fights ? FACE_HEIGHT : FACE_HEIGHT - 28;
+    const faceHeight = FACE_HEIGHT;
     this.height = faceHeight + (fights ? HP_HEIGHT + 4 + (entry.breath ? THIN + 2 : 0) + (entry.mana ? THIN + 2 : 0) : 0) + 2;
     this.frame = scene.add.graphics();
     this.face = scene.add.image(0, 0, entry.face.key, entry.face.frame);
     fitFace(this.face, entry.face, 1, 1, WIDTH - 2, faceHeight, entry.name);
     this.bars = scene.add.graphics();
     this.flash = scene.add.rectangle(1, 1, WIDTH - 2, faceHeight, COLORS.hpLow, 1).setOrigin(0).setAlpha(0);
-    this.hpText = addBodyText(scene, WIDTH / 2, faceHeight + 3, "", { fontSize: "13px", color: TEXT_COLORS.white })
-      .setOrigin(0.5, 0)
-      .setShadow(0, 1, "#000000", 3);
-    this.level = addBodyText(scene, WIDTH - 11, 11, "", { fontSize: "13px", color: "#1a120a", fontStyle: "bold" }).setOrigin(0.5);
     const zone = scene.add.zone(0, 0, WIDTH, this.height).setOrigin(0).setInteractive({ useHandCursor: handlers.down !== undefined });
     zone.on(Phaser.Input.Events.POINTER_OVER, () => handlers.over(this));
     zone.on(Phaser.Input.Events.POINTER_OUT, () => handlers.out());
     if (handlers.down) zone.on(Phaser.Input.Events.POINTER_DOWN, () => handlers.down!(this.entry.id));
-    this.root = scene.add.container(0, 0, [this.frame, this.face, this.flash, this.bars, this.hpText, this.level, zone]);
+    this.root = scene.add.container(0, 0, [this.frame, this.face, this.flash, this.bars, zone]);
     this.set(entry);
   }
 
@@ -79,8 +74,7 @@ class PartyCard {
 
   set(entry: PartyEntry): void {
     this.entry = entry;
-    const fights = entry.hp !== undefined;
-    const faceHeight = fights ? FACE_HEIGHT : FACE_HEIGHT - 28;
+    const faceHeight = FACE_HEIGHT;
     const lit = entry.active === true;
 
     const g = this.frame;
@@ -100,7 +94,6 @@ class PartyCard {
     if (entry.hp) {
       const ratio = entry.hp.max > 0 ? entry.hp.now / entry.hp.max : 0;
       drawBar(bars, 1, y + 1, WIDTH - 2, HP_HEIGHT, ratio, hpColor(ratio));
-      this.hpText.setText(`${entry.hp.now}/${entry.hp.max}`);
       y += HP_HEIGHT + 3;
       if (this.lastHp !== undefined && entry.hp.now < this.lastHp) {
         // O golpe aparece no rosto também: é por aqui que se sabe quem apanhou fora de vista.
@@ -108,8 +101,6 @@ class PartyCard {
         this.scene.tweens.add({ targets: this.flash, alpha: 0, duration: 380, ease: "Cubic.easeOut" });
       }
       this.lastHp = entry.hp.now;
-    } else {
-      this.hpText.setText("");
     }
     if (entry.breath) {
       drawBar(bars, 1, y, WIDTH - 2, THIN, entry.breath.max > 0 ? entry.breath.now / entry.breath.max : 0, COLORS.breath);
@@ -117,12 +108,6 @@ class PartyCard {
     }
     if (entry.mana) drawBar(bars, 1, y, WIDTH - 2, THIN, entry.mana.max > 0 ? entry.mana.now / entry.mana.max : 0, COLORS.mana);
 
-    if (entry.level !== undefined) {
-      drawDiamond(bars, WIDTH - 11, 11, 10, COLORS.gold);
-      this.level.setText(`${entry.level}`);
-    } else {
-      this.level.setText("");
-    }
     // Quem só acompanha: o ponto aceso diz que o apoio dele ainda vale nesta rodada.
     if (entry.support) {
       bars.fillStyle(entry.support.ready ? COLORS.action : 0x3a3a3a, 1);

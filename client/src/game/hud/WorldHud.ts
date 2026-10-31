@@ -3,7 +3,7 @@ import { tileAt, type AreaMap, type PixelPos } from "@jogo/shared";
 import { CLOCK_BAR_BOTTOM, RIGHT_COLUMN_LEFT, RIGHT_COLUMN_TOP, RIGHT_COLUMN_WIDTH } from "../ClockBar";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import type { IconName } from "../icons";
-import { Tooltip, UiSlot, addBodyText, addPanel, addTitleText, drawPanel, type AddHud, type TipContent } from "../ui";
+import { Tooltip, UiSlot, addBodyText, addPanel, drawPanel, type AddHud, type TipContent } from "../ui";
 import { PartyColumn, type PartyEntry } from "./PartyColumn";
 
 /** Um quadrado da barra de exploração. */
@@ -34,9 +34,7 @@ const ABILITY_SLOTS = 8;
 const MENU_SLOTS = 7;
 const PAD = 10;
 const SEPARATOR = 18;
-const BAR_WIDTH = PAD * 2 + ABILITY_SLOTS * (SLOT + SLOT_GAP) + SEPARATOR + MENU_SLOTS * (SLOT + SLOT_GAP) - SLOT_GAP;
 const BAR_HEIGHT = SLOT + PAD * 2;
-const BAR_X = (GAME_WIDTH - BAR_WIDTH) / 2;
 const BAR_Y = GAME_HEIGHT - BAR_HEIGHT - 8;
 const MAP_HEIGHT = 124;
 /** De quanto em quanto tempo o minimapa redesenha os pontos. */
@@ -82,9 +80,7 @@ export class WorldHud {
   private readonly promptZone: Phaser.GameObjects.Zone;
   private promptAction?: () => void;
   private promptKey = "";
-  private readonly keysHint: Phaser.GameObjects.Text;
   private readonly mapFrame: Phaser.GameObjects.Graphics;
-  private readonly mapName: Phaser.GameObjects.Text;
   private readonly mapImage: Phaser.GameObjects.Image;
   private readonly mapDots: Phaser.GameObjects.Graphics;
   private readonly mapScale: number;
@@ -99,7 +95,6 @@ export class WorldHud {
     private readonly map: AreaMap,
     ground: CanvasImageSource,
     areaId: string,
-    areaName: string,
     clockShown: boolean,
     onSelectMember: (id: string) => void,
   ) {
@@ -111,20 +106,18 @@ export class WorldHud {
 
     this.party = new PartyColumn(scene, add, onSelectMember);
 
-    this.barFrame = add(addPanel(scene, BAR_X, BAR_Y, BAR_WIDTH, BAR_HEIGHT));
+    this.barFrame = add(scene.add.graphics());
     // A barra segura o clique: ela não é chão.
-    this.barZone = add(scene.add.zone(BAR_X, BAR_Y, BAR_WIDTH, BAR_HEIGHT).setOrigin(0).setInteractive());
+    this.barZone = add(scene.add.zone(0, BAR_Y, 10, BAR_HEIGHT).setOrigin(0).setInteractive());
 
     this.tip = new Tooltip(scene);
     this.slots = Array.from({ length: ABILITY_SLOTS + MENU_SLOTS }, (_, i) => {
-      const x = BAR_X + PAD + i * (SLOT + SLOT_GAP) + (i >= ABILITY_SLOTS ? SEPARATOR : 0);
-      const y = BAR_Y + PAD;
-      const slot = new UiSlot(scene, x, y, SLOT, {
+      const slot: UiSlot = new UiSlot(scene, 0, BAR_Y + PAD, SLOT, {
         over: () => {
           const button = this.buttons[i];
           if (!button) return;
           const content: TipContent = { title: button.label, meta: button.meta, body: button.body };
-          this.tip.show(x + SLOT / 2, BAR_Y - 8, content);
+          this.tip.show(slot.root.x + SLOT / 2, BAR_Y - 8, content);
         },
         out: () => this.tip.hide(),
         down: () => this.buttons[i]?.onClick(),
@@ -142,22 +135,9 @@ export class WorldHud {
     this.promptZone = add(scene.add.zone(0, 0, 10, 10).setOrigin(0));
     this.promptZone.on(Phaser.Input.Events.POINTER_DOWN, () => this.promptAction?.());
 
-    this.keysHint = add(
-      addBodyText(scene, GAME_WIDTH - 12, GAME_HEIGHT - 10, "WASD ou setas: andar", { fontSize: "13px", color: TEXT_COLORS.ink })
-        .setOrigin(1, 1)
-        .setShadow(0, 1, "#000000", 3),
-    );
-
     // O minimapa: o chão da área, um quadro por área, e os pontos de quem está ali.
     const top = clockShown ? CLOCK_BAR_BOTTOM : RIGHT_COLUMN_TOP;
-    this.mapFrame = add(addPanel(scene, RIGHT_COLUMN_LEFT, top, RIGHT_COLUMN_WIDTH, MAP_HEIGHT + 40, true));
-    this.mapName = add(
-      addTitleText(scene, RIGHT_COLUMN_LEFT + RIGHT_COLUMN_WIDTH / 2, top + 19, areaName, {
-        fontSize: "12px",
-        align: "center",
-        wordWrap: { width: RIGHT_COLUMN_WIDTH - 24 },
-      }).setOrigin(0.5),
-    );
+    this.mapFrame = add(addPanel(scene, RIGHT_COLUMN_LEFT, top, RIGHT_COLUMN_WIDTH, MAP_HEIGHT + 10, true));
     const key = mapTextureKey(areaId);
     if (!scene.textures.exists(key)) {
       const texture = scene.textures.createCanvas(key, map.grid.width, map.grid.height);
@@ -172,7 +152,7 @@ export class WorldHud {
     this.mapScale = Math.min(room.w / map.grid.width, room.h / map.grid.height);
     this.mapOrigin = {
       x: RIGHT_COLUMN_LEFT + (RIGHT_COLUMN_WIDTH - map.grid.width * this.mapScale) / 2,
-      y: top + 36 + (room.h - map.grid.height * this.mapScale) / 2,
+      y: top + 8 + (room.h - map.grid.height * this.mapScale) / 2,
     };
     this.mapImage = add(scene.add.image(this.mapOrigin.x, this.mapOrigin.y, key).setOrigin(0).setScale(this.mapScale));
     this.mapDots = add(scene.add.graphics());
@@ -182,7 +162,7 @@ export class WorldHud {
     this.party.set(entries);
   }
 
-  /** Os quadrados da barra: as habilidades à esquerda, os painéis à direita. */
+  /** Os quadrados da barra: as habilidades à esquerda, os painéis à direita. Quadrado vazio não aparece: a barra tem o tamanho do que ela oferece. */
   setButtons(abilities: FieldButton[], menus: FieldButton[]): void {
     const key = JSON.stringify([...abilities, ...menus].map((button) => [button.icon, button.hotkey, button.count, button.selected]));
     if (key === this.buttonsKey) {
@@ -196,6 +176,27 @@ export class WorldHud {
       const button = this.buttons[i];
       slot.set(button ? { icon: button.icon, hotkey: button.hotkey, count: button.count, selected: button.selected } : {});
     });
+    this.layoutBar(abilities.length);
+  }
+
+  /** Só os quadrados com alguma coisa, centrados, com o espaço entre as habilidades e os painéis. */
+  private layoutBar(abilities: number): void {
+    const used = this.buttons.filter(Boolean).length;
+    const gap = abilities > 0 ? SEPARATOR : 0;
+    const width = PAD * 2 + used * (SLOT + SLOT_GAP) - SLOT_GAP + gap;
+    const left = (GAME_WIDTH - width) / 2;
+    let x = left + PAD;
+    this.slots.forEach((slot, i) => {
+      if (i === ABILITY_SLOTS) x += gap;
+      slot.root.setVisible(this.shown && this.buttons[i] !== undefined);
+      if (!this.buttons[i]) return;
+      slot.root.setX(x);
+      x += SLOT + SLOT_GAP;
+    });
+    this.barFrame.clear();
+    drawPanel(this.barFrame, left, BAR_Y, width, BAR_HEIGHT);
+    this.barZone.setX(left).setSize(width, BAR_HEIGHT);
+    (this.barZone.input?.hitArea as Phaser.Geom.Rectangle | undefined)?.setSize(width, BAR_HEIGHT);
   }
 
   private placeButtons(abilities: FieldButton[], menus: FieldButton[]): (FieldButton | undefined)[] {
@@ -246,10 +247,10 @@ export class WorldHud {
   setVisible(visible: boolean): void {
     this.shown = visible;
     this.party.setVisible(visible);
-    for (const object of [this.barFrame, this.barZone, this.keysHint, this.mapFrame, this.mapName, this.mapImage, this.mapDots]) {
+    for (const object of [this.barFrame, this.barZone, this.mapFrame, this.mapImage, this.mapDots]) {
       (object as unknown as Phaser.GameObjects.Components.Visible).setVisible(visible);
     }
-    for (const slot of this.slots) slot.root.setVisible(visible);
+    this.slots.forEach((slot, i) => slot.root.setVisible(visible && this.buttons[i] !== undefined));
     this.prompt.setVisible(visible && this.prompt.text !== "");
     this.promptFrame.setVisible(visible && this.prompt.text !== "");
     this.promptZone.setVisible(visible);

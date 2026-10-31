@@ -3,6 +3,7 @@ import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_NEW_GAME_SLOT, REGISTRY_SESSI
 import { beginNewGame } from "../game/newGame";
 import { firstEmptySlot, lastPlayedSlot, readSlots } from "../game/save";
 import { GameSession } from "../game/session";
+import { takeResumeSlot } from "../game/viewport";
 import { playMusic } from "../game/audio";
 import { splashKey } from "../game/splashes";
 import { SoundPanel } from "../game/SoundPanel";
@@ -50,6 +51,15 @@ export default class TitleScene extends Phaser.Scene {
     const lastSlot = lastPlayedSlot(slots);
     const last = lastSlot === null ? null : slots[lastSlot];
     const save = last?.status === "ok" ? last.save : null;
+
+    // A janela mudou de formato no meio do jogo e a página recarregou: volta pra onde estava, sem passar pelo menu.
+    const resume = takeResumeSlot();
+    const resumed = resume === null ? null : slots[resume];
+    if (resume !== null && resumed?.status === "ok") {
+      this.registry.set(REGISTRY_SESSION, new GameSession(resume, resumed.save));
+      this.scene.start(SCENES.world);
+      return;
+    }
 
     playMusic("title");
     let sound: SoundPanel | undefined;
