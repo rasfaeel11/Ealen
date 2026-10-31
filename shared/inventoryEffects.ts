@@ -64,6 +64,29 @@ export function addItemToInventory(character: Character, item: ConsumableItem): 
   return true;
 }
 
+/** O que cabe no cinto de quem não carrega a mochila do grupo. */
+export const BELT_SLOTS = 3;
+
+export type PassResult = "ok" | "none" | "full";
+
+/**
+ * Passa um item de `itemId` de uma pessoa pra outra: da mochila pro cinto, de
+ * cinto pra cinto, de volta pra mochila. Quem nunca carregou nada ganha um
+ * cinto. Sem lugar, nada muda. Um item com as cargas pela metade vai como está.
+ */
+export function passItem(from: Character, to: Character, itemId: string): PassResult {
+  const slot = findInventorySlot(from, itemId);
+  if (!slot || slot.quantity <= 0) return "none";
+  to.inventory ??= { slots: [], maxSlots: BELT_SLOTS };
+  const opened = slot.quantity === 1 ? slot.item.data.usesRemaining : slot.item.data.maxUses;
+  const existing = findInventorySlot(to, itemId);
+  if (!addItemToInventory(to, { ...slot.item, data: { ...slot.item.data, usesRemaining: opened } })) return "full";
+  if (existing) existing.item.data.usesRemaining = Math.max(existing.item.data.usesRemaining, opened);
+  slot.quantity -= 1;
+  if (slot.quantity <= 0 && from.inventory) from.inventory.slots = from.inventory.slots.filter((other) => other !== slot);
+  return "ok";
+}
+
 export interface ImmediateHealResult {
   healed: number;
   description: string;

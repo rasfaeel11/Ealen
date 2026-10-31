@@ -410,6 +410,7 @@ export class SlotGrid {
   private options: GridOption[] = [];
   private index = 0;
   private active = true;
+  private capacity = Number.POSITIVE_INFINITY;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -450,8 +451,14 @@ export class SlotGrid {
   }
 
   setVisible(visible: boolean): void {
-    for (const slot of this.slots) slot.root.setVisible(visible);
+    this.slots.forEach((slot, i) => slot.root.setVisible(visible && i < this.capacity));
     this.active = visible;
+  }
+
+  /** Só os primeiros `capacity` encaixes aparecem: um cinto é menor que uma mochila. */
+  setCapacity(capacity: number): void {
+    this.capacity = capacity;
+    this.slots.forEach((slot, i) => slot.root.setVisible(i < capacity));
   }
 
   get focusIndex(): number {

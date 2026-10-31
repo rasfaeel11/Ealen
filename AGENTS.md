@@ -290,7 +290,6 @@ Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz fa
 ### P0 — sem isto não há capítulo
 | # | Task | O que é |
 |---|---|---|
-| 56 | **Inventário e habilidades dos companheiros** | Hoje a mochila é uma só e companheiro não carrega nem usa item. Equipar cada um já dá (o guardado é do grupo). Falta: cada um com o que leva pra luta (cinto de itens), usar item em luta com a vez dele, passar item de um pro outro, e escolher que habilidades cada um leva. |
 | 57 | **Combate à distância de verdade** | Hoje distância é só um `range` maior. Falta: munição, alcance curto/longo com penalidade, desvantagem atirando colado num inimigo, cobertura parcial e total, altura alongando o alcance, arremesso de item (em aliado e em inimigo), tiro de reação em quem entra no alcance (vigia). |
 | 58 | **Progressão** | Subir de nível soma atributos e dá as Técnicas da classe no nível marcado, sem escolha. Falta: ESCOLHER o que se aprende (mais Técnicas por classe, ou um ramo), o GRAU do estilo valer alguma coisa (hoje só aparece na tela) e subir, e pontos de atributo pra distribuir. |
 
@@ -299,8 +298,8 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 
 | # | Task | O que é |
 |---|---|---|
-| 52 | **Passagens sem destino** | Há regiões e passagens que não levam a lugar nenhum. Cada uma passa a levar a algum lugar ou deixa de parecer passagem. |
-| 53 | **Sem parede invisível** | Trocar parede invisível por bloqueio que se vê, no estilo de Pokémon: árvore ou pessoa barrando o caminho por algum motivo. |
+| 52 | **Passagens sem destino** | Há regiões e passagens que não levam a lugar nenhum. Cada uma passa a levar a algum lugar ou deixa de parecer passagem. Achados em 2026-10-31: a estrada do Ymonhã pra oeste só abre com `ato2`; a saída norte de Ybytuguá só abre com `ato2` e fecha com `clock:10`; na floresta, a clareira a nordeste e o trecho depois da ponte não levam a nada. Fechar as duas saídas pede decisão do autor (quem ou o que barra, com fala) e repintar. |
+| 53 | **Sem parede invisível** | Trocar parede invisível por bloqueio que se vê, no estilo de Pokémon: árvore ou pessoa barrando o caminho por algum motivo. Achados em 2026-10-31: as bordas leste e oeste do Ymonhã e dos baixios não têm árvore; nos baixios, a água funda (o retângulo a sudeste) barra o passo e é pintada igual à rasa. Mexer nisso pede `art/pintar_cenario.py`, e o Python não estava instalado nesta máquina. |
 
 ### P1 — o conteúdo
 | # | Task | O que é |
@@ -630,6 +629,8 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 - **48. O `M` mostra a região** (pedido do autor em 2026-10-31). O painel (`RegionMapPanel.ts`) pinta a área em que o grupo está, com a água, o chão e o que está de pé (`paintRegion` em `Scenery.ts`), e marca o grupo, a gente da área e as saídas abertas, com o nome do destino. Inimigo não aparece, como no minimapa. A ilustração do mundo não abre mais em lugar nenhum do jogo; só sobra como reserva da tela de título, até a do título existir.
 
 - **54 e 55. A voz e as opções** (pedidos do autor em 2026-10-31). `OptionsPanel.ts` abre no título e na pausa, no lugar do Som, com cinco abas. **Jogo**: dificuldade (a vida dos inimigos, `applyDifficulty` em `shared/tactics/difficulty.ts`: 70%, 100%, 135%), velocidade da luta e conversa que passa sozinha. **Tela**: tamanho dos bonecos, câmera, tamanho da letra (na conversa, nos cartões e no registro; os painéis de layout fixo continuam no tamanho deles), minimapa, barra de ações (sempre, só parado, nunca), registro da luta, números de vida e tremer a tela. **Som**: os três volumes e a voz. **Teclas**: as doze do mundo se trocam, e se a tecla já tem dono as duas trocam; Esc, Enter, Tab, Espaço, setas e números ficam fixos. **Controle**: `gamepad.ts` transforma cada botão na tecla que aquilo já usa, então toda tela funciona sem saber de controle; na luta, que se joga com o mouse, o analógico anda com um cursor, o A clica, o RB anda pelas ações e o Y encerra o turno. Testado com um controle simulado no navegador, não com um de verdade. A voz (`voice` em `audio.ts`) são duas sílabas sintetizadas sem palavra, na altura de quem fala, quando alguém começa a falar; narração não tem voz. Ninguém ouviu ainda: os números são de cabeça, e a troca por áudio gravado é em `audio.ts`.
+
+- **56. O cinto e o que cada um leva.** A mochila continua sendo a do grupo, com a protagonista; cada companheiro tem um cinto de 3 lugares (`BELT_SLOTS`), que nasce quando recebe o primeiro item. A mochila (`I`) mostra uma pessoa por vez (`Tab`), e dali se usa ou se passa um item (`passItem`). Na luta, cada um usa na vez dele só o que leva. O acampamento come também do cinto. Na ficha, `X` deixa uma habilidade de fora das lutas (`benched` na ficha, `toggleBenched`), menos o último golpe que a pessoa sabe. Por enquanto não há limite de quantas se levam, então a escolha ainda não aperta: o limite é da task 80. O save não mudou de versão: os dois campos são opcionais.
 
 ## 9. Onde isto está no cânone
 

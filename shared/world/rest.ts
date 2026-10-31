@@ -57,11 +57,13 @@ export function shortRest(hero: Character, members: readonly PartyMember[]): voi
   }
 }
 
-/** Quantas refeições a mochila de `hero` (a do grupo) tem pro acampamento. */
-export function campMeals(hero: Pick<Character, "inventory">): number {
-  const slot = findInventorySlot(hero, CAMP_FOOD);
-  if (!slot || slot.quantity <= 0) return 0;
-  return (slot.quantity - 1) * slot.item.data.maxUses + slot.item.data.usesRemaining;
+/** Quantas refeições o grupo tem pro acampamento: na mochila de `hero` e nos cintos de quem anda com ele. */
+export function campMeals(hero: Character, members: readonly PartyMember[] = []): number {
+  return company(hero, members).reduce((meals, character) => {
+    const slot = findInventorySlot(character, CAMP_FOOD);
+    if (!slot || slot.quantity <= 0) return meals;
+    return meals + (slot.quantity - 1) * slot.item.data.maxUses + slot.item.data.usesRemaining;
+  }, 0);
 }
 
 /** Quantas bocas o acampamento tem de alimentar: quem luta no grupo agora. */
@@ -75,15 +77,17 @@ export interface CampOutcome {
 }
 
 /**
- * O acampamento. Come da mochila de `hero` uma refeição por quem luta, na
- * ordem do grupo (ela primeiro); quem fica sem comer volta só pela metade.
+ * O acampamento. Come uma refeição por quem luta, na ordem do grupo (ela
+ * primeiro): da mochila de `hero`, depois do cinto de quem ainda tem; quem fica
+ * sem comer volta só pela metade.
  * Quem chama tira da história o que passa com o descanso, põe a Fome em
  * `hungry`, cobra o relógio e devolve as pausas curtas.
  */
 export function camp(hero: Character, members: readonly PartyMember[]): CampOutcome {
   const hungry: string[] = [];
   for (const character of company(hero, members)) {
-    const slot = fights(character) ? findInventorySlot(hero, CAMP_FOOD) : undefined;
+    const pantry = fights(character) ? company(hero, members).find((holder) => findInventorySlot(holder, CAMP_FOOD)) : undefined;
+    const slot = pantry && findInventorySlot(pantry, CAMP_FOOD);
     if (fights(character) && !slot) {
       character.currentHp = halfway(character);
       restoreBreath(character);
@@ -92,7 +96,7 @@ export function camp(hero: Character, members: readonly PartyMember[]): CampOutc
       hungry.push(character.id);
       continue;
     }
-    if (slot) consumeInventoryCharge(hero, slot);
+    if (pantry && slot) consumeInventoryCharge(pantry, slot);
     restoreAll(character);
   }
   for (const character of away(members)) restoreAll(character);

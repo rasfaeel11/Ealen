@@ -30,6 +30,7 @@ import {
   missing,
   proficiency,
   sheetAbilities,
+  toggleBenched,
   storedGear,
   styleLabel,
   wornItem,
@@ -141,6 +142,8 @@ export function describeEquipment(item: EquipmentItem, brief = false): string {
 }
 
 export interface SheetHost {
+  /** Alguém mudou o que leva pra luta. */
+  onPacked: () => void;
   /** A dona da mochila: é com ela que fica guardado o equipamento que ninguém veste. */
   owner: Character;
   /** As fichas a mostrar: a protagonista primeiro, depois quem anda com ela. */
@@ -189,6 +192,8 @@ export class SheetPanel {
   private index: number;
   /** Escolhendo em quem usar uma cura, ou o que vestir: a grade virou lista, e Tab não troca de personagem. */
   private targeting = false;
+  /** A habilidade sob o cursor, se dá pra deixá-la de fora (`X`). */
+  private focusedAbility?: Ability;
   private closed = false;
   private readonly openedAt: number;
 
@@ -465,7 +470,7 @@ export class SheetPanel {
   }
 
   /** A coluna da direita volta a ser a grade de habilidades. */
-  private listAbilities(): void {
+  private listAbilities(focus = 0): void {
     this.targeting = false;
     this.menu?.destroy();
     this.menu = undefined;
@@ -483,10 +488,17 @@ export class SheetPanel {
     const options: GridOption[] = [
       ...abilities.map((ability): GridOption => {
         const { tag, text } = this.usage(ability);
+        const benched = character.benched?.includes(ability.id) === true;
+        const canBench = fights(character) && !ability.engraved;
+        const packing = canBench ? (benched ? "\n\nFica de fora das lutas. X: levar." : "\n\nX: deixar de fora das lutas.") : "";
         return {
           icon: abilityIcon(ability),
           cost: ability.cost === "action" ? "action" : "bonus",
-          onFocus: () => this.showAbility(ability, text, tag),
+          enabled: !benched,
+          onFocus: () => {
+            this.focusedAbility = canBench ? ability : undefined;
+            this.showAbility(ability, text + packing, tag);
+          },
           onSelect: () => this.use(ability),
         };
       }),
@@ -494,12 +506,15 @@ export class SheetPanel {
         (entry): GridOption => ({
           icon: abilityIcon(entry.ability),
           enabled: false,
-          onFocus: () => this.showAbility(entry.ability, `Ainda não sabe: chega ${when(entry)}.`),
+          onFocus: () => {
+            this.focusedAbility = undefined;
+            this.showAbility(entry.ability, `Ainda não sabe: chega ${when(entry)}.`);
+          },
           onSelect: () => undefined,
         }),
       ),
     ];
-    this.grid.setOptions(options);
+    this.grid.setOptions(options, focus);
     if (options.length === 0) {
       this.detailName.setText("");
       this.detail.setY(this.detailName.y).setText("Não aprendeu nada que sirva numa luta.");
@@ -639,11 +654,23 @@ export class SheetPanel {
     this.scene.tweens.add({ targets: this.notice, alpha: 0, delay: 2200, duration: 500 });
   }
 
+  /** `X`: leva a habilidade em foco pra luta, ou a deixa de fora. */
+  private toggleFocused(ability: Ability): void {
+    if (!toggleBenched(this.character, ability.id)) {
+      this.say("Ninguém entra numa luta sem poder bater.");
+      return;
+    }
+    const focus = this.grid.focusIndex;
+    this.host.onPacked();
+    this.listAbilities(focus);
+  }
+
   private onKey(event: KeyboardEvent): void {
     if (this.scene.time.now - this.openedAt < INPUT_GRACE_MS) return;
     if (isAction(event, "sheet")) this.host.onClose();
     else if (isAction(event, "bag")) this.host.onBag();
     else if (isAction(event, "interact") && !this.targeting) this.listSlots();
+    else if (event.code === "KeyX" && !this.targeting && this.focusedAbility) this.toggleFocused(this.focusedAbility);
     else if (event.code === "Tab" && !this.targeting && this.host.members.length > 1) {
       event.preventDefault();
       this.index = (this.index + 1) % this.host.members.length;

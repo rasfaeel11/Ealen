@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import {
+  BELT_SLOTS,
   describePurse,
   fights,
   storedGear,
@@ -8,6 +9,7 @@ import {
   type ConsumableItem,
   type FieldItemError,
   type FieldItemResult,
+  type PassResult,
 } from "@jogo/shared";
 import { SLOT_LABEL, describeEquipment } from "./SheetPanel";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
@@ -65,20 +67,24 @@ export interface BagHost {
   owner: Character;
   /** Quem pode receber um item: a protagonista primeiro, depois quem anda com ela. */
   members: Character[];
-  /** Usa o item em `target`, agora (ver useItemOutside em shared/world/field.ts). */
-  onUse: (itemId: string, target: Character) => FieldItemResult;
+  /** `holder` usa o item em `target`, agora (ver useItemOutside em shared/world/field.ts). */
+  onUse: (holder: Character, itemId: string, target: Character) => FieldItemResult;
+  /** Passa um item de uma pessoa pra outra (ver passItem em shared/inventoryEffects.ts). */
+  onPass: (from: Character, to: Character, itemId: string) => PassResult;
   onSheet: () => void;
   onClose: () => void;
 }
 
 /**
- * A mochila do grupo, aberta por cima do mundo parado: uma grade de encaixes,
- * o que cada coisa é e faz, e — pro que cura — usar em alguém ali mesmo. O que
- * só serve numa luta aparece, mas fica pra ela. A regra é de shared/world/field.ts.
- * Depois dos itens vêm as peças que ninguém veste (o guardado do grupo, ver
- * shared/equipment.ts): aparecem aqui, e vestem-se pela ficha.
+ * A mochila do grupo e o cinto de cada um, abertos por cima do mundo parado: uma
+ * grade de encaixes, o que cada coisa é e faz, usar em alguém (o que cura) e
+ * passar pra outra pessoa. Na luta, cada um só usa o que leva: a protagonista,
+ * a mochila; os outros, o cinto. A regra é de shared/world/field.ts.
+ * Depois dos itens da mochila vêm as peças que ninguém veste (o guardado do
+ * grupo, ver shared/equipment.ts): aparecem aqui, e vestem-se pela ficha.
  *
- * Setas (ou WASD) andam na grade; Enter usa; C vai pra ficha; Esc ou I fecham.
+ * Setas (ou WASD) andam na grade; Enter escolhe; Tab troca de pessoa; C vai pra
+ * ficha; Esc ou I fecham.
  */
 export class BagPanel {
   private readonly frame: Phaser.GameObjects.GameObject[] = [];
@@ -91,6 +97,8 @@ export class BagPanel {
   private readonly detail: Phaser.GameObjects.Text;
   private readonly notice: Phaser.GameObjects.Text;
   private readonly openedAt: number;
+  /** De quem é o que está na tela, entre quem luta. */
+  private holderIndex = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -118,7 +126,7 @@ export class BagPanel {
       this.detail,
       this.notice,
       addHud(
-        addBodyText(scene, X + WIDTH - 30, Y + HEIGHT - 42, `Setas: item  ·  Enter: usar  ·  ${keyLabel("sheet")}: ficha  ·  Esc: fechar`, {
+        addBodyText(scene, X + WIDTH - 30, Y + HEIGHT - 42, `Setas: item  ·  Enter: escolher  ·  Tab: de quem  ·  ${keyLabel("sheet")}: ficha  ·  Esc: fechar`, {
           fontSize: "14px",
           color: TEXT_COLORS.inkDim,
         }).setOrigin(1, 0.5),
@@ -145,6 +153,14 @@ export class BagPanel {
     for (const object of this.frame) object.destroy();
   }
 
+  private get fighters(): Character[] {
+    return this.host.members.filter(fights);
+  }
+
+  private get holder(): Character {
+    return this.fighters[this.holderIndex] ?? this.host.owner;
+  }
+
   /** O que aparece à direita: o ícone, o nome e o que a coisa é. */
   private showDetail(icon: IconName | undefined, name: string, text: string): void {
     this.detailIcon.setVisible(icon !== undefined);
@@ -156,28 +172,34 @@ export class BagPanel {
   private listItems(focus = 0): void {
     this.menu?.destroy();
     this.menu = undefined;
-    const inventory = this.host.owner.inventory;
+    const { holder } = this;
+    const own = holder === this.host.owner;
+    const inventory = holder.inventory;
     const slots = [...(inventory?.slots ?? [])].sort((a, b) => a.slotIndex - b.slotIndex);
-    this.heading.setText(`MOCHILA  ${slots.length}/${inventory?.maxSlots ?? 0}`);
+    this.heading.setText(own ? `MOCHILA  ${slots.length}/${inventory?.maxSlots ?? 0}` : `CINTO DE ${holder.name.toUpperCase()}  ${slots.length}/${inventory?.maxSlots ?? BELT_SLOTS}`);
     this.purse.setText(describePurse(this.host.owner));
     // Depois dos itens, as peças que ninguém veste (o guardado do grupo): aparecem aqui, vestem-se pela ficha.
-    const stored = storedGear(this.host.owner);
+    const stored = own ? storedGear(this.host.owner) : [];
     const pieces = [...new Map(stored.map((piece) => [piece.id, piece])).values()];
     if (slots.length === 0 && pieces.length === 0) {
-      this.showDetail(undefined, "", "Nada na mochila.\n\nO que os vencidos carregavam sem usar fica pra quem vence.");
+      this.showDetail(
+        undefined,
+        "",
+        own ? "Nada na mochila.\n\nO que os vencidos carregavam sem usar fica pra quem vence." : `${holder.name} não leva nada.\n\nNa luta, cada um só usa o que leva. Tab volta pra mochila.`,
+      );
     }
 
     const options: GridOption[] = [
       ...slots.map(({ item, quantity }): GridOption => {
         const charges = item.data.maxUses > 1 ? `Usos: ${item.data.usesRemaining}/${item.data.maxUses}\n` : "";
-        const where = usableOutside(item) ? "Enter ou clique: usar agora em alguém do grupo." : REFUSAL.only_in_fight;
+        const where = usableOutside(item) ? "Enter ou clique: usar agora, ou passar pra alguém." : "Só serve numa luta. Enter ou clique: passar pra alguém.";
         const icon = itemIcon(item.id);
         return {
           icon,
           count: quantity,
           onFocus: () =>
             this.showDetail(icon, item.name, `${RARITY[item.rarity]}\n\n${item.description}\n\n${describeEffect(item)}\n${charges}\n${where}`),
-          onSelect: () => (usableOutside(item) ? this.chooseTarget(item, icon) : this.say(REFUSAL.only_in_fight)),
+          onSelect: () => this.chooseTarget(item, icon),
         };
       }),
       ...pieces.map((piece): GridOption => {
@@ -196,24 +218,34 @@ export class BagPanel {
         };
       }),
     ];
+    this.grid.setCapacity(own ? Number.POSITIVE_INFINITY : (inventory?.maxSlots ?? BELT_SLOTS));
     this.grid.setActive(true);
     this.grid.setOptions(options, focus);
   }
 
-  /** A coluna da direita ganha a lista do grupo: em quem o item vai. */
+  /** A coluna da direita ganha a lista do grupo: em quem o item vai, ou pra quem ele passa. */
   private chooseTarget(item: ConsumableItem, icon: IconName): void {
     const back = this.grid.focusIndex;
-    const targets = this.host.members.filter(fights);
+    const { holder } = this;
+    const others = this.fighters.filter((other) => other !== holder);
     this.grid.setActive(false);
-    this.showDetail(icon, item.name, `Em quem?\n\n${describeEffect(item)}`);
+    this.showDetail(icon, item.name, describeEffect(item));
     const options: MenuOption[] = [
-      ...targets.map((target) => ({
-        label: `${target.name}  ${target.currentHp}/${target.maxHp}`,
+      ...(usableOutside(item) ? this.fighters : []).map((target) => ({
+        label: `Usar em ${target.name}  ${target.currentHp}/${target.maxHp}`,
         disabled: target.currentHp >= target.maxHp,
         onSelect: () => {
-          const result = this.host.onUse(item.id, target);
+          const result = this.host.onUse(holder, item.id, target);
           this.defer(() => this.listItems(back));
           this.say(result.ok ? `${target.name}: ${result.description}` : REFUSAL[result.reason]);
+        },
+      })),
+      ...others.map((other) => ({
+        label: other === this.host.owner ? "Devolver à mochila" : `Passar pra ${other.name}`,
+        onSelect: () => {
+          const result = this.host.onPass(holder, other, item.id);
+          this.defer(() => this.listItems(back));
+          this.say(result === "ok" ? `${item.name}: agora com ${other.name}.` : result === "full" ? `${other.name} não tem onde levar mais nada.` : REFUSAL.item_unavailable);
         },
       })),
       { label: "Voltar", onSelect: () => this.defer(() => this.listItems(back)) },
@@ -243,5 +275,10 @@ export class BagPanel {
     if (this.scene.time.now - this.openedAt < INPUT_GRACE_MS) return;
     if (isAction(event, "bag")) this.host.onClose();
     else if (isAction(event, "sheet")) this.host.onSheet();
+    else if (event.code === "Tab" && !this.menu && this.fighters.length > 1) {
+      event.preventDefault();
+      this.holderIndex = (this.holderIndex + 1) % this.fighters.length;
+      this.listItems();
+    }
   }
 }

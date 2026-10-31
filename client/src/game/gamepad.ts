@@ -20,6 +20,7 @@ const FIXED_KEY_CODES: Record<string, number> = {
   ArrowDown: 40,
 };
 for (let digit = 0; digit <= 9; digit++) FIXED_KEY_CODES[`Digit${digit}`] = 48 + digit;
+FIXED_KEY_CODES.KeyX = 88;
 
 const DEAD_ZONE = 0.45;
 const REPEAT_DELAY_MS = 380;
@@ -111,6 +112,7 @@ function buttonsNow(): [number, Press][] {
     [BUTTON.lb, fixed("Tab")],
     [BUTTON.rb, fixed("Tab")],
     [BUTTON.x, bound("interact")],
+    [BUTTON.y, fixed("KeyX")],
   ];
 }
 

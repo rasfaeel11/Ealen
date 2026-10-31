@@ -43,7 +43,8 @@ export interface UnitPlacement {
  * mexe em `character` até alguém chamar syncCharacterFromUnit.
  */
 export function unitFromCharacter(character: Character, placement: UnitPlacement): Unit {
-  const own = [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))];
+  const known = [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))];
+  const own = known.filter((ability) => !character.benched?.includes(ability.id));
   return {
     id: placement.id ?? character.id,
     name: character.name,

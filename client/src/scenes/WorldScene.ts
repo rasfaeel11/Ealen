@@ -79,6 +79,7 @@ import {
   trailPoint,
   unusedItems,
   useItemOutside,
+  passItem,
   equip,
   unequip,
   walk,
@@ -706,7 +707,7 @@ export default class WorldScene extends Phaser.Scene {
 
   /** As habilidades da protagonista que servem fora de luta, na ordem das teclas 1, 2, 3... */
   private fieldAbilities(): Ability[] {
-    return sheetAbilities(this.character).filter((ability) => fieldUse(ability) !== undefined);
+    return sheetAbilities(this.character).filter((ability) => fieldUse(ability) !== undefined && !this.character.benched?.includes(ability.id));
   }
 
   /** Um título no alto da tela, sumindo sozinho (nome da área, avisos). */
@@ -730,7 +731,7 @@ export default class WorldScene extends Phaser.Scene {
     const height = 420;
     const x = (GAME_WIDTH - width) / 2;
     const y = (GAME_HEIGHT - height) / 2;
-    const meals = campMeals(this.character);
+    const meals = campMeals(this.character, this.save.companions);
     const mouths = campMouths(this.character, this.save.companions);
     const left = this.save.shortRests;
     const night = this.story.clock() ? " A noite gasta o tempo da Cheia." : "";
@@ -1319,6 +1320,10 @@ export default class WorldScene extends Phaser.Scene {
         this.persist();
       },
       afflictions: this.story.afflictions(),
+      onPacked: () => {
+        this.persist();
+        this.refreshHint();
+      },
       onMend: (caster, ability, target) => this.mendOutside(caster, ability, target),
       onOpening: (ability) => {
         if (!this.aimOpening(ability)) return false;
@@ -1340,12 +1345,17 @@ export default class WorldScene extends Phaser.Scene {
     this.pause = new BagPanel(this, (object) => this.addHud(object), {
       owner: this.character,
       members: this.company(),
-      onUse: (itemId, target) => {
-        const result = useItemOutside(this.character, itemId, target);
+      onUse: (holder, itemId, target) => {
+        const result = useItemOutside(holder, itemId, target);
         if (result.ok) {
           this.persist();
           this.refreshStatus();
         }
+        return result;
+      },
+      onPass: (from, to, itemId) => {
+        const result = passItem(from, to, itemId);
+        if (result === "ok") this.persist();
         return result;
       },
       onSheet: () => {

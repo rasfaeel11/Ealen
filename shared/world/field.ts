@@ -52,6 +52,23 @@ export function sheetAbilities(character: Knower): Ability[] {
   return [...own, ...engravedAbilities(own, character.engraved)];
 }
 
+/**
+ * Leva ou deixa de levar `abilityId` pra luta. Recusa deixar de fora o último
+ * golpe que ele sabe: ninguém entra numa luta sem poder bater. Devolve se mudou.
+ */
+export function toggleBenched(character: Character, abilityId: string): boolean {
+  const benched = character.benched ?? [];
+  if (benched.includes(abilityId)) {
+    character.benched = benched.filter((id) => id !== abilityId);
+    if (character.benched.length === 0) delete character.benched;
+    return true;
+  }
+  const blows = sheetAbilities(character).filter((ability) => !ability.engraved && ability.attack && !benched.includes(ability.id));
+  if (blows.length === 1 && blows[0].id === abilityId) return false;
+  character.benched = [...benched, abilityId];
+  return true;
+}
+
 /** Pra que uma habilidade serve fora de luta: `mend` cura alguém do grupo, `opening` abre uma luta. */
 export type FieldUse = "mend" | "opening";
 
