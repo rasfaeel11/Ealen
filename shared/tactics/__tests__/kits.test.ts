@@ -61,14 +61,21 @@ function seedWhere<T>(scene: (seed: number) => T, check: (result: T) => boolean)
   throw new Error("nenhuma seed serviu");
 }
 
-/** Quantas Técnicas cada classe ensina: duas pro mago (as do Círculo); o espadachim, nenhuma (o golpe-selo é por iniciação). */
-const TECHNIQUES = (order: CharacterClass) => (order === "espadachim" ? 0 : 2);
+/** Os verbos de luta que todo mundo sabe desde o nível 1 (task 63): não são técnica, mas moram com elas. */
+const VERBS = ["disparada", "ajudar"];
+
+/** Quantas Técnicas cada classe ensina: duas pro mago (as do Círculo); o espadachim, nenhuma (o golpe-selo é por iniciação). Mais os verbos. */
+const TECHNIQUES = (order: CharacterClass) => (order === "espadachim" ? 0 : 2) + VERBS.length;
 
 test("cada classe tem o kit dela: as Artes no nível 1, e as Técnicas chegam com o nível", () => {
   for (const order of CLASSES) {
     const arts = STANCE_ORDER.filter((stance) => CLASS_COMBAT_ARTS[order][stance] !== null);
     const novice = abilitiesFor(makeCharacter("x", { characterClass: order, level: 1 }));
-    assert.deepEqual(novice.map((ability) => ability.id).sort(), arts.map((stance) => `${order}.${stance}`).sort(), order);
+    assert.deepEqual(
+      novice.map((ability) => ability.id).sort(),
+      [...arts, ...VERBS].map((slug) => `${order}.${slug}`).sort(),
+      order,
+    );
 
     const techniques = Object.entries(CLASS_TECHNIQUES[order]);
     assert.equal(techniques.length, TECHNIQUES(order), `${order} tem ${TECHNIQUES(order)} Técnicas`);
@@ -82,6 +89,10 @@ test("cada classe tem o kit dela: as Artes no nível 1, e as Técnicas chegam co
         assert.equal(has(technique.mage), true, `${id} no nível de mago dela`);
         assert.ok(learnedAtMage(order, technique.mage).some((ability) => ability.id === id));
         assert.ok(!learnedAt(order, technique.level).some((ability) => ability.id === id));
+        continue;
+      }
+      if (VERBS.includes(slug)) {
+        assert.equal(technique.level, 1, `${id} é de todo mundo desde o começo`);
         continue;
       }
       assert.ok(technique.level > 1, `${id} não é do nível 1`);
@@ -126,7 +137,7 @@ test("o mago de atração e repulsão paga a magia em mana e a recita; o bordão
 
   // O espadachim: a lâmina, e o que pesa custa Fôlego.
   const blade = Object.fromEntries(kitOf({ characterClass: "espadachim" }).map((entry) => [entry.slug, entry.ability]));
-  assert.deepEqual(Object.keys(blade).sort(), ["attack", "defend", "heavy_attack", "quick_attack"]);
+  assert.deepEqual(Object.keys(blade).sort(), ["ajudar", "attack", "defend", "disparada", "heavy_attack", "quick_attack"]);
   assert.ok(Object.values(blade).every((ability) => ability.mana === undefined));
   assert.equal(blade.heavy_attack.breath, 2);
 });

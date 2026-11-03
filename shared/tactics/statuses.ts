@@ -97,6 +97,8 @@ export const STATUSES = {
   disarmed: { id: "disarmed", name: "Desarmado", toHit: -4 },
   /** O Segurar o Bote de Xanduí: o passo preso nela. Com o Em seco, o bicho de rio não volta pra água. */
   held: { id: "held", name: "Seguro", speed: -4 },
+  /** Quem levou a ajuda de um aliado colado (Ajudar, ver ./abilities.ts): o próximo golpe sai mais certo. */
+  aided: { id: "aided", name: "Ajudado", toHit: 2 },
 
   // --- Peças do motor que nada do jogo põe ainda: os testes as exercitam (ver TEST_KIT em __tests__/helpers.ts) ---
   /** Esquiva: quem ataca o portador precisa de muito mais pra acertar. */

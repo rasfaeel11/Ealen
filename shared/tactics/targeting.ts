@@ -88,7 +88,7 @@ function reachTargets(encounter: Encounter, unit: Unit, ability: Ability): Pos[]
 
   const wantsAlly = ability.targets === "ally";
   const targets = encounter.units
-    .filter((other) => isAlive(other) && (other.team === unit.team) === wantsAlly)
+    .filter((other) => isAlive(other) && (other.team === unit.team) === wantsAlly && !(ability.others && other.id === unit.id))
     .filter((other) => canTarget(encounter, unit, ability, other.pos))
     .map((other) => ({ ...other.pos }));
   if (wantsAlly || !dealsDamage(ability)) return targets;

@@ -992,6 +992,13 @@ function applyEffect(
     case "push":
       push(encounter, actor.pos, target, effect.distance, events);
       return;
+    case "stride": {
+      const amount = movementOf(target);
+      if (amount <= 0) return;
+      target.turn.movement += amount;
+      events.push({ type: "strode", unit: target.id, amount });
+      return;
+    }
   }
 }
 

@@ -59,7 +59,9 @@ export type Effect =
    * Empurra o alvo pra longe de quem usou, até `distance` quadrados
    * (negativo puxa). Para na primeira parede ou corpo no caminho.
    */
-  | { kind: "push"; distance: number };
+  | { kind: "push"; distance: number }
+  /** A disparada: o alvo ganha, neste turno, o passo inteiro de novo (ver movementOf em ./units.ts). */
+  | { kind: "stride" };
 
 export type AbilityCost = "action" | "bonus";
 
@@ -96,6 +98,8 @@ export interface Ability {
    * rodadas, acerte ou erre o golpe. Ver ./surfaces.ts.
    */
   surface?: { id: SurfaceId; rounds: number };
+  /** Num aliado, só nos OUTROS: quem usa não se mira (ajudar a si mesmo não existe). */
+  others?: boolean;
   /** Pode ser usada como ataque de oportunidade, gastando a reação. */
   opportunity?: boolean;
   /** Quantas vezes dá pra usar numa luta. Sem isto, quantas o turno pagar. */
@@ -463,6 +467,8 @@ export type TacticalEvent =
   | { type: "breathSpent"; unit: string; amount: number; remaining: number }
   /** `unit` recuperou Fôlego (o efeito `breath`). */
   | { type: "breathRecovered"; unit: string; amount: number; remaining: number }
+  /** `unit` disparou: ganhou `amount` quadrados de passo neste turno (o efeito `stride`). */
+  | { type: "strode"; unit: string; amount: number }
   /** `unit` PERDEU Fôlego pelo golpe de outro (o efeito `breath` negativo). */
   | { type: "breathDrained"; unit: string; amount: number; remaining: number }
   /** `unit` pagou a mana de uma magia. O `abilityUsed` dela vem logo depois (ou o `manaBurst`, antes dele). */

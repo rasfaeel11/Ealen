@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { activeUnit, findUnit, movementOf, readiness, resistOf, type Ability, type ActiveStatus } from "../index";
+import { abilityTargets, activeUnit, findUnit, movementOf, readiness, resistOf, type Ability, type ActiveStatus } from "../index";
 import { STATUSES, type StatusId } from "../statuses";
 import { FIRST, eventsOf, makeUnit, run, setup } from "./helpers";
 
@@ -71,4 +71,31 @@ test("Preso não anda; Envenenado e Sangrando ferem no começo da vez; Atordoado
   const events = run(encounter, { type: "endTurn", unitId: activeUnit(encounter)!.id });
   assert.ok(enemy.currentHp < hp);
   assert.equal(eventsOf(events, "turnSkipped")[0]?.unit, "E");
+});
+
+test("Disparada: a ação vira passo, e o turno anda o dobro", () => {
+  const { encounter } = setup(["A.........E"], (at) => [
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST }, characterClass: "espadachim" }),
+    makeUnit("E", "enemy", at("E")),
+  ]);
+  const unit = findUnit(encounter, "A")!;
+  const before = unit.turn.movement;
+  const events = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.disparada", target: unit.pos });
+  assert.equal(unit.turn.movement, before * 2);
+  assert.equal(eventsOf(events, "strode")[0]?.amount, before);
+  assert.equal(unit.turn.action, false);
+});
+
+test("Ajudar: só num aliado colado, nunca em si, e ele sai Ajudado", () => {
+  const { encounter } = setup(["AB.......E"], (at) => [
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST }, characterClass: "espadachim" }),
+    makeUnit("B", "party", at("B"), { characterClass: "espadachim" }),
+    makeUnit("E", "enemy", at("E")),
+  ]);
+  const actor = findUnit(encounter, "A")!;
+  const help = actor.abilities.find((ability) => ability.id === "espadachim.ajudar")!;
+  const targets = abilityTargets(encounter, actor, help);
+  assert.deepEqual(targets, [findUnit(encounter, "B")!.pos]);
+  run(encounter, { type: "ability", unitId: "A", abilityId: help.id, target: targets[0] });
+  assert.ok(findUnit(encounter, "B")!.statuses.some((status) => status.id === "aided" && (status.toHit ?? 0) > 0));
 });

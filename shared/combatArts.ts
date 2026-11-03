@@ -92,12 +92,22 @@ export const CLASS_COMBAT_ARTS: Record<CharacterClass, Record<CombatStance, Comb
 
 /**
  * As Técnicas de cada classe, pela chave que o kit usa: o que ela faz além
- * das cinco Artes. As do mago chegam com o nível de mago (`mage`); o
- * espadachim não tem nenhuma que se aprenda subindo de nível.
+ * das cinco Artes. As do mago chegam com o nível de mago (`mage`). A Disparada
+ * e o Ajudar são de todo mundo, desde o começo: verbos de luta, não técnica.
  */
 export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>> = {
   // O que atração e repulsão faz no Círculo (`magia` §3.5): chega quando ele chega lá (`mage`), não com o nível.
   atracao_repulsao: {
+    disparada: {
+      name: "Disparada",
+      flavor: "O livro debaixo do braço e as pernas na frente. Estudante também corre.",
+      level: 1,
+    },
+    ajudar: {
+      name: "Ajudar",
+      flavor: "Apontar a brecha, puxar a manga, gritar de que lado o outro vai cair.",
+      level: 1,
+    },
     desarmar: {
       name: "Desarmar",
       flavor: "Atração na arma, não no corpo: o cabo escorrega da mão de quem a segurava.",
@@ -113,6 +123,17 @@ export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>>
   },
 
   // O golpe-selo de cada escola só vem por iniciação, a partir do grau 4: o trio não chega lá.
-  espadachim: {},
+  espadachim: {
+    disparada: {
+      name: "Disparada",
+      flavor: "A espada baixa e o corpo inteiro na corrida. Chega antes, e chega sem golpe.",
+      level: 1,
+    },
+    ajudar: {
+      name: "Ajudar",
+      flavor: "O ombro no escudo do outro, a lâmina prendendo a dele: o golpe do companheiro entra.",
+      level: 1,
+    },
+  },
 };
 

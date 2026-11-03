@@ -188,6 +188,7 @@ export function describeAbility(ability: Ability): string {
 
   if (ability.targets === "self") parts.push("em si");
   else if (ability.targets === "foes") parts.push("todo inimigo de pé");
+  else if (ability.others) parts.push("num aliado colado");
   else parts.push(ability.range === 1 ? "corpo a corpo" : `alcance ${ability.range}`);
   if (ability.radius !== undefined) {
     const side = ability.radius * 2 + 1;
@@ -211,6 +212,7 @@ export function describeAbility(ability: Ability): string {
       parts.push(effect.statusId === "guarding" ? "em guarda até o próximo turno" : `${status.name} ${span}${what ? ` (${what})` : ""}`);
     }
     else if (effect.kind === "breath") parts.push(effect.amount < 0 ? `tira ${-effect.amount} de Fôlego do alvo` : `devolve ${effect.amount} de Fôlego`);
+    else if (effect.kind === "stride") parts.push("anda o passo inteiro de novo neste turno");
     else parts.push(effect.distance > 0 ? `empurra ${effect.distance}` : `puxa ${-effect.distance}`);
   }
   if (ability.surface) parts.push(`deixa ${SURFACES[ability.surface.id].name} por ${ability.surface.rounds} rodadas`);
@@ -1076,6 +1078,11 @@ export class CombatController {
 
       case "breathRecovered":
         this.hud.log(`${this.unit(event.unit).name} toma fôlego (+${event.amount}).`);
+        return;
+
+      case "strode":
+        this.floatOver(event.unit, `+${event.amount} passos`, TEXT_COLORS.goldBright, -22, 20);
+        this.hud.log(`${this.unit(event.unit).name} dispara (+${event.amount} de passo).`);
         return;
 
       case "breathDrained":

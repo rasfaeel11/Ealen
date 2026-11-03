@@ -87,6 +87,20 @@ const GUARD: Body = {
   ],
 };
 
+/**
+ * A disparada: a ação inteira gasta em andar. Ganha o passo de novo neste turno.
+ * Quem dispara não bate, não lê e não se guarda: é o jeito de chegar à margem
+ * antes da água.
+ */
+const DASH: Body = { cost: "action", range: 0, targets: "self", effects: [{ kind: "stride" }] };
+
+/**
+ * Ajudar: a ação gasta pra abrir caminho a um aliado colado (segurar o braço do
+ * outro, apontar a brecha, gritar onde ele vai estar). O aliado sai Ajudado: o
+ * próximo golpe dele, até o fim da vez seguinte, tem +2 de acerto.
+ */
+const HELP: Body = { cost: "action", range: 1, targets: "ally", others: true, effects: [{ kind: "status", statusId: "aided", turns: 2 }] };
+
 /** A Cura de quem conjura (`magia` §4.3): o mesmo texto de primeiros socorros, pago em mana, e recitado. */
 const CURE: Body = { cost: "action", range: HEAL_RANGE, targets: "ally", effects: [{ kind: "heal", dice: D6, attribute: "fator" }], mana: 2 };
 
@@ -122,6 +136,8 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
     },
     defend: GUARD,
     heal: CURE,
+    disparada: DASH,
+    ajudar: HELP,
     desarmar: {
       cost: "action",
       range: 4,
@@ -155,6 +171,8 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
       cooldown: HEAVY_COOLDOWN,
     },
     defend: GUARD,
+    disparada: DASH,
+    ajudar: HELP,
   }),
 };
 
