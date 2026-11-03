@@ -80,14 +80,14 @@ test("o catálogo não repete id nem pisa nos consumíveis, e todo mundo que ves
 
 test("a arma dá o dado, o alcance e o acerto dos golpes de arma; de mãos vazias vale 1d6 de perto", () => {
   for (const order of ["atracao_repulsao", "espadachim"] as const) {
-    assert.deepEqual(armOf(sheet(order)), { dice: { count: 1, sides: 6 }, range: 1, toHit: 0 });
+    assert.deepEqual(armOf(sheet(order)), { dice: { count: 1, sides: 6 }, range: 1, toHit: 0, damageType: "impacto" });
   }
 
   const hooked = sheet("espadachim", { equipment: { weapon: "gear-teste-gancho" } });
   const strike = abilitiesFor(hooked).find((ability) => ability.id === "espadachim.attack")!;
   assert.equal(strike.range, 2);
   assert.equal(strike.attack?.toHit, -1);
-  assert.deepEqual(strike.effects[0], { kind: "damage", dice: { count: 1, sides: 8 }, attribute: "primary" });
+  assert.deepEqual(strike.effects[0], { kind: "damage", dice: { count: 1, sides: 8 }, attribute: "primary", type: "corte" });
   // Um passo além do braço ainda pune quem sai de perto.
   assert.equal(strike.opportunity, true);
 

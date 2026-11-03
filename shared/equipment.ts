@@ -1,5 +1,6 @@
 import { findEquipment } from "./data/equipment";
 import type { Dice } from "./tactics/rng";
+import type { DamageType } from "./tactics/types";
 import { ATTRIBUTE_KEYS, type Attributes } from "./types/attributes";
 import type { Character } from "./types/character";
 import type { CharacterClass } from "./types/characterClass";
@@ -37,6 +38,8 @@ export interface Arm {
   toHit: number;
   /** Quantas vezes cada golpe dela sai por luta, se for contado. */
   ammo?: number;
+  /** O que ela faz na carne (ver DamageType): a espada corta, a ponta fura, a mão vazia bate. */
+  damageType: DamageType;
 }
 
 const D6: Dice = { count: 1, sides: 6 };
@@ -46,8 +49,8 @@ const D6: Dice = { count: 1, sides: 6 };
  * a arma natural das criaturas.
  */
 const BARE: Record<CharacterClass, Arm> = {
-  atracao_repulsao: { dice: D6, range: 1, toHit: 0 },
-  espadachim: { dice: D6, range: 1, toHit: 0 },
+  atracao_repulsao: { dice: D6, range: 1, toHit: 0, damageType: "impacto" },
+  espadachim: { dice: D6, range: 1, toHit: 0, damageType: "impacto" },
 };
 
 /** Com o que cada classe começa. Quem é do elenco pode começar com outra coisa (`gear` em ./party.ts). */
@@ -73,7 +76,13 @@ export function wornItem(character: Wearer, slot: EquipmentSlot): EquipmentItem 
 export function armOf(character: Pick<Character, "characterClass" | "equipment">): Arm {
   const weapon = wornItem(character, "weapon")?.data;
   if (weapon?.slot !== "weapon") return BARE[character.characterClass];
-  return { dice: weapon.dice, range: weapon.range, toHit: weapon.toHit ?? 0, ...(weapon.ammo !== undefined ? { ammo: weapon.ammo } : {}) };
+  return {
+    dice: weapon.dice,
+    range: weapon.range,
+    toHit: weapon.toHit ?? 0,
+    damageType: weapon.damageType ?? "corte",
+    ...(weapon.ammo !== undefined ? { ammo: weapon.ammo } : {}),
+  };
 }
 
 /** O que a armadura de `character` soma na defesa dele. */

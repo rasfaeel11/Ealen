@@ -19,6 +19,15 @@ export type AttributeRef = keyof Attributes | "primary";
  * O que uma habilidade FAZ a cada alvo, em ordem. Os efeitos são peças: uma
  * habilidade nova é uma lista delas, sem código novo no motor.
  */
+/**
+ * O tipo de um dano: o que a arma faz (o fio corta, a ponta fura, o pau e o
+ * corpo jogado batem) ou o conceito de quem o conjurou. Uma criatura pode
+ * resistir a um tipo ou sofrer mais com ele (`resist` em Unit).
+ */
+export type DamageType = "corte" | "perfuracao" | "impacto" | "atracao_repulsao";
+
+export const DAMAGE_TYPES: readonly DamageType[] = ["corte", "perfuracao", "impacto", "atracao_repulsao"];
+
 export type Effect =
   /**
    * Dano: (atributo + dados) x multiplicador + bônus, dobrado em crítico,
@@ -35,6 +44,8 @@ export type Effect =
       piercing?: boolean;
       /** Devolve a quem bate esta fração do dano que de fato entrou, como vida (arredondada pra baixo). */
       leech?: number;
+      /** O tipo do dano (ver DamageType). Sem isto, nenhum: nada resiste nem sofre mais. */
+      type?: DamageType;
     }
   /** Cura: atributo + dados, limitada ao HP que falta. */
   | { kind: "heal"; dice: Dice; attribute?: AttributeRef }
@@ -267,6 +278,11 @@ export interface Unit {
   speed: number;
   /** O que a armadura soma na defesa dele: o número que a rolagem de quem o ataca precisa alcançar (ver ../equipment.ts). */
   defense?: number;
+  /**
+   * O quanto de cada tipo de dano entra nele, como fator: 0.5 resiste, 1.5 sofre
+   * mais. Tipo ausente = 1. Entra depois do crítico e antes da armadura.
+   */
+  resist?: Partial<Record<DamageType, number>>;
   abilities: Ability[];
   statuses: ActiveStatus[];
   inventory?: Inventory<ConsumableItem>;
@@ -563,6 +579,8 @@ export type CommandError =
   | "reciting"
   /** A habilidade ainda está em recarga. */
   | "recharging"
+  /** Calado: magia nenhuma sai da boca dele (ver `silenced` em ./statuses.ts). */
+  | "silenced"
   | "invalid_target"
   | "item_unavailable";
 

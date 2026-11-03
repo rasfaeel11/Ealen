@@ -46,6 +46,7 @@ import {
   type AttackOutcome,
   type Command,
   type CommandError,
+  type DamageType,
   type CueWhen,
   type Encounter,
   type PixelPos,
@@ -135,6 +136,14 @@ const COLOR_WATER = 0x9fd8e8;
 /** A marca de atração e repulsão é sangue pelo nariz: quem a carrega pinga. */
 const NOSEBLEED: string = CONCEPTS.atracao_repulsao.mark;
 
+/** O tipo de um dano, como a linha da habilidade o diz. */
+const DAMAGE_LABEL: Record<DamageType, string> = {
+  corte: "corte",
+  perfuracao: "perfuração",
+  impacto: "impacto",
+  atracao_repulsao: "atração e repulsão",
+};
+
 const ERROR_TEXT: Record<CommandError, string> = {
   battle_over: "A luta já acabou.",
   not_your_turn: "Não é a sua vez.",
@@ -145,6 +154,7 @@ const ERROR_TEXT: Record<CommandError, string> = {
   no_mana: "Falta mana pra isso.",
   reciting: "Já está recitando: uma magia de cada vez.",
   recharging: "Ainda está em recarga.",
+  silenced: "Calado: não sai magia nenhuma.",
   invalid_target: "Alvo fora de alcance ou fora de vista.",
   item_unavailable: "Esse item não está na mochila.",
 };
@@ -163,6 +173,7 @@ export function describeStatus(status: StatusTemplate): string {
   if (status.speed) notes.push(`movimento ${status.speed > 0 ? "+" : ""}${status.speed}`);
   if (status.immovable) notes.push("nada o tira do lugar");
   if (status.noHeal) notes.push("não pode ser curado");
+  if (status.silenced) notes.push("não conjura");
   if (status.hunger) notes.push("a cura custa o dobro de Fôlego");
   if (status.untilRest) notes.push("até o descanso");
   if (status.guaranteedCrit) notes.push("o próximo golpe é crítico");
@@ -188,6 +199,7 @@ export function describeAbility(ability: Ability): string {
     if (effect.kind === "damage") {
       const dice = `${effect.dice.count}d${effect.dice.sides}`;
       parts.push(effect.multiplier ? `dano ${dice} x${effect.multiplier}` : `dano ${dice}`);
+      if (effect.type) parts.push(DAMAGE_LABEL[effect.type]);
       if (effect.piercing) parts.push("fura a armadura");
       if (effect.leech) parts.push(effect.leech === 1 ? "devolve como vida o que tirar" : `devolve ${Math.round(effect.leech * 100)}% como vida`);
     } else if (effect.kind === "heal") {
@@ -647,6 +659,7 @@ export class CombatController {
       if (ready === "breath") return ERROR_TEXT.no_breath;
       if (ready === "mana") return ERROR_TEXT.no_mana;
       if (ready === "reciting") return ERROR_TEXT.reciting;
+      if (ready === "silenced") return ERROR_TEXT.silenced;
       if (abilityTargets(encounter, unit, ability).length > 0) return undefined;
       const surprised = encounter.units.some(
         (other) => other.team !== unit.team && isAlive(other) && other.statuses.some((status) => status.id === "surprised"),

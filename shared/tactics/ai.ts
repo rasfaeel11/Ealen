@@ -10,7 +10,7 @@ import { abilityTargets, affectedProps, affectedUnits, canAimAt, isBlow, liftabl
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
-import { activeUnit, damageTakenOf, effectiveAttribute, isAlive, movementOf, primaryAttribute, readiness, unitAt } from "./units";
+import { activeUnit, damageTakenOf, resistOf, effectiveAttribute, isAlive, movementOf, primaryAttribute, readiness, unitAt } from "./units";
 
 /**
  * A IA de inimigo, por utilidade.
@@ -547,7 +547,7 @@ function forecast(encounter: Encounter, actor: Unit, ability: Ability, target: U
       // Na mesma ordem do motor: Onda, crítico, Rachadura, o que as condições do alvo somam, armadura (se o golpe não a fura), Muralha.
       amount += waveBonus(actor, ability, target);
       if (critical) amount *= 2;
-      amount *= punishFactor(actor, target);
+      amount *= punishFactor(actor, target) * resistOf(target, effect.type);
       amount = Math.max(1, amount + damageTakenOf(target) - (effect.piercing ? 0 : Math.floor(targetOr / 2)));
       amount = Math.max(1, amount - styleReduction(target));
       if (guarded) amount -= Math.min(amount, targetOr + 3.5);

@@ -40,6 +40,8 @@ export interface StatusTemplate {
   speed?: number;
   /** Nada desloca o portador: empurrão e puxão não o tiram do lugar. */
   immovable?: boolean;
+  /** Calado: o portador não recita nem ativa magia nenhuma (o que custa mana). */
+  silenced?: boolean;
   /** Cura nenhuma pega no portador — nem de habilidade, nem de item. */
   noHeal?: boolean;
   /** Com fome: a cura cobra do portador o dobro de Fôlego (ver HEAL_PER_BREATH em ../breath.ts). */
@@ -62,6 +64,7 @@ export interface ActiveStatus extends StatusTemplate {
 }
 
 const D4: Dice = { count: 1, sides: 4 };
+const D6: Dice = { count: 1, sides: 6 };
 
 export const STATUSES = {
   guarding: { id: "guarding", name: "Em guarda", guard: true },
@@ -114,6 +117,22 @@ export const STATUSES = {
   cracked: { id: "cracked", name: "Trincado", damageTaken: 3 },
   /** O passo preso numa rede. */
   netted: { id: "netted", name: "Enredado", speed: -4 },
+
+  // --- As condições de todo RPG (task 62): peças pra arma, criatura e item que vierem. Nada do jogo as põe ainda. ---
+  /** O veneno no sangue: fere pouco, todo turno. */
+  poisoned: { id: "poisoned", name: "Envenenado", harm: D4 },
+  /** O corte aberto: fere mais. */
+  bleeding: { id: "bleeding", name: "Sangrando", harm: D6 },
+  /** A pancada que apaga: perde a vez. */
+  stunned: { id: "stunned", name: "Atordoado", skipsTurn: true },
+  /** O pé preso no chão: não anda. */
+  rooted: { id: "rooted", name: "Preso", speed: -99 },
+  /** A boca tapada, o livro arrancado: não conjura. */
+  silenced: { id: "silenced", name: "Calado", silenced: true },
+  /** O medo: a mão treme e a guarda abre. */
+  frightened: { id: "frightened", name: "Com medo", toHit: -2, attributeBonus: { couro: -1 } },
+  /** Sem ver: erra mais, e quem o ataca acerta mais. */
+  blinded: { id: "blinded", name: "Cego", toHit: -4, evasion: -2 },
 } satisfies Record<string, StatusTemplate>;
 
 export type StatusId = keyof typeof STATUSES;

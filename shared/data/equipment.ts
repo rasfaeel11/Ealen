@@ -41,7 +41,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Vara de madeira de quem anda a pé. Não tem texto nenhum gravado: é madeira.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "weapon", dice: { count: 1, sides: 6 }, range: 1, classes: ["atracao_repulsao"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 6 }, range: 1, classes: ["atracao_repulsao"], damageType: "impacto" },
   },
   {
     id: "gear-gibao-de-couro",
@@ -76,7 +76,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Ponta de ferro-cru num cabo comprido. Arma de quem guarda corrente e cais: segura o outro longe.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 2, toHit: -1, classes: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 2, toHit: -1, classes: ["espadachim"], damageType: "perfuracao" },
   },
   {
     id: "gear-besta",
@@ -84,7 +84,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "Arco atravessado numa coronha, com manivela. Qualquer um aprende a usar numa tarde; é por isso que os castelos gostam.",
     category: "equipment",
     rarity: "common",
-    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 6, classes: ["espadachim"], ammo: 12 },
+    data: { slot: "weapon", dice: { count: 1, sides: 8 }, range: 6, classes: ["espadachim"], ammo: 12, damageType: "perfuracao" },
   },
   // --- Armaduras ------------------------------------------------------------
   {

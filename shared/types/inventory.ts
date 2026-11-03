@@ -1,4 +1,5 @@
 import type { Dice } from "../tactics/rng";
+import type { DamageType } from "../tactics/types";
 import type { Attributes } from "./attributes";
 import type { CharacterClass } from "./characterClass";
 
@@ -45,7 +46,7 @@ export const EQUIPMENT_SLOTS: EquipmentSlot[] = ["weapon", "armor", "accessory"]
  * - o ACESSÓRIO soma atributos — na luta e nos testes da história.
  */
 export type EquipmentData =
-  | { slot: "weapon"; dice: Dice; range: number; toHit?: number; classes?: CharacterClass[]; ammo?: number }
+  | { slot: "weapon"; dice: Dice; range: number; toHit?: number; classes?: CharacterClass[]; ammo?: number; damageType?: DamageType }
   | { slot: "armor"; defense: number; speed?: number }
   | { slot: "accessory"; attributes: Partial<Attributes> };
 

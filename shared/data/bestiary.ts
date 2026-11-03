@@ -367,6 +367,7 @@ export function creaturePlacement(entry: BestiaryEntry, heroId: string): Omit<Un
     heft: entry.heft,
     drawnToMana: entry.drawnToMana,
     magic: entry.magic,
+    resist: entry.resist,
   };
 }
 

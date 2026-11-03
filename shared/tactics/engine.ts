@@ -50,6 +50,7 @@ import type {
 import {
   activeUnit,
   damageTakenOf,
+  resistOf,
   effectiveAttribute,
   findUnit,
   isAlive,
@@ -691,6 +692,7 @@ function useAbility(
   if (state === "mana") return "no_mana";
   if (state === "reciting") return "reciting";
   if (state === "recharging") return "recharging";
+  if (state === "silenced") return "silenced";
   if (state !== "ready") return "resource_spent";
   if (!abilityTargets(encounter, unit, ability).some((pos) => samePos(pos, target))) return "invalid_target";
 
@@ -923,7 +925,7 @@ function applyEffect(
 
       let amount = rollDamage(encounter, actor, effect) + wave;
       if (critical) amount *= 2;
-      amount = Math.round(amount * crack);
+      amount = Math.round(amount * crack * resistOf(target, effect.type));
 
       // O que as condições de quem apanha somam ou tiram do golpe (Trincado, Ancorado), e depois a armadura —
       // que um golpe `piercing` não encontra.

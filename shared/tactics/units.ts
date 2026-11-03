@@ -8,7 +8,7 @@ import { GIFTS, abilitiesFor, engravedAbilities, engravedId, type GiftId } from 
 import { proficiency, type StyleId } from "./styles";
 import { skillPassive, withSkills } from "../skillTree";
 import { samePos, type Pos } from "./grid";
-import type { Ability, AiProfile, AiQuirks, Encounter, TeamId, Unit } from "./types";
+import type { Ability, AiProfile, AiQuirks, DamageType, Encounter, TeamId, Unit } from "./types";
 
 /** Quadrados de movimento por turno de quem não diz o contrário. */
 export const DEFAULT_SPEED = 6;
@@ -36,6 +36,8 @@ export interface UnitPlacement {
   river?: boolean;
   heft?: number;
   drawnToMana?: boolean;
+  /** O que cada tipo de dano faz nele (ver `resist` em Unit). */
+  resist?: Partial<Record<DamageType, number>>;
 }
 
 /**
@@ -78,6 +80,7 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     ...(placement.river ? { river: true } : {}),
     ...(placement.heft ? { heft: placement.heft } : {}),
     ...(placement.drawnToMana ? { drawnToMana: true } : {}),
+    ...(placement.resist ? { resist: { ...placement.resist } } : {}),
     ...(placement.quirks ? { quirks: { ...placement.quirks } } : {}),
     ...(placement.style ? { style: placement.style.id, grade: proficiency(placement.style.grade, placement.aura) } : {}),
     ...(placement.aura !== undefined ? { aura: placement.aura } : {}),
@@ -124,7 +127,7 @@ export function cooldownLeft(unit: Unit, ability: Ability): number {
  * falta (quem não conjura não tem nenhuma) e `reciting` uma magia recitada
  * pedida por quem já está recitando outra. Não olha alvo.
  */
-export type Readiness = "ready" | "spent" | "limit" | "recharging" | "breath" | "mana" | "reciting";
+export type Readiness = "ready" | "spent" | "limit" | "recharging" | "breath" | "mana" | "reciting" | "silenced";
 
 /** Magia que se recita: leva tempo (sai no turno seguinte) e pode quebrar. A gravada, não. */
 export function isRecited(ability: Ability): boolean {
@@ -141,6 +144,7 @@ export function readiness(unit: Unit, ability: Ability, outOfTurn = false): Read
   if (usesLeft(unit, ability) <= 0) return "limit";
   if ((unit.cooldowns?.[ability.id] ?? 0) > 0) return "recharging";
   if (unit.breath < (ability.breath ?? 0)) return "breath";
+  if ((ability.mana ?? 0) > 0 && unit.statuses.some((status) => status.silenced)) return "silenced";
   if ((ability.mana ?? 0) > 0 && (unit.mana ?? 0) < ability.mana!) return "mana";
   if (isRecited(ability) && unit.reciting) return "reciting";
   return "ready";
@@ -180,6 +184,11 @@ export function movementOf(unit: Unit): number {
 }
 
 /** O que as condições de `unit` somam (ou tiram) de cada golpe que ele recebe, antes da armadura. */
+/** O fator de um dano do tipo `type` em `unit` (ver `resist`): 1 sem tipo ou sem resistência. */
+export function resistOf(unit: Pick<Unit, "resist">, type: DamageType | undefined): number {
+  return type === undefined ? 1 : (unit.resist?.[type] ?? 1);
+}
+
 export function damageTakenOf(unit: Unit): number {
   return unit.statuses.reduce((sum, status) => sum + (status.damageTaken ?? 0), 0);
 }

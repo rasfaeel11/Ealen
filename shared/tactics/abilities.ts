@@ -58,7 +58,7 @@ type Body = Omit<Ability, "id" | "name" | "flavor">;
 
 /** O dano de um golpe de arma: o dado dela mais o atributo primário da classe. */
 function hurt(arm: Arm, extra: Partial<Damage> = {}): Damage {
-  return { kind: "damage", dice: arm.dice, attribute: "primary", ...extra };
+  return { kind: "damage", dice: arm.dice, attribute: "primary", type: arm.damageType, ...extra };
 }
 
 /** O golpe pesado: quase o dobro, com metade do Força por cima. */
@@ -115,7 +115,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
       targets: "enemy",
       attack: { toHit: 0 },
       effects: [
-        { kind: "damage", dice: D6, attribute: "primary" },
+        { kind: "damage", dice: D6, attribute: "primary", type: "atracao_repulsao" },
         { kind: "push", distance: 2 },
       ],
       mana: 2,
@@ -136,7 +136,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
       targets: "enemy",
       attack: { toHit: 0 },
       effects: [
-        { kind: "damage", dice: D8, attribute: "primary", multiplier: 1.5 },
+        { kind: "damage", dice: D8, attribute: "primary", multiplier: 1.5, type: "atracao_repulsao" },
         { kind: "push", distance: 3 },
       ],
       mana: 4,

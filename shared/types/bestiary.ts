@@ -1,5 +1,5 @@
 import type { StyleId } from "../tactics/styles";
-import type { AiProfile, AiQuirks } from "../tactics/types";
+import type { AiProfile, AiQuirks, DamageType } from "../tactics/types";
 import type { Character } from "./character";
 import type { Magic } from "../mana";
 
@@ -47,6 +47,8 @@ export interface BestiaryEntry {
   heft?: number;
   /** Sente mana gasta de uma vez e vem atrás de quem a gastou, com um turno a mais (ver `drawnToMana` em Unit). */
   drawnToMana?: boolean;
+  /** O que cada tipo de dano faz nela: 0.5 resiste, 1.5 sofre mais (ver `resist` em Unit). Só com a entrada no bestiário da história. */
+  resist?: Partial<Record<DamageType, number>>;
   /** Conjura: o conceito e o nível de mago de quem é gente e lê (ver ../mana.ts). A mana dele vem cheia. */
   magic?: Magic;
   /**
