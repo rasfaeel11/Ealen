@@ -327,11 +327,16 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 | 65 | **Registro de missões** | O diário guarda fatos soltos. Falta a lista do que há pra fazer (aberta, feita, falhada), com o que cada uma pede, sem dizer a conclusão ao jogador. |
 | 66 | **Mapa, o resto** | O mapa da região é a task 48. Falta o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
 | 68 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
-| 69 | **Ordens de companheiro, o resto** | As ordens já entraram (ver Feito). Falta a IA olhar o objetivo da luta (hoje ignora o guincho) e uma ordem de mirar um inimigo só. |
+| 69 | **Ordens de companheiro, o resto** | As ordens já entraram (ver Feito). Falta a IA olhar o objetivo da luta (hoje ignora o guincho), uma ordem de mirar um inimigo só, e a ordem proteger escolher quem (hoje é sempre quem tem a vez). |
+| 92 | **Modo de luta: manual e automático** | Hoje é a opção Companheiros na luta (Eu comando / Por conta própria), escondida nas Opções. Virar um modo à vista: **manual**, o jogador comanda o grupo inteiro; **automático**, a IA comanda os aliados e o jogador só Endyru. Trocar no meio da luta, por um botão na barra e uma tecla, com o modo escrito na tela. Talvez por pessoa (Jarupã sozinho, Xanduí na mão). |
+| 93 | **A IA dos aliados, mais esperta** | Usar item num aliado (hoje só em si), mirar o choque do empurrão contra parede e barril, pesar o Contragolpe da Ipojy só nos aliados, e gastar o Ajudar e a Disparada quando valem. |
 
 ### P2 — corpo
 | # | Task | O que é |
 |---|---|---|
+| 94 | **Ver na tela o que só se testou no motor** | Ninguém abriu no jogo: a árvore desenhada (`R` na ficha) e o desaprender no acampamento, o item jogado num aliado, as ordens, a Disparada e o Ajudar, jogar fora e arrumar a mochila, a opção Árvore dos companheiros. Jogar cada um e corrigir o que sair torto. |
+| 95 | **Usar as peças novas no jogo** | Estão prontas e nada as usa: as condições de todo RPG (veneno, sangramento, atordoado, preso, calado, medo, cego), a resistência por tipo de dano, a deixa `clock N` e o custo `area` do relógio, a marca de item-chave. Cada uso vira cena ou fato do mundo, então vai como proposta pro autor (§1): que arma envenena, que bicho resiste a quê, que luta acaba quando a Cheia chega, que papel vira item-chave. |
+| 96 | **Ícones e arte das peças novas** | Os ícones da árvore, da Disparada, do Ajudar e das ordens são os provisórios de `icons.ts`, emprestados de outras coisas. Entram com a task 70. |
 | 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
 | 71 | **Relíquias e runas** | Itens que não se gastam: efeito passivo além de atributo (o acessório de hoje só soma atributo), encaixe em equipamento. As armas lendárias da história entram aqui. |
 | 72 | **Coleta e preparo** | Materiais no mapa e no espólio; receitas de consumível. |
