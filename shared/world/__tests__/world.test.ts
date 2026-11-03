@@ -641,6 +641,9 @@ test("numa emboscada o grupo entra surpreso: perde a primeira vez, e a luta anda
 // --- Lutas com roteiro ------------------------------------------------------
 
 test("a deixa do Tiled chega lida: de que grupo é, quando dispara, o que abre e como encerra", () => {
+  assert.deepEqual(parseCueWhen("clock 10"), { kind: "clock", value: 10 });
+  assert.equal(parseCueWhen("clock"), undefined);
+  assert.equal(parseCueWhen("clock dez"), undefined);
   assert.deepEqual(parseCueWhen("round 3"), { kind: "round", round: 3 });
   assert.deepEqual(parseCueWhen("  down Velha Vigia "), { kind: "down", who: "Velha Vigia" });
   assert.deepEqual(parseCueWhen("down party:jarupa"), { kind: "down", who: "party:jarupa" });

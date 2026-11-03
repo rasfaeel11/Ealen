@@ -94,6 +94,7 @@ import {
   type CharacterClass,
   type DialogueStep,
   type Encounter,
+  type FightClock,
   type GameSave,
   type Opening,
   type OpeningStrike,
@@ -308,6 +309,8 @@ export default class WorldScene extends Phaser.Scene {
       { character, companions: save.companions, rng: STORY_RNG, isDefeated: (key) => isDefeated(save, key) },
       save.story,
     );
+    // Chegar numa área por uma saída (ou viagem) gasta o relógio, se a história disse que gasta. Continuar um jogo, não.
+    if (this.arrival.areaId && this.story.spend("area")) save.story = this.story.save();
     this.player = this.addActor(ownSpriteKey(this, character.name, classSpriteKey(character.characterClass)), this.pos);
     this.trail = [{ ...this.pos }];
     this.syncPresence();
@@ -1096,6 +1099,7 @@ export default class WorldScene extends Phaser.Scene {
       opening,
       charge,
       settings().difficulty,
+      this.fightClock(),
     );
 
     this.hud.setVisible(false);
@@ -1377,6 +1381,12 @@ export default class WorldScene extends Phaser.Scene {
    * Uma cura feita fora de luta. Custa o Fôlego de quem a faz e o de quem a recebe, que fica com fome (ver `mend`), e
    * tempo — o de uma rodada, se a história está contando.
    */
+  /** O relógio da história como a luta o lê (a deixa `clock N`): quanto marca, quanto cada rodada gasta, onde para. */
+  private fightClock(): FightClock | undefined {
+    const clock = this.story.clock();
+    return clock ? { value: clock.value, perRound: clock.costs.round, limit: clock.limit } : undefined;
+  }
+
   private mendOutside(caster: Character, ability: Ability, target: Character): number | undefined {
     // Quem paga a cura é o paciente: com fome, o dobro — e a fome fica até o descanso.
     const hungry = this.story.afflictions()[target.id]?.includes(HUNGER) ?? false;

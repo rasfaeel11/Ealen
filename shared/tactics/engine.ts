@@ -42,6 +42,7 @@ import type {
   CueWhen,
   Effect,
   Encounter,
+  FightClock,
   TacticalEvent,
   TeamId,
   Unit,
@@ -108,6 +109,8 @@ export interface EncounterSetup {
   opening?: Opening;
   /** A cheia da luta: de quantas em quantas rodadas a água sobe, e quantas vezes no máximo (ver Flood em ./types.ts). */
   flood?: { every: number; rises: number };
+  /** O relógio da história, se há um correndo (ver FightClock em ./types.ts). */
+  clock?: FightClock;
   seed: number;
 }
 
@@ -149,6 +152,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     supporters: (setup.supporters ?? []).map((supporter) => ({ ...supporter, ready: true })),
     rngState: setup.seed >>> 0,
     ...(setup.flood ? { flood: { ...setup.flood, risen: 0 } } : {}),
+    ...(setup.clock ? { clock: { ...setup.clock } } : {}),
   };
 
   const rolls = encounter.units.map((unit, index) => ({
@@ -407,6 +411,13 @@ export function cueEnding(cue: { when: { kind: CueWhen["kind"] }; ends?: CueEndi
   return cue.ends ?? (cue.when.kind === "defeat" ? "stop" : undefined);
 }
 
+/** Quanto o relógio da história marca agora, nesta luta: o de quando ela abriu mais o que cada rodada virada gastou. Undefined sem relógio. */
+export function clockNow(encounter: Pick<Encounter, "clock" | "round">): number | undefined {
+  const { clock } = encounter;
+  if (!clock) return undefined;
+  return Math.min(clock.limit, clock.value + clock.perRound * Math.max(0, encounter.round - 1));
+}
+
 /** A hora da deixa chegou? Quem (ou o quê) ela espera e não está nesta luta não chega nunca. */
 function isDue(encounter: Encounter, when: CueWhen): boolean {
   switch (when.kind) {
@@ -428,6 +439,8 @@ function isDue(encounter: Encounter, when: CueWhen): boolean {
       return !encounter.units.some((unit) => unit.team === "party" && isAlive(unit));
     case "burst":
       return (encounter.bursts ?? 0) > 0;
+    case "clock":
+      return (clockNow(encounter) ?? -1) >= when.value;
   }
 }
 

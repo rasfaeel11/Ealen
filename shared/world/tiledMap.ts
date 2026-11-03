@@ -210,7 +210,9 @@ export type AreaCueWhen =
   /** Os Nomes dos objetos da área em que é preciso mexer — todos. */
   | { kind: "used"; props: string[] }
   | { kind: "defeat" }
-  | { kind: "burst" };
+  | { kind: "burst" }
+  /** Quando o relógio da história chega a `value` (`clock 10`). */
+  | { kind: "clock"; value: number };
 
 /** Uma deixa de luta (ver Cue em ../tactics/types.ts): o roteiro da luta com um grupo. */
 export interface AreaCue extends AreaCondition {
@@ -241,6 +243,7 @@ export function parseCueWhen(text: string): AreaCueWhen | undefined {
   const [, kind, rest = ""] = /^(\S+)\s*(.*)$/.exec(text.trim()) ?? [];
   if (kind === "defeat" || kind === "burst") return rest === "" ? { kind } : undefined;
   if (kind === "round") return /^[1-9]\d*$/.test(rest) ? { kind, round: Number(rest) } : undefined;
+  if (kind === "clock") return /^\d+$/.test(rest) ? { kind, value: Number(rest) } : undefined;
   if (rest === "") return undefined;
   if (kind === "down") return { kind, who: rest };
   if (kind === "hurt") {

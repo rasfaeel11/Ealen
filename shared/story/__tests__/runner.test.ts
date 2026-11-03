@@ -454,9 +454,9 @@ test("o relógio corre pelo texto, para no limite, e o texto lê quanto passou e
 
   // Pôr o relógio na tela é a notícia; dizer o que gasta tempo, não.
   assert.deepEqual(eventsIn(runner.start("desce").beats), [
-    { type: "clock", clock: { label: "Vazante", value: 0, limit: 10, costs: { rest: 0, fight: 0, round: 0 } } },
+    { type: "clock", clock: { label: "Vazante", value: 0, limit: 10, costs: { rest: 0, fight: 0, round: 0, area: 0 } } },
   ]);
-  assert.deepEqual(runner.clock(), { label: "Vazante", value: 0, limit: 10, costs: { rest: 3, fight: 2, round: 1 } });
+  assert.deepEqual(runner.clock(), { label: "Vazante", value: 0, limit: 10, costs: { rest: 3, fight: 2, round: 1, area: 0 } });
 
   assert.deepEqual(lines(runner.start("sala").beats), ["Faltam 6 pra água voltar."]);
   assert.deepEqual(lines(runner.start("sala").beats), ["A água já cobriu esta porta."]);
@@ -537,7 +537,7 @@ test("diário e relógio vão no save junto com a história, e um save de antes 
     journal: [],
     clock: { ...memory.clock, costs: { rest: 3, fight: 2 } },
   });
-  assert.deepEqual(new StoryRunner(TIDE, makeHost(), older).clock()!.costs, { rest: 3, fight: 2, round: 0 });
+  assert.deepEqual(new StoryRunner(TIDE, makeHost(), older).clock()!.costs, { rest: 3, fight: 2, round: 0, area: 0 });
   assert.equal(chargeSavedClock(older, "round", 3), older);
 
   // O formato antigo: só o estado do Ink. Abre igual, sem diário nem relógio.

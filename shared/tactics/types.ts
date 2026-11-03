@@ -167,7 +167,9 @@ export interface AiQuirks {
  * - `defeat`: quando o grupo do jogador inteiro está no chão — NO LUGAR da
  *   derrota, que não acontece;
  * - `burst`: quando alguém passou do limite de mana num turno (o evento
- *   `manaBurst`, ver ../mana.ts).
+ *   `manaBurst`, ver ../mana.ts);
+ * - `clock`: quando o relógio da história chega a N (ver FightClock). Luta
+ *   sem relógio não chega nunca.
  */
 export type CueWhen =
   | { kind: "round"; round: number }
@@ -177,7 +179,20 @@ export type CueWhen =
   | { kind: "broken"; prop: string }
   | { kind: "used"; props: string[] }
   | { kind: "defeat" }
-  | { kind: "burst" };
+  | { kind: "burst" }
+  | { kind: "clock"; value: number };
+
+/**
+ * O relógio da história (a Cheia) visto de dentro da luta: quanto marcava
+ * quando ela abriu, quanto cada rodada que vira gasta (`round` nos custos do
+ * relógio) e onde ele para. O motor não muda o relógio — quem cobra é a cena,
+ * rodada a rodada —; só sabe ler a hora (ver clockNow em ./engine.ts).
+ */
+export interface FightClock {
+  value: number;
+  perRound: number;
+  limit: number;
+}
 
 /**
  * A condição que uma deixa põe em quem está na luta ao disparar: é a história
@@ -381,6 +396,8 @@ export interface Encounter {
   stopped?: boolean;
   /** A cheia desta luta, se ela tem uma (ver Flood). */
   flood?: Flood;
+  /** O relógio da história, se há um correndo (ver FightClock). */
+  clock?: FightClock;
   /**
    * A água já subiu nesta luta, e a grade é uma cópia da do mapa: o que a
    * cheia alaga fica na luta e não vai pro mapa da área.

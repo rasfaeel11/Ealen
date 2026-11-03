@@ -8,7 +8,7 @@ import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Pos } from ".
 import { isPropId, standProp, type Prop } from "../tactics/props";
 import { isStatusId, type StatusId } from "../tactics/statuses";
 import { nextRandom, type RngHolder } from "../tactics/rng";
-import type { Cue, CueStatus, Encounter, TacticalEvent, TeamId } from "../tactics/types";
+import type { Cue, CueStatus, Encounter, FightClock, TacticalEvent, TeamId } from "../tactics/types";
 import { findUnit, syncCharacterFromUnit, unitFromCharacter } from "../tactics/units";
 import type { Character } from "../types/character";
 import type { ConsumableItem } from "../types/inventory";
@@ -210,6 +210,7 @@ export function fightCues(
       case "round":
       case "defeat":
       case "burst":
+      case "clock":
         return cue(when);
       case "down": {
         const unit = cueUnit(when.who, enemies);
@@ -264,6 +265,7 @@ export function startAreaEncounter(
   opening?: Opening,
   charge?: TeamId,
   difficulty: Difficulty = "normal",
+  clock?: FightClock,
 ): { encounter: Encounter; events: TacticalEvent[] } {
   const supporters = onlookers.flatMap((character) => {
     const support = supportOf(character);
@@ -289,7 +291,7 @@ export function startAreaEncounter(
   // Mexer num objeto vale uma vez por luta: o que se mexeu numa luta anterior da área está pronto de novo.
   for (const prop of props) delete prop.used;
   const flood = enemies.find((enemy) => enemy.flood)?.flood;
-  return startEncounter({ grid: map.grid, units, props, surprised, charge, cues, supporters, lasting, opening, seed, ...(flood ? { flood } : {}) });
+  return startEncounter({ grid: map.grid, units, props, surprised, charge, cues, supporters, lasting, opening, seed, ...(flood ? { flood } : {}), ...(clock ? { clock } : {}) });
 }
 
 /**

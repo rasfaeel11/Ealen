@@ -23,9 +23,10 @@ export interface JournalEntry {
  * O que gasta o tempo do relógio sem o texto mandar: descansar (`rest`), uma
  * luta (`fight`: vencida, parada ou perdida, cobrada uma vez, no fim) e cada
  * rodada que VIRA dentro dela (`round`: a primeira é a abertura e não conta —
- * uma luta que acaba na rodada 4 gastou 3).
+ * uma luta que acaba na rodada 4 gastou 3) e cada área em que se entra por uma
+ * saída ou viagem (`area`: continuar um jogo salvo não conta).
  */
-export const CLOCK_COSTS = ["rest", "fight", "round"] as const;
+export const CLOCK_COSTS = ["rest", "fight", "round", "area"] as const;
 export type ClockCost = (typeof CLOCK_COSTS)[number];
 
 export function isClockCost(what: unknown): what is ClockCost {
@@ -120,7 +121,7 @@ export function isNoted(journal: readonly JournalEntry[], id: string): boolean {
 
 export function startClock(label: string, value: number, limit: number): StoryClock {
   const top = Math.max(0, Math.floor(limit));
-  return { label, value: clamp(Math.floor(value), top), limit: top, costs: { rest: 0, fight: 0, round: 0 } };
+  return { label, value: clamp(Math.floor(value), top), limit: top, costs: { rest: 0, fight: 0, round: 0, area: 0 } };
 }
 
 function clamp(value: number, limit: number): number {

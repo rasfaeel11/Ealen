@@ -208,3 +208,29 @@ test("o roteiro é dado da luta: a cópia continua com as mesmas deixas e dá no
   assert.deepEqual(passUntilRound(copy, 9), passUntilRound(encounter, 9));
   assert.equal(copy.stopped, true);
 });
+
+test("a deixa do relógio dispara quando a Cheia chega lá, contando o que cada rodada gasta", () => {
+  const { grid, markers } = gridFromAscii(["A.........E"]);
+  const at = (marker: string) => markers[marker][0];
+  const cues: Cue[] = [{ id: "cheia", when: { kind: "clock", value: 9 } }];
+  // Marca 6 ao abrir, e cada rodada que vira gasta 1: chega no 9 quando a rodada 4 começa.
+  const { encounter, events } = startEncounter({ grid, units: apart(at), cues, seed: 1, clock: { value: 6, perRound: 1, limit: 12 } });
+  assert.equal(eventsOf(events, "cue").length, 0);
+  assert.equal(eventsOf(passUntilRound(encounter, 3), "cue").length, 0);
+  assert.deepEqual(eventsOf(passUntilRound(encounter, 4), "cue"), [{ type: "cue", id: "cheia" }]);
+});
+
+test("a deixa do relógio não dispara numa luta sem relógio, nem passa do limite", () => {
+  const { encounter } = scripted(["A.........E"], [{ id: "cheia", when: { kind: "clock", value: 1 } }], apart);
+  assert.equal(eventsOf(passUntilRound(encounter, 5), "cue").length, 0);
+
+  const { grid, markers } = gridFromAscii(["A.........E"]);
+  const capped = startEncounter({
+    grid,
+    units: apart((marker) => markers[marker][0]),
+    cues: [{ id: "alem", when: { kind: "clock", value: 13 } }],
+    seed: 1,
+    clock: { value: 10, perRound: 1, limit: 12 },
+  }).encounter;
+  assert.equal(eventsOf(passUntilRound(capped, 8), "cue").length, 0);
+});
