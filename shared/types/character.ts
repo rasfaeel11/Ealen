@@ -36,6 +36,8 @@ export interface Character {
   aura?: number;
   /** Ausente = personagem ainda não tem mochila inicializada. */
   inventory?: Inventory<ConsumableItem>;
+  /** Os nós da árvore de habilidades que ele aprendeu, pelo id (ver ../skillTree.ts). Ausente = nenhum. */
+  skills?: string[];
   /** As habilidades que ele sabe e escolheu não levar pra luta, pelo id. */
   benched?: string[];
   /** O dinheiro de quem leva a mochila, em cobre e em prata (ver ../purse.ts). Ausente = bolsa vazia. */

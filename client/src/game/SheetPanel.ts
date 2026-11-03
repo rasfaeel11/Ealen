@@ -9,8 +9,13 @@ import {
   STYLES,
   auraName,
   auraOf,
+  branchesFor,
   breathOf,
   canAfford,
+  describeSkill,
+  learnRefusal,
+  learnSkill,
+  skillPoints,
   castOf,
   engravingSlots,
   equipRefusal,
@@ -42,6 +47,8 @@ import {
   type EquipmentItem,
   type EquipmentSlot,
   type EquipResult,
+  type SkillNode,
+  type SkillRefusal,
   type StatusId,
 } from "@jogo/shared";
 import { describeAbility } from "./combat/CombatController";
@@ -177,7 +184,8 @@ export interface SheetHost {
  * As regras são de lá — a ficha só mostra e pergunta.
  *
  * Tab troca de personagem; setas (ou WASD) andam na grade; Enter usa; E equipa;
- * I vai pra mochila; Esc ou C fecham.
+ * R abre a árvore de habilidades (ver shared/skillTree.ts); I vai pra mochila;
+ * Esc ou C fecham.
  */
 export class SheetPanel {
   private readonly frame: Phaser.GameObjects.GameObject[] = [];
@@ -519,7 +527,89 @@ export class SheetPanel {
       this.detailName.setText("");
       this.detail.setY(this.detailName.y).setText("Não aprendeu nada que sirva numa luta.");
     }
-    this.setFooter(`Setas: habilidade  ·  Enter: usar  ·  ${keyLabel("interact")}: equipar  ·  ${keyLabel("bag")}: mochila  ·  Esc: fechar`);
+    const points = fights(character) && !character.arts ? skillPoints(character) : 0;
+    const tree = fights(character) ? `  ·  R: árvore${points > 0 ? ` (${points} ponto${points > 1 ? "s" : ""})` : ""}` : "";
+    this.setFooter(`Setas: habilidade  ·  Enter: usar  ·  ${keyLabel("interact")}: equipar  ·  ${keyLabel("bag")}: mochila${tree}  ·  Esc: fechar`);
+  }
+
+  /** `R`: a coluna da direita vira a árvore de habilidades, ramo por ramo, com o que cada nó pede. */
+  private listTree(focus?: number): void {
+    const { character } = this;
+    if (!fights(character)) {
+      this.say(`${character.name} acompanha sem lutar: não tem o que aprender pra luta.`);
+      return;
+    }
+    const branches = branchesFor(character.characterClass, castOf(character)?.style?.id);
+    const names = new Map(sheetAbilities(character).map((ability) => [ability.id, ability.name]));
+    for (const entry of kitOf(character)) if (!names.has(entry.ability.id)) names.set(entry.ability.id, entry.ability.name);
+    const points = skillPoints(character);
+    const nodes = branches.flatMap((branch) => branch.nodes.map((node) => ({ branch: branch.name, node })));
+
+    this.targeting = true;
+    this.heading.setText(`ÁRVORE  ·  ${points} PONTO${points === 1 ? "" : "S"}`);
+    this.setMenu(
+      [
+        ...nodes.map(({ branch, node }, i) => {
+          const refusal = learnRefusal(character, node);
+          return {
+            label: `${branch}  ·  ${node.name}${this.treeTag(node, refusal)}`,
+            onFocus: () =>
+              this.detail.setText(`${node.flavor}
+
+${describeSkill(node, (id) => names.get(id))}
+
+${this.treeHint(node, refusal)}`),
+            onSelect: () => {
+              const result = learnSkill(character, node.id);
+              if (result) {
+                this.say(result === "unknown" ? "Esse não existe mais." : this.treeHint(node, result));
+                return;
+              }
+              this.host.onPacked();
+              this.later(() => {
+                this.show();
+                this.listTree(i);
+                this.say(`${character.name} aprendeu ${node.name}.`);
+              });
+            },
+          };
+        }),
+        { label: "Voltar", onSelect: () => this.later(() => this.listAbilities()) },
+      ],
+      () => this.later(() => this.listAbilities()),
+      focus,
+    );
+    this.setFooter("Setas: nó  ·  Enter: aprender  ·  Esc: voltar");
+  }
+
+  /** O que vai ao lado do nome do nó, na lista: aprendido, ou o que falta. */
+  private treeTag(node: SkillNode, refusal: SkillRefusal | undefined): string {
+    if (refusal === "known") return "  ·  aprendido";
+    if (refusal === "level") return `  ·  nível ${node.level}`;
+    if (refusal === "mage") return `  ·  ${mageLevelName(node.mage ?? 0)}`;
+    if (refusal === "previous") return "  ·  pede o anterior";
+    return "";
+  }
+
+  /** A linha do fim da descrição: o que Enter faz, ou por que não faz. */
+  private treeHint(node: SkillNode, refusal: SkillRefusal | undefined): string {
+    const who = this.character.name;
+    switch (refusal) {
+      case undefined:
+        return "Enter: aprender (gasta um ponto).";
+      case "known":
+        return `${who} já sabe.`;
+      case "school":
+        return "Não é da escola dele.";
+      case "previous":
+        return "Pede o nó de cima, no mesmo ramo.";
+      case "level":
+        return `Chega no nível ${node.level}.`;
+      case "mage":
+        return `Só no ${mageLevelName(node.mage ?? 0)}.`;
+      case "points":
+        return `${who} não tem ponto pra gastar: cada nível dá um.`;
+    }
   }
 
   /** `E`: a coluna da direita vira a dos três lugares do corpo. */
@@ -670,6 +760,7 @@ export class SheetPanel {
     if (isAction(event, "sheet")) this.host.onClose();
     else if (isAction(event, "bag")) this.host.onBag();
     else if (isAction(event, "interact") && !this.targeting) this.listSlots();
+    else if (event.code === "KeyR" && !this.targeting) this.listTree();
     else if (event.code === "KeyX" && !this.targeting && this.focusedAbility) this.toggleFocused(this.focusedAbility);
     else if (event.code === "Tab" && !this.targeting && this.host.members.length > 1) {
       event.preventDefault();

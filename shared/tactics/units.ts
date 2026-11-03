@@ -6,6 +6,7 @@ import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
 import { GIFTS, abilitiesFor, engravedAbilities, engravedId, type GiftId } from "./abilities";
 import { proficiency, type StyleId } from "./styles";
+import { skillPassive, withSkills } from "../skillTree";
 import { samePos, type Pos } from "./grid";
 import type { Ability, AiProfile, AiQuirks, Encounter, TeamId, Unit } from "./types";
 
@@ -43,7 +44,7 @@ export interface UnitPlacement {
  * mexe em `character` até alguém chamar syncCharacterFromUnit.
  */
 export function unitFromCharacter(character: Character, placement: UnitPlacement): Unit {
-  const known = [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))];
+  const known = withSkills(character, [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))]);
   const own = known.filter((ability) => !character.benched?.includes(ability.id));
   return {
     id: placement.id ?? character.id,
@@ -56,7 +57,7 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     currentHp: character.currentHp,
     maxHp: character.maxHp,
     pos: { ...placement.pos },
-    speed: Math.max(1, DEFAULT_SPEED + gearSpeed(character)),
+    speed: Math.max(1, DEFAULT_SPEED + gearSpeed(character) + skillPassive(character, "speed")),
     ...(gearDefense(character) ? { defense: gearDefense(character) } : {}),
     // O que ele sabe, e as magias que deixou gravadas no descanso (ver engravedAbilities em ./abilities.ts).
     abilities: [...own, ...engravedAbilities(own, character.engraved)],

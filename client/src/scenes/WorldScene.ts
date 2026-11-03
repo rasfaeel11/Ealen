@@ -1230,6 +1230,7 @@ export default class WorldScene extends Phaser.Scene {
       const learnt = (learned: { name: string }[] = []) => (learned.length > 0 ? ` Aprendeu ${learned.map((ability) => ability.name).join(" e ")}.` : "");
       if (rewards.levelUp.leveledUp) lines.push(`Subiu para o nível ${rewards.levelUp.newLevel}!${learnt(rewards.levelUp.learned)}`);
       for (const { name, level, learned } of rewards.companionLevels) lines.push(`${name} subiu para o nível ${level}!${learnt(learned)}`);
+      if (rewards.levelUp.leveledUp || rewards.companionLevels.length > 0) lines.push(`Ponto novo na árvore: ${keyLabel("sheet")}, depois R.`);
       lines.push(
         rewards.loot.length > 0
           ? `Encontrou: ${rewards.loot.map((item) => item.name).join(", ")}`

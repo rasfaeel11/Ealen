@@ -7,6 +7,7 @@ export * from "./combatArts";
 export * from "./equipment";
 export * from "./inventoryEffects";
 export * from "./leveling";
+export * from "./skillTree";
 export * from "./breath";
 export * from "./mana";
 export * from "./purse";

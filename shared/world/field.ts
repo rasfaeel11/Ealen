@@ -5,6 +5,7 @@ import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from ".
 import { findBestiaryEntry, spawnCreature } from "../data/bestiary";
 import { castOf, keepsVow, magicOf } from "../party";
 import { GIFTS, abilitiesFor, engravedAbilities } from "../tactics/abilities";
+import { findSkill, skillRefusal, withSkills, skillPassive, type SkillNode, type SkillRefusal } from "../skillTree";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
 import { reachableTiles } from "../tactics/movement";
 import type { Prop } from "../tactics/props";
@@ -43,12 +44,12 @@ import { tileOfPixel, type AreaEnemy, type AreaMap } from "./tiledMap";
  * chama). TUDO PROVISÓRIO, como os kits.
  */
 
-type Knower = Pick<Character, "id" | "characterClass" | "level" | "equipment" | "arts" | "engraved">;
+type Knower = Pick<Character, "id" | "characterClass" | "level" | "equipment" | "arts" | "engraved" | "skills" | "mageLevel">;
 
 /** Tudo que uma ficha sabe fazer: o kit da classe, o que só ela sabe (`gifts` no elenco) e o que deixou gravado. */
 export function sheetAbilities(character: Knower): Ability[] {
   const gifts = castOf(character)?.gifts ?? [];
-  const own = [...abilitiesFor(character), ...gifts.map((gift): Ability => ({ ...GIFTS[gift] }))];
+  const own = withSkills(character, [...abilitiesFor(character), ...gifts.map((gift): Ability => ({ ...GIFTS[gift] }))]);
   return [...own, ...engravedAbilities(own, character.engraved)];
 }
 
@@ -69,6 +70,30 @@ export function toggleBenched(character: Character, abilityId: string): boolean 
   return true;
 }
 
+/** Por que `character` não aprende `node` agora (ver skillRefusal em ../skillTree.ts), com a escola e o nível de mago dele. */
+export function learnRefusal(character: Character, node: SkillNode): SkillRefusal | undefined {
+  return skillRefusal(character, node, { school: castOf(character)?.style?.id, mageLevel: magicOf(character)?.level });
+}
+
+/**
+ * Gasta um ponto e aprende o nó `nodeId` da árvore. A vida que ele dá entra na
+ * ficha na hora (e enche junto); o resto a ficha lê quando precisa. Devolve o
+ * que impediu, ou undefined se aprendeu.
+ */
+export function learnSkill(character: Character, nodeId: string): SkillRefusal | "unknown" | undefined {
+  const node = findSkill(nodeId);
+  if (!node) return "unknown";
+  const refusal = learnRefusal(character, node);
+  if (refusal) return refusal;
+  character.skills = [...(character.skills ?? []), node.id];
+  const hp = node.passive?.maxHp ?? 0;
+  if (hp) {
+    character.maxHp += hp;
+    character.currentHp += hp;
+  }
+  return undefined;
+}
+
 /** Pra que uma habilidade serve fora de luta: `mend` cura alguém do grupo, `opening` abre uma luta. */
 export type FieldUse = "mend" | "opening";
 
@@ -86,8 +111,9 @@ export function fieldUse(ability: Ability): FieldUse | undefined {
 }
 
 /** Quantas gravações cabem nele ao mesmo tempo: o nível de mago. Quem não conjura não grava nada. */
-export function engravingSlots(character: Pick<Character, "id">): number {
-  return magicOf(character)?.level ?? 0;
+export function engravingSlots(character: Pick<Character, "id" | "skills">): number {
+  const level = magicOf(character)?.level;
+  return level === undefined ? 0 : level + skillPassive(character, "engravings");
 }
 
 /** As magias de `character` que dá pra gravar: as que custam mana, do kit e as que só ele sabe. */

@@ -1,5 +1,6 @@
 import type { StatusId } from "./tactics/statuses";
 import type { Character } from "./types/character";
+import { skillPassive } from "./skillTree";
 
 /**
  * O Fôlego: o que uma habilidade gasta além da ação do turno.
@@ -21,12 +22,12 @@ const BREATH_BASE = 3;
 const NATH_PER_BREATH = 2;
 
 /** O Fôlego de quem está descansado: cresce com o nível e com Vigor. */
-export function maxBreath(character: Pick<Character, "level" | "attributes">): number {
-  return BREATH_BASE + character.level + Math.floor(character.attributes.vigor / NATH_PER_BREATH);
+export function maxBreath(character: Pick<Character, "level" | "attributes" | "skills">): number {
+  return BREATH_BASE + character.level + Math.floor(character.attributes.vigor / NATH_PER_BREATH) + skillPassive(character, "breath");
 }
 
 /** O Fôlego que `character` tem agora. Ficha que nunca gastou (ou de antes de ele existir) está cheia. */
-export function breathOf(character: Pick<Character, "level" | "attributes" | "breath">): number {
+export function breathOf(character: Pick<Character, "level" | "attributes" | "breath" | "skills">): number {
   const max = maxBreath(character);
   const { breath } = character;
   return typeof breath === "number" && Number.isFinite(breath) ? Math.max(0, Math.min(max, Math.floor(breath))) : max;

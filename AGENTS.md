@@ -291,7 +291,18 @@ Prioridades: **P0** = o jogo não fecha um capítulo sem isto · **P1** = faz fa
 | # | Task | O que é |
 |---|---|---|
 | 57 | **Combate à distância, o resto** | O tiro já entrou (ver Feito). Falta: arremesso de item (em aliado e em inimigo), tiro de reação em quem entra no alcance (vigia), e virote como item que se compra e se recolhe (hoje a munição só se conta por luta). |
-| 58 | **Progressão** | Subir de nível soma atributos e dá as Técnicas da classe no nível marcado, sem escolha. Falta: ESCOLHER o que se aprende (mais Técnicas por classe, ou um ramo), o GRAU do estilo valer alguma coisa (hoje só aparece na tela) e subir, e pontos de atributo pra distribuir. |
+| 58 | **Progressão** | Subir de nível soma atributos e dá as Técnicas da classe no nível marcado, e um ponto pra árvore (tasks 85 a 91). Falta: o GRAU do estilo valer alguma coisa (hoje só aparece na tela) e subir (task 89), e pontos de atributo pra distribuir. |
+
+### P1 — a árvore de habilidades (pedida pelo autor em 2026-11-03)
+O motor e a tela já entraram (ver Feito). Nenhum nó é técnica nova do mundo: é o que a pessoa já sabe, feito melhor. Repertório novo de mago vem do nível de mago, e golpe-selo só por iniciação (`magia` §3.5, §5.6).
+
+| # | Task | O que é |
+|---|---|---|
+| 87 | **Os nomes da árvore pro autor** | Os 20 nós (`shared/skillTree.ts`) têm nome e fala provisórios ("Verso de Longe", "Pé de Convés"...). Vão como proposta (§1), junto com a pergunta de se há ramo da Tsvirana (ninguém do grupo é dela) e de se a Cura ganha ramo próprio. |
+| 88 | **Desaprender no acampamento** | Hoje o ponto gasto não volta. Refazer a árvore de alguém só no acampamento, de graça ou pagando a noite, pra errar a escolha não travar o jogo. |
+| 89 | **O grau da escola na árvore** | O nó que sobe a proficiência (Gryskar II → III), cortado pela aura, e o grau valendo alguma coisa no golpe (a outra metade da task 58). Pede o autor: no cânone, como se sobe de grau? |
+| 90 | **A IA que escolhe e o balanço por nó** | Quem joga sozinho (a opção dos companheiros) e quem entra no grupo já com nível alto gastam os pontos sozinhos, por um perfil de cada um; o `balance:matrix` roda com cada nó, pra achar o que vale demais. |
+| 91 | **Cara de árvore** | A árvore hoje é uma lista na coluna da ficha. Desenhar os ramos lado a lado, com o ícone de cada nó, a linha que liga um ao outro e o mouse. |
 
 ### P1 — pedidos do autor (2026-10-31)
 Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
@@ -634,6 +645,9 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 - **64. Cair e levantar.** Quem chega a 0 fica caído e não ocupa o quadrado. Um aliado colado gasta a ação e o põe de pé com um quarto da vida, sem as condições, e ele volta à ordem dos turnos (`lift` no motor, `liftable` em `targeting.ts`). Enquanto houver alguém do grupo caído, a barra mostra Levantar quem caiu, e diz o que falta. O outro lado não se levanta. Se ninguém levanta, continua como era: numa luta vencida ele acorda com 1 de vida; se o grupo inteiro cai, é a derrota. Levantar por item ou por cura ainda não existe, e o caminho foi testado no motor, não numa luta na tela.
 
 - **57. O tiro, a primeira parte.** Golpe de arma com alcance de 3 ou mais é um tiro (`isShot` em `attack.ts`; magia não é). Na segunda metade do alcance ele perde 2 de acerto, e com um inimigo colado em quem atira, mais 2. De um chão mais alto, alcança um quadrado a mais. A besta tem 12 virotes por luta, contados em cada golpe (`ammo` na arma). A chance na tela e a IA usam a mesma conta: o besteiro agora chega até a metade do alcance em vez de atirar do limite, e fica atrás da pedra quando ela está nessa distância. Cobertura parcial (+2 na defesa) e total (a pedra alta que corta a vista) já existiam. Ninguém do grupo usa besta hoje, então isto aparece nos inimigos. O resto ficou na task 57.
+
+- **85. A árvore de habilidades, o motor** (pedida pelo autor em 2026-11-03). `shared/skillTree.ts`: cada nível depois do primeiro dá um ponto, e cada nó custa um. Três ramos por pessoa, cada nó pedindo o anterior, e às vezes um nível ou o Círculo: Endyru tem Atração, Repulsão e Preparo (o ramo do tema: Cura mais barata, mais Fôlego, uma gravação a mais); o espadachim, Lâmina, Corpo e o ramo da escola dele (o do Gryskar melhora a Ombrada de Jarupã, o da Ipojy o Segurar o Bote de Xanduí). O nó melhora o que a pessoa já sabe (alcance, acerto, custo, recarga, empurrão, duração, dano) ou o corpo (vida, Fôlego, passo, gravações); valem na ficha, na luta e na gravação. Fica na ficha (`skills`), sem versão nova de save. Os nomes e os números são provisórios (task 87).
+- **86. A árvore na ficha.** `R`, na ficha, abre a árvore na coluna da direita: cada nó com o ramo, o que é, o que faz em números e o que falta (o nível, o Círculo, o de cima, o ponto). Enter aprende. A ficha mostra quantos pontos sobram, e subir de nível avisa do ponto novo. Testado no motor (`skills.test.ts`), não numa partida na tela.
 
 ## 9. Onde isto está no cânone
 
