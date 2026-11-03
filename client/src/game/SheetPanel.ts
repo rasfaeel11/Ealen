@@ -56,6 +56,7 @@ import { describeAbility } from "./combat/CombatController";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
 import { isAction, keyLabel } from "./settings";
 import { abilityIcon, gearIcon, type IconName } from "./icons";
+import { sfx } from "./audio";
 import { classSpriteKey, ownSpriteKey, standingFrame } from "./mapSprites";
 import {
   Menu,
@@ -102,6 +103,9 @@ const SKILL_GAP = 6;
 const SKILL_COLS = 7;
 const SKILL_ROWS = 2;
 const SKILL_LINE = 32;
+/** A árvore: o quadrado de cada nó e a distância de um nó ao de baixo. */
+const TREE_SLOT = 54;
+const TREE_STEP = 78;
 /** A tecla que abriu a ficha não pode ser a mesma que a fecha. */
 const INPUT_GRACE_MS = 200;
 
@@ -205,6 +209,10 @@ export class SheetPanel {
   private targeting = false;
   /** A coluna da direita é a árvore (`U` refaz). */
   private treeOpen = false;
+  /** O que a árvore pôs na tela, e os nós dela por coluna (ramo) e linha. */
+  private treeParts: Phaser.GameObjects.GameObject[] = [];
+  private treeSlots: { slot: UiSlot; node: SkillNode; describe: () => void }[][] = [];
+  private treeFocus = { col: 0, row: 0 };
   /** A habilidade sob o cursor, se dá pra deixá-la de fora (`X`). */
   private focusedAbility?: Ability;
   private closed = false;
@@ -249,6 +257,7 @@ export class SheetPanel {
   destroy(): void {
     this.closed = true;
     this.scene.input.keyboard?.off("keydown", this.onKey, this);
+    this.clearTree();
     this.menu?.destroy();
     this.grid.destroy();
     for (const object of [...this.frame, ...this.page]) object.destroy();
@@ -431,6 +440,7 @@ export class SheetPanel {
 
   /** A coluna da direita vira lista: em quem, ou o que vestir. A grade sai da frente. */
   private setMenu(options: MenuOption[], onCancel: () => void, focus?: number): void {
+    this.clearTree();
     this.menu?.destroy();
     this.grid.setVisible(false);
     const top = TOP + 28;
@@ -485,7 +495,7 @@ export class SheetPanel {
   /** A coluna da direita volta a ser a grade de habilidades. */
   private listAbilities(focus = 0): void {
     this.targeting = false;
-    this.treeOpen = false;
+    this.clearTree();
     this.menu?.destroy();
     this.menu = undefined;
     this.grid.setVisible(true);
@@ -538,55 +548,162 @@ export class SheetPanel {
     this.setFooter(`Setas: habilidade  ·  Enter: usar  ·  ${keyLabel("interact")}: equipar  ·  ${keyLabel("bag")}: mochila${tree}  ·  Esc: fechar`);
   }
 
-  /** `R`: a coluna da direita vira a árvore de habilidades, ramo por ramo, com o que cada nó pede. */
-  private listTree(focus?: number): void {
-    const { character } = this;
+  /** `R`: a coluna da direita vira a árvore de habilidades: um ramo por coluna, de cima pra baixo, com o que cada nó pede. */
+  private listTree(focus?: { col: number; row: number }): void {
+    const { character, scene } = this;
     if (!fights(character)) {
       this.say(`${character.name} acompanha sem lutar: não tem o que aprender pra luta.`);
       return;
     }
-    const branches = branchesFor(character.characterClass, castOf(character)?.style?.id);
-    const names = new Map(sheetAbilities(character).map((ability) => [ability.id, ability.name]));
-    for (const entry of kitOf(character)) if (!names.has(entry.ability.id)) names.set(entry.ability.id, entry.ability.name);
-    const points = skillPoints(character);
-    const nodes = branches.flatMap((branch) => branch.nodes.map((node) => ({ branch: branch.name, node })));
+    this.clearTree();
+    this.menu?.destroy();
+    this.menu = undefined;
+    this.grid.setVisible(false);
+    this.focusedAbility = undefined;
 
+    const branches = branchesFor(character.characterClass, castOf(character)?.style?.id);
+    const known = sheetAbilities(character);
+    const kit = kitOf(character).map((entry) => entry.ability);
+    const abilityById = new Map([...kit, ...known].map((ability) => [ability.id, ability]));
+    const points = skillPoints(character);
     this.targeting = true;
     this.treeOpen = true;
     this.heading.setText(`ÁRVORE  ·  ${points} PONTO${points === 1 ? "" : "S"}`);
-    this.setMenu(
-      [
-        ...nodes.map(({ branch, node }, i) => {
-          const refusal = learnRefusal(character, node);
-          return {
-            label: `${branch}  ·  ${node.name}${this.treeTag(node, refusal)}`,
-            onFocus: () =>
-              this.detail.setText(`${node.flavor}
 
-${describeSkill(node, (id) => names.get(id))}
+    const top = TOP + 28;
+    const colW = SKILLS_WIDTH / branches.length;
+    const lines = scene.add.graphics();
+    this.treeParts.push(this.addHud(lines));
+    this.treeSlots = branches.map((branch, col) => {
+      const cx = SKILLS_X + colW * col + colW / 2;
+      const label = addTitleText(scene, cx, top, branch.name.toUpperCase(), { fontSize: "14px", color: TEXT_COLORS.gold }).setOrigin(0.5, 0);
+      this.treeParts.push(this.addHud(label));
+      return branch.nodes.map((node, row) => {
+        const x = cx - TREE_SLOT / 2;
+        const y = top + 24 + row * TREE_STEP;
+        const refusal = learnRefusal(character, node);
+        const learned = refusal === "known";
+        // A linha que sobe até o nó de cima: dourada se os dois já se aprenderam.
+        if (row > 0) {
+          const lit = learned;
+          lines.lineStyle(lit ? 3 : 2, lit ? COLORS.goldBright : COLORS.bronze, lit ? 1 : 0.5);
+          lines.lineBetween(cx, y - (TREE_STEP - TREE_SLOT), cx, y);
+        }
+        if (learned) {
+          lines.fillStyle(COLORS.goldBright, 1);
+          lines.fillCircle(x + TREE_SLOT - 2, y + 2, 6);
+        }
+        const slot = new UiSlot(scene, x, y, TREE_SLOT, {
+          over: () => this.focusTree(col, row),
+          down: () => this.later(() => this.learnAt(col, row)),
+        });
+        slot.set({ icon: this.nodeIcon(node, abilityById), enabled: learned || refusal === undefined || refusal === "points" });
+        this.treeParts.push(this.addHud(slot.root));
+        return { slot, node, describe: () => this.describeNode(node, refusal, abilityById) };
+      });
+    });
 
-${this.treeHint(node, refusal)}`),
-            onSelect: () => {
-              const result = learnSkill(character, node.id);
-              if (result) {
-                this.say(result === "unknown" ? "Esse não existe mais." : this.treeHint(node, result));
-                return;
-              }
-              this.host.onPacked();
-              this.later(() => {
-                this.show();
-                this.listTree(i);
-                this.say(`${character.name} aprendeu ${node.name}.`);
-              });
-            },
-          };
-        }),
-        { label: "Voltar", onSelect: () => this.later(() => this.listAbilities()) },
-      ],
-      () => this.later(() => this.listAbilities()),
-      focus,
-    );
+    this.detailName.setY(top + 24 + 3 * TREE_STEP + 4);
+    const start = focus ?? this.firstOpen();
+    this.focusTree(start.col, start.row);
     this.setFooter(`Setas: nó  ·  Enter: aprender${this.host.campfire ? "  ·  U: refazer a árvore" : ""}  ·  Esc: voltar`);
+  }
+
+  /** O primeiro nó que dá pra aprender agora; sem nenhum, o primeiro de todos. */
+  private firstOpen(): { col: number; row: number } {
+    for (const [col, column] of this.treeSlots.entries()) {
+      const row = column.findIndex(({ node }) => learnRefusal(this.character, node) === undefined);
+      if (row >= 0) return { col, row };
+    }
+    return { col: 0, row: 0 };
+  }
+
+  /** O ícone de um nó: o da habilidade que ele melhora, ou o do corpo que ele mexe. */
+  private nodeIcon(node: SkillNode, abilities: Map<string, Ability>): IconName {
+    const target = Object.keys(node.tweaks ?? {})
+      .map((id) => abilities.get(id))
+      .find((ability) => ability !== undefined);
+    if (target) return abilityIcon(target);
+    const passive = node.passive ?? {};
+    if (passive.engravings) return "engrave";
+    if (passive.speed) return "move";
+    if (passive.breath) return "wave";
+    return "armor";
+  }
+
+  private describeNode(node: SkillNode, refusal: SkillRefusal | undefined, abilities: Map<string, Ability>): void {
+    this.detailName.setText(`${node.name}${this.treeTag(node, refusal)}`);
+    this.detail.setY(this.detailName.y + this.detailName.height + 4);
+    this.detail.setText(`${node.flavor}\n\n${describeSkill(node, (id) => abilities.get(id)?.name)}\n\n${this.treeHint(node, refusal)}`);
+  }
+
+  /** Põe o cursor no nó da coluna `col`, linha `row` (presa ao que existe). */
+  private focusTree(col: number, row: number): void {
+    if (this.treeSlots.length === 0) return;
+    const c = Math.max(0, Math.min(this.treeSlots.length - 1, col));
+    const r = Math.max(0, Math.min(this.treeSlots[c].length - 1, row));
+    this.treeFocus = { col: c, row: r };
+    this.treeSlots.forEach((column, i) => column.forEach(({ slot }, j) => slot.setFocused(i === c && j === r)));
+    this.treeSlots[c][r].describe();
+  }
+
+  /** Enter ou clique num nó: aprende, ou diz o que falta. */
+  private learnAt(col: number, row: number): void {
+    const entry = this.treeSlots[col]?.[row];
+    if (!entry) return;
+    const { character } = this;
+    const result = learnSkill(character, entry.node.id);
+    if (result) {
+      this.say(result === "unknown" ? "Esse não existe mais." : this.treeHint(entry.node, result));
+      return;
+    }
+    sfx("uiOpen");
+    this.host.onPacked();
+    this.show();
+    this.listTree({ col, row });
+    this.say(`${character.name} aprendeu ${entry.node.name}.`);
+  }
+
+  /** As teclas da árvore. Devolve se a tecla era dela. */
+  private onTreeKey(event: KeyboardEvent): boolean {
+    const { col, row } = this.treeFocus;
+    switch (event.code) {
+      case "ArrowLeft":
+      case "KeyA":
+        this.focusTree(col - 1, row);
+        return true;
+      case "ArrowRight":
+      case "KeyD":
+        this.focusTree(col + 1, row);
+        return true;
+      case "ArrowUp":
+      case "KeyW":
+        this.focusTree(col, row - 1);
+        return true;
+      case "ArrowDown":
+      case "KeyS":
+        this.focusTree(col, row + 1);
+        return true;
+      case "Enter":
+      case "Space":
+        this.later(() => this.learnAt(col, row));
+        return true;
+      case "Escape":
+        this.later(() => this.listAbilities());
+        return true;
+      case "KeyU":
+        this.unlearn();
+        return true;
+    }
+    return false;
+  }
+
+  /** Tira a árvore da coluna da direita. */
+  private clearTree(): void {
+    for (const part of this.treeParts) part.destroy();
+    this.treeParts = [];
+    this.treeSlots = [];
+    this.treeOpen = false;
   }
 
   /** `U`, na árvore e no acampamento: os pontos voltam todos, pra escolher de novo. */
@@ -784,11 +901,11 @@ ${this.treeHint(node, refusal)}`),
 
   private onKey(event: KeyboardEvent): void {
     if (this.scene.time.now - this.openedAt < INPUT_GRACE_MS) return;
+    if (this.treeOpen && !isAction(event, "sheet") && !isAction(event, "bag") && this.onTreeKey(event)) return;
     if (isAction(event, "sheet")) this.host.onClose();
     else if (isAction(event, "bag")) this.host.onBag();
     else if (isAction(event, "interact") && !this.targeting) this.listSlots();
     else if (event.code === "KeyR" && !this.targeting) this.listTree();
-    else if (event.code === "KeyU" && this.treeOpen) this.unlearn();
     else if (event.code === "KeyX" && !this.targeting && this.focusedAbility) this.toggleFocused(this.focusedAbility);
     else if (event.code === "Tab" && !this.targeting && this.host.members.length > 1) {
       event.preventDefault();
