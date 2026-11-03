@@ -1,12 +1,13 @@
-import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileIndex, type Pos } from "./grid";
+import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileAt, tileIndex, type Pos } from "./grid";
 import { attackOdds } from "./attack";
 import { healCap, healToll } from "../breath";
 import { reachableTiles } from "./movement";
-import { PROPS, type PropTemplate } from "./props";
+import { PROPS, type Prop, type PropTemplate } from "./props";
+import { SLAM_PER_TILE } from "./engine";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
-import { punishFactor, styleReduction, waveBonus } from "./styles";
+import { counters, punishFactor, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
-import { abilityTargets, affectedProps, affectedUnits, canAimAt, isBlow, liftable, vowAllows, vowForbids } from "./targeting";
+import { abilityTargets, affectedProps, affectedUnits, canAimAt, isBlow, itemTargets, liftable, vowAllows, vowForbids } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
@@ -43,9 +44,15 @@ import { activeUnit, damageTakenOf, resistOf, effectiveAttribute, isAlive, movem
  * motor aceita. Fôlego ela gasta sem poupar (criatura só luta uma vez) e
  * dá valor a recuperar.
  *
- * O Contragolpe da Ipojy (ver ./styles.ts) ela não pesa: bate em quem é da
- * Espera como em qualquer um, e é isso que a Espera pune. Pesando, duas IAs
- * diante de um da Ipojy em guarda ficavam se guardando pra sempre.
+ * O Contragolpe da Ipojy (ver ./styles.ts) só o grupo do jogador pesa: o
+ * companheiro que joga sozinho conta o golpe que volta se ele errar. O outro
+ * lado bate em quem é da Espera como em qualquer um, e é isso que a Espera
+ * pune. Pesando dos dois lados, duas IAs diante de um da Ipojy em guarda
+ * ficavam se guardando pra sempre.
+ *
+ * O empurrão vale pelo que bate: o alvo jogado contra parede, corpo ou barril
+ * (ver push em ./engine.ts). A Disparada vale o caminho que encurta, quando
+ * não há em quem bater; o Ajudar, o golpe a mais que o aliado acerta.
  */
 
 export const DEFAULT_AI_PROFILE: AiProfile = { aggression: 1, finisher: 1, support: 1, caution: 0.5 };
@@ -80,6 +87,8 @@ const PUSH_VALUE = 0.25;
 const SLOW_VALUE = 1;
 /** Quanto vale tirar do corpo uma condição que atrapalha sem mexer em atributo (um passo preso, um golpe abafado). */
 const HARMFUL_STATUS_VALUE = 2;
+/** Quanto cada ponto de acerto muda a chance de um golpe pegar, no d20. */
+const TO_HIT_CHANCE = 0.05;
 /** Desempate: entre jogadas iguais, a que anda menos. */
 const STEP_COST = 0.01;
 /** Abaixo disto uma habilidade não vale o gesto. */
@@ -100,6 +109,8 @@ export interface AiChoice {
 export interface AiItemChoice {
   item: ConsumableItem;
   value: number;
+  /** Em quem: um aliado ao alcance do braço (ver itemTargets). Sem isto, em si. */
+  target?: Pos;
 }
 
 /** O turno que a IA escolheu: onde parar e o que fazer de lá. */
@@ -128,7 +139,10 @@ export function chooseCommand(encounter: Encounter): Command {
 
   if (!samePos(plan.tile, unit.pos)) return { type: "move", unitId: unit.id, to: plan.tile };
   // O item vem antes do golpe: um Foco bebido depois do ataque não serve pra nada.
-  if (plan.item) return { type: "useItem", unitId: unit.id, itemId: plan.item.item.id };
+  if (plan.item) {
+    const { item, target } = plan.item;
+    return { type: "useItem", unitId: unit.id, itemId: item.id, ...(target ? { target } : {}) };
+  }
 
   const choice = [plan.action, plan.bonus]
     .filter((candidate) => candidate !== undefined)
@@ -208,7 +222,8 @@ export function planTurn(encounter: Encounter): AiPlan {
         if (prey && offensive && !struck.includes(prey)) continue;
         if (struck.length > 0) canStrike = true;
 
-        const value = abilityValue(sim, me, profile, ability, target);
+        let value = abilityValue(sim, me, profile, ability, target);
+        if (ability.effects.some((effect) => effect.kind === "stride")) value += strideValue(sim, me, profile, toWard ?? toFoe, ability);
         if (value < MIN_VALUE) continue;
         if (ability.cost === "action") {
           if (me.turn.action && value > (action?.value ?? 0)) action = { ability, target, value };
@@ -223,7 +238,7 @@ export function planTurn(encounter: Encounter): AiPlan {
     let item: AiItemChoice | undefined;
     if (me.turn.bonus) {
       const fight = { engaged: canStrike || exposure > 0, striking: canStrike && action !== undefined };
-      item = bestItem(me, profile, fight);
+      item = bestItem(sim, me, profile, fight);
       if (item && item.value > (bonus?.value ?? 0)) bonus = undefined;
       else item = undefined;
     }
@@ -292,6 +307,8 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
     let favor = 0;
     // Tirar alguém do lugar só desempata entre golpes que já valem: sozinho não é motivo pra gastar o gesto.
     let shove = 0;
+    // O que ele leva batendo no que barra o passo, empurrado.
+    let slammed = 0;
 
     for (const effect of ability.effects) {
       switch (effect.kind) {
@@ -317,13 +334,21 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
             BREATH_VALUE *
             (effect.amount < 0 ? -Math.min(-effect.amount, victim.breath) : Math.min(effect.amount, victim.maxBreath - victim.breath));
           break;
-        case "push":
-          if (!victim.statuses.some((status) => status.immovable)) shove += outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
+        case "push": {
+          if (victim.statuses.some((status) => status.immovable)) break;
+          shove += outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
+          // Jogado contra o que barra o passo, ele bate: é dano, e o barril em que bateu quebra (ver push em ./engine.ts).
+          const crash = slamOf(encounter, actor.pos, victim, effect.distance);
+          if (crash) {
+            if (!victim.invulnerable) slammed += outlook.lands * crash.amount;
+            if (crash.prop) value += outlook.lands * spillValue(encounter, actor, profile, crash.prop, crash.amount);
+          }
           break;
+        }
       }
     }
 
-    const harm = Math.min(outlook.damage, victim.currentHp);
+    const harm = Math.min(outlook.damage + slammed, victim.currentHp);
     if (harm > 0) favor -= shove;
     // O golpe que devolve vida a quem bate: vale como a cura que é, pelo que falta a ele.
     const leech = ability.effects.reduce((sum, effect) => sum + (effect.kind === "damage" ? (effect.leech ?? 0) : 0), 0);
@@ -335,6 +360,8 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
       value += profile.support * favor - FRIENDLY_FIRE * (harm + KILL_VALUE * outlook.kill);
     } else {
       value += profile.aggression * (harm - favor) + profile.finisher * KILL_VALUE * outlook.kill;
+      // O companheiro conta o golpe que a Espera devolve se ele errar.
+      if (actor.team === "party" && ability.attack) value -= profile.caution * (1 - outlook.lands) * counterDamage(encounter, victim, actor);
     }
   }
   if (ability.surface) {
@@ -351,8 +378,7 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
 function propValue(encounter: Encounter, actor: Unit, profile: AiProfile, ability: Ability, target: Pos): number {
   let value = 0;
   for (const prop of affectedProps(encounter, ability, target)) {
-    const { spill }: PropTemplate = PROPS[prop.kind];
-    if (!spill) continue;
+    if (!(PROPS[prop.kind] as PropTemplate).spill) continue;
 
     let damage = 0;
     for (const effect of ability.effects) {
@@ -360,11 +386,63 @@ function propValue(encounter: Encounter, actor: Unit, profile: AiProfile, abilit
       damage += (attributeOf(actor, effect.attribute) + meanRoll(effect.dice)) * (effect.multiplier ?? 1);
       if (effect.bonus) damage += Math.floor(effectiveAttribute(actor, effect.bonus.attribute) / effect.bonus.divisor);
     }
-    if (damage < prop.hp) continue;
-
-    value += spreadValue(encounter, actor, profile, SURFACES[spill.surface], spreadTiles(encounter.grid, prop.pos, spill.radius));
+    value += spillValue(encounter, actor, profile, prop, damage);
   }
   return value;
+}
+
+/** O que rende acertar `prop` com `damage`: o que ele derrama, se quebra. Nada, se aguenta. */
+function spillValue(encounter: Encounter, actor: Unit, profile: AiProfile, prop: Prop, damage: number): number {
+  const { spill }: PropTemplate = PROPS[prop.kind];
+  if (!spill || damage < prop.hp) return 0;
+  return spreadValue(encounter, actor, profile, SURFACES[spill.surface], spreadTiles(encounter.grid, prop.pos, spill.radius));
+}
+
+/**
+ * Onde o empurrão de `pushDistance` vindo de `origin` faz `victim` bater, e com
+ * que força: o espelho de push em ./engine.ts. Nada, se ele não bate (puxão ou
+ * caminho livre).
+ */
+function slamOf(encounter: Encounter, origin: Pos, victim: Unit, pushDistance: number): { amount: number; prop?: Prop } | undefined {
+  if (pushDistance <= 0) return undefined;
+  const dx = Math.sign(victim.pos.x - origin.x);
+  const dy = Math.sign(victim.pos.y - origin.y);
+  if (dx === 0 && dy === 0) return undefined;
+
+  const steps = pushDistance - (victim.heft ?? 0);
+  let pos = victim.pos;
+  for (let step = 0; step < steps; step++) {
+    const next = { x: pos.x + dx, y: pos.y + dy };
+    if ((tileAt(encounter.grid, next)?.blocksMove ?? true) || unitAt(encounter, next)) {
+      const prop = encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, next));
+      return { amount: (steps - step) * SLAM_PER_TILE, ...(prop ? { prop } : {}) };
+    }
+    pos = next;
+  }
+  return undefined;
+}
+
+/** O golpe que `defender` devolve em `attacker` se for atacado e errar (o Contragolpe, ver counterStrike em ./engine.ts). */
+function counterDamage(encounter: Encounter, defender: Unit, attacker: Unit): number {
+  if (!counters(defender) || !defender.turn.reaction) return 0;
+  const ability = defender.abilities.find((candidate) => candidate.opportunity && readiness(defender, candidate, true) === "ready");
+  if (!ability || distance(defender.pos, attacker.pos) > ability.range) return 0;
+  if (!hasLineOfSight(encounter.grid, defender.pos, attacker.pos)) return 0;
+  return Math.min(forecast(encounter, defender, ability, attacker).damage, attacker.currentHp);
+}
+
+/**
+ * O que rende a Disparada de onde `me` está: o caminho que ela encurta até
+ * quem ele procura (`toGoal`, a distância andando). Parado por ordem, nada.
+ */
+function strideValue(encounter: Encounter, me: Unit, profile: AiProfile, toGoal: number[], stride: Ability): number {
+  if (me.order?.kind === "hold") return 0;
+  const gap = toGoal[tileIndex(encounter.grid, me.pos)];
+  if (!Number.isFinite(gap)) return 0;
+  // Basta chegar ao alcance do golpe mais longo dele.
+  const reach = Math.max(1, ...me.abilities.filter((ability) => ability !== stride && isOffensive(ability)).map((ability) => ability.range));
+  const closed = Math.min(movementOf(me), Math.max(0, gap - reach));
+  return (me.order?.kind === "guard" ? 1 : profile.aggression) * APPROACH_VALUE * closed;
 }
 
 /**
@@ -435,7 +513,8 @@ function statusFavor(
   }
   if (status.guaranteedCrit) favor += GUARANTEED_CRIT_VALUE;
   for (const points of Object.values(status.attributeBonus ?? {})) favor += ATTRIBUTE_POINT_VALUE * points * turns;
-  favor += TO_HIT_VALUE * (status.toHit ?? 0) * turns;
+  // Acerto a mais só vale pra quem tem em quem bater logo; acerto a menos sempre atrapalha.
+  if ((status.toHit ?? 0) < 0 || engagedSoon(encounter, victim)) favor += TO_HIT_VALUE * (status.toHit ?? 0) * turns;
   // O que atrapalha quem a recebe, na moeda de sempre: pontos de vida.
   if ((status.damageTaken ?? 0) > 0) favor -= VULNERABLE_HITS * status.damageTaken! * turns;
   if (status.harm) favor -= Math.min(meanRoll(status.harm) * turns, victim.currentHp);
@@ -455,18 +534,28 @@ interface FightState {
   striking: boolean;
 }
 
-/** O item da mochila que mais vale usar agora, se algum vale. */
-function bestItem(unit: Unit, profile: AiProfile, fight: FightState): AiItemChoice | undefined {
+/**
+ * O item que `unit` leva que mais vale usar agora, se algum vale: nele, ou num
+ * aliado ao alcance do braço (ver itemTargets). No aliado, o reforço só vale se
+ * ele já tem inimigo ao alcance, e o Foco nunca: quem o bebe é quem bate agora.
+ */
+function bestItem(encounter: Encounter, unit: Unit, profile: AiProfile, fight: FightState): AiItemChoice | undefined {
+  const slots = (unit.inventory?.slots ?? []).filter((slot) => slot.quantity > 0);
+  if (slots.length === 0) return undefined;
+
   let best: AiItemChoice | undefined;
-  for (const slot of unit.inventory?.slots ?? []) {
-    if (slot.quantity <= 0) continue;
-    const value = itemValue(unit, profile, slot.item, fight);
-    if (value >= MIN_ITEM_VALUE && value > (best?.value ?? 0)) best = { item: slot.item, value };
+  for (const pos of itemTargets(encounter, unit)) {
+    const other = samePos(pos, unit.pos) ? undefined : unitAt(encounter, pos);
+    const state = other ? { engaged: threatAt(encounter, other) > 0, striking: false } : fight;
+    for (const slot of slots) {
+      const value = itemValue(other ?? unit, profile, slot.item, state);
+      if (value >= MIN_ITEM_VALUE && value > (best?.value ?? 0)) best = { item: slot.item, value, ...(other ? { target: { ...pos } } : {}) };
+    }
   }
   return best;
 }
 
-/** A nota de `unit` usar `item` em si mesmo (ver useItem em ./engine.ts). */
+/** A nota de usar `item` em `unit` (ver useItem em ./engine.ts). */
 function itemValue(unit: Unit, profile: AiProfile, item: ConsumableItem, fight: FightState): number {
   const { effect } = item.data;
   const missing = unit.maxHp - unit.currentHp;
@@ -572,6 +661,12 @@ function forecast(encounter: Encounter, actor: Unit, ability: Ability, target: U
     kill: (normal >= target.currentHp ? hit : 0) + (critical >= target.currentHp ? crit : 0),
     lands: hit + crit,
   };
+}
+
+/** Se `unit` tem algum inimigo de pé ao alcance de um golpe dele, andando o passo inteiro. */
+function engagedSoon(encounter: Encounter, unit: Unit): boolean {
+  const reach = movementOf(unit) + Math.max(0, ...unit.abilities.filter(isOffensive).map((ability) => ability.range));
+  return encounter.units.some((foe) => foe.team !== unit.team && isAlive(foe) && distance(foe.pos, unit.pos) <= reach);
 }
 
 // --- Quanto custa uma posição -----------------------------------------------

@@ -206,12 +206,14 @@ test("contorna a parede que a linha reta não atravessa", () => {
   assert.ok(encounter.winner);
 });
 
-test("avançando sob fogo sem alcançar ninguém, gasta a ação se pondo em guarda", () => {
+test("avançando sob fogo sem alcançar ninguém nem poder disparar, gasta a ação se pondo em guarda", () => {
   const { encounter } = setup(["A...........R"], (at) => [
     makeUnit("A", "enemy", at("A"), { attributes: { olho: FIRST } }),
     makeUnit("R", "party", at("R"), { equipment: { weapon: "gear-besta" } }),
   ]);
   withProfile(encounter, "A", { caution: 1 });
+  const runner = findUnit(encounter, "A")!;
+  runner.abilities = runner.abilities.filter((ability) => ability.id !== "espadachim.disparada");
 
   const plan = planTurn(encounter);
   assert.equal(distance(plan.tile, findUnit(encounter, "R")!.pos), 6);
@@ -228,8 +230,9 @@ test("ninguém se põe em guarda longe de qualquer ameaça", () => {
   ]);
   withProfile(encounter, "A", { caution: 3 });
 
+  // Longe de tudo, a ação vai na Disparada, não na guarda.
   const plan = planTurn(encounter);
-  assert.equal(plan.action, undefined);
+  assert.equal(plan.action?.ability.id, "espadachim.disparada");
   assert.equal(distance(plan.tile, findUnit(encounter, "E")!.pos), 13);
 });
 
