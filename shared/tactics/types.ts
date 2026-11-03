@@ -161,9 +161,10 @@ export interface AiProfile {
 /**
  * A ordem que o jogador deu a um companheiro que joga sozinho (comando
  * `order`): `advance` é o de sempre, ir pra cima; `hold`, não sair do quadrado;
- * `guard`, ficar colado em `unit` e bater em quem chegar perto dele.
+ * `guard`, ficar colado em `unit` e bater em quem chegar perto dele; `focus`,
+ * ir atrás do inimigo `unit` e só bater nele, enquanto ele estiver de pé.
  */
-export type AiOrder = { kind: "advance" } | { kind: "hold" } | { kind: "guard"; unit: string };
+export type AiOrder = { kind: "advance" } | { kind: "hold" } | { kind: "guard"; unit: string } | { kind: "focus"; unit: string };
 
 /**
  * Manias de quem a IA comanda: não são pesos, são regras de comportamento

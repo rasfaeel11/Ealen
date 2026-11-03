@@ -2,12 +2,12 @@ import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileAt, t
 import { attackOdds } from "./attack";
 import { healCap, healToll } from "../breath";
 import { reachableTiles } from "./movement";
-import { PROPS, type Prop, type PropTemplate } from "./props";
-import { SLAM_PER_TILE } from "./engine";
+import { PROPS, propTemplate, type Prop, type PropTemplate } from "./props";
+import { SLAM_PER_TILE, cueEnding } from "./engine";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
 import { counters, punishFactor, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
-import { abilityTargets, affectedProps, affectedUnits, canAimAt, isBlow, itemTargets, liftable, vowAllows, vowForbids } from "./targeting";
+import { abilityTargets, affectedProps, affectedUnits, canAimAt, interactTargets, isBlow, itemTargets, liftable, vowAllows, vowForbids } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
@@ -87,6 +87,10 @@ const PUSH_VALUE = 0.25;
 const SLOW_VALUE = 1;
 /** Quanto vale tirar do corpo uma condição que atrapalha sem mexer em atributo (um passo preso, um golpe abafado). */
 const HARMFUL_STATUS_VALUE = 2;
+/** Quanto vale mexer no objeto que dá a vitória (o guincho da corrente): mais que qualquer golpe. */
+const OBJECTIVE_VALUE = 40;
+/** Quanto vale cada quadrado que um círculo gravado tira o bicho de rio da água. */
+const CIRCLE_PULL_VALUE = 4;
 /** Quanto cada ponto de acerto muda a chance de um golpe pegar, no d20. */
 const TO_HIT_CHANCE = 0.05;
 /** Desempate: entre jogadas iguais, a que anda menos. */
@@ -121,6 +125,8 @@ export interface AiPlan {
   /** A habilidade da ação bônus. Nunca vem junto com `item`: os dois gastam a mesma ação bônus. */
   bonus?: AiChoice;
   item?: AiItemChoice;
+  /** O objeto em que mexer com a ação (ver interactTargets). Nunca vem junto com `action`: os dois gastam a ação. */
+  use?: { target: Pos; value: number };
   score: number;
 }
 
@@ -144,6 +150,8 @@ export function chooseCommand(encounter: Encounter): Command {
     return { type: "useItem", unitId: unit.id, itemId: item.id, ...(target ? { target } : {}) };
   }
 
+  // O guincho vem antes do golpe bônus: soltá-lo pode acabar a luta.
+  if (plan.use) return { type: "interact", unitId: unit.id, target: plan.use.target };
   const choice = [plan.action, plan.bonus]
     .filter((candidate) => candidate !== undefined)
     .sort((a, b) => b.value - a.value)[0];
@@ -183,9 +191,13 @@ export function planTurn(encounter: Encounter): AiPlan {
   profile.caution *= 2 - me.currentHp / me.maxHp;
 
   const foes = sim.units.filter((unit) => unit.team !== me.team && isAlive(unit));
-  // Quem vem atrás de uma presa (quem gastou mana demais de uma vez, ver `drawnToMana`) só vê ela.
-  const prey = foes.find((unit) => unit.id === me.prey);
-  const toFoe = walkingDistances(sim, (prey ? [prey] : foes).map((foe) => foe.pos));
+  // Quem vem atrás de uma presa (quem gastou mana demais de uma vez, ver `drawnToMana`) só vê ela; e quem
+  // recebeu ordem de mirar um inimigo só, enquanto ele estiver de pé.
+  const marked = me.order?.kind === "focus" ? (me.order as { unit: string }).unit : undefined;
+  const prey = foes.find((unit) => unit.id === me.prey) ?? foes.find((unit) => unit.id === marked);
+  // O que a luta espera que se mexa pra acabar (o guincho): o grupo vai até lá, e não até o inimigo.
+  const goals = prey || me.order ? [] : objectives(sim, me);
+  const toFoe = walkingDistances(sim, goals.length > 0 ? goals.map((prop) => prop.pos) : (prey ? [prey] : foes).map((foe) => foe.pos));
   const origin = { ...actor.pos };
 
   // A ordem do jogador (ver AiOrder): segurar não sai do quadrado; proteger fica colado em quem protege, ou vai até ele.
@@ -243,7 +255,18 @@ export function planTurn(encounter: Encounter): AiPlan {
       else item = undefined;
     }
 
-    let score = (action?.value ?? 0) + (bonus?.value ?? item?.value ?? 0) - STEP_COST * stop.cost;
+    // Mexer num objeto disputa a ação com as habilidades.
+    let use: { target: Pos; value: number } | undefined;
+    if (me.turn.action) {
+      for (const prop of interactTargets(sim, me)) {
+        const value = useValue(sim, me, prop, goals);
+        if (value >= MIN_VALUE && value > (use?.value ?? 0)) use = { target: { ...prop.pos }, value };
+      }
+      if (use && use.value > (action?.value ?? 0)) action = undefined;
+      else use = undefined;
+    }
+
+    let score = (action?.value ?? use?.value ?? 0) + (bonus?.value ?? item?.value ?? 0) - STEP_COST * stop.cost;
     if (action && bonus) score -= overkill(sim, me, profile, action, bonus);
     score -= profile.caution * THREAT_DISCOUNT * exposure;
     score -= profile.caution * opportunityDamage(sim, me, origin, me.pos);
@@ -251,12 +274,41 @@ export function planTurn(encounter: Encounter): AiPlan {
     score -= stop.hazard + Math.min(surfaceHarm(sim, me.pos), me.currentHp);
 
     // Quem protege alguém se aproxima dele, não do inimigo.
+    // Quem tem um objetivo vai até ele, alcance ou não alguém no caminho.
     const gap = (toWard ?? toFoe)[tileIndex(sim.grid, me.pos)];
-    if ((toWard || !canStrike) && Number.isFinite(gap)) score -= (toWard ? APPROACH_VALUE : profile.aggression * APPROACH_VALUE) * gap;
+    const drawn = toWard !== undefined || goals.length > 0;
+    if ((drawn || !canStrike) && Number.isFinite(gap)) score -= (drawn ? APPROACH_VALUE : profile.aggression * APPROACH_VALUE) * gap;
 
-    if (!best || score > best.score) best = { tile: { ...stop.pos }, action, bonus, item, score };
+    if (!best || score > best.score) best = { tile: { ...stop.pos }, action, bonus, item, use, score };
   }
   return best!;
+}
+
+/**
+ * Os objetos que a luta espera que alguém mexa pra dar a vitória ao grupo (uma
+ * deixa `used` que encerra em `win`), ainda por mexer: o guincho da corrente.
+ * Só o grupo do jogador mexe em objeto.
+ */
+function objectives(encounter: Encounter, unit: Unit): Prop[] {
+  if (unit.team !== "party") return [];
+  const wanted = new Set(encounter.cues.flatMap((cue) => (cue.when.kind === "used" && cueEnding(cue) === "win" ? cue.when.props : [])));
+  return encounter.props.filter((prop) => wanted.has(prop.id) && prop.hp > 0 && !prop.used);
+}
+
+/**
+ * O que rende `unit` mexer em `prop`: o objetivo da luta vale a vitória; o
+ * círculo gravado, o tanto que tira da água o bicho de rio que ele puxaria (o
+ * espelho de interact em ./engine.ts). O resto, nada.
+ */
+function useValue(encounter: Encounter, unit: Unit, prop: Prop, goals: Prop[]): number {
+  if (goals.includes(prop)) return OBJECTIVE_VALUE;
+  const { pull } = propTemplate(prop);
+  if (!pull) return 0;
+  const [target] = encounter.units
+    .filter((other) => other.team !== unit.team && isAlive(other) && distance(other.pos, prop.pos) <= pull.reach)
+    .sort((a, b) => Number(b.river === true) - Number(a.river === true) || distance(a.pos, prop.pos) - distance(b.pos, prop.pos));
+  if (!target?.river || tileAt(encounter.grid, target.pos)?.water !== true) return 0;
+  return CIRCLE_PULL_VALUE * Math.max(0, Math.min(pull.distance - (target.heft ?? 0), distance(target.pos, prop.pos) - 1));
 }
 
 /** O tipo de uma habilidade de kit, tirado do id dela ("espadachim.defend" -> "defend"). */

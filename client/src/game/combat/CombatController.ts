@@ -139,18 +139,21 @@ const COLOR_WATER = 0x9fd8e8;
 /** A marca de atração e repulsão é sangue pelo nariz: quem a carrega pinga. */
 const NOSEBLEED: string = CONCEPTS.atracao_repulsao.mark;
 
-/** A ordem de um companheiro, em palavras. */
+/** A ordem de um companheiro, em palavras. Mirar alguém que já caiu é o mesmo que avançar. */
 function orderLabel(order: AiOrder | undefined, encounter: Encounter): string {
+  const name = (id: string) => encounter.units.find((unit) => unit.id === id)?.name ?? "alguém";
   if (order?.kind === "hold") return "segurar posição";
-  if (order?.kind === "guard") return `proteger ${encounter.units.find((unit) => unit.id === order.unit)?.name ?? "alguém"}`;
+  if (order?.kind === "guard") return `proteger ${name(order.unit)}`;
+  if (order?.kind === "focus" && encounter.units.some((unit) => unit.id === order.unit && isAlive(unit))) return `mirar ${name(order.unit)}`;
   return "avançar";
 }
 
-/** A ordem que vem depois desta, no botão: avançar, segurar, proteger quem deu a ordem, e de volta. */
-function nextOrder(order: AiOrder | undefined, giver: string): AiOrder {
-  if (!order || order.kind === "advance") return { kind: "hold" };
-  if (order.kind === "hold") return { kind: "guard", unit: giver };
-  return { kind: "advance" };
+/** O ícone da ordem, no botão do companheiro. */
+function orderIcon(order: AiOrder | undefined): "shield" | "grip" | "sword" | "move" {
+  if (order?.kind === "hold") return "shield";
+  if (order?.kind === "guard") return "grip";
+  if (order?.kind === "focus") return "sword";
+  return "move";
 }
 
 /** O tipo de um dano, como a linha da habilidade o diz. */
@@ -286,7 +289,12 @@ export class CombatController {
   /** A habilidade escolhida; null = modo de movimento. */
   private selected: Ability | null = null;
   /** Mirando outra coisa que não uma habilidade: um objeto pra mexer (`interact`) ou o alvo de um apoio (`support`). */
-  private aim: { kind: "interact" } | { kind: "support"; supporter: Supporter } | { kind: "item"; itemId: string; name: string } | null = null;
+  private aim:
+    | { kind: "interact" }
+    | { kind: "support"; supporter: Supporter }
+    | { kind: "item"; itemId: string; name: string }
+    | { kind: "order"; unitId: string }
+    | null = null;
   /** O que cada inimigo anotado pretende fazer na vez dele: onde parar e o que vai atingir. Some quando a vez dele passa. */
   private readonly foreseen = new Map<string, { tile: Pos; areas: { target: Pos; radius: number }[] }>();
   private readonly foresight: Phaser.GameObjects.Graphics;
@@ -485,6 +493,30 @@ export class CombatController {
     this.refresh();
   }
 
+  /**
+   * O botão da ordem de um companheiro: escolhe-se depois em quem — nele mesmo,
+   * segurar posição; num aliado, proteger; num inimigo, mirar só nele. Clicar no
+   * botão de novo manda avançar.
+   */
+  private chooseOrder(companion: Unit): void {
+    if (this.busy) return;
+    const unit = activeUnit(this.encounter)!;
+    if (this.aim?.kind === "order" && this.aim.unitId === companion.id) {
+      void this.issue({ type: "order", unitId: unit.id, targetId: companion.id, order: { kind: "advance" } });
+      return;
+    }
+    sfx("uiSelect");
+    this.selected = null;
+    this.aim = { kind: "order", unitId: companion.id };
+    this.refresh();
+  }
+
+  /** A ordem que clicar em `target` dá a `companion`. */
+  private orderFor(companion: Unit, target: Unit): AiOrder {
+    if (target === companion) return companion.order?.kind === "hold" ? { kind: "advance" } : { kind: "hold" };
+    return target.team === companion.team ? { kind: "guard", unit: target.id } : { kind: "focus", unit: target.id };
+  }
+
   /** O botão de mexer: com um objeto só ao alcance, mexe nele; com mais de um, deixa escolher. */
   private chooseInteract(): void {
     if (this.busy) return;
@@ -646,6 +678,10 @@ export class CombatController {
     else if (this.aim?.kind === "item") void this.issue({ type: "useItem", unitId: unit.id, itemId: this.aim.itemId, target: tile });
     else if (this.aim?.kind === "support") {
       void this.issue({ type: "support", unitId: unit.id, supporterId: this.aim.supporter.id, target: tile });
+    } else if (this.aim?.kind === "order") {
+      const companion = this.unit(this.aim.unitId);
+      const target = unitAt(this.encounter, tile)!;
+      void this.issue({ type: "order", unitId: unit.id, targetId: companion.id, order: this.orderFor(companion, target) });
     } else if (this.selected) void this.issue({ type: "ability", unitId: unit.id, abilityId: this.selected.id, target: tile });
     else void this.issue({ type: "move", unitId: unit.id, to: tile });
   }
@@ -762,21 +798,21 @@ export class CombatController {
             } satisfies ActionButton,
           ]
         : []),
-      // Os companheiros que jogam sozinhos: um botão por cabeça, que troca a ordem (avançar, segurar, proteger quem tem a vez).
+      // Os companheiros que jogam sozinhos: um botão por cabeça, que pede em quem (ele mesmo, um aliado, um inimigo).
       ...encounter.units
         .filter((other) => other.team === unit.team && other !== unit && isAlive(other) && this.playsItself(other))
-        .map((other): ActionButton => {
-          const next = nextOrder(other.order, unit.id);
-          return {
+        .map(
+          (other): ActionButton => ({
             label: `${other.name}: ${orderLabel(other.order, this.encounter)}`,
-            icon: other.order?.kind === "hold" ? "shield" : other.order?.kind === "guard" ? "grip" : "move",
+            icon: orderIcon(other.order),
             tag: "Ordem  ·  não gasta nada",
             cost: "free",
-            body: `${other.name} joga sozinho. Clique pra mudar a ordem: ${orderLabel(next, this.encounter)}.`,
+            body: `${other.name} joga sozinho. Clique e escolha: nele, segurar posição; num aliado, proteger; num inimigo, mirar só nele. Clique de novo aqui pra avançar.`,
             enabled: true,
-            onClick: () => void this.issue({ type: "order", unitId: unit.id, targetId: other.id, order: next }),
-          };
-        }),
+            selected: this.aim?.kind === "order" && this.aim.unitId === other.id,
+            onClick: () => this.chooseOrder(other),
+          }),
+        ),
       // Quem acompanha sem lutar: o apoio de cada um, uma vez por rodada, sem gastar nada de quem chama.
       ...encounter.supporters.map(
         (supporter): ActionButton => ({
@@ -810,6 +846,8 @@ export class CombatController {
     this.hud.setActions(buttons, this.resourcesOf(unit, true), () => this.endTurn());
     if (this.aim?.kind === "interact") this.options = inReach.map((prop) => prop.pos);
     else if (this.aim?.kind === "item") this.options = itemTargets(encounter, unit);
+    // Todo mundo de pé: o companheiro (segurar), um aliado, quem dá a ordem inclusive (proteger), um inimigo (mirar).
+    else if (this.aim?.kind === "order") this.options = encounter.units.filter(isAlive).map((other) => other.pos);
     else if (this.aim?.kind === "support") {
       this.options = supportTargets(encounter, unit, this.aim.supporter).map((target) => target.pos);
     } else if (this.selected) this.options = abilityTargets(encounter, unit, this.selected);
@@ -898,6 +936,13 @@ export class CombatController {
       return target
         ? `${this.aim.name} em ${target.name}${target === unit ? "" : ": jogado na mão dele"}. Custa a ação bônus.`
         : `${this.aim.name}: em quem? Em você, ou num aliado à vista, até ${ITEM_REACH} quadrados. Esc ou botão direito volta.`;
+    }
+    if (this.aim?.kind === "order") {
+      const companion = this.unit(this.aim.unitId);
+      const target = hover ? unitAt(encounter, hover) : undefined;
+      return target
+        ? `${companion.name}: ${orderLabel(this.orderFor(companion, target), encounter)}. Não gasta nada.`
+        : `Ordem pra ${companion.name}: clique nele pra segurar posição, num aliado pra proteger, num inimigo pra mirar só nele. O botão de novo: avançar.`;
     }
     if (this.aim?.kind === "interact") {
       const prop = hover ? propAt(encounter, hover) : undefined;

@@ -1316,6 +1316,10 @@ function giveOrder(encounter: Encounter, unit: Unit, targetId: string, order: Ai
     const ward = findUnit(encounter, order.unit);
     if (!ward || ward === target || ward.team !== unit.team) return "invalid_target";
   }
+  if (order.kind === "focus") {
+    const mark = findUnit(encounter, order.unit);
+    if (!mark || mark.team === unit.team || !isAlive(mark)) return "invalid_target";
+  }
   if (order.kind === "advance") delete target.order;
   else target.order = { ...order };
   events.push({ type: "ordered", unit: unit.id, target: target.id, order: { ...order } });
