@@ -88,10 +88,15 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
   };
 }
 
-/** Devolve à ficha o que a luta gastou: HP, Fôlego, mana, as gravações ativadas e a mochila. */
+/**
+ * Devolve à ficha o que a luta gastou: HP, Fôlego, mana, as gravações ativadas
+ * e a mochila. O Fôlego que a luta devolveu (a guarda) só vale dentro dela: sai
+ * no máximo com o que entrou, e enrolar o fim de uma luta em guarda não enche
+ * ninguém. Quem enche é o descanso.
+ */
 export function syncCharacterFromUnit(character: Character, unit: Unit): void {
   character.currentHp = unit.currentHp;
-  character.breath = unit.breath;
+  character.breath = Math.min(unit.breath, breathOf(character));
   if (unit.mana !== undefined) character.mana = unit.mana;
   if (character.engraved) {
     // Cada gravação serve uma vez: a que a luta ativou sai da ficha.

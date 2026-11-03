@@ -222,3 +222,15 @@ test("a ficha entra na luta com o Fôlego que tem e sai com o que sobrou", () =>
   syncCharacterFromUnit(character, unit(encounter, "A"));
   assert.equal(character.breath, 1);
 });
+
+test("o Fôlego que a guarda devolveu fica na luta: sai dela no máximo com o que entrou", () => {
+  const character = makeCharacter("A", { breath: 2 });
+  const unit = unitFromCharacter(character, { team: "party", pos: { x: 0, y: 0 } });
+  unit.breath = unit.maxBreath;
+  syncCharacterFromUnit(character, unit);
+  assert.equal(breathOf(character), 2);
+
+  unit.breath = 1;
+  syncCharacterFromUnit(character, unit);
+  assert.equal(breathOf(character), 1);
+});
