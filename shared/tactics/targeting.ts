@@ -158,6 +158,25 @@ export function interactTargets(encounter: Encounter, unit: Unit): Prop[] {
   );
 }
 
+/** Até quantos quadrados um item alcança um aliado: o pote jogado na mão de quem precisa. */
+export const ITEM_REACH = 3;
+
+/**
+ * Em quem `unit` pode usar um item (comando `useItem`): ele mesmo e os aliados
+ * de pé a até ITEM_REACH quadrados, à vista. Ele vem primeiro.
+ */
+export function itemTargets(encounter: Encounter, unit: Unit): Pos[] {
+  const others = encounter.units.filter(
+    (other) =>
+      other !== unit &&
+      other.team === unit.team &&
+      isAlive(other) &&
+      distance(unit.pos, other.pos) <= ITEM_REACH &&
+      hasLineOfSight(encounter.grid, unit.pos, other.pos),
+  );
+  return [{ ...unit.pos }, ...others.map((other) => ({ ...other.pos }))];
+}
+
 /**
  * Quem o apoio de `supporter` pode mirar agora, chamado por `unit` (comando
  * `support`): qualquer inimigo de pé — quem apoia olha a luta de fora, não

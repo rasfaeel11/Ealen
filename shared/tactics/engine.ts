@@ -24,6 +24,7 @@ import {
   affectedProps,
   affectedUnits,
   interactTargets,
+  itemTargets,
   isBlow,
   supportTargets,
   vowForbids,
@@ -255,7 +256,7 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
     case "ability":
       return useAbility(encounter, unit, command.abilityId, command.target, events);
     case "useItem":
-      return useItem(unit, command.itemId, events);
+      return useItem(encounter, unit, command.itemId, command.target, events);
     case "interact":
       return interact(encounter, unit, command.target, events);
     case "support":
@@ -1304,18 +1305,21 @@ function lift(encounter: Encounter, unit: Unit, targetId: string, events: Tactic
   return undefined;
 }
 
-function useItem(unit: Unit, itemId: string, events: TacticalEvent[]): CommandError | undefined {
-  const slot = findInventorySlot(unit, itemId);
+function useItem(encounter: Encounter, user: Unit, itemId: string, at: Pos | undefined, events: TacticalEvent[]): CommandError | undefined {
+  const slot = findInventorySlot(user, itemId);
   if (!slot || slot.quantity <= 0) return "item_unavailable";
-  if (!unit.turn.bonus) return "resource_spent";
+  if (!user.turn.bonus) return "resource_spent";
+  // Sem alvo, em si; com alvo, num aliado ao alcance do braço (ver itemTargets).
+  const unit = at ? unitAt(encounter, at) : user;
+  if (!unit || (at && !itemTargets(encounter, user).some((pos) => samePos(pos, at)))) return "invalid_target";
 
-  unit.turn.bonus = false;
+  user.turn.bonus = false;
   const { id, name, data } = slot.item;
   const { effect } = data;
-  consumeInventoryCharge(unit, slot);
+  consumeInventoryCharge(user, slot);
 
   const announce = (description: string) =>
-    events.push({ type: "itemUsed", unit: unit.id, itemId: id, itemName: name, description });
+    events.push({ type: "itemUsed", unit: user.id, itemId: id, itemName: name, description, ...(unit !== user ? { target: unit.id } : {}) });
 
   switch (effect.kind) {
     case "heal_hp":

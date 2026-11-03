@@ -429,7 +429,8 @@ export interface Encounter {
 export type Command =
   | { type: "move"; unitId: string; to: Pos }
   | { type: "ability"; unitId: string; abilityId: string; target: Pos }
-  | { type: "useItem"; unitId: string; itemId: string }
+  /** Usa um item que leva, em si ou (com `target`) num aliado à vista, até ITEM_REACH quadrados: o pote jogado (ver itemTargets em ./targeting.ts). */
+  | { type: "useItem"; unitId: string; itemId: string; target?: Pos }
   /** Mexe no objeto em `target` (um destrutível com `interact`, ver ./props.ts), colado nele. Custa a ação. */
   | { type: "interact"; unitId: string; target: Pos }
   /** Chama o apoio de quem acompanha sem lutar (ver ./supports.ts) sobre `target`. Não gasta nada de quem chama; uma vez por rodada. */
@@ -542,7 +543,8 @@ export type TacticalEvent =
   | { type: "propDestroyed"; prop: string; name: string; pos: Pos }
   /** `unit` mexeu no objeto `prop`; `verb` é o que se faz com ele ("Tocar"). */
   | { type: "propUsed"; unit: string; prop: string; name: string; verb: string; pos: Pos }
-  | { type: "itemUsed"; unit: string; itemId: string; itemName: string; description: string }
+  /** `target` é em quem o item pegou, quando não foi em quem o usou. */
+  | { type: "itemUsed"; unit: string; itemId: string; itemName: string; description: string; target?: string }
   /** `supporter` (que não luta) deu o apoio dele, chamado por `unit`. O que o apoio fez vem logo depois. */
   /** `unit` pôs `target` de pé, com `hp` de vida. */
   | { type: "lifted"; unit: string; target: string; hp: number }

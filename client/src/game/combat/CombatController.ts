@@ -18,6 +18,8 @@ import {
   findPath,
   findUnit,
   interactTargets,
+  itemTargets,
+  ITEM_REACH,
   isAlive,
   isBlow,
   isOver,
@@ -269,7 +271,7 @@ export class CombatController {
   /** A habilidade escolhida; null = modo de movimento. */
   private selected: Ability | null = null;
   /** Mirando outra coisa que não uma habilidade: um objeto pra mexer (`interact`) ou o alvo de um apoio (`support`). */
-  private aim: { kind: "interact" } | { kind: "support"; supporter: Supporter } | null = null;
+  private aim: { kind: "interact" } | { kind: "support"; supporter: Supporter } | { kind: "item"; itemId: string; name: string } | null = null;
   /** O que cada inimigo anotado pretende fazer na vez dele: onde parar e o que vai atingir. Some quando a vez dele passa. */
   private readonly foreseen = new Map<string, { tile: Pos; areas: { target: Pos; radius: number }[] }>();
   private readonly foresight: Phaser.GameObjects.Graphics;
@@ -454,6 +456,20 @@ export class CombatController {
     this.refresh();
   }
 
+  /** O botão de um item: sem aliado ao alcance, usa em si na hora; com, deixa escolher em quem (ele mesmo incluso). */
+  private chooseItem(itemId: string, name: string): void {
+    if (this.busy) return;
+    const unit = activeUnit(this.encounter)!;
+    if (itemTargets(this.encounter, unit).length === 1) {
+      void this.issue({ type: "useItem", unitId: unit.id, itemId });
+      return;
+    }
+    sfx("uiSelect");
+    this.selected = null;
+    this.aim = { kind: "item", itemId, name };
+    this.refresh();
+  }
+
   /** O botão de mexer: com um objeto só ao alcance, mexe nele; com mais de um, deixa escolher. */
   private chooseInteract(): void {
     if (this.busy) return;
@@ -612,6 +628,7 @@ export class CombatController {
     }
 
     if (this.aim?.kind === "interact") void this.issue({ type: "interact", unitId: unit.id, target: tile });
+    else if (this.aim?.kind === "item") void this.issue({ type: "useItem", unitId: unit.id, itemId: this.aim.itemId, target: tile });
     else if (this.aim?.kind === "support") {
       void this.issue({ type: "support", unitId: unit.id, supporterId: this.aim.supporter.id, target: tile });
     } else if (this.selected) void this.issue({ type: "ability", unitId: unit.id, abilityId: this.selected.id, target: tile });
@@ -754,13 +771,15 @@ export class CombatController {
           body: slot.item.description,
           enabled: unit.turn.bonus,
           why: "A ação bônus deste turno já foi gasta.",
-          onClick: () => void this.issue({ type: "useItem", unitId: unit.id, itemId: slot.item.id }),
+          selected: this.aim?.kind === "item" && this.aim.itemId === slot.item.id,
+          onClick: () => this.chooseItem(slot.item.id, slot.item.name),
         }),
       ),
     ];
 
     this.hud.setActions(buttons, this.resourcesOf(unit, true), () => this.endTurn());
     if (this.aim?.kind === "interact") this.options = inReach.map((prop) => prop.pos);
+    else if (this.aim?.kind === "item") this.options = itemTargets(encounter, unit);
     else if (this.aim?.kind === "support") {
       this.options = supportTargets(encounter, unit, this.aim.supporter).map((target) => target.pos);
     } else if (this.selected) this.options = abilityTargets(encounter, unit, this.selected);
@@ -843,6 +862,12 @@ export class CombatController {
       return target
         ? `${name}: o que ${target.name} pretende fazer na vez dele. Não gasta a sua ação.`
         : `${name} (${this.aim.supporter.name}) — ${flavor}`;
+    }
+    if (this.aim?.kind === "item") {
+      const target = hover ? unitAt(encounter, hover) : undefined;
+      return target
+        ? `${this.aim.name} em ${target.name}${target === unit ? "" : ": jogado na mão dele"}. Custa a ação bônus.`
+        : `${this.aim.name}: em quem? Em você, ou num aliado à vista, até ${ITEM_REACH} quadrados. Esc ou botão direito volta.`;
     }
     if (this.aim?.kind === "interact") {
       const prop = hover ? propAt(encounter, hover) : undefined;
@@ -1349,10 +1374,13 @@ export class CombatController {
       }
       case "itemUsed": {
         const actor = this.actor(event.unit);
-        this.hud.log(`${this.unit(event.unit).name} usa ${event.itemName}: ${event.description}`);
+        const onto = event.target ? ` em ${this.unit(event.target).name}` : "";
+        this.hud.log(`${this.unit(event.unit).name} usa ${event.itemName}${onto}: ${event.description}`);
         sfx("item");
-        this.floatOver(event.unit, event.itemName, TEXT_COLORS.gold, -22, 20);
-        if (actor) this.ring(actor.pos, COLORS.gold);
+        const receiver = event.target ?? event.unit;
+        this.floatOver(receiver, event.itemName, TEXT_COLORS.gold, -22, 20);
+        const where = this.actor(receiver) ?? actor;
+        if (where) this.ring(where.pos, COLORS.gold);
         await this.wait(380);
         return;
       }

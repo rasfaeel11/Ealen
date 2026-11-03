@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { abilityTargets, activeUnit, findUnit, movementOf, readiness, resistOf, type Ability, type ActiveStatus } from "../index";
+import { findItemTemplate } from "../../data/items";
+import { abilityTargets, activeUnit, applyCommand, itemTargets, findUnit, movementOf, readiness, resistOf, type Ability, type ActiveStatus } from "../index";
 import { STATUSES, type StatusId } from "../statuses";
 import { FIRST, eventsOf, makeUnit, run, setup } from "./helpers";
 
@@ -98,4 +99,23 @@ test("Ajudar: só num aliado colado, nunca em si, e ele sai Ajudado", () => {
   assert.deepEqual(targets, [findUnit(encounter, "B")!.pos]);
   run(encounter, { type: "ability", unitId: "A", abilityId: help.id, target: targets[0] });
   assert.ok(findUnit(encounter, "B")!.statuses.some((status) => status.id === "aided" && (status.toHit ?? 0) > 0));
+});
+
+test("o item vai num aliado à vista, até três quadrados, e nunca num inimigo", () => {
+  const { encounter } = setup(["A.B...C.E"], (at) => [
+    makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }),
+    makeUnit("B", "party", at("B")),
+    makeUnit("C", "party", at("C")),
+    makeUnit("E", "enemy", at("E")),
+  ]);
+  const user = findUnit(encounter, "A")!;
+  const ally = findUnit(encounter, "B")!;
+  user.inventory = { slots: [{ slotIndex: 0, item: structuredClone(findItemTemplate("item-unguento-de-barqueiro")!), quantity: 1 }], maxSlots: 12 };
+  assert.deepEqual(itemTargets(encounter, user), [user.pos, ally.pos]);
+  ally.currentHp = 1;
+  const refused = applyCommand(encounter, { type: "useItem", unitId: "A", itemId: "item-unguento-de-barqueiro", target: findUnit(encounter, "E")!.pos });
+  assert.deepEqual(refused, { ok: false, reason: "invalid_target" });
+  const events = run(encounter, { type: "useItem", unitId: "A", itemId: "item-unguento-de-barqueiro", target: ally.pos });
+  assert.equal(eventsOf(events, "itemUsed")[0]?.target, "B");
+  assert.ok(ally.currentHp > 1);
 });
