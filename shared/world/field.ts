@@ -94,6 +94,23 @@ export function learnSkill(character: Character, nodeId: string): SkillRefusal |
   return undefined;
 }
 
+/**
+ * Desaprende a árvore inteira de `character`: os pontos voltam, e a vida que os
+ * nós davam sai da ficha (sem matar ninguém: fica pelo menos 1). Só o
+ * acampamento chama. Devolve quantos nós ele esquecia.
+ */
+export function unlearnSkills(character: Character): number {
+  const known = character.skills ?? [];
+  if (known.length === 0) return 0;
+  const hp = skillPassive(character, "maxHp");
+  delete character.skills;
+  if (hp) {
+    character.maxHp -= hp;
+    character.currentHp = Math.max(1, Math.min(character.maxHp, character.currentHp - hp));
+  }
+  return known.length;
+}
+
 /** Pra que uma habilidade serve fora de luta: `mend` cura alguém do grupo, `opening` abre uma luta. */
 export type FieldUse = "mend" | "opening";
 

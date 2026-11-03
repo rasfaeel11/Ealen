@@ -203,6 +203,8 @@ export default class WorldScene extends Phaser.Scene {
   private enemyActors = new Map<string, MapActor>();
   /** Esgueirando (`Q`): devagar, agachado, e quem olha desconfia antes de ver (ver shared/world/stealth.ts). */
   private sneaking = false;
+  /** Acabou de acampar e ainda não deu um passo nem lutou: a árvore se refaz (ver unlearnSkills). */
+  private campfire = false;
   /** O quanto cada inimigo já desconfia, de 0 a 1, pelo id. */
   private suspicion: Suspicion = {};
   /** O olhar dos inimigos pintado no chão, enquanto se esgueira. */
@@ -404,6 +406,7 @@ export default class WorldScene extends Phaser.Scene {
     this.strode += Math.hypot(this.pos.x - from.x, this.pos.y - from.y);
     if (this.strode >= FOOTSTEP_PX) {
       this.strode = 0;
+      this.campfire = false;
       sfx("step");
     }
 
@@ -807,6 +810,7 @@ export default class WorldScene extends Phaser.Scene {
     this.closePause(true);
     const { hungry } = camp(this.character, this.save.companions);
     this.save.shortRests = SHORT_RESTS;
+    this.campfire = true;
     sfx("rest");
     let changed = this.story.rest();
     for (const id of hungry) changed = this.story.mark(id, HUNGER) || changed;
@@ -1035,6 +1039,7 @@ export default class WorldScene extends Phaser.Scene {
    * o golpe que o personagem deu de fora (ver `aimOpening`).
    */
   private startCombat(group: string, surprised?: TeamId, opening?: Opening, charge?: TeamId): void {
+    this.campfire = false;
     this.forgetSuspicion();
     const fighters = this.enemies.filter((enemy) => enemy.group === group);
     const cues = this.map.cues.filter((cue) => cue.group === group && isActive(cue, this.flag));
@@ -1310,6 +1315,7 @@ export default class WorldScene extends Phaser.Scene {
       owner: this.character,
       members: this.company(),
       start,
+      campfire: this.campfire,
       // Vestir e tirar valem na hora e ficam gravados, como usar um item.
       onEquip: (wearer, itemId) => {
         const result = equip(this.character, wearer, itemId);

@@ -15,6 +15,7 @@ import {
   describeSkill,
   learnRefusal,
   learnSkill,
+  unlearnSkills,
   skillPoints,
   castOf,
   engravingSlots,
@@ -151,6 +152,8 @@ export function describeEquipment(item: EquipmentItem, brief = false): string {
 export interface SheetHost {
   /** Alguém mudou o que leva pra luta. */
   onPacked: () => void;
+  /** O grupo está no acampamento: dá pra refazer a árvore (`U`, ver unlearnSkills). */
+  campfire?: boolean;
   /** A dona da mochila: é com ela que fica guardado o equipamento que ninguém veste. */
   owner: Character;
   /** As fichas a mostrar: a protagonista primeiro, depois quem anda com ela. */
@@ -200,6 +203,8 @@ export class SheetPanel {
   private index: number;
   /** Escolhendo em quem usar uma cura, ou o que vestir: a grade virou lista, e Tab não troca de personagem. */
   private targeting = false;
+  /** A coluna da direita é a árvore (`U` refaz). */
+  private treeOpen = false;
   /** A habilidade sob o cursor, se dá pra deixá-la de fora (`X`). */
   private focusedAbility?: Ability;
   private closed = false;
@@ -480,6 +485,7 @@ export class SheetPanel {
   /** A coluna da direita volta a ser a grade de habilidades. */
   private listAbilities(focus = 0): void {
     this.targeting = false;
+    this.treeOpen = false;
     this.menu?.destroy();
     this.menu = undefined;
     this.grid.setVisible(true);
@@ -546,6 +552,7 @@ export class SheetPanel {
     const nodes = branches.flatMap((branch) => branch.nodes.map((node) => ({ branch: branch.name, node })));
 
     this.targeting = true;
+    this.treeOpen = true;
     this.heading.setText(`ÁRVORE  ·  ${points} PONTO${points === 1 ? "" : "S"}`);
     this.setMenu(
       [
@@ -579,7 +586,27 @@ ${this.treeHint(node, refusal)}`),
       () => this.later(() => this.listAbilities()),
       focus,
     );
-    this.setFooter("Setas: nó  ·  Enter: aprender  ·  Esc: voltar");
+    this.setFooter(`Setas: nó  ·  Enter: aprender${this.host.campfire ? "  ·  U: refazer a árvore" : ""}  ·  Esc: voltar`);
+  }
+
+  /** `U`, na árvore e no acampamento: os pontos voltam todos, pra escolher de novo. */
+  private unlearn(): void {
+    const { character } = this;
+    if (!this.host.campfire) {
+      this.say("Só no acampamento, com tempo pra pensar.");
+      return;
+    }
+    const forgot = unlearnSkills(character);
+    if (forgot === 0) {
+      this.say(`${character.name} não aprendeu nada da árvore ainda.`);
+      return;
+    }
+    this.host.onPacked();
+    this.later(() => {
+      this.show();
+      this.listTree();
+      this.say(`${character.name} tem ${skillPoints(character)} ponto${skillPoints(character) === 1 ? "" : "s"} pra escolher de novo.`);
+    });
   }
 
   /** O que vai ao lado do nome do nó, na lista: aprendido, ou o que falta. */
@@ -761,6 +788,7 @@ ${this.treeHint(node, refusal)}`),
     else if (isAction(event, "bag")) this.host.onBag();
     else if (isAction(event, "interact") && !this.targeting) this.listSlots();
     else if (event.code === "KeyR" && !this.targeting) this.listTree();
+    else if (event.code === "KeyU" && this.treeOpen) this.unlearn();
     else if (event.code === "KeyX" && !this.targeting && this.focusedAbility) this.toggleFocused(this.focusedAbility);
     else if (event.code === "Tab" && !this.targeting && this.host.members.length > 1) {
       event.preventDefault();

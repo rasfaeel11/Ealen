@@ -6,7 +6,7 @@ import { createProtagonist, joinParty, raiseToLevel, type PartyMember } from "..
 import { SKILL_TREES, branchesFor, findSkill, skillPoints, tweakAbility } from "../../skillTree";
 import { unitFromCharacter } from "../../tactics/units";
 import type { Ability } from "../../tactics/types";
-import { engravingSlots, learnSkill, sheetAbilities } from "../index";
+import { engravingSlots, learnSkill, sheetAbilities, unlearnSkills } from "../index";
 
 /** A árvore de habilidades (ver ../../skillTree.ts). */
 
@@ -98,6 +98,19 @@ test("o ramo da escola é só de quem é dela", () => {
     branchesFor("espadachim", "gryskar").map((b) => b.id),
     ["lamina", "corpo", "gryskar"],
   );
+});
+
+test("no acampamento, a árvore se refaz: os pontos voltam e a vida que ela dava sai", () => {
+  const sword = companion("jarupa", 3);
+  const hp = sword.maxHp;
+  learnSkill(sword, "es.couro_grosso");
+  learnSkill(sword, "es.golpe_firme");
+  assert.equal(skillPoints(sword), 0);
+  assert.equal(unlearnSkills(sword), 2);
+  assert.equal(skillPoints(sword), 2);
+  assert.equal(sword.maxHp, hp);
+  assert.ok(sword.currentHp <= sword.maxHp);
+  assert.equal(unlearnSkills(sword), 0);
 });
 
 test("o custo nunca cai abaixo de 1, e a recarga zerada some", () => {

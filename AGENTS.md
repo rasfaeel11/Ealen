@@ -299,7 +299,6 @@ O motor e a tela já entraram (ver Feito). Nenhum nó é técnica nova do mundo:
 | # | Task | O que é |
 |---|---|---|
 | 87 | **Os nomes da árvore pro autor** | Os 20 nós (`shared/skillTree.ts`) têm nome e fala provisórios ("Verso de Longe", "Pé de Convés"...). Vão como proposta (§1), junto com a pergunta de se há ramo da Tsvirana (ninguém do grupo é dela) e de se a Cura ganha ramo próprio. |
-| 88 | **Desaprender no acampamento** | Hoje o ponto gasto não volta. Refazer a árvore de alguém só no acampamento, de graça ou pagando a noite, pra errar a escolha não travar o jogo. |
 | 89 | **O grau da escola na árvore** | O nó que sobe a proficiência (Gryskar II → III), cortado pela aura, e o grau valendo alguma coisa no golpe (a outra metade da task 58). Pede o autor: no cânone, como se sobe de grau? |
 | 90 | **A IA que escolhe e o balanço por nó** | Quem joga sozinho (a opção dos companheiros) e quem entra no grupo já com nível alto gastam os pontos sozinhos, por um perfil de cada um; o `balance:matrix` roda com cada nó, pra achar o que vale demais. |
 | 91 | **Cara de árvore** | A árvore hoje é uma lista na coluna da ficha. Desenhar os ramos lado a lado, com o ícone de cada nó, a linha que liga um ao outro e o mouse. |
@@ -648,6 +647,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 
 - **85. A árvore de habilidades, o motor** (pedida pelo autor em 2026-11-03). `shared/skillTree.ts`: cada nível depois do primeiro dá um ponto, e cada nó custa um. Três ramos por pessoa, cada nó pedindo o anterior, e às vezes um nível ou o Círculo: Endyru tem Atração, Repulsão e Preparo (o ramo do tema: Cura mais barata, mais Fôlego, uma gravação a mais); o espadachim, Lâmina, Corpo e o ramo da escola dele (o do Gryskar melhora a Ombrada de Jarupã, o da Ipojy o Segurar o Bote de Xanduí). O nó melhora o que a pessoa já sabe (alcance, acerto, custo, recarga, empurrão, duração, dano) ou o corpo (vida, Fôlego, passo, gravações); valem na ficha, na luta e na gravação. Fica na ficha (`skills`), sem versão nova de save. Os nomes e os números são provisórios (task 87).
 - **86. A árvore na ficha.** `R`, na ficha, abre a árvore na coluna da direita: cada nó com o ramo, o que é, o que faz em números e o que falta (o nível, o Círculo, o de cima, o ponto). Enter aprende. A ficha mostra quantos pontos sobram, e subir de nível avisa do ponto novo. Testado no motor (`skills.test.ts`), não numa partida na tela.
+- **88. Desaprender no acampamento.** Depois de acampar, e até o primeiro passo ou a próxima luta, `U` na árvore devolve todos os pontos de quem está na ficha (`unlearnSkills`), de graça: a noite já foi paga. A vida que os nós davam sai da ficha. Fora do acampamento, a ficha diz que não dá.
 
 ## 9. Onde isto está no cânone
 
