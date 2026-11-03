@@ -159,6 +159,13 @@ export interface AiProfile {
 }
 
 /**
+ * A ordem que o jogador deu a um companheiro que joga sozinho (comando
+ * `order`): `advance` é o de sempre, ir pra cima; `hold`, não sair do quadrado;
+ * `guard`, ficar colado em `unit` e bater em quem chegar perto dele.
+ */
+export type AiOrder = { kind: "advance" } | { kind: "hold" } | { kind: "guard"; unit: string };
+
+/**
  * Manias de quem a IA comanda: não são pesos, são regras de comportamento
  * (ver ./ai.ts). Vêm de `quirks` na entrada do bestiário.
  */
@@ -294,6 +301,8 @@ export interface Unit {
   ai?: Partial<AiProfile>;
   /** Manias da IA (ver AiQuirks). Ignorado em quem o jogador comanda. */
   quirks?: AiQuirks;
+  /** A ordem que o jogador deu, se ele joga sozinho (ver AiOrder). Sem isto, avança. */
+  order?: AiOrder;
   /**
    * A escola de espada (ou o Baluarte de uma criatura) e a proficiência nela,
    * já limitada pelo nível de aura (ver ./styles.ts). Sem estilo, não entra no
@@ -437,6 +446,8 @@ export type Command =
   | { type: "support"; unitId: string; supporterId: string; target: Pos }
   /** Levanta um aliado caído, colado nele (ver `liftable` em ./targeting.ts). Custa a ação. */
   | { type: "lift"; unitId: string; targetId: string }
+  /** Quem tem a vez dá a `targetId`, do mesmo lado, a ordem `order` (ver AiOrder). Não gasta nada. */
+  | { type: "order"; unitId: string; targetId: string; order: AiOrder }
   | { type: "endTurn"; unitId: string };
 
 export type AttackOutcome = "hit" | "miss" | "crit" | "fumble";
@@ -548,6 +559,8 @@ export type TacticalEvent =
   /** `supporter` (que não luta) deu o apoio dele, chamado por `unit`. O que o apoio fez vem logo depois. */
   /** `unit` pôs `target` de pé, com `hp` de vida. */
   | { type: "lifted"; unit: string; target: string; hp: number }
+  /** `unit` deu a `target` a ordem `order`. */
+  | { type: "ordered"; unit: string; target: string; order: AiOrder }
   | { type: "supportUsed"; supporter: string; supporterName: string; support: SupportId; name: string; unit: string }
   /** Quem acompanhava o grupo sem lutar saiu da luta por uma deixa (`dismiss`): o apoio dele não está mais lá. */
   | { type: "supporterLost"; id: string }

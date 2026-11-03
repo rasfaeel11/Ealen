@@ -174,7 +174,15 @@ export function planTurn(encounter: Encounter): AiPlan {
   const toFoe = walkingDistances(sim, (prey ? [prey] : foes).map((foe) => foe.pos));
   const origin = { ...actor.pos };
 
-  const stops = [{ pos: origin, cost: 0, hazard: 0 }, ...reachableTiles(encounter, actor)];
+  // A ordem do jogador (ver AiOrder): segurar não sai do quadrado; proteger fica colado em quem protege, ou vai até ele.
+  const ward = me.order?.kind === "guard" ? sim.units.find((unit) => unit.id === (me.order as { unit: string }).unit && isAlive(unit)) : undefined;
+  let stops = [{ pos: origin, cost: 0, hazard: 0 }, ...reachableTiles(encounter, actor)];
+  if (me.order?.kind === "hold") stops = stops.slice(0, 1);
+  const toWard = ward ? walkingDistances(sim, [ward.pos]) : undefined;
+  if (ward) {
+    const beside = stops.filter((stop) => distance(stop.pos, ward.pos) <= 1);
+    if (beside.length > 0) stops = beside;
+  }
   let best: AiPlan | undefined;
 
   // As manias (ver AiQuirks): quem só revida, e quem repete o tipo da última ação de alguém.
@@ -227,8 +235,9 @@ export function planTurn(encounter: Encounter): AiPlan {
     // Dano certo, na mesma moeda do que se causa: o do caminho, e o de amanhecer o próximo turno ali.
     score -= stop.hazard + Math.min(surfaceHarm(sim, me.pos), me.currentHp);
 
-    const gap = toFoe[tileIndex(sim.grid, me.pos)];
-    if (!canStrike && Number.isFinite(gap)) score -= profile.aggression * APPROACH_VALUE * gap;
+    // Quem protege alguém se aproxima dele, não do inimigo.
+    const gap = (toWard ?? toFoe)[tileIndex(sim.grid, me.pos)];
+    if ((toWard || !canStrike) && Number.isFinite(gap)) score -= (toWard ? APPROACH_VALUE : profile.aggression * APPROACH_VALUE) * gap;
 
     if (!best || score > best.score) best = { tile: { ...stop.pos }, action, bonus, item, score };
   }

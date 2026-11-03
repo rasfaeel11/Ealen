@@ -327,7 +327,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 | 65 | **Registro de missões** | O diário guarda fatos soltos. Falta a lista do que há pra fazer (aberta, feita, falhada), com o que cada uma pede, sem dizer a conclusão ao jogador. |
 | 66 | **Mapa, o resto** | O mapa da região é a task 48. Falta o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
 | 68 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
-| 69 | **Ordens de companheiro** | A opção de deixá-los por conta própria já existe (Opções, Jogo: Companheiros na luta), e eles usam a mesma IA dos inimigos, com o voto e tudo. Falta dar ordens simples (guardar, avançar, proteger alguém) e ela olhar o objetivo da luta (hoje ignora o guincho). |
+| 69 | **Ordens de companheiro, o resto** | As ordens já entraram (ver Feito). Falta a IA olhar o objetivo da luta (hoje ignora o guincho) e uma ordem de mirar um inimigo só. |
 
 ### P2 — corpo
 | # | Task | O que é |
@@ -650,6 +650,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 - **63. A Disparada e o Ajudar** (a primeira parte). Todo mundo do grupo, desde o nível 1, tem dois verbos a mais na barra. A Disparada gasta a ação e dá o passo inteiro de novo naquele turno (o número sobe em cima do boneco). O Ajudar gasta a ação num aliado colado, nunca em si: ele sai Ajudado, com +2 no acerto até o fim da vez seguinte. As criaturas não os ganham. Os nomes e as falas são provisórios, como os da árvore.
 - **59. Jogar fora, arrumar e o item-chave** (a primeira parte). Na mochila, Enter num item oferece, além de usar e passar, jogar fora uma unidade, com um sim antes; numa peça guardada, vestir pela ficha ou jogar fora. `O` arruma a mochila ou o cinto: o item-chave primeiro, depois por nome, sem encaixe vazio no meio. O item-chave (`key`) não se joga fora nem se passa, e a mochila diz isso; nenhum item do jogo é chave ainda.
 - **57 e 59. O item na mão de quem precisa.** Na luta, o item sai de quem o leva e vai nele ou num aliado à vista, até três quadrados, pela ação bônus. Sem ninguém ao alcance, o botão usa na hora; com alguém, pede em quem, e o registro diz em quem pegou. Em inimigo, não.
+- **69. As ordens** (a primeira parte). Com os companheiros jogando sozinhos (Opções), a barra de Endyru ganha um botão por companheiro, que troca a ordem dele sem gastar nada: avançar (o de sempre), segurar posição (não sai do quadrado) ou proteger Endyru (fica colado nele, e bate em quem chegar). A ordem vale até o fim da luta, e o registro diz quem mandou o quê.
 - **88. Desaprender no acampamento.** Depois de acampar, e até o primeiro passo ou a próxima luta, `U` na árvore devolve todos os pontos de quem está na ficha (`unlearnSkills`), de graça: a noite já foi paga. A vida que os nós davam sai da ficha. Fora do acampamento, a ficha diz que não dá.
 
 ## 9. Onde isto está no cânone

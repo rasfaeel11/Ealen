@@ -32,6 +32,7 @@ import {
   liftable,
 } from "./targeting";
 import type {
+  AiOrder,
   Ability,
   AttackOutcome,
   AttributeRef,
@@ -263,6 +264,8 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
       return support(encounter, unit, command.supporterId, command.target, events);
     case "lift":
       return lift(encounter, unit, command.targetId, events);
+    case "order":
+      return giveOrder(encounter, unit, command.targetId, command.order, events);
     case "endTurn":
       closeTurn(unit);
       events.push({ type: "turnEnded", unit: unit.id });
@@ -1302,6 +1305,20 @@ function lift(encounter: Encounter, unit: Unit, targetId: string, events: Tactic
   target.statuses = [];
   delete target.reciting;
   events.push({ type: "lifted", unit: unit.id, target: target.id, hp: target.currentHp });
+  return undefined;
+}
+
+/** A ordem a um companheiro: só a quem é do mesmo lado e está de pé, e proteger só quem também é. Não gasta nada do turno. */
+function giveOrder(encounter: Encounter, unit: Unit, targetId: string, order: AiOrder, events: TacticalEvent[]): CommandError | undefined {
+  const target = findUnit(encounter, targetId);
+  if (!target || target === unit || target.team !== unit.team || !isAlive(target)) return "invalid_target";
+  if (order.kind === "guard") {
+    const ward = findUnit(encounter, order.unit);
+    if (!ward || ward === target || ward.team !== unit.team) return "invalid_target";
+  }
+  if (order.kind === "advance") delete target.order;
+  else target.order = { ...order };
+  events.push({ type: "ordered", unit: unit.id, target: target.id, order: { ...order } });
   return undefined;
 }
 

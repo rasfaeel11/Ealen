@@ -48,6 +48,7 @@ import {
   type AttackOutcome,
   type Command,
   type CommandError,
+  type AiOrder,
   type DamageType,
   type CueWhen,
   type Encounter,
@@ -137,6 +138,20 @@ const FLOOD_COLOR = 0x4f6f6a;
 const COLOR_WATER = 0x9fd8e8;
 /** A marca de atração e repulsão é sangue pelo nariz: quem a carrega pinga. */
 const NOSEBLEED: string = CONCEPTS.atracao_repulsao.mark;
+
+/** A ordem de um companheiro, em palavras. */
+function orderLabel(order: AiOrder | undefined, encounter: Encounter): string {
+  if (order?.kind === "hold") return "segurar posição";
+  if (order?.kind === "guard") return `proteger ${encounter.units.find((unit) => unit.id === order.unit)?.name ?? "alguém"}`;
+  return "avançar";
+}
+
+/** A ordem que vem depois desta, no botão: avançar, segurar, proteger quem deu a ordem, e de volta. */
+function nextOrder(order: AiOrder | undefined, giver: string): AiOrder {
+  if (!order || order.kind === "advance") return { kind: "hold" };
+  if (order.kind === "hold") return { kind: "guard", unit: giver };
+  return { kind: "advance" };
+}
 
 /** O tipo de um dano, como a linha da habilidade o diz. */
 const DAMAGE_LABEL: Record<DamageType, string> = {
@@ -747,6 +762,21 @@ export class CombatController {
             } satisfies ActionButton,
           ]
         : []),
+      // Os companheiros que jogam sozinhos: um botão por cabeça, que troca a ordem (avançar, segurar, proteger quem tem a vez).
+      ...encounter.units
+        .filter((other) => other.team === unit.team && other !== unit && isAlive(other) && this.playsItself(other))
+        .map((other): ActionButton => {
+          const next = nextOrder(other.order, unit.id);
+          return {
+            label: `${other.name}: ${orderLabel(other.order, this.encounter)}`,
+            icon: other.order?.kind === "hold" ? "shield" : other.order?.kind === "guard" ? "grip" : "move",
+            tag: "Ordem  ·  não gasta nada",
+            cost: "free",
+            body: `${other.name} joga sozinho. Clique pra mudar a ordem: ${orderLabel(next, this.encounter)}.`,
+            enabled: true,
+            onClick: () => void this.issue({ type: "order", unitId: unit.id, targetId: other.id, order: next }),
+          };
+        }),
       // Quem acompanha sem lutar: o apoio de cada um, uma vez por rodada, sem gastar nada de quem chama.
       ...encounter.supporters.map(
         (supporter): ActionButton => ({
@@ -1361,6 +1391,11 @@ export class CombatController {
         await this.wait(360);
         return;
       }
+
+      case "ordered":
+        this.hud.log(`${this.unit(event.unit).name} a ${this.unit(event.target).name}: ${orderLabel(event.order, this.encounter)}.`);
+        sfx("uiSelect");
+        return;
 
       case "lifted": {
         const target = this.encounter.units.find((other) => other.id === event.target);
