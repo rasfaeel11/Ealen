@@ -21,6 +21,8 @@ const FIXED_KEY_CODES: Record<string, number> = {
 };
 for (let digit = 0; digit <= 9; digit++) FIXED_KEY_CODES[`Digit${digit}`] = 48 + digit;
 FIXED_KEY_CODES.KeyX = 88;
+// O modo da luta (manual ou automático), no Select.
+FIXED_KEY_CODES.KeyG = 71;
 
 const DEAD_ZONE = 0.45;
 const REPEAT_DELAY_MS = 380;
@@ -103,6 +105,7 @@ function buttonsNow(): [number, Press][] {
       [BUTTON.a, "click"],
       [BUTTON.b, fixed("Escape")],
       [BUTTON.y, fixed("Enter")],
+      [BUTTON.select, fixed("KeyG")],
     ];
   }
   return [

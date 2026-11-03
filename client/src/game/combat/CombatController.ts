@@ -64,7 +64,7 @@ import {
 } from "@jogo/shared";
 import { sfx } from "../audio";
 import { COLORS, TEXT_COLORS } from "../config";
-import { settings } from "../settings";
+import { setOption, settings } from "../settings";
 import type { PartyEntry } from "../hud/PartyColumn";
 import { abilityIcon, itemIcon } from "../icons";
 import type { MapActor } from "../MapActor";
@@ -138,6 +138,9 @@ const FLOOD_COLOR = 0x4f6f6a;
 const COLOR_WATER = 0x9fd8e8;
 /** A marca de atração e repulsão é sangue pelo nariz: quem a carrega pinga. */
 const NOSEBLEED: string = CONCEPTS.atracao_repulsao.mark;
+
+/** A tecla que troca o modo da luta (manual ou automático). */
+const MODE_KEY = "KeyG";
 
 /** A ordem de um companheiro, em palavras. Mirar alguém que já caiu é o mesmo que avançar. */
 function orderLabel(order: AiOrder | undefined, encounter: Encounter): string {
@@ -320,6 +323,7 @@ export class CombatController {
     const { scene } = host;
     this.hud = new CombatHud(scene, host.addHud, host.logTop, (unit) => this.faceOf(unit));
     this.hud.onHoverUnit = (unit) => this.markUnit(unit);
+    this.drawMode();
     this.ground = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH - 1));
     scene.tweens.add({ targets: this.ground, alpha: { from: 1, to: 0.6 }, duration: 650, yoyo: true, repeat: -1 });
     this.overlay = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH));
@@ -447,6 +451,30 @@ export class CombatController {
     this.refresh();
   }
 
+  /**
+   * Troca o modo da luta: manual, o jogador comanda o grupo inteiro; automático,
+   * a IA comanda os companheiros e o jogador só Endyru. Vale na hora: se a vez é
+   * de um companheiro, ela passa pra IA (ou volta pro jogador no próximo comando).
+   */
+  private toggleMode(): void {
+    setOption("companionsAuto", !settings().companionsAuto);
+    sfx("uiSelect");
+    this.drawMode();
+    if (this.busy || isOver(this.encounter)) return;
+    if (this.playsItself(activeUnit(this.encounter))) {
+      this.busy = true;
+      this.clearHighlights();
+      void this.proceed();
+    } else {
+      this.refresh();
+    }
+  }
+
+  private drawMode(): void {
+    const auto = settings().companionsAuto;
+    this.hud.setMode(`Modo: ${auto ? "automático" : "manual"}  ·  ${MODE_KEY.slice(3)}`, () => this.toggleMode());
+  }
+
   /** A vez que o jogador não comanda: a do outro lado e, se as opções pedem, a dos companheiros. */
   private playsItself(unit: Unit | undefined): boolean {
     if (!unit) return false;
@@ -538,6 +566,11 @@ export class CombatController {
   }
 
   private onKey(event: KeyboardEvent): void {
+    // O modo se troca a qualquer hora, até no meio da vez de um companheiro.
+    if (event.code === MODE_KEY) {
+      this.toggleMode();
+      return;
+    }
     if (this.busy) return;
 
     if (event.code.startsWith("Digit")) this.hud.press((Number(event.code.slice(5)) + 9) % 10);

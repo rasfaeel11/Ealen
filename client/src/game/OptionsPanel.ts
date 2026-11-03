@@ -92,7 +92,7 @@ const TABS: { name: string; rows: () => Row[] }[] = [
           { value: false, label: "Eu comando" },
           { value: true, label: "Por conta própria" },
         ],
-        "Por conta própria, Jarupã e Xanduí jogam a vez deles sozinhos. Endyru é sempre seu.",
+        "Por conta própria, Jarupã e Xanduí jogam a vez deles sozinhos. Endyru é sempre seu. Na luta, G (ou Select) troca.",
       ),
       option(
         "skillsAuto",

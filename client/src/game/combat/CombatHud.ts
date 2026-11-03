@@ -176,6 +176,9 @@ export class CombatHud {
   private readonly detail: Phaser.GameObjects.Text;
   private readonly warning: Phaser.GameObjects.Text;
   private readonly chip: Phaser.GameObjects.Text;
+  /** O modo da luta (manual ou automático), à direita da barra, no pé da tela: clica-se pra trocar. */
+  private readonly mode: Phaser.GameObjects.Text;
+  private onMode?: () => void;
   private readonly tip: Tooltip;
   private buttons: ActionButton[] = [];
   private onEnd?: () => void;
@@ -277,6 +280,17 @@ export class CombatHud {
     this.endZone.on(Phaser.Input.Events.POINTER_DOWN, () => {
       if (this.endEnabled) this.onEnd?.();
     });
+    this.mode = add(
+      addBodyText(scene, BAR_X + BAR_WIDTH + 12, BAR_BOTTOM, "", {
+        fontSize: "14px",
+        color: TEXT_COLORS.goldBright,
+        backgroundColor: "rgba(10, 8, 7, 0.82)",
+        padding: { x: 10, y: 4 },
+      })
+        .setOrigin(0, 1)
+        .setInteractive({ useHandCursor: true }),
+    );
+    this.mode.on(Phaser.Input.Events.POINTER_DOWN, () => this.onMode?.());
     this.layoutBar(1);
     this.logFrame.setVisible(this.logSize.lines > 0);
 
@@ -374,6 +388,12 @@ export class CombatHud {
       meta: unit.style ? styleLabel(unit) : undefined,
       body: lines.join("\n"),
     });
+  }
+
+  /** Escreve o modo da luta acima da barra; o clique nele chama `onToggle`. */
+  setMode(text: string, onToggle: () => void): void {
+    this.mode.setText(text);
+    this.onMode = onToggle;
   }
 
   /** Os objetivos da luta em aberto, no alto da tela. Sem nenhum, a caixa some. */
@@ -661,6 +681,7 @@ export class CombatHud {
       this.endFrame,
       this.endIcon,
       this.endZone,
+      this.mode,
       this.warning,
       ...this.labels,
       ...[...this.tiles.values()].map((tile) => tile.root),
@@ -701,6 +722,7 @@ export class CombatHud {
       this.endFrame,
       this.endIcon,
       this.endZone,
+      this.mode,
       this.detail,
       this.warning,
       this.chip,
