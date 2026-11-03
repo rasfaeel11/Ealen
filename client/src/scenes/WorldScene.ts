@@ -79,6 +79,7 @@ import {
   trailPoint,
   unusedItems,
   useItemOutside,
+  autoLearn,
   discardItem,
   passItem,
   equip,
@@ -918,6 +919,20 @@ export default class WorldScene extends Phaser.Scene {
   /** O que a tela faz na hora em que a conversa chega num acontecimento, além do que a caixa anuncia: o relógio anda. */
   private onStoryEvent(event: StoryEvent): (() => void) | void {
     if (event.type === "clock") this.clockBar.set(event.clock);
+    if (event.type === "xp") this.autoLearnCompanions();
+  }
+
+  /** Se as opções pedem, os companheiros gastam sozinhos os pontos da árvore (ver autoLearn). Devolve o que cada um aprendeu, pra anunciar. */
+  private autoLearnCompanions(): string[] {
+    if (!settings().skillsAuto) return [];
+    const lines = this.company()
+      .filter((member) => member.id !== this.character.id && fights(member))
+      .flatMap((member) => {
+        const learned = autoLearn(member);
+        return learned.length > 0 ? [`${member.name} aprendeu ${learned.map((node) => node.name).join(" e ")}.`] : [];
+      });
+    if (lines.length > 0) this.persist();
+    return lines;
   }
 
   /** Cumpre o que o texto deixou pra depois da última fala: uma luta, uma viagem. */
@@ -1240,7 +1255,10 @@ export default class WorldScene extends Phaser.Scene {
       const learnt = (learned: { name: string }[] = []) => (learned.length > 0 ? ` Aprendeu ${learned.map((ability) => ability.name).join(" e ")}.` : "");
       if (rewards.levelUp.leveledUp) lines.push(`Subiu para o nível ${rewards.levelUp.newLevel}!${learnt(rewards.levelUp.learned)}`);
       for (const { name, level, learned } of rewards.companionLevels) lines.push(`${name} subiu para o nível ${level}!${learnt(learned)}`);
-      if (rewards.levelUp.leveledUp || rewards.companionLevels.length > 0) lines.push(`Ponto novo na árvore: ${keyLabel("sheet")}, depois R.`);
+      lines.push(...this.autoLearnCompanions());
+      if (rewards.levelUp.leveledUp || (rewards.companionLevels.length > 0 && !settings().skillsAuto)) {
+        lines.push(`Ponto novo na árvore: ${keyLabel("sheet")}, depois R.`);
+      }
       lines.push(
         rewards.loot.length > 0
           ? `Encontrou: ${rewards.loot.map((item) => item.name).join(", ")}`

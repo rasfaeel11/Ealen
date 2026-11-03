@@ -3,10 +3,10 @@ import { test } from "node:test";
 import "./catalog";
 import { maxBreath } from "../../breath";
 import { createProtagonist, joinParty, raiseToLevel, type PartyMember } from "../../party";
-import { SKILL_TREES, branchesFor, findSkill, skillPoints, tweakAbility } from "../../skillTree";
+import { AUTO_ORDER, SKILL_TREES, branchesFor, findSkill, skillPoints, tweakAbility } from "../../skillTree";
 import { unitFromCharacter } from "../../tactics/units";
 import type { Ability } from "../../tactics/types";
-import { engravingSlots, learnSkill, sheetAbilities, unlearnSkills } from "../index";
+import { autoLearn, engravingSlots, learnSkill, sheetAbilities, unlearnSkills } from "../index";
 
 /** A árvore de habilidades (ver ../../skillTree.ts). */
 
@@ -126,4 +126,15 @@ test("todo nó tem id único e mora no ramo que diz", () => {
   for (const branches of Object.values(SKILL_TREES)) {
     for (const b of branches) for (const node of b.nodes) assert.equal(findSkill(node.id)?.branch, b.id);
   }
+});
+
+test("quem escolhe sozinho gasta todos os pontos, pela ordem da classe, e só no que pode", () => {
+  for (const ids of Object.values(AUTO_ORDER)) for (const id of ids) assert.ok(findSkill(id), `${id} existe`);
+  const jarupa = companion("jarupa", 5);
+  const learned = autoLearn(jarupa).map((node) => node.id);
+  assert.equal(skillPoints(jarupa), 0);
+  assert.equal(learned.length, 4);
+  assert.equal(learned[0], "es.ombrada_pronta");
+  assert.ok(!learned.includes("es.bote_longo"), "o ramo da Ipojy não é dele");
+  assert.deepEqual(autoLearn(jarupa), []);
 });

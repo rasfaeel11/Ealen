@@ -33,6 +33,8 @@ export interface Settings {
   voice: boolean;
   /** Os companheiros jogam a vez deles sozinhos. A protagonista é sempre do jogador. */
   companionsAuto: boolean;
+  /** Os companheiros gastam sozinhos os pontos da árvore ao subir de nível (ver autoLearn). A protagonista, nunca. */
+  skillsAuto: boolean;
   /** Milissegundos por letra pra conversa passar sozinha; 0 espera o jogador. */
   autoAdvance: number;
   shake: boolean;
@@ -70,6 +72,7 @@ export const DEFAULT_SETTINGS: Settings = {
   textSize: 1,
   voice: true,
   companionsAuto: false,
+  skillsAuto: false,
   autoAdvance: 0,
   shake: true,
   minimap: true,

@@ -95,6 +95,15 @@ const TABS: { name: string; rows: () => Row[] }[] = [
         "Por conta própria, Jarupã e Xanduí jogam a vez deles sozinhos. Endyru é sempre seu.",
       ),
       option(
+        "skillsAuto",
+        "Árvore dos companheiros",
+        [
+          { value: false, label: "Eu escolho" },
+          { value: true, label: "Eles escolhem" },
+        ],
+        "Eles escolhem: ao subir de nível, Jarupã e Xanduí gastam os pontos da árvore sozinhos. A de Endyru é sempre sua.",
+      ),
+      option(
         "autoAdvance",
         "Conversa passa sozinha",
         [

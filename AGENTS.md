@@ -300,7 +300,7 @@ O motor e a tela já entraram (ver Feito). Nenhum nó é técnica nova do mundo:
 |---|---|---|
 | 87 | **Os nomes da árvore pro autor** | Os 20 nós (`shared/skillTree.ts`) têm nome e fala provisórios ("Verso de Longe", "Pé de Convés"...). Vão como proposta (§1), junto com a pergunta de se há ramo da Tsvirana (ninguém do grupo é dela) e de se a Cura ganha ramo próprio. |
 | 89 | **O grau da escola na árvore** | O nó que sobe a proficiência (Gryskar II → III), cortado pela aura, e o grau valendo alguma coisa no golpe (a outra metade da task 58). Pede o autor: no cânone, como se sobe de grau? |
-| 90 | **A IA que escolhe e o balanço por nó** | Quem joga sozinho (a opção dos companheiros) e quem entra no grupo já com nível alto gastam os pontos sozinhos, por um perfil de cada um; o `balance:matrix` roda com cada nó, pra achar o que vale demais. |
+| 90 | **O balanço por nó** | A escolha sozinha já entrou (ver Feito). Falta o `balance:matrix` rodar com cada nó, pra achar o que vale demais. |
 
 ### P1 — pedidos do autor (2026-10-31)
 Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
@@ -651,6 +651,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 - **59. Jogar fora, arrumar e o item-chave** (a primeira parte). Na mochila, Enter num item oferece, além de usar e passar, jogar fora uma unidade, com um sim antes; numa peça guardada, vestir pela ficha ou jogar fora. `O` arruma a mochila ou o cinto: o item-chave primeiro, depois por nome, sem encaixe vazio no meio. O item-chave (`key`) não se joga fora nem se passa, e a mochila diz isso; nenhum item do jogo é chave ainda.
 - **57 e 59. O item na mão de quem precisa.** Na luta, o item sai de quem o leva e vai nele ou num aliado à vista, até três quadrados, pela ação bônus. Sem ninguém ao alcance, o botão usa na hora; com alguém, pede em quem, e o registro diz em quem pegou. Em inimigo, não.
 - **69. As ordens** (a primeira parte). Com os companheiros jogando sozinhos (Opções), a barra de Endyru ganha um botão por companheiro, que troca a ordem dele sem gastar nada: avançar (o de sempre), segurar posição (não sai do quadrado) ou proteger Endyru (fica colado nele, e bate em quem chegar). A ordem vale até o fim da luta, e o registro diz quem mandou o quê.
+- **90. A árvore que se escolhe sozinha** (a primeira parte). Opções, Jogo, Árvore dos companheiros: em Eles escolhem, Jarupã e Xanduí gastam os pontos sozinhos toda vez que ganham XP, numa ordem por classe que alterna os ramos (o da escola primeiro) e pula o que ainda não pode. O painel do fim da luta diz o que cada um aprendeu. A árvore de Endyru é sempre do jogador. O padrão é Eu escolho.
 - **88. Desaprender no acampamento.** Depois de acampar, e até o primeiro passo ou a próxima luta, `U` na árvore devolve todos os pontos de quem está na ficha (`unlearnSkills`), de graça: a noite já foi paga. A vida que os nós davam sai da ficha. Fora do acampamento, a ficha diz que não dá.
 
 ## 9. Onde isto está no cânone

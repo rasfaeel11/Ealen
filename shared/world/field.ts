@@ -5,7 +5,7 @@ import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from ".
 import { findBestiaryEntry, spawnCreature } from "../data/bestiary";
 import { castOf, keepsVow, magicOf } from "../party";
 import { GIFTS, abilitiesFor, engravedAbilities } from "../tactics/abilities";
-import { findSkill, skillRefusal, withSkills, skillPassive, type SkillNode, type SkillRefusal } from "../skillTree";
+import { AUTO_ORDER, findSkill, skillRefusal, withSkills, skillPassive, type SkillNode, type SkillRefusal } from "../skillTree";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
 import { reachableTiles } from "../tactics/movement";
 import type { Prop } from "../tactics/props";
@@ -92,6 +92,25 @@ export function learnSkill(character: Character, nodeId: string): SkillRefusal |
     character.currentHp += hp;
   }
   return undefined;
+}
+
+/**
+ * Gasta sozinho os pontos de `character`, pela ordem da classe dele
+ * (AUTO_ORDER em ../skillTree.ts), até acabarem ou não haver o que aprender.
+ * Devolve o que aprendeu, na ordem. É pra quem o jogador deixou escolher sozinho.
+ */
+export function autoLearn(character: Character): SkillNode[] {
+  const learned: SkillNode[] = [];
+  const order = AUTO_ORDER[character.characterClass].flatMap((id) => {
+    const node = findSkill(id);
+    return node ? [node] : [];
+  });
+  for (;;) {
+    const next = order.find((node) => learnRefusal(character, node) === undefined);
+    if (!next || learnSkill(character, next.id)) break;
+    learned.push(next);
+  }
+  return learned;
 }
 
 /**

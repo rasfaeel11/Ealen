@@ -265,6 +265,38 @@ export const SKILL_TREES: Record<CharacterClass, SkillBranch[]> = {
   ],
 };
 
+/**
+ * A ordem em que quem escolhe sozinho gasta os pontos (`autoLearn` em
+ * ./world/field.ts): o primeiro desta lista que dá pra aprender. O nó de outra
+ * escola, ou que ainda espera nível, fica pra depois. Um perfil por classe, que
+ * alterna os ramos em vez de subir um só até o fim.
+ */
+export const AUTO_ORDER: Record<CharacterClass, string[]> = {
+  atracao_repulsao: [
+    "ar.leitura_calma",
+    "ar.empurrao_certo",
+    "ar.puxao_longe",
+    "ar.folego_de_estudante",
+    "ar.empurrao_longe",
+    "ar.puxao_fundo",
+    "ar.mais_um_texto",
+    "ar.desarmar_firme",
+    "ar.arremesso_pesado",
+  ],
+  espadachim: [
+    "es.ombrada_pronta",
+    "es.bote_longo",
+    "es.golpe_firme",
+    "es.couro_grosso",
+    "es.folego_longo",
+    "es.ponta_funda",
+    "es.ombrada_funda",
+    "es.bote_leve",
+    "es.pe_leve",
+    "es.pesado_leve",
+  ],
+};
+
 const ALL_NODES = new Map(Object.values(SKILL_TREES).flatMap((branches) => branches.flatMap((b) => b.nodes.map((node) => [node.id, node] as const))));
 
 export function findSkill(id: string): SkillNode | undefined {
