@@ -3,10 +3,13 @@ import {
   BELT_SLOTS,
   describePurse,
   fights,
+  sortInventory,
   storedGear,
   usableOutside,
   type Character,
   type ConsumableItem,
+  type DiscardResult,
+  type EquipmentItem,
   type FieldItemError,
   type FieldItemResult,
   type PassResult,
@@ -71,6 +74,10 @@ export interface BagHost {
   onUse: (holder: Character, itemId: string, target: Character) => FieldItemResult;
   /** Passa um item de uma pessoa pra outra (ver passItem em shared/inventoryEffects.ts). */
   onPass: (from: Character, to: Character, itemId: string) => PassResult;
+  /** Joga fora uma unidade do que `holder` leva (ver discardItem). */
+  onDiscard: (holder: Character, itemId: string) => DiscardResult;
+  /** Arrumou a mochila ou o cinto de alguém (ver sortInventory): é só guardar. */
+  onSorted: () => void;
   onSheet: () => void;
   onClose: () => void;
 }
@@ -83,8 +90,8 @@ export interface BagHost {
  * Depois dos itens da mochila vêm as peças que ninguém veste (o guardado do
  * grupo, ver shared/equipment.ts): aparecem aqui, e vestem-se pela ficha.
  *
- * Setas (ou WASD) andam na grade; Enter escolhe; Tab troca de pessoa; C vai pra
- * ficha; Esc ou I fecham.
+ * Setas (ou WASD) andam na grade; Enter escolhe (usar, passar, jogar fora);
+ * O arruma; Tab troca de pessoa; C vai pra ficha; Esc ou I fecham.
  */
 export class BagPanel {
   private readonly frame: Phaser.GameObjects.GameObject[] = [];
@@ -126,7 +133,7 @@ export class BagPanel {
       this.detail,
       this.notice,
       addHud(
-        addBodyText(scene, X + WIDTH - 30, Y + HEIGHT - 42, `Setas: item  ·  Enter: escolher  ·  Tab: de quem  ·  ${keyLabel("sheet")}: ficha  ·  Esc: fechar`, {
+        addBodyText(scene, X + WIDTH - 30, Y + HEIGHT - 42, `Setas: item  ·  Enter: escolher  ·  O: arrumar  ·  Tab: de quem  ·  ${keyLabel("sheet")}: ficha  ·  Esc: fechar`, {
           fontSize: "14px",
           color: TEXT_COLORS.inkDim,
         }).setOrigin(1, 0.5),
@@ -192,7 +199,11 @@ export class BagPanel {
     const options: GridOption[] = [
       ...slots.map(({ item, quantity }): GridOption => {
         const charges = item.data.maxUses > 1 ? `Usos: ${item.data.usesRemaining}/${item.data.maxUses}\n` : "";
-        const where = usableOutside(item) ? "Enter ou clique: usar agora, ou passar pra alguém." : "Só serve numa luta. Enter ou clique: passar pra alguém.";
+        const where = item.key
+          ? "Item-chave: não se gasta nem se joga fora."
+          : usableOutside(item)
+            ? "Enter ou clique: usar agora, passar pra alguém ou jogar fora."
+            : "Só serve numa luta. Enter ou clique: passar pra alguém ou jogar fora.";
         const icon = itemIcon(item.id);
         return {
           icon,
@@ -212,9 +223,9 @@ export class BagPanel {
             this.showDetail(
               icon,
               piece.name,
-              `Guardada  ·  ${SLOT_LABEL[piece.data.slot].toLowerCase()}\n\n${piece.description}\n\n${describeEquipment(piece)}\n\nVeste-se pela ficha: Enter (ou C), depois E.`,
+              `Guardada  ·  ${SLOT_LABEL[piece.data.slot].toLowerCase()}\n\n${piece.description}\n\n${describeEquipment(piece)}\n\nEnter ou clique: vestir pela ficha, ou jogar fora.`,
             ),
-          onSelect: () => this.host.onSheet(),
+          onSelect: () => this.choosePiece(piece, icon),
         };
       }),
     ];
@@ -240,7 +251,7 @@ export class BagPanel {
           this.say(result.ok ? `${target.name}: ${result.description}` : REFUSAL[result.reason]);
         },
       })),
-      ...others.map((other) => ({
+      ...(item.key ? [] : others).map((other) => ({
         label: other === this.host.owner ? "Devolver à mochila" : `Passar pra ${other.name}`,
         onSelect: () => {
           const result = this.host.onPass(holder, other, item.id);
@@ -248,6 +259,7 @@ export class BagPanel {
           this.say(result === "ok" ? `${item.name}: agora com ${other.name}.` : result === "full" ? `${other.name} não tem onde levar mais nada.` : REFUSAL.item_unavailable);
         },
       })),
+      ...(item.key ? [] : [{ label: "Jogar fora", onSelect: () => this.defer(() => this.confirmDiscard(item.id, item.name, icon, back)) }]),
       { label: "Voltar", onSelect: () => this.defer(() => this.listItems(back)) },
     ];
     this.menu = new Menu(this.scene, DETAIL_X, TOP + 190, options, {
@@ -257,6 +269,64 @@ export class BagPanel {
       onCancel: () => this.defer(() => this.listItems(back)),
       adopt: (object) => this.addHud(object),
     });
+  }
+
+  /** Uma peça guardada: vestir (pela ficha) ou jogar fora. */
+  private choosePiece(piece: EquipmentItem, icon: IconName): void {
+    const back = this.grid.focusIndex;
+    this.grid.setActive(false);
+    this.openMenu(
+      [
+        { label: "Vestir pela ficha", onSelect: () => this.host.onSheet() },
+        ...(piece.key ? [] : [{ label: "Jogar fora", onSelect: () => this.defer(() => this.confirmDiscard(piece.id, piece.name, icon, back)) }]),
+        { label: "Voltar", onSelect: () => this.defer(() => this.listItems(back)) },
+      ],
+      back,
+    );
+  }
+
+  /** Jogar fora pede um sim: o que sai da mochila não volta. */
+  private confirmDiscard(itemId: string, name: string, icon: IconName, back: number): void {
+    const { holder } = this;
+    this.grid.setActive(false);
+    this.showDetail(icon, name, `Jogar fora um ${name}? Não volta.`);
+    this.openMenu(
+      [
+        {
+          label: "Sim, jogar fora",
+          onSelect: () => {
+            const result = this.host.onDiscard(holder, itemId);
+            this.defer(() => this.listItems(back));
+            this.say(result === "ok" ? `${name}: ficou pra trás.` : result === "key" ? "Isso a história ainda pede." : REFUSAL.item_unavailable);
+          },
+        },
+        { label: "Não", onSelect: () => this.defer(() => this.listItems(back)) },
+      ],
+      back,
+    );
+  }
+
+  /** A coluna da direita vira uma lista de escolhas. */
+  private openMenu(options: MenuOption[], back: number): void {
+    this.menu?.destroy();
+    this.menu = new Menu(this.scene, DETAIL_X, TOP + 190, options, {
+      lineHeight: LINE,
+      fontSize: 18,
+      width: DETAIL_WIDTH,
+      onCancel: () => this.defer(() => this.listItems(back)),
+      adopt: (object) => this.addHud(object),
+    });
+  }
+
+  /** `O`: arruma a mochila (ou o cinto) de quem está na tela. */
+  private sort(): void {
+    if (!sortInventory(this.holder)) {
+      this.say("Já está arrumado.");
+      return;
+    }
+    this.host.onSorted();
+    this.listItems();
+    this.say("Arrumado.");
   }
 
   /** No quadro seguinte: a opção clicada ainda está no meio do próprio evento, e a troca a destrói. */
@@ -275,6 +345,7 @@ export class BagPanel {
     if (this.scene.time.now - this.openedAt < INPUT_GRACE_MS) return;
     if (isAction(event, "bag")) this.host.onClose();
     else if (isAction(event, "sheet")) this.host.onSheet();
+    else if (event.code === "KeyO" && !this.menu) this.sort();
     else if (event.code === "Tab" && !this.menu && this.fighters.length > 1) {
       event.preventDefault();
       this.holderIndex = (this.holderIndex + 1) % this.fighters.length;

@@ -79,6 +79,7 @@ import {
   trailPoint,
   unusedItems,
   useItemOutside,
+  discardItem,
   passItem,
   equip,
   unequip,
@@ -1369,6 +1370,12 @@ export default class WorldScene extends Phaser.Scene {
         if (result === "ok") this.persist();
         return result;
       },
+      onDiscard: (holder, itemId) => {
+        const result = discardItem(holder, itemId);
+        if (result === "ok") this.persist();
+        return result;
+      },
+      onSorted: () => this.persist(),
       onSheet: () => {
         this.closePause(true);
         this.openSheet();

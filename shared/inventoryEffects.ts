@@ -76,7 +76,7 @@ export type PassResult = "ok" | "none" | "full";
  */
 export function passItem(from: Character, to: Character, itemId: string): PassResult {
   const slot = findInventorySlot(from, itemId);
-  if (!slot || slot.quantity <= 0) return "none";
+  if (!slot || slot.quantity <= 0 || slot.item.key) return "none";
   to.inventory ??= { slots: [], maxSlots: BELT_SLOTS };
   const opened = slot.quantity === 1 ? slot.item.data.usesRemaining : slot.item.data.maxUses;
   const existing = findInventorySlot(to, itemId);
@@ -85,6 +85,44 @@ export function passItem(from: Character, to: Character, itemId: string): PassRe
   slot.quantity -= 1;
   if (slot.quantity <= 0 && from.inventory) from.inventory.slots = from.inventory.slots.filter((other) => other !== slot);
   return "ok";
+}
+
+export type DiscardResult = "ok" | "none" | "key";
+
+/**
+ * Joga fora UMA unidade de `itemId` que `holder` leva: da mochila (ou do cinto)
+ * ou, se é peça de equipamento, do guardado. A unidade que vai é a inteira: as
+ * cargas pela metade ficam com a que sobra. Item-chave não sai.
+ */
+export function discardItem(holder: Character, itemId: string): DiscardResult {
+  const slot = findInventorySlot(holder, itemId);
+  if (slot && slot.quantity > 0) {
+    if (slot.item.key) return "key";
+    slot.quantity -= 1;
+    if (slot.quantity <= 0 && holder.inventory) holder.inventory.slots = holder.inventory.slots.filter((other) => other !== slot);
+    return "ok";
+  }
+  if (findEquipment(itemId)?.key) return "key";
+  return removeGear(holder, itemId) ? "ok" : "none";
+}
+
+/**
+ * Arruma a mochila (ou o cinto) de `holder`: o item-chave primeiro, depois o
+ * resto por nome, sem buraco entre um encaixe e outro. Diz se mudou alguma coisa.
+ */
+export function sortInventory(holder: Pick<Character, "inventory">): boolean {
+  const { inventory } = holder;
+  if (!inventory) return false;
+  const sorted = [...inventory.slots].sort(
+    (a, b) => Number(b.item.key === true) - Number(a.item.key === true) || a.item.name.localeCompare(b.item.name, "pt"),
+  );
+  let changed = false;
+  sorted.forEach((slot, index) => {
+    if (slot.slotIndex !== index) changed = true;
+    slot.slotIndex = index;
+  });
+  inventory.slots = sorted;
+  return changed;
 }
 
 export interface ImmediateHealResult {

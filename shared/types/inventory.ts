@@ -18,6 +18,11 @@ export interface Item<TCategory extends ItemCategory = ItemCategory, TData = unk
   description: string;
   category: TCategory;
   rarity: "common" | "uncommon" | "rare" | "sacred";
+  /**
+   * Item-chave: o que a história pede de volta (um papel, uma prova). Não se
+   * joga fora nem se passa; só o texto o tira (`take_item`).
+   */
+  key?: boolean;
   data: TData;
 }
 
