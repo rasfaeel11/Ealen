@@ -62,7 +62,7 @@ function seedWhere<T>(scene: (seed: number) => T, check: (result: T) => boolean)
 }
 
 /** Os verbos de luta que todo mundo sabe desde o nível 1 (task 63): não são técnica, mas moram com elas. */
-const VERBS = ["disparada", "ajudar"];
+const VERBS = ["disparada", "ajudar", "vigiar"];
 
 /** Quantas Técnicas cada classe ensina: duas pro mago (as do Círculo); o espadachim, nenhuma (o golpe-selo é por iniciação). Mais os verbos. */
 const TECHNIQUES = (order: CharacterClass) => (order === "espadachim" ? 0 : 2) + VERBS.length;
@@ -137,7 +137,7 @@ test("o mago de atração e repulsão paga a magia em mana e a recita; o bordão
 
   // O espadachim: a lâmina, e o que pesa custa Fôlego.
   const blade = Object.fromEntries(kitOf({ characterClass: "espadachim" }).map((entry) => [entry.slug, entry.ability]));
-  assert.deepEqual(Object.keys(blade).sort(), ["ajudar", "attack", "defend", "disparada", "heavy_attack", "quick_attack"]);
+  assert.deepEqual(Object.keys(blade).sort(), ["ajudar", "attack", "defend", "disparada", "heavy_attack", "quick_attack", "vigiar"]);
   assert.ok(Object.values(blade).every((ability) => ability.mana === undefined));
   assert.equal(blade.heavy_attack.breath, 2);
 });

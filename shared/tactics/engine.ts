@@ -3,7 +3,7 @@ import { attackEdge, attackTotals } from "./attack";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { HUNGER, healCap, healToll } from "../breath";
 import { CONCEPTS } from "../mana";
-import { distance, samePos, tileAt, type Grid, type Pos } from "./grid";
+import { distance, hasLineOfSight, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { findPath } from "./movement";
 import { PROPS, fellProp, propTemplate, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
@@ -562,7 +562,8 @@ function touchSurface(encounter: Encounter, unit: Unit, events: TacticalEvent[])
 /**
  * Anda até `to` pelo caminho mais barato. A cada passo, todo inimigo com
  * reação sobrando de quem `unit` esteja SAINDO do alcance ganha um ataque
- * de oportunidade — antes do passo, com `unit` ainda no lugar — e a
+ * de oportunidade — antes do passo, com `unit` ainda no lugar —, todo
+ * inimigo de vigia em cujo alcance ele ENTRA bate nele — depois do passo —, e a
  * superfície do quadrado em que ele pisa age. Morrer no meio do caminho
  * interrompe o movimento ali.
  */
@@ -588,9 +589,20 @@ function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]
       if (!isAlive(unit)) return undefined;
     }
 
+    const before = { ...unit.pos };
     unit.turn.movement -= enterCost(encounter, step);
     unit.pos = { ...step };
     walked.push({ ...step });
+
+    for (const watch of watchThreats(encounter, unit, before)) {
+      flush();
+      watch.watcher.turn.reaction = false;
+      removeStatuses(watch.watcher, (status) => status.watch === true, events);
+      events.push({ type: "watchTriggered", unit: watch.watcher.id, target: unit.id });
+      charge(encounter, watch.watcher, watch.ability, false, events);
+      resolveAbility(encounter, watch.watcher, watch.ability, unit.pos, [unit], true, events);
+      if (!isAlive(unit)) return undefined;
+    }
 
     if (surfaceAt(encounter, step)?.damage) {
       flush();
@@ -601,6 +613,25 @@ function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]
   flush();
   soak(encounter, unit, events);
   return undefined;
+}
+
+/**
+ * Quem está de vigia (`watch`) e vê `mover` ENTRAR no alcance do golpe dele,
+ * vindo de `from` (onde não alcançava, ou não via): o golpe é o da arma
+ * (`<classe>.attack`), pago como reação. Quem é da Ipojy, antes de a luta abrir,
+ * não vigia ninguém.
+ */
+export function watchThreats(encounter: Encounter, mover: Unit, from: Pos): { watcher: Unit; ability: Ability }[] {
+  const threats: { watcher: Unit; ability: Ability }[] = [];
+  for (const watcher of encounter.units) {
+    if (watcher.team === mover.team || !isAlive(watcher) || !watcher.turn.reaction) continue;
+    if (!watcher.statuses.some((status) => status.watch) || vowForbids(encounter, watcher)) continue;
+    const ability = watcher.abilities.find((candidate) => candidate.id === `${watcher.characterClass}.attack`);
+    if (!ability || readiness(watcher, ability, true) !== "ready") continue;
+    const sees = (pos: Pos) => distance(watcher.pos, pos) <= ability.range && hasLineOfSight(encounter.grid, watcher.pos, pos);
+    if (!sees(from) && sees(mover.pos)) threats.push({ watcher, ability });
+  }
+  return threats;
 }
 
 function opportunityThreats(encounter: Encounter, mover: Unit, next: Pos): { attacker: Unit; ability: Ability }[] {

@@ -42,6 +42,11 @@ export interface StatusTemplate {
   immovable?: boolean;
   /** Calado: o portador não recita nem ativa magia nenhuma (o que custa mana). */
   silenced?: boolean;
+  /**
+   * De vigia: o primeiro inimigo que ENTRAR no alcance do golpe do portador leva
+   * o golpe, na reação dele (ver Vigiar em ./abilities.ts). A condição se gasta nele.
+   */
+  watch?: boolean;
   /** Cura nenhuma pega no portador — nem de habilidade, nem de item. */
   noHeal?: boolean;
   /** Com fome: a cura cobra do portador o dobro de Fôlego (ver HEAL_PER_BREATH em ../breath.ts). */
@@ -97,6 +102,8 @@ export const STATUSES = {
   disarmed: { id: "disarmed", name: "Desarmado", toHit: -4 },
   /** O Segurar o Bote de Xanduí: o passo preso nela. Com o Em seco, o bicho de rio não volta pra água. */
   held: { id: "held", name: "Seguro", speed: -4 },
+  /** De vigia (Vigiar, ver ./abilities.ts): até a vez seguinte, bate no primeiro que entrar no alcance. */
+  watching: { id: "watching", name: "De vigia", watch: true },
   /** Quem levou a ajuda de um aliado colado (Ajudar, ver ./abilities.ts): o próximo golpe sai mais certo. */
   aided: { id: "aided", name: "Ajudado", toHit: 2 },
 

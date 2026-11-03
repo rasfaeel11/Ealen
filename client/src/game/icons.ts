@@ -383,6 +383,7 @@ const ABILITY_ICON: Record<string, IconName> = {
   "Segurar o Bote": "grip",
   Disparada: "move",
   Ajudar: "use",
+  Vigiar: "hourglass",
 };
 
 /** O ícone de uma habilidade: o dela pelo nome; sem nome conhecido, o que ela faz. */

@@ -108,6 +108,11 @@ export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>>
       flavor: "Apontar a brecha, puxar a manga, gritar de que lado o outro vai cair.",
       level: 1,
     },
+    vigiar: {
+      name: "Vigiar",
+      flavor: "O bordão em riste e o olho no caminho. Quem vier por ali chega na ponta dele.",
+      level: 1,
+    },
     desarmar: {
       name: "Desarmar",
       flavor: "Atração na arma, não no corpo: o cabo escorrega da mão de quem a segurava.",
@@ -132,6 +137,11 @@ export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>>
     ajudar: {
       name: "Ajudar",
       flavor: "O ombro no escudo do outro, a lâmina prendendo a dele: o golpe do companheiro entra.",
+      level: 1,
+    },
+    vigiar: {
+      name: "Vigiar",
+      flavor: "A espada parada e o pé atrás. Quem atravessar a distância dela atravessa a lâmina primeiro.",
       level: 1,
     },
   },

@@ -1277,6 +1277,14 @@ export class CombatController {
         return;
       }
 
+      case "watchTriggered": {
+        // Quem vigiava bate em quem entrou: aparece sobre ele, antes do golpe.
+        this.floatOver(event.unit, "Vigia!", TEXT_COLORS.goldBright, -22, 24);
+        this.hud.log(`${this.unit(event.target).name} entrou no alcance de ${this.unit(event.unit).name}, que vigiava.`);
+        await this.wait(160);
+        return;
+      }
+
       case "styleTrait": {
         // O traço da escola de quem bate: aparece sobre ele, antes do dano que ele engrossa (ou do golpe que ele devolve).
         const text = event.trait === "wave" ? `${event.name} x${(event.hits ?? 0) + 1}` : `${event.name}!`;

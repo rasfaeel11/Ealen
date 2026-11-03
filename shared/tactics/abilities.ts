@@ -101,6 +101,14 @@ const DASH: Body = { cost: "action", range: 0, targets: "self", effects: [{ kind
  */
 const HELP: Body = { cost: "action", range: 1, targets: "ally", others: true, effects: [{ kind: "status", statusId: "aided", turns: 2 }] };
 
+/**
+ * Vigiar: a ação gasta em esperar com a arma pronta. Até a vez seguinte, o
+ * primeiro inimigo que entrar no alcance do golpe dele leva o golpe, na reação
+ * (ver `watch` em ./statuses.ts): a besta apontada pra porta, a espada na
+ * boca da ponte.
+ */
+const WATCH: Body = { cost: "action", range: 0, targets: "self", effects: [{ kind: "status", statusId: "watching", turns: 1 }] };
+
 /** A Cura de quem conjura (`magia` §4.3): o mesmo texto de primeiros socorros, pago em mana, e recitado. */
 const CURE: Body = { cost: "action", range: HEAL_RANGE, targets: "ally", effects: [{ kind: "heal", dice: D6, attribute: "fator" }], mana: 2 };
 
@@ -138,6 +146,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
     heal: CURE,
     disparada: DASH,
     ajudar: HELP,
+    vigiar: WATCH,
     desarmar: {
       cost: "action",
       range: 4,
@@ -173,6 +182,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
     defend: GUARD,
     disparada: DASH,
     ajudar: HELP,
+    vigiar: WATCH,
   }),
 };
 

@@ -531,6 +531,8 @@ export type TacticalEvent =
    * errou, e o `abilityUsed` (de reação) de `unit` contra ele vem logo depois.
    */
   | { type: "styleTrait"; unit: string; target: string; trait: "wave" | "crack" | "counter"; name: string; hits?: number }
+  /** `target` entrou no alcance de `unit`, que estava de vigia: o `abilityUsed` (de reação) dele vem logo depois. */
+  | { type: "watchTriggered"; unit: string; target: string }
   | { type: "damage"; target: string; amount: number; remainingHp: number }
   /** O golpe pegou em quem não tem vida pra perder (`invulnerable`): nada acontece. */
   | { type: "immune"; target: string }

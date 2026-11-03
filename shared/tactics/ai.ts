@@ -89,6 +89,8 @@ const SLOW_VALUE = 1;
 const HARMFUL_STATUS_VALUE = 2;
 /** Quanto vale mexer no objeto que dá a vitória (o guincho da corrente): mais que qualquer golpe. */
 const OBJECTIVE_VALUE = 40;
+/** Que parte do golpe de quem vigia se espera que saia: o inimigo pode não vir. */
+const WATCH_SHARE = 0.5;
 /** Quanto vale cada quadrado que um círculo gravado tira o bicho de rio da água. */
 const CIRCLE_PULL_VALUE = 4;
 /** Quanto cada ponto de acerto muda a chance de um golpe pegar, no d20. */
@@ -217,6 +219,9 @@ export function planTurn(encounter: Encounter): AiPlan {
   // O que falta Fôlego pra fazer, ou está em recarga, não entra na conta (a ação do turno se confere adiante).
   const usable = me.abilities.filter((ability) => readiness(me, ability, true) === "ready");
   const mirrors = copied !== undefined && usable.some((ability) => ability.cost === "action" && stanceOf(ability.id) === copied);
+  // Se de algum quadrado deste turno dá pra bater em alguém: aí vigiar não vale (ver watchValue).
+  const longest = Math.max(0, ...usable.filter(isOffensive).map((ability) => ability.range));
+  const reachesFoe = stops.some((stop) => foes.some((foe) => distance(stop.pos, foe.pos) <= longest));
 
   for (const stop of stops) {
     me.pos = { ...stop.pos };
@@ -236,6 +241,7 @@ export function planTurn(encounter: Encounter): AiPlan {
 
         let value = abilityValue(sim, me, profile, ability, target);
         if (ability.effects.some((effect) => effect.kind === "stride")) value += strideValue(sim, me, profile, toWard ?? toFoe, ability);
+        if (!reachesFoe && watches(ability)) value += profile.aggression * watchValue(sim, me);
         if (value < MIN_VALUE) continue;
         if (ability.cost === "action") {
           if (me.turn.action && value > (action?.value ?? 0)) action = { ability, target, value };
@@ -715,6 +721,32 @@ function forecast(encounter: Encounter, actor: Unit, ability: Ability, target: U
   };
 }
 
+/** Se `ability` põe quem a usa de vigia (Vigiar). */
+function watches(ability: Ability): boolean {
+  return ability.effects.some((effect) => effect.kind === "status" && (STATUSES[effect.statusId] as StatusTemplate).watch === true);
+}
+
+/**
+ * O que rende `watcher` ficar de vigia onde está: parte do golpe da arma dele
+ * no inimigo que, pra bater nele, precisa entrar no alcance dessa arma — e que
+ * chega a tempo. Só se pergunta quando ele não alcança ninguém neste turno:
+ * podendo bater, bate.
+ */
+function watchValue(encounter: Encounter, watcher: Unit): number {
+  const ability = watcher.abilities.find((candidate) => candidate.id === `${watcher.characterClass}.attack`);
+  if (!ability || readiness(watcher, ability, true) !== "ready") return 0;
+  let best = 0;
+  for (const foe of encounter.units) {
+    if (foe.team === watcher.team || !isAlive(foe)) continue;
+    const gap = distance(foe.pos, watcher.pos);
+    // Quem bate de mais longe que a arma dele não precisa entrar no alcance dela.
+    const reach = Math.max(0, ...foe.abilities.filter(isOffensive).map((blow) => blow.range));
+    if (gap <= ability.range || reach > ability.range || gap > movementOf(foe) + reach) continue;
+    best = Math.max(best, Math.min(forecast(encounter, watcher, ability, foe).damage, foe.currentHp));
+  }
+  return WATCH_SHARE * best;
+}
+
 /** Se `unit` tem algum inimigo de pé ao alcance de um golpe dele, andando o passo inteiro. */
 function engagedSoon(encounter: Encounter, unit: Unit): boolean {
   const reach = movementOf(unit) + Math.max(0, ...unit.abilities.filter(isOffensive).map((ability) => ability.range));
@@ -749,7 +781,11 @@ function threatAt(encounter: Encounter, victim: Unit): number {
   return total;
 }
 
-/** O dano médio dos ataques de oportunidade que `mover` leva indo de `from` a `to` (ver move em ./engine.ts). */
+/**
+ * O dano médio dos ataques de oportunidade que `mover` leva indo de `from` a
+ * `to`, e dos golpes de quem está de vigia e o vê entrar no alcance (ver move
+ * em ./engine.ts). Só olha as pontas do caminho.
+ */
 function opportunityDamage(encounter: Encounter, mover: Unit, from: Pos, to: Pos): number {
   // O golpe pega quem sai ainda no lugar de onde saiu: é de lá que flanco e altura contam.
   const stop = mover.pos;
@@ -759,9 +795,17 @@ function opportunityDamage(encounter: Encounter, mover: Unit, from: Pos, to: Pos
     if (foe.team === mover.team || !isAlive(foe) || !foe.turn.reaction || vowForbids(encounter, foe)) continue;
 
     const ability = foe.abilities.find((candidate) => candidate.opportunity && readiness(foe, candidate, true) === "ready");
-    if (!ability) continue;
-    if (distance(foe.pos, from) <= ability.range && distance(foe.pos, to) > ability.range) {
+    if (ability && distance(foe.pos, from) <= ability.range && distance(foe.pos, to) > ability.range) {
       total += forecast(encounter, foe, ability, mover).damage;
+    }
+    if (foe.statuses.some((status) => status.watch)) {
+      const blow = foe.abilities.find((candidate) => candidate.id === `${foe.characterClass}.attack`);
+      const sees = (pos: Pos) => blow !== undefined && distance(foe.pos, pos) <= blow.range && hasLineOfSight(encounter.grid, foe.pos, pos);
+      if (blow && readiness(foe, blow, true) === "ready" && !sees(from) && sees(to)) {
+        mover.pos = to;
+        total += forecast(encounter, foe, blow, mover).damage;
+        mover.pos = from;
+      }
     }
   }
   mover.pos = stop;
