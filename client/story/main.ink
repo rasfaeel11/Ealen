@@ -32,6 +32,10 @@ EXTERNAL leave_party(who)   // sai do grupo; a ficha dele fica guardada pra quan
 EXTERNAL in_party(who)      // está no grupo agora?
 EXTERNAL note(id, text)     // note("papel", "O papel tem o selo de Ymboripe."): anota uma pista no diário (J abre)
 EXTERNAL noted(id)          // a pista está no diário?
+EXTERNAL quest(id, title, text)   // quest("contrato", "O contrato da cheia", "A Mesa paga..."): abre uma missão no registro (J, depois Tab); de novo, troca o que ela pede
+EXTERNAL quest_done(id)     // a missão aberta foi cumprida
+EXTERNAL quest_failed(id)   // a missão aberta falhou
+EXTERNAL quest_state(id)    // "open", "done", "failed", ou "" se nunca abriu
 EXTERNAL clock_start(label, value, limit)   // clock_start("Cheia", 0, 12): põe um relógio no alto da tela
 EXTERNAL clock_tick(amount) // faz o tempo andar (negativo volta); para em 0 e no limite
 EXTERNAL clock()            // quanto já passou (0 sem relógio)
@@ -60,6 +64,8 @@ EXTERNAL afflicted(who, status) // ele a tem?
 //
 // O diário guarda FATOS, na ordem em que foram anotados. A conclusão é de
 // quem lê: nenhum texto de anotação diz o que o jogador devia ter entendido.
+// O registro de missões também: o que uma missão pede é o que se ouviu de quem
+// pediu, nunca a resposta.
 //
 // Um trecho não precisa de npc: um `trigger` no mapa abre o dele quando se
 // pisa ali, e um inimigo com `onDefeat` abre o dele quando o grupo cai.

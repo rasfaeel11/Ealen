@@ -88,6 +88,10 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
       return { text: `${event.name} agora anda com você.`, color: TEXT_COLORS.goldBright };
     case "left":
       return { text: `${event.name} deixa o grupo.`, color: TEXT_COLORS.inkDim };
+    case "quest":
+      if (event.quest.state === "done") return { text: `Missão cumprida: ${event.quest.title}.`, color: TEXT_COLORS.goldBright };
+      if (event.quest.state === "failed") return { text: `Missão falhada: ${event.quest.title}.`, color: TEXT_COLORS.danger };
+      return { text: `${event.fresh ? "Missão nova" : "Missão"}: ${event.quest.title}. ${event.quest.text}`, color: TEXT_COLORS.item };
     case "noted":
       return { text: `Anotado no diário: ${event.entry.text}`, color: TEXT_COLORS.item };
     case "afflicted":

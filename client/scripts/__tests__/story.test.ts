@@ -222,13 +222,17 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.deepEqual(present(), ["Jarupã", "Oryndu", "Xanduí"]);
   assert.equal(runner.clock()?.label, "Cheia");
   assert.equal(host.character.purse?.prata, 2);
+  const quests = () => runner.quests().map(({ id, state }) => `${id}:${state}`);
+  assert.deepEqual(quests(), ["contrato:open"]);
 
   // O ferreiro tempera as duas espadas com a prata do adiantamento.
   play("ferreiro", "Pagar dois de prata");
   assert.equal(runner.flag("temperadas"), true);
   assert.equal(host.character.purse?.prata, 0);
 
-  // A luta do armazém é opcional: dá pra deixar a corda com eles e voltar depois.
+  // A luta do armazém é opcional: dá pra deixar a corda com eles e voltar depois. A guilda conta do barulho.
+  play("guilda", "Perguntar do barulho", "Deixar o velho");
+  assert.deepEqual(quests(), ["contrato:open", "armazem:open"]);
   play("armazem", "Deixar a corda");
   assert.deepEqual(play("armazem", "Entrar"), { fight: "armazem" });
   play("saqueadores_caem");
@@ -245,6 +249,8 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   play("primeira_oryndu");
   assert.equal(runner.flag("estaca"), true);
   assert.equal(runner.flag("ato2"), true);
+  play("conselheira");
+  assert.deepEqual(quests(), ["contrato:open", "armazem:done", "acordou:open"]);
 
   // Ato 2: a margem (o Círculo), e Jurendy e Mbyraku na ponte do afluente; a carta no bolso do castelão.
   play("margem");
@@ -269,6 +275,7 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   play("fim");
   assert.equal(runner.clock(), null);
   assert.equal(host.character.purse?.prata, 4, "seis da pilha dele, menos duas pra parte de quem fica");
+  assert.deepEqual(quests(), ["contrato:done", "armazem:done", "acordou:done"]);
 });
 
 test("a luta final dos baixios tem cheia: a água sobe dentro dela", () => {

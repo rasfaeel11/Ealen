@@ -196,6 +196,7 @@ test("save da versão 4, do elenco do Eälen, vira o do elenco de agora: mesmo n
   const gil = { ...makeCharacter(), id: "companion:gil", name: "Gil", race: "althirim", characterClass: "luminar", level: 2, inventory: undefined };
   const story = packStory(JSON.stringify({ flows: {} }), {
     journal: [],
+    quests: [],
     clock: null,
     afflictions: { "companion:lish": ["wounded_arm"], hero: ["wounded_arm"] },
   });

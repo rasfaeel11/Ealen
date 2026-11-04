@@ -1582,7 +1582,7 @@ export default class WorldScene extends Phaser.Scene {
   private openJournal(): void {
     this.halt();
     sfx("uiOpen");
-    const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), () => this.closePause());
+    const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), this.story.quests(), () => this.closePause());
     this.pause = panel;
   }
 

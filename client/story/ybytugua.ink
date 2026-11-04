@@ -103,6 +103,7 @@ Endyru assina pelo próprio punho. A conselheira põe duas moedas de prata em ci
 ~ join_party("jarupa")
 ~ join_party("xandui")
 ~ contrato = true
+~ quest("contrato", "O contrato da cheia", "A Mesa de Ybytuguá paga quem tirar o Ykuruã dos baixios, a leste, depois do portão. O resto do pagamento sai no relatório.")
 ~ clock_start("Cheia", 0, 12)
 ~ clock_cost("rest", 1)
 ~ clock_cost("fight", 1)
@@ -120,6 +121,7 @@ Conselheira: Vocês voltaram dos baixios andando. Já é mais do que o grupo de 
     Endyru: Ele não acordou sozinho. O barqueiro diz que nunca acordou assim, tão cedo.
 }
 Conselheira: A guilda dos barqueiros sabe o que sobe e desce o rio. Pergunte a ela. E pergunte rápido.
+~ quest("acordou", "Cedo demais", "Oryndu diz que o Ykuruã não acordava assim, tão cedo. A conselheira mandou perguntar à guilda dos barqueiros.")
 -> END
 
 = chamado
@@ -130,6 +132,7 @@ Conselheira: A guilda dos barqueiros sabe o que sobe e desce o rio. Pergunte a e
 - else:
     Conselheira: A cheia está no alto. Os barcos que ainda flutuam vão sair amanhã, rio acima, de vez.
     Conselheira: Se vocês vão, é agora.
+    ~ quest_failed("acordou")
 }
 ~ ato3 = true
 -> END
@@ -227,6 +230,7 @@ Um velho remenda uma rede no chão da guilda, com a rede inteira em cima das per
 * {contrato && not saqueadores_vencidos} [Perguntar do barulho do lado.]
     Mestre da guilda: O armazém. Corda e óleo da guilda. Arrancaram a tranca de madrugada.
     Mestre da guilda: Não sou eu que vou lá. Nem eles.
+    ~ quest("armazem", "O armazém da guilda", "Arrancaram a tranca do armazém de corda e óleo, colado na guilda, de madrugada. Ninguém da guilda vai lá.")
     Ele aponta com o queixo os barqueiros sentados na porta, olhando o rio.
     -> perguntas
 * {ato2} [Contar que ele acordou bravo, cedo demais.]
@@ -234,6 +238,7 @@ Um velho remenda uma rede no chão da guilda, com a rede inteira em cima das per
     Mestre da guilda: Os barqueiros que sobem até a floresta das bacias ouvem leitura na margem, de noite. Leitura alta. Gente que não é do rio.
     Mestre da guilda: Na cheia.
     ~ note("leitura", "Barqueiros ouvem leitura alta na margem, de noite, rio acima, perto da floresta entre as bacias.")
+    ~ quest("acordou", "Cedo demais", "Oryndu diz que o Ykuruã não acordava assim, tão cedo. Os barqueiros ouvem leitura alta na margem, de noite, rio acima, perto da floresta entre as bacias.")
     -> perguntas
 + [Deixar o velho com a rede.]
     -> END
@@ -274,6 +279,7 @@ Saqueador: Então mandou de longe.
 // Os saqueadores vencidos (onDefeat): a fome é da cidade inteira. A guilda paga em cobre, por braçada de corda.
 === saqueadores_caem ===
 ~ saqueadores_vencidos = true
+~ quest_done("armazem")
 A saqueadora larga a espada no chão de taipa, longe do óleo, e levanta as mãos.
 Saqueadora: A fita é da caravana. A corda é da guilda. A fome é minha.
 Jarupã: A fome é da cidade inteira.
@@ -397,6 +403,7 @@ Uma semana depois, a cheia baixou dois palmos. As barcaças descem o rio de novo
 Na Mesa dos Contratos, Endyru escreve o relatório no balcão, devagar. No fim de cada linha a mão ainda treme, e ele espera passar antes de começar a outra.
 A conselheira lê o relatório inteiro. Paga em cima da mesa comprida: dezoito moedas de prata, em três pilhas de seis.
 ~ earn("prata", 6)
+~ quest_done("contrato")
 Enquanto eles contam, três guardas com a cor de Ymboripe na manga entram pela porta da Mesa sem tirar a espada da bainha. Um deles prega um edital novo no quadro, por cima do edital da cheia.
 Endyru está de frente pro quadro. Lê sem querer, em voz alta, como lê tudo.
 Endyru: "Ybytuguá, pelo tratado firmado entre o conselho das guildas e o senhor de Ymboripe, entra no ducado com o porto e as..."

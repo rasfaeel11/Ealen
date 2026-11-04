@@ -44,6 +44,10 @@ EXTERNAL leave_party(who)
 EXTERNAL in_party(who)
 EXTERNAL note(id, text)
 EXTERNAL noted(id)
+EXTERNAL quest(id, title, text)
+EXTERNAL quest_done(id)
+EXTERNAL quest_failed(id)
+EXTERNAL quest_state(id)
 EXTERNAL clock_start(label, value, limit)
 EXTERNAL clock_tick(amount)
 EXTERNAL clock()
@@ -418,6 +422,57 @@ test("note escreve no diário na ordem, sem duplicar: o mesmo id troca o texto",
   assert.deepEqual(runner.journal().map((entry) => entry.id), ["rede", "nomes", "chao", "jarras"]);
 });
 
+
+const QUESTS = compile(`
+=== pede ===
+~ quest("rede", "A rede", "O velho quer a rede de volta.")
+~ quest("caixa", "A caixa", "Levar a caixa ao cais.")
+{quest_state("rede")} e {quest_state("nada")}.
+-> END
+
+=== reescreve ===
+~ quest("rede", "A rede", "O velho quer a rede de volta, inteira.")
+~ quest("rede", "A rede", "O velho quer a rede de volta, inteira.")
+-> END
+
+=== fecha ===
+~ quest_done("rede")
+~ quest_failed("caixa")
+~ quest_failed("rede")
+~ quest_done("nada")
+{quest_state("rede")} e {quest_state("caixa")}.
+-> END
+`);
+
+test("quest abre a missão, de novo reescreve o que ela pede, e fechar só fecha a aberta", () => {
+  const runner = new StoryRunner(QUESTS, makeHost());
+  const opened = runner.start("pede");
+  assert.deepEqual(lines(opened.beats), ["open e ."]);
+  assert.deepEqual(
+    eventsIn(opened.beats).map((event) => event.type === "quest" && [event.quest.id, event.fresh]),
+    [
+      ["rede", true],
+      ["caixa", true],
+    ],
+  );
+
+  // A mesma missão com o mesmo texto não é notícia; com texto novo, troca no lugar, sem ser nova.
+  const again = eventsIn(runner.start("reescreve").beats);
+  assert.equal(again.length, 1);
+  assert.deepEqual(again[0], { type: "quest", quest: { id: "rede", title: "A rede", text: "O velho quer a rede de volta, inteira.", state: "open" }, fresh: false });
+
+  // Cumprida não falha depois; a que nunca abriu não fecha.
+  const closed = runner.start("fecha");
+  assert.deepEqual(lines(closed.beats), ["done e failed."]);
+  assert.deepEqual(eventsIn(closed.beats).map((event) => event.type === "quest" && event.quest.state), ["done", "failed"]);
+
+  // O registro viaja com o save da história.
+  const reopened = new StoryRunner(QUESTS, makeHost(), runner.save());
+  assert.deepEqual(reopened.quests().map(({ id, state }) => [id, state]), [
+    ["rede", "done"],
+    ["caixa", "failed"],
+  ]);
+});
 
 const TIDE = compile(`
 VAR porta_coberta = false

@@ -165,6 +165,7 @@ Endyru olha a água barrenta levando as tábuas rio abaixo. Abre a boca.
 Fecha.
 ~ leave_party("oryndu")
 ~ ykurua_morto = true
+~ quest("contrato", "O contrato da cheia", "O Ykuruã está morto na pedra. O resto do pagamento sai no relatório, na Mesa.")
 ~ travel("ybytugua", "depois")
 -> END
 

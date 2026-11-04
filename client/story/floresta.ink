@@ -61,6 +61,7 @@ Jurendy: Então você trabalha pra nós também. Só que mais devagar.
 === ponte_caiu ===
 ~ castelao_vencido = true
 ~ prova = true
+~ quest_done("acordou")
 Jurendy está no pé do barranco, com o livro aberto na lama, as duas mãos pra cima.
 Jurendy: Rendição. Eu me rendo. Isso tem nome no tratado.
 Xanduí: Legítima defesa. Também tem nome. Eu ouvi um juiz dizer, em Kuatiarape, com essas mesmas palavras.

@@ -47,8 +47,27 @@ export interface StoryClock {
   costs: Record<ClockCost, number>;
 }
 
+/** Como está uma missão: aberta, cumprida ou falhada. */
+export type QuestState = "open" | "done" | "failed";
+
+/**
+ * Uma missão do registro: o que há pra fazer e o que ela pede, nas palavras
+ * de quem pediu. Como o diário, não diz a conclusão: o que pede é o que se
+ * ouviu, não o que o jogador devia ter entendido.
+ */
+export interface Quest {
+  /** Único no registro: é por ele que o texto a fecha e pergunta (`quest_state`). */
+  id: string;
+  title: string;
+  /** O que ela pede agora. Reescrever a missão troca isto e o título, nunca o estado. */
+  text: string;
+  state: QuestState;
+}
+
 export interface StoryMemory {
   journal: JournalEntry[];
+  /** As missões, na ordem em que foram abertas. */
+  quests: Quest[];
   /** Null = não há relógio correndo. */
   clock: StoryClock | null;
   /**
@@ -60,7 +79,7 @@ export interface StoryMemory {
 }
 
 export function emptyMemory(): StoryMemory {
-  return { journal: [], clock: null, afflictions: {} };
+  return { journal: [], quests: [], clock: null, afflictions: {} };
 }
 
 /** Põe a condição `status` em quem tem a ficha `id`. Devolve se mudou. */
@@ -116,6 +135,39 @@ export function isNoted(journal: readonly JournalEntry[], id: string): boolean {
   return journal.some((entry) => entry.id === id);
 }
 
+
+// --- Missões ----------------------------------------------------------------
+
+/**
+ * Abre a missão `id`, ou reescreve o que ela pede se já existe (sem mudar se
+ * está aberta, cumprida ou falhada). Devolve a missão se o registro mudou, e
+ * se ela é nova.
+ */
+export function openQuest(quests: Quest[], id: string, title: string, text: string): { quest: Quest; fresh: boolean } | undefined {
+  const known = quests.find((quest) => quest.id === id);
+  if (!known) {
+    const quest: Quest = { id, title, text, state: "open" };
+    quests.push(quest);
+    return { quest, fresh: true };
+  }
+  if (known.title === title && known.text === text) return undefined;
+  known.title = title;
+  known.text = text;
+  return { quest: known, fresh: false };
+}
+
+/** Fecha uma missão ABERTA como cumprida ou falhada. A que não existe ou já fechou fica como está. Devolve a missão se fechou. */
+export function closeQuest(quests: Quest[], id: string, state: Exclude<QuestState, "open">): Quest | undefined {
+  const quest = quests.find((each) => each.id === id);
+  if (!quest || quest.state !== "open") return undefined;
+  quest.state = state;
+  return quest;
+}
+
+/** Como está a missão `id`; "" se ela nunca foi aberta. */
+export function questState(quests: readonly Quest[], id: string): QuestState | "" {
+  return quests.find((quest) => quest.id === id)?.state ?? "";
+}
 
 // --- Relógio ----------------------------------------------------------------
 
@@ -181,6 +233,20 @@ function readJournal(raw: unknown): JournalEntry[] {
   return journal;
 }
 
+const QUEST_STATES: readonly QuestState[] = ["open", "done", "failed"];
+
+function readQuests(raw: unknown): Quest[] {
+  if (!Array.isArray(raw)) return [];
+  const quests: Quest[] = [];
+  for (const quest of raw) {
+    if (!isObject(quest) || typeof quest.id !== "string" || typeof quest.title !== "string" || typeof quest.text !== "string") continue;
+    if (quests.some((other) => other.id === quest.id)) continue;
+    const state = QUEST_STATES.find((each) => each === quest.state) ?? "open";
+    quests.push({ id: quest.id, title: quest.title, text: quest.text, state });
+  }
+  return quests;
+}
+
 function readClock(raw: unknown): StoryClock | null {
   if (!isObject(raw) || typeof raw.label !== "string") return null;
   if (typeof raw.value !== "number" || typeof raw.limit !== "number") return null;
@@ -216,6 +282,7 @@ export function packStory(ink: string, memory: StoryMemory): string {
     [STORY_MARK]: 1,
     ink: JSON.parse(ink) as unknown,
     journal: memory.journal,
+    quests: memory.quests,
     clock: memory.clock,
     afflictions: memory.afflictions,
   });
@@ -238,6 +305,7 @@ export function unpackStory(saved: string): { ink: string; memory: StoryMemory }
     ink: JSON.stringify(parsed.ink),
     memory: {
       journal: readJournal(parsed.journal),
+      quests: readQuests(parsed.quests),
       clock: readClock(parsed.clock),
       afflictions: readAfflictions(parsed.afflictions),
     },

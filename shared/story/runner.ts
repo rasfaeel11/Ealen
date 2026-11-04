@@ -20,6 +20,9 @@ import {
   isClockCost,
   isNoted,
   noteEntry,
+  openQuest,
+  closeQuest,
+  questState,
   chargeClock,
   packStory,
   restAfflictions,
@@ -28,6 +31,7 @@ import {
   unpackStory,
   type ClockCost,
   type JournalEntry,
+  type Quest,
   type StoryClock,
   type StoryMemory,
 } from "./memory";
@@ -79,6 +83,10 @@ import {
  *   note("id", "texto")      anota uma pista no diário (de novo com o mesmo
  *                            id, troca o texto em vez de duplicar)
  *   noted("id")              se a pista está no diário, e legível
+ *   quest("id", "Título", "o que pede")   abre uma missão no registro (de novo
+ *                            com o mesmo id, troca o título e o que ela pede)
+ *   quest_done("id"), quest_failed("id")  fecha a missão, se está aberta
+ *   quest_state("id")        "open", "done", "failed", ou "" se nunca abriu
  *   clock_start("Vazante", 0, 12)   põe um relógio na tela, de 0 a 12
  *   clock_tick(2)            faz o tempo andar (negativo volta)
  *   clock(), clock_left()    quanto já passou, e quanto falta
@@ -133,6 +141,8 @@ export type StoryEvent =
   | { type: "travel"; area: string; spawn: string }
   | { type: "joined"; name: string }
   | { type: "left"; name: string }
+  /** Uma missão aberta (`fresh`), reescrita, cumprida ou falhada: `quest.state` diz como ficou. */
+  | { type: "quest"; quest: Quest; fresh: boolean }
   /** Uma pista anotada no diário (ou reescrita). */
   | { type: "noted"; entry: JournalEntry }
   /** O relógio mudou: como ficou, ou null se saiu da tela. Não se anuncia na caixa — a barra mostra. */
@@ -265,6 +275,7 @@ export class StoryRunner {
     story.BindExternalFunction("passed", () => this.lastCheckPassed, true);
     story.BindExternalFunction("in_party", (key: string) => isInParty(host.companions, String(key)), true);
     story.BindExternalFunction("noted", (id: string) => isNoted(this.memory.journal, String(id)), true);
+    story.BindExternalFunction("quest_state", (id: string) => questState(this.memory.quests, String(id)), true);
     story.BindExternalFunction("clock", () => this.memory.clock?.value ?? 0, true);
     story.BindExternalFunction("afflicted", (who: string, status: string) => this.memory.afflictions[this.sheet(who).id]?.includes(String(status)) ?? false, true);
     story.BindExternalFunction("clock_left", () => (this.memory.clock ? this.memory.clock.limit - this.memory.clock.value : 0), true);
@@ -334,6 +345,16 @@ export class StoryRunner {
       const entry = noteEntry(this.memory.journal, String(id), String(text));
       if (entry) this.pending.push({ type: "noted", entry: { ...entry } });
     });
+    story.BindExternalFunction("quest", (id: string, title: string, text: string) => {
+      const opened = openQuest(this.memory.quests, String(id), String(title), String(text));
+      if (opened) this.pending.push({ type: "quest", quest: { ...opened.quest }, fresh: opened.fresh });
+    });
+    const close = (state: "done" | "failed") => (id: string) => {
+      const quest = closeQuest(this.memory.quests, String(id), state);
+      if (quest) this.pending.push({ type: "quest", quest: { ...quest }, fresh: false });
+    };
+    story.BindExternalFunction("quest_done", close("done"));
+    story.BindExternalFunction("quest_failed", close("failed"));
     story.BindExternalFunction("clock_start", (label: string, value: number, limit: number) => {
       if (!(Number(limit) > 0)) throw new Error(`A história põe um relógio sem tamanho: "${String(label)}" vai até ${String(limit)}`);
       this.memory.clock = startClock(String(label), Number(value), Number(limit));
@@ -506,6 +527,11 @@ export class StoryRunner {
   /** O diário, na ordem em que foi escrito. */
   journal(): readonly JournalEntry[] {
     return this.memory.journal;
+  }
+
+  /** O registro de missões, na ordem em que foram abertas. */
+  quests(): readonly Quest[] {
+    return this.memory.quests;
   }
 
   /** O relógio que está correndo, se há um. */
