@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import "./catalog";
 import { findBestiaryEntry } from "../../data/bestiary";
+import { findItem } from "../../inventoryEffects";
 import { COMPANIONS, HERO_ID, companionId } from "../../party";
 import { activeUnit, applyCommand, chooseCommand, findUnit, isOver, type Encounter } from "../../tactics";
 import { distance, samePos, stepNeighbors, tileAt, tileIndex, type Pos } from "../../tactics/grid";
@@ -113,6 +114,16 @@ for (const [areaId, map] of Object.entries(maps)) {
     for (const exit of map.exits) {
       const middle = { x: exit.x + exit.width / 2, y: exit.y + exit.height / 2 };
       assert.ok(reachable.has(tileIndex(map.grid, tileOfPixel(map, middle))), `saída pra "${exit.area}" sem acesso`);
+    }
+  });
+
+  test(`${areaId}: as coisas do mundo têm o que existe: item, chave, e a porta que a alavanca abre`, () => {
+    for (const thing of map.things ?? []) {
+      for (const { item } of thing.loot ?? []) assert.ok(findItem(item), `"${thing.name}" guarda "${item}", que não existe`);
+      if (thing.key) assert.ok(findItem(thing.key), `"${thing.name}" pede a chave "${thing.key}", que não existe`);
+      for (const door of thing.opens ?? []) {
+        assert.ok((map.things ?? []).some((other) => other.kind === "door" && other.name === door), `"${thing.name}" abre "${door}", que não é porta aqui`);
+      }
     }
   });
 

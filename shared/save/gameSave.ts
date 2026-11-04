@@ -38,6 +38,13 @@ export interface GameSave {
   defeated: string[];
   /** Destrutíveis já quebrados, como "área:id". Quebrado não volta. */
   broken: string[];
+  /**
+   * As coisas do mundo em que já se mexeu (o baú aberto, a porta aberta, a
+   * alavanca puxada, a armadilha que foi, o que se pegou do chão), como
+   * "área:id", e as armadilhas já vistas, como "área:id:vista" (ver ../world/things.ts).
+   * O save que não tem isto não mexeu em nada.
+   */
+  things: string[];
   /** O estado da história (flags, trechos lidos, escolhas gastas), como o StoryRunner o entrega. */
   story: string | null;
   /** Quantas pausas curtas ainda cabem antes do próximo acampamento (ver ../world/rest.ts). */
@@ -222,6 +229,7 @@ export function newGame(character: Character): GameSave {
     location: null,
     defeated: [],
     broken: [],
+    things: [],
     story: null,
     shortRests: SHORT_RESTS,
     playTimeMs: 0,
@@ -269,6 +277,7 @@ export function parseSave(raw: unknown): ParsedSave {
       location: readLocation(current.location),
       defeated: readKeys(current.defeated),
       broken: readKeys(current.broken),
+      things: readKeys(current.things),
       story,
       shortRests: Math.min(SHORT_RESTS, readCount(current.shortRests)),
       playTimeMs: readCount(current.playTimeMs),
@@ -289,6 +298,25 @@ export function markDefeated(save: GameSave, key: string): void {
 
 export function markBroken(save: GameSave, keys: string[]): void {
   for (const key of keys) if (!save.broken.includes(key)) save.broken.push(key);
+}
+
+/** Anota no save que já se mexeu nestas coisas (ver `things`). */
+export function markThings(save: GameSave, keys: string[]): void {
+  for (const key of keys) if (!save.things.includes(key)) save.things.push(key);
+}
+
+/** As coisas de uma área em que já se mexeu (`done`) e as armadilhas já vistas (`seen`), pelos ids. */
+export function thingsInArea(save: GameSave, areaId: string): { done: Set<string>; seen: Set<string> } {
+  const prefix = `${areaId}:`;
+  const done = new Set<string>();
+  const seen = new Set<string>();
+  for (const key of save.things) {
+    if (!key.startsWith(prefix)) continue;
+    const rest = key.slice(prefix.length);
+    if (rest.endsWith(":vista")) seen.add(rest.slice(0, -":vista".length));
+    else done.add(rest);
+  }
+  return { done, seen };
 }
 
 /** Os ids dos destrutíveis já quebrados numa área. */

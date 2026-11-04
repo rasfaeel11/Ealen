@@ -55,8 +55,22 @@ import {
   placeParty,
   presentCompanions,
   restoreParty,
+  gearedAttributes,
   sentryAt,
   sightTiles,
+  spotTraps,
+  springTrap,
+  standThings,
+  thingInReach,
+  thingsInArea,
+  trapUnder,
+  useThing,
+  markThings,
+  earnCoins,
+  findItem,
+  giveItem,
+  itemCount,
+  type AreaThing,
   wary,
   watch,
   type Suspicion,
@@ -170,6 +184,31 @@ const AIM_STEP_COLOR = 0x6fa8dc;
 const STORY_RNG = { rngState: Math.floor(Math.random() * 0xffffffff) };
 
 /** Um companheiro no mapa: a ficha dele, o ator e onde ele está. */
+/** O que se faz com cada coisa do mundo, no aviso de `E`. */
+const THING_VERBS: Record<AreaThing["kind"], string> = {
+  chest: "Abrir",
+  door: "Abrir",
+  lever: "Puxar",
+  trap: "Desarmar",
+  pickup: "Pegar",
+};
+
+/** O quadro de uma coisa do mundo (ver paint_props em art/pintar_cenario.py). Undefined: não se desenha. */
+function thingFrame(thing: AreaThing, done: boolean, seen: boolean): string | undefined {
+  switch (thing.kind) {
+    case "chest":
+      return done ? "chest_open" : "chest";
+    case "door":
+      return done ? "door_open" : "door";
+    case "lever":
+      return done ? "lever_on" : "lever";
+    case "trap":
+      return seen && !done ? "trap" : undefined;
+    case "pickup":
+      return done ? undefined : "sack";
+  }
+}
+
 interface Follower {
   character: Character;
   actor: MapActor;
@@ -245,6 +284,11 @@ export default class WorldScene extends Phaser.Scene {
   /** Destrutíveis ainda de pé nesta área (já escritos na grade), e a imagem de cada um. */
   private props: Prop[] = [];
   private propImages = new Map<string, Phaser.GameObjects.Image>();
+  /** O baú, a porta, a alavanca, a armadilha e o que está no chão que existem agora (ver shared/world/things.ts). */
+  private things: AreaThing[] = [];
+  private thingImages = new Map<string, Phaser.GameObjects.Image>();
+  /** O quadrado em que o personagem estava no último quadro: mudou, olha-se a armadilha. */
+  private lastTile?: Pos;
   private combat?: CombatController;
   private story!: StoryRunner;
   /** Verdadeiro enquanto uma conversa está na tela: o mundo espera. */
@@ -444,6 +488,7 @@ export default class WorldScene extends Phaser.Scene {
       return;
     }
 
+    this.checkTraps();
     this.refreshHint();
   }
 
@@ -522,6 +567,146 @@ export default class WorldScene extends Phaser.Scene {
     this.props.push(...fresh);
   }
 
+  /**
+   * Acerta as coisas do mundo com a história e com o save: as que existem agora (`if`/`unless`), quem ocupa o
+   * quadrado (o baú, a porta fechada) e o desenho de cada uma — aberta ou fechada, puxada ou não. A armadilha só
+   * aparece depois de vista; o que já se pegou do chão some.
+   */
+  private standThings(): void {
+    const { done, seen } = thingsInArea(this.save, this.area.id);
+    this.things = (this.map.things ?? []).filter((thing) => isActive(thing, this.flag));
+    standThings(this.map, this.things, done);
+    for (const image of this.thingImages.values()) image.destroy();
+    this.thingImages.clear();
+    for (const thing of this.things) {
+      const frame = thingFrame(thing, done.has(thing.id), seen.has(thing.id));
+      if (!frame) continue;
+      this.thingImages.set(thing.id, this.scenery.standProp(frame, thing.tile.x, thing.tile.y, this.map.tileSize));
+    }
+  }
+
+  /** A coisa colada no personagem em que dá pra mexer agora. */
+  private thingInReach(): AreaThing | undefined {
+    const { done, seen } = thingsInArea(this.save, this.area.id);
+    return thingInReach(this.things, tileOfPixel(this.map, this.pos), done, seen);
+  }
+
+  /**
+   * `E` numa coisa do mundo: o que acontece, na faixa de cima, e o que muda no save. O baú e o chão entregam o que
+   * têm (o que não cabe na mochila fica lá, e o baú não se dá por aberto); a porta trancada pede a chave; a
+   * alavanca abre as portas dela; a armadilha vista se desarma, ou dispara na mão. Depois, o trecho da história dela.
+   */
+  private useThing(thing: AreaThing): void {
+    const fighters = this.company().filter(fights);
+    const best = (attribute: "fator" | "olho") => Math.max(0, ...fighters.map((member) => gearedAttributes(member)[attribute]));
+    const outcome = useThing(thing, this.things, { hasItem: (itemId) => itemCount(this.character, itemId) > 0, fator: best("fator") }, this.rngHolder());
+    const done: string[] = [];
+    switch (outcome.kind) {
+      case "loot": {
+        const got: string[] = [];
+        let left = false;
+        for (const { item: itemId, count } of outcome.loot) {
+          const template = findItem(itemId);
+          if (!template) continue;
+          let given = 0;
+          for (let i = 0; i < count; i++) if (giveItem(this.character, structuredClone(template))) given += 1;
+          if (given > 0) got.push(given > 1 ? `${template.name} x${given}` : template.name);
+          if (given < count) left = true;
+        }
+        if (outcome.coins > 0) {
+          earnCoins(this.character, "cobre", outcome.coins);
+          got.push(`${outcome.coins} de cobre`);
+        }
+        if (left) {
+          sfx("deny");
+          this.showBanner(`A mochila está cheia.${got.length > 0 ? ` Pegou: ${got.join(", ")}.` : ""}`);
+        } else {
+          sfx("uiOpen");
+          this.showBanner(got.length > 0 ? `${thing.name}: ${got.join(", ")}.` : `${thing.name}: vazio.`);
+          done.push(thing.id);
+        }
+        break;
+      }
+      case "locked":
+        sfx("deny");
+        this.showBanner(`${thing.name}: trancado. Falta a chave.`);
+        break;
+      case "stuck":
+        sfx("deny");
+        this.showBanner(`${thing.name}: não abre na mão.`);
+        break;
+      case "opened":
+        sfx("uiOpen");
+        this.showBanner(`${thing.name}: aberta.`);
+        done.push(thing.id);
+        break;
+      case "pulled":
+        sfx("block");
+        this.showBanner(outcome.opens.length > 0 ? `${thing.name}: algo se abre.` : `${thing.name}: nada acontece.`);
+        done.push(thing.id, ...outcome.opens);
+        break;
+      case "disarmed":
+        sfx("uiSelect");
+        this.showBanner(`${thing.name}: desarmada.`);
+        done.push(thing.id);
+        break;
+      case "sprung":
+        this.hurtByTrap(thing, outcome.damage);
+        done.push(thing.id);
+        break;
+    }
+    markThings(this.save, done.map((id) => `${this.area.id}:${id}`));
+    this.standThings();
+    this.persist();
+    this.refreshStatus();
+    this.refreshHint();
+    if (thing.dialog && done.includes(thing.id)) void this.converse(thing.dialog);
+  }
+
+  /** A armadilha pegou o personagem: o dano sai da vida dele, sem matar (fora de luta ninguém cai). */
+  private hurtByTrap(thing: AreaThing, damage: number): void {
+    sfx("block");
+    this.cameras.main.shake(160, 0.006);
+    this.player.flash?.(0xff6060, 160);
+    const taken = Math.min(damage, Math.max(0, this.character.currentHp - 1));
+    this.character.currentHp -= taken;
+    this.showBanner(`${thing.name}! ${this.character.name} perde ${taken} de vida.`);
+  }
+
+  /**
+   * O personagem mudou de quadrado: o grupo pode ver uma armadilha escondida por perto (o melhor Olho), e pisar
+   * numa que ninguém viu a dispara.
+   */
+  private checkTraps(): void {
+    const tile = tileOfPixel(this.map, this.pos);
+    if (this.lastTile && samePos(this.lastTile, tile)) return;
+    this.lastTile = tile;
+    const { done, seen } = thingsInArea(this.save, this.area.id);
+    const fighters = this.company().filter(fights);
+    const olho = Math.max(0, ...fighters.map((member) => gearedAttributes(member).olho));
+    const spotted = spotTraps(this.things, tile, olho, done, seen);
+    const under = trapUnder(this.things, tile, done);
+    if (spotted.length === 0 && !under) return;
+    const marks: string[] = spotted.filter((thing) => thing !== under).map((thing) => `${this.area.id}:${thing.id}:vista`);
+    if (marks.length > 0) {
+      sfx("status");
+      this.showBanner(`Uma armadilha no chão: ${spotted[0].name}.`);
+    }
+    if (under && !seen.has(under.id)) {
+      this.hurtByTrap(under, springTrap(under, this.rngHolder()));
+      marks.push(`${this.area.id}:${under.id}`);
+    }
+    markThings(this.save, marks);
+    this.standThings();
+    this.persist();
+    this.refreshStatus();
+  }
+
+  /** Um dado pra fora de luta: o que a história guarda dele não mexe aqui, então sai do relógio da sessão. */
+  private rngHolder(): { rngState: number } {
+    return { rngState: (Date.now() ^ (this.save.playTimeMs >>> 0)) >>> 0 };
+  }
+
   /** O que uma condição (`if`/`unless`) de um objeto do mapa pergunta: uma variável da história, ou quem está no grupo. */
   private readonly flag = (name: string): unknown =>
     partyCondition(name, this.save.companions) ?? clockCondition(name, this.story.clock()) ?? this.story.flag(name);
@@ -535,6 +720,7 @@ export default class WorldScene extends Phaser.Scene {
   private syncPresence(): void {
     this.scenery.sync(this.flag);
     this.standProps();
+    this.standThings();
     this.npcs = this.map.npcs.filter((npc) => isActive(npc, this.flag));
     this.exits = this.map.exits.filter((exit) => isActive(exit, this.flag));
     this.enemies = this.map.enemies.filter(
@@ -695,6 +881,10 @@ export default class WorldScene extends Phaser.Scene {
     const prey = ambushableGroup(this.map, this.enemies, tileOfPixel(this.map, this.pos), this.character);
     const prompts: FieldPrompt[] = [];
     if (talker) prompts.push({ key: keyLabel("interact"), label: `${talker.stands ? "Falar com" : "Examinar"} ${talker.name}`, onClick: () => this.interact() });
+    else {
+      const thing = this.thingInReach();
+      if (thing) prompts.push({ key: keyLabel("interact"), label: `${THING_VERBS[thing.kind]} ${thing.name}`, onClick: () => this.interact() });
+    }
     if (prey !== undefined) prompts.push({ key: keyLabel("ambush"), label: this.hidden(prey) ? "Emboscar" : "Investida", onClick: () => this.ambush() });
     this.hud.setPrompts(prompts);
 
@@ -870,7 +1060,15 @@ export default class WorldScene extends Phaser.Scene {
   private interact(): void {
     if (this.combat || this.leaving || this.talking || this.pause || this.aiming) return;
     const talker = this.talkerInReach();
-    if (talker) void this.converse(talker.dialog, talker);
+    if (talker) {
+      void this.converse(talker.dialog, talker);
+      return;
+    }
+    const thing = this.thingInReach();
+    if (thing) {
+      this.player.faceToward(pixelOfTile(this.map, thing.tile));
+      this.useThing(thing);
+    }
   }
 
   /**

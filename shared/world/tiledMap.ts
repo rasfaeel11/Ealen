@@ -1,4 +1,5 @@
 import { FLOOR, type Grid, type Pos, type Tile } from "../tactics/grid";
+import type { Dice } from "../tactics/rng";
 import type { CueEnding } from "../tactics/types";
 import { CLASS_INFO } from "../types/characterClass";
 
@@ -99,7 +100,17 @@ import { CLASS_INFO } from "../types/characterClass";
  *              da luta quem acompanha sem lutar: o apoio dele some. `rise`
  *              (bool) faz a água subir um anel nessa hora
  *
- *   `npc`, `enemy`, `trigger`, `exit`, `cue` e `prop` aceitam ainda `if` e `unless`: o nome
+ *     `chest`, `door`, `lever`, `trap`, `pickup`  ponto; as coisas do mundo
+ *              fora de luta (ver ./things.ts). O Nome é o que a tela diz.
+ *              `loot` ("item-pao-de-viagem 2, item-unguento-de-barqueiro") e
+ *              `coins` (cobre): o que o baú tem, ou o que está no chão.
+ *              `key`: o id do item-chave que abre o baú ou a porta. `opens`
+ *              ("Porta do porão, Grade"): os Nomes das portas que a alavanca
+ *              abre. `damage` ("1d6") e `spot` (o número que o Olho tem de
+ *              alcançar, padrão 10): a armadilha. `dialog`: o trecho da
+ *              história que abre depois de mexer nela
+ *
+ *   `npc`, `enemy`, `trigger`, `exit`, `cue`, `prop` e as coisas aceitam ainda `if` e `unless`: o nome
  *   de uma variável (VAR) da história. O objeto só existe enquanto a de `if`
  *   for verdadeira e a de `unless` for falsa — é como a história põe e tira
  *   gente do mapa, arma um gatilho ou tranca uma saída (ver ./presence.ts).
@@ -290,6 +301,33 @@ export interface AreaProp extends AreaCondition {
   gid: number;
 }
 
+export type ThingKind = "chest" | "door" | "lever" | "trap" | "pickup";
+
+export const THING_KINDS: readonly ThingKind[] = ["chest", "door", "lever", "trap", "pickup"];
+
+/** Uma coisa do mundo fora de luta (ver ./things.ts). */
+export interface AreaThing extends AreaCondition {
+  /** Único dentro da área. */
+  id: string;
+  /** O nome do objeto no mapa: o que a tela diz, e por onde a alavanca acha a porta. */
+  name: string;
+  kind: ThingKind;
+  tile: Pos;
+  /** O que o baú tem, ou o que está no chão. */
+  loot?: { item: string; count: number }[];
+  /** Cobre no baú. */
+  coins?: number;
+  /** O item-chave que abre (baú ou porta). */
+  key?: string;
+  /** A alavanca: os Nomes das portas que ela abre. */
+  opens?: string[];
+  /** A armadilha: o dano e o número que o Olho (e o Fator, pra desarmar) tem de alcançar. */
+  damage?: Dice;
+  spot?: number;
+  /** O trecho da história que abre depois de mexer nela. */
+  dialog?: string;
+}
+
 export interface AreaMap {
   /** Lado de um quadrado, em pixels do mapa. */
   tileSize: number;
@@ -301,6 +339,8 @@ export interface AreaMap {
   grid: Grid;
   /** Os quadrados que standPeople ocupou, com o que o terreno dizia antes. */
   occupied: { pos: Pos; blocksMove: boolean }[];
+  /** Os que standThings fechou (o baú, a porta fechada), com o que o terreno dizia antes. */
+  closed?: { pos: Pos; blocksMove: boolean }[];
   spawns: Record<string, PixelPos>;
   exits: AreaExit[];
   enemies: AreaEnemy[];
@@ -309,6 +349,8 @@ export interface AreaMap {
   triggers: AreaTrigger[];
   /** As deixas de todas as lutas da área (ver AreaCue). */
   cues: AreaCue[];
+  /** O baú, a porta, a alavanca, a armadilha e o que está no chão (ver ./things.ts). */
+  things?: AreaThing[];
 }
 
 interface TiledProperty {
@@ -444,6 +486,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
   const props: AreaProp[] = [];
   const triggers: AreaTrigger[] = [];
   const cues: AreaCue[] = [];
+  const things: AreaThing[] = [];
   for (const layer of layers) {
     for (const object of layer.objects ?? []) {
       const kind = object.type || object.class;
@@ -525,6 +568,8 @@ export function parseTiledMap(raw: unknown): AreaMap {
           once: properties.once !== false,
           ...conditionOf(properties),
         });
+      } else if (THING_KINDS.includes(kind as ThingKind)) {
+        things.push(thingOf(object, kind as ThingKind, map.tilewidth));
       } else if (kind === "prop") {
         const { kind: propKind } = propertiesOf(object);
         if (typeof propKind !== "string" || object.gid === undefined) {
@@ -588,7 +633,53 @@ export function parseTiledMap(raw: unknown): AreaMap {
     props,
     triggers,
     cues,
+    things,
   };
+}
+
+/** Lê uma coisa do mundo (ver AreaThing). Recusa o que não dá pra entender: o erro aparece ao abrir o mapa, não no meio do jogo. */
+function thingOf(object: TiledObject, kind: ThingKind, size: number): AreaThing {
+  const properties = propertiesOf(object);
+  const name = object.name ?? "";
+  const { loot, coins, key, opens, damage, spot, dialog } = properties;
+  const items =
+    typeof loot === "string"
+      ? loot
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+          .map((entry) => {
+            const [item, count = "1"] = entry.split(/\s+/);
+            if (!/^[1-9]\d*$/.test(count)) throw new Error(`"${name}": em "loot", "${entry}" é um id e, se quiser, quantos.`);
+            return { item, count: Number(count) };
+          })
+      : undefined;
+  if (coins !== undefined && !(typeof coins === "number" && Number.isInteger(coins) && coins > 0)) {
+    throw new Error(`"${name}": "coins" é um número inteiro de cobre.`);
+  }
+  const dice = typeof damage === "string" ? parseThingDice(damage) : undefined;
+  if (damage !== undefined && !dice) throw new Error(`"${name}": "damage" é como "1d6".`);
+  if (kind === "trap" && !dice) throw new Error(`Armadilha "${name}" precisa de "damage".`);
+  if (spot !== undefined && typeof spot !== "number") throw new Error(`"${name}": "spot" é um número.`);
+  return {
+    id: `thing-${object.id}`,
+    name,
+    kind,
+    tile: { x: Math.floor(object.x / size), y: Math.floor(object.y / size) },
+    ...(items && items.length > 0 ? { loot: items } : {}),
+    ...(typeof coins === "number" ? { coins } : {}),
+    ...(typeof key === "string" && key !== "" ? { key } : {}),
+    ...(typeof opens === "string" ? { opens: opens.split(",").map((door) => door.trim()).filter(Boolean) } : {}),
+    ...(dice ? { damage: dice } : {}),
+    ...(typeof spot === "number" ? { spot } : {}),
+    ...(typeof dialog === "string" && dialog !== "" ? { dialog } : {}),
+    ...conditionOf(properties),
+  };
+}
+
+function parseThingDice(text: string): Dice | undefined {
+  const [, count, sides] = /^\s*(\d+)d(\d+)\s*$/.exec(text) ?? [];
+  return count === undefined ? undefined : { count: Number(count), sides: Number(sides) };
 }
 
 /** Onde ficam os pés de quem está parado num quadrado da grade: no meio, um pouco abaixo do centro. */

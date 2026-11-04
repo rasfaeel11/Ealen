@@ -312,7 +312,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 | # | Task | O que é |
 |---|---|---|
 | 66 | **Mapa, o resto** | O mapa da região é a task 48. Falta o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
-| 68 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
 
 ### P2 — corpo
 | # | Task | O que é |
@@ -683,6 +682,13 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   quadrados, ele acorda e a luta abre com o barril pegando fogo; sem ninguém, o destrutível só quebra, fora de luta, e fica quebrado. Numa área mirada no
   chão, há o quadrado que pega mais gente (nenhuma habilidade do jogo é assim ainda). Na ficha e na mochila, cada tecla do rodapé é clicável
   (`KeyHints`: o clique aperta a tecla). Testado no motor; a tela não foi vista.
+
+- **68. As coisas do mundo fora de luta.** Baú (com o que tem e cobre, trancado ou não), porta (com chave, ou de alavanca), alavanca, armadilha e
+  coisa no chão, como objetos do Tiled. `E` mexe no que está colado, e a faixa de cima diz o que houve; a mochila cheia deixa o resto no baú. A armadilha
+  fica escondida até alguém do grupo passar perto com Olho pra ela; vista, aparece e se desarma com Fator (errando, dispara); pisada sem ver, tira vida
+  sem derrubar. Tudo fica no save (`things`, sem versão nova), e a arte saiu do pintor. Nenhum mapa do jogo usa ainda: onde fica cada baú e o que
+  ele guarda é fato do mundo, e vai pro autor antes de entrar. O teste dos mapas já confere o que vier (item, chave e porta que existem). A tela não
+  foi vista.
 
 ## 9. Onde isto está no cânone
 

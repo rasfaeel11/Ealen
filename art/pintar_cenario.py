@@ -1210,6 +1210,61 @@ def wooden_prop(kind: str, rng: random.Random) -> Image.Image:
         for x, y in ((3, h - 23), (44, h - 23), (23, h - 44), (23, h - 2)):
             d.rectangle([x - 1, y - 7, x + 1, y], fill=(82, 60, 40, 255), outline=(26, 22, 20, 255))
         return img
+    elif kind in ("chest", "chest_open"):
+        # A arca de tábua com cinta de ferro. Aberta, a tampa fica de pé atrás e o fundo escuro aparece.
+        body = planks(38, 22, rng, (104, 74, 46), False, 6)
+        img.paste(body, (5, h - 25))
+        d = ImageDraw.Draw(img)
+        if kind == "chest":
+            lid = planks(38, 14, rng, (124, 90, 56), False, 6)
+            img.paste(lid, (5, h - 38))
+            d = ImageDraw.Draw(img)
+            d.line([(5, h - 25), (42, h - 25)], fill=(30, 24, 20, 255))
+        else:
+            lid = planks(38, 18, rng, (118, 86, 54), False, 6)
+            img.paste(lid, (5, h - 46))
+            d = ImageDraw.Draw(img)
+            d.rectangle([7, h - 28, 40, h - 24], fill=(20, 16, 14, 255))
+        for x in (9, 36):
+            d.rectangle([x, h - (46 if kind == "chest_open" else 38), x + 3, h - 3], fill=(70, 68, 66, 255), outline=(28, 26, 26, 255))
+        d.rectangle([21, h - 26, 26, h - 19], fill=(150, 132, 84, 255), outline=(30, 26, 20, 255))
+    elif kind in ("door", "door_open"):
+        # A porta de tábua num batente de pedra. Aberta, só o batente e o vão escuro.
+        d.rectangle([2, h - 66, 45, h - 2], fill=(98, 94, 86, 255), outline=(28, 26, 24, 255))
+        d.rectangle([7, h - 60, 40, h - 2], fill=(18, 16, 16, 255))
+        if kind == "door":
+            leaf = planks(34, 58, rng, (98, 70, 44), True, 8)
+            img.paste(leaf, (7, h - 60))
+            d = ImageDraw.Draw(img)
+            for y in (h - 50, h - 18):
+                d.rectangle([7, y, 40, y + 3], fill=(66, 64, 62, 255), outline=(28, 26, 26, 255))
+            d.ellipse([33, h - 34, 37, h - 30], fill=(150, 132, 84, 255), outline=(30, 26, 20, 255))
+        else:
+            leaf = planks(8, 58, rng, (90, 64, 40), True, 8)
+            img.paste(leaf, (7, h - 60))
+            d = ImageDraw.Draw(img)
+    elif kind in ("lever", "lever_on"):
+        # O pino de pedra com a alavanca de ferro: pra cima, ou puxada pra baixo.
+        d.rectangle([14, h - 18, 33, h - 3], fill=(108, 104, 96, 255), outline=(30, 28, 26, 255))
+        d.line([(15, h - 18), (32, h - 18)], fill=(146, 142, 130, 255))
+        tip = (34, h - 44) if kind == "lever" else (40, h - 12)
+        d.line([(23, h - 14), tip], fill=(62, 60, 58, 255), width=4)
+        d.ellipse([tip[0] - 4, tip[1] - 4, tip[0] + 4, tip[1] + 4], fill=(120, 60, 44, 255), outline=(30, 22, 20, 255))
+    elif kind == "trap":
+        # O dente de ferro meio enterrado: deitado no chão, como o círculo.
+        d.ellipse([8, h - 22, 39, h - 6], outline=(52, 50, 48, 255), width=3)
+        for i in range(8):
+            a = i / 8 * math.tau
+            x, y = 23.5 + math.cos(a) * 14, h - 14 + math.sin(a) * 7
+            d.polygon([(x - 2, y), (x + 2, y), (23.5 + math.cos(a) * 8, h - 14 + math.sin(a) * 4)], fill=(150, 146, 136, 255))
+        d.rectangle([21, h - 16, 26, h - 12], fill=(92, 90, 86, 255))
+        return outline(img)
+    elif kind == "sack":
+        # O que está no chão: um saco amarrado.
+        d.ellipse([12, h - 26, 36, h - 3], fill=(150, 126, 86, 255), outline=(40, 32, 24, 255))
+        d.polygon([(19, h - 27), (29, h - 27), (26, h - 33), (22, h - 33)], fill=(132, 108, 72, 255), outline=(40, 32, 24, 255))
+        d.line([(19, h - 26), (29, h - 26)], fill=(84, 60, 36, 255), width=2)
+        d.line([(16, h - 16), (24, h - 20)], fill=(176, 152, 108, 255))
     return outline(img)
 
 
@@ -2048,7 +2103,10 @@ def compose_preview(canvas: Canvas, stand: list[dict], path: Path) -> None:
 
 def paint_props() -> None:
     rng = random.Random(77)
-    frames = {kind: wooden_prop(kind, rng) for kind in ("crate", "barrel", "winch", "bell", "circle")}
+    frames = {
+        kind: wooden_prop(kind, rng)
+        for kind in ("crate", "barrel", "winch", "bell", "circle", "chest", "chest_open", "door", "door_open", "lever", "lever_on", "trap", "sack")
+    }
     atlas, placed = pack(frames)
     atlas.save(OUT / "props.png", optimize=True)
     (OUT / "props.json").write_text(json.dumps({"scale": LOGIC_T / T, "frames": placed}), encoding="utf8")
