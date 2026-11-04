@@ -1,5 +1,5 @@
 import { distance, tileAt, tilesBetween, type Pos } from "./grid";
-import { STYLE_TO_HIT, styleMatchup } from "./styles";
+import { STYLE_TO_HIT, styleEdgeBonus, styleMatchup } from "./styles";
 import type { Ability, Encounter, Unit } from "./types";
 import { defenseBonus, effectiveAttribute, isAlive, primaryAttribute } from "./units";
 
@@ -110,7 +110,7 @@ export function attackEdge(
     style,
     far,
     crowded,
-    toHit: (flanked ? FLANK_TO_HIT : 0) + height * HEIGHT_TO_HIT + style * STYLE_TO_HIT - (far ? LONG_SHOT_TO_HIT : 0) - (crowded ? POINT_BLANK_TO_HIT : 0),
+    toHit: (flanked ? FLANK_TO_HIT : 0) + height * HEIGHT_TO_HIT + style * STYLE_TO_HIT + (style > 0 ? styleEdgeBonus(actor.grade) : 0) - (far ? LONG_SHOT_TO_HIT : 0) - (crowded ? POINT_BLANK_TO_HIT : 0),
     defense: cover ? COVER_DEFENSE : 0,
   };
 }

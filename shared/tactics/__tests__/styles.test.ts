@@ -17,6 +17,10 @@ import {
   unitFromCharacter,
   usesLeft,
   STYLE_TO_HIT,
+  MOMENTUM_CAP,
+  crackFactor,
+  momentumCap,
+  styleEdgeBonus,
   type Encounter,
   type EncounterSetup,
   type Pos,
@@ -101,7 +105,8 @@ test("a vantagem de escola entra na rolagem de ataque, pros dois lados, e só en
 
   const edge = attackEdge(encounter, striker, strike, guard);
   assert.equal(edge.style, 1);
-  assert.equal(edge.toHit, STYLE_TO_HIT);
+  // Grau 3: a vantagem cresce 1; a desvantagem não muda com o grau.
+  assert.equal(edge.toHit, STYLE_TO_HIT + 1);
   assert.equal(attackEdge(encounter, guard, strike, striker).toHit, -STYLE_TO_HIT);
   assert.equal(attackEdge(encounter, striker, strike, ally).style, 0);
 
@@ -163,9 +168,18 @@ test("Onda do Gryskar: trocar de alvo recomeça a conta, e área não é insist�
   assert.deepEqual(hero.streak, roll.outcome === "fumble" ? undefined : { target: "F", hits: 1 });
 });
 
-test("Rachadura da Tsvirana: o dano dobra em quem acabou de repetir a ação do turno anterior", () => {
+test("o grau rende: a vantagem, o teto da Onda e o tanto da Rachadura crescem com ele", () => {
+  assert.deepEqual([1, 2, 3, 4].map(styleEdgeBonus), [0, 0, 1, 2]);
+  assert.deepEqual([1, 2, 3].map(momentumCap), [2, 3, 4]);
+  assert.deepEqual([1, 2, 3].map(crackFactor), [1.75, 2, 2.25]);
+  // Sem grau (criatura sem escola dita), o de sempre.
+  assert.equal(momentumCap(undefined), MOMENTUM_CAP);
+  assert.equal(crackFactor(undefined), 2);
+});
+
+test("Rachadura da Tsvirana: no grau 2, o dano dobra em quem acabou de repetir a ação do turno anterior", () => {
   const { encounter } = stage(["AE"], (at) => [
-    styled(makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 60, couro: 60 } }), "tsvirana"),
+    styled(makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 60, couro: 60 } }), "tsvirana", 2),
     makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 0 } }),
   ]);
   const enemy = findUnit(encounter, "E")!;

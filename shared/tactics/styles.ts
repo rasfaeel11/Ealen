@@ -32,10 +32,14 @@ import type { Ability, Unit } from "./types";
  * golpe que recebe, depois da armadura.
  *
  * A PROFICIÊNCIA (o `grade` da unidade, 1 a 7) é o quanto alguém domina a
- * escola. Nunca passa do nível de aura dele (`proficiency`). Hoje é só o que
- * a interface mostra: a força de cada um ainda vem do nível e dos atributos.
- * O golpe-selo de cada escola, que vem a partir do grau 4 e só por iniciação,
- * não existe no jogo: o trio não chega lá.
+ * escola. Nunca passa do nível de aura dele (`proficiency`). O grau é o quanto
+ * a escola rende, não a força: a vantagem no triângulo cresce 1 por grau acima
+ * do 2 (`styleEdgeBonus`), a Onda acumula até o grau mais 1 golpes
+ * (`momentumCap`), e a Rachadura multiplica 1,5 mais um quarto por grau
+ * (`crackFactor`). O Contragolpe não cresce: a Espera rende pela vantagem.
+ * O grau não sobe na árvore: o que se sabe da escola é anos de estrada, e
+ * quem o corta é a aura (`aura_rise`). O golpe-selo de cada escola, que vem a
+ * partir do grau 4 e só por iniciação, não existe no jogo: o trio não chega lá.
  *
  * Os números são provisórios, como os kits.
  */
@@ -74,8 +78,23 @@ export function isStyleId(id: unknown): id is StyleId {
 
 /** Quanto a vantagem de escola soma na rolagem de ataque (e a desvantagem tira). */
 export const STYLE_TO_HIT = 2;
-/** Até quantos golpes seguidos a Onda acumula. */
+/** Até quantos golpes seguidos a Onda acumula, no grau 3 (ver momentumCap). */
 export const MOMENTUM_CAP = 4;
+
+/** Até quantos golpes seguidos a Onda de quem tem grau `grade` acumula: o grau mais 1. Sem grau, o teto do grau 3. */
+export function momentumCap(grade: number | undefined): number {
+  return grade === undefined ? MOMENTUM_CAP : Math.max(1, grade + 1);
+}
+
+/** Por quanto a Rachadura de quem tem grau `grade` multiplica: 1,5 mais um quarto por grau (o 2 dá o dobro). */
+export function crackFactor(grade: number | undefined): number {
+  return 1.5 + 0.25 * (grade ?? 2);
+}
+
+/** O que o grau de quem ataca soma à vantagem de escola, além de STYLE_TO_HIT: 1 por grau acima do 2. */
+export function styleEdgeBonus(grade: number | undefined): number {
+  return Math.max(0, (grade ?? 2) - 2);
+}
 /** A maior proficiência numa escola, e o maior nível de aura. */
 export const PROFICIENCY_MAX = 7;
 
@@ -124,13 +143,13 @@ export function styleLabel(unit: Pick<Unit, "style" | "grade">): string {
 export function waveBonus(actor: Unit, ability: Ability, target: Unit): number {
   const momentum = template(actor.style)?.momentum;
   if (!momentum || ability.radius !== undefined || actor.streak?.target !== target.id) return 0;
-  return momentum * Math.min(actor.streak.hits, MOMENTUM_CAP);
+  return momentum * Math.min(actor.streak.hits, momentumCap(actor.grade));
 }
 
 /** RACHADURA: por quanto o dano de `actor` em `target` é multiplicado. 1 = não é. */
 export function punishFactor(actor: Unit, target: Unit): number {
   const factor = template(actor.style)?.punishRepeat;
-  return factor && target.habit?.repeated ? factor : 1;
+  return factor && target.habit?.repeated ? crackFactor(actor.grade) : 1;
 }
 
 /** VOTO: quem luta na escola `style` jurou nunca dar o primeiro golpe? Vale pra unidade e pra ficha do elenco. */
