@@ -19,8 +19,8 @@ import type { CharacterClass } from "./types/characterClass";
  * e repertório novo de mago ficam de fora: o primeiro só vem por iniciação, e o
  * segundo vem com o nível de mago (ver CLASS_TECHNIQUES em ./combatArts.ts).
  *
- * Os nomes e os números são PROVISÓRIOS: os nomes esperam o autor (§1 do
- * AGENTS.md), os números o `balance:matrix`. Mexer na árvore é editar dados aqui.
+ * Os nomes foram fechados pelo co-autor em 2026-11-04 (ver docs/escolhas.md);
+ * os números ainda são do `balance:matrix`. Mexer na árvore é editar dados aqui.
  */
 
 /** O que um nó muda numa habilidade. Tudo soma ao que ela já tem; custo nunca cai abaixo de 1. */
@@ -44,6 +44,8 @@ export interface SkillPassive {
   maxHp?: number;
   /** Fôlego máximo (ver ./breath.ts). */
   breath?: number;
+  /** Mana máxima, em quem conjura (ver ./mana.ts). */
+  mana?: number;
   /** Quadrados a mais de passo na luta. */
   speed?: number;
   /** Gravações a mais no descanso (ver engravingSlots em ./world/field.ts). */
@@ -152,11 +154,11 @@ export const SKILL_TREES: Record<CharacterClass, SkillBranch[]> = {
           tweaks: { [`${AR}.heal`]: { mana: -1 } },
         },
         {
-          id: "ar.folego_de_estudante",
-          name: "Fôlego de Biblioteca",
-          flavor: "Anos lendo em voz alta pra sala vazia. O ar dura mais.",
+          id: "ar.anos_de_biblioteca",
+          name: "Anos de Biblioteca",
+          flavor: "Anos lendo em voz alta pra sala vazia. O texto dura mais que a voz.",
           level: 3,
-          passive: { breath: 2 },
+          passive: { mana: 2 },
         },
         {
           id: "ar.mais_um_texto",
@@ -276,7 +278,7 @@ export const AUTO_ORDER: Record<CharacterClass, string[]> = {
     "ar.leitura_calma",
     "ar.empurrao_certo",
     "ar.puxao_longe",
-    "ar.folego_de_estudante",
+    "ar.anos_de_biblioteca",
     "ar.empurrao_longe",
     "ar.puxao_fundo",
     "ar.mais_um_texto",
@@ -406,6 +408,7 @@ export function describeSkill(node: SkillNode, names: (abilityId: string) => str
   const passive = node.passive ?? {};
   if (passive.maxHp) parts.push(`${signed(passive.maxHp)} de vida máxima.`);
   if (passive.breath) parts.push(`${signed(passive.breath)} de Fôlego máximo.`);
+  if (passive.mana) parts.push(`${signed(passive.mana)} de mana máxima.`);
   if (passive.speed) parts.push(`${signed(passive.speed)} quadrado de passo na luta.`);
   if (passive.engravings) parts.push(`${signed(passive.engravings)} gravação no descanso.`);
   return parts.join("\n");

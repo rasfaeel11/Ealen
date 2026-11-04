@@ -1,4 +1,5 @@
 import type { StatusId } from "./tactics/statuses";
+import { skillPassive } from "./skillTree";
 import type { Character } from "./types/character";
 
 /**
@@ -58,9 +59,9 @@ const MANA_PER_LEVEL = 2;
 /** Quantos pontos de Fator (Ressonância) dão um de mana. */
 const EIR_PER_MANA = 2;
 
-/** A mana de quem está descansado. */
-export function maxMana(character: Pick<Character, "attributes">, magic: Magic): number {
-  return MANA_PER_LEVEL * magic.level + Math.floor(character.attributes.fator / EIR_PER_MANA);
+/** A mana de quem está descansado, com o que a árvore dele soma (ver ./skillTree.ts). */
+export function maxMana(character: Pick<Character, "attributes" | "skills">, magic: Magic): number {
+  return MANA_PER_LEVEL * magic.level + Math.floor(character.attributes.fator / EIR_PER_MANA) + skillPassive(character, "mana");
 }
 
 /** Quanto ele gasta num turno sem o corpo pagar: o nível de mago. */
@@ -69,7 +70,7 @@ export function manaLimit(magic: Magic): number {
 }
 
 /** A mana que `character` tem agora. Ficha que nunca gastou está cheia. */
-export function manaOf(character: Pick<Character, "attributes" | "mana">, magic: Magic): number {
+export function manaOf(character: Pick<Character, "attributes" | "mana" | "skills">, magic: Magic): number {
   const max = maxMana(character, magic);
   const { mana } = character;
   return typeof mana === "number" && Number.isFinite(mana) ? Math.max(0, Math.min(max, Math.floor(mana))) : max;

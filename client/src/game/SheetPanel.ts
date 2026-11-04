@@ -632,6 +632,7 @@ export class SheetPanel {
     if (passive.engravings) return "engrave";
     if (passive.speed) return "move";
     if (passive.breath) return "wave";
+    if (passive.mana) return "book";
     return "armor";
   }
 
