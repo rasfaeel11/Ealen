@@ -1713,6 +1713,16 @@ def paint_baixios(canvas: Canvas) -> None:
     silted = Image.new("RGBA", (w, h), (86, 80, 56, 255))
     silted.putalpha(silt)
     canvas.img = Image.alpha_composite(canvas.img, silted)
+    # O canal fundo barra o passo, e tem de parecer: escuro, sem fundo à vista, com a linha de espuma onde o raso cai.
+    sharp = a.tile_mask({DEEP}).filter(ImageFilter.GaussianBlur(9))
+    dark = Image.new("RGBA", (w, h), (10, 22, 28, 255))
+    dark.putalpha(sharp.point(lambda v: int(v * 0.62)))
+    canvas.img = Image.alpha_composite(canvas.img, dark)
+    rim = ImageChops.subtract(a.tile_mask({DEEP}).filter(ImageFilter.MaxFilter(9)), a.tile_mask({DEEP}))
+    rim = ImageChops.multiply(rim.filter(ImageFilter.GaussianBlur(3)), noise(w, h, 9, rng, 2).point(lambda v: 255 if v > 120 else 60))
+    foam = Image.new("RGBA", (w, h), (176, 178, 160, 255))
+    foam.putalpha(rim.point(lambda v: int(v * 0.5)))
+    canvas.img = Image.alpha_composite(canvas.img, foam)
 
     # As ilhotas de areia ganham lodo em volta e junco alto em cima.
     canvas.tufts(a.tile_mask({GRASS, FLOWERS}), 700, [(96, 100, 56), (112, 110, 62), (76, 84, 46)])

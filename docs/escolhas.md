@@ -111,3 +111,26 @@ gravado no repositório da história: se aprovar, é você quem passa pra lá (�
   adiantamento indo pro ferreiro), e a banca do cais basta pro que se gasta: pão e unguento.
 
 **Pra mudar**: lojas novas são uma entrada em `SHOPS` (`shared/shop.ts`) e um `shop("id")` no Ink.
+
+## 52 e 53. Passagens fechadas e bordas do mapa
+
+**O que decidi**
+- **Ninguém barra as estradas**: em vez de um guarda novo (gente nova é nome ou papel novo), quem
+  fala é o próprio grupo, e a razão é o contrato. Falas novas:
+  - Ymonhã, estrada pra oeste, na abertura: "A estrada de terra segue a margem rumo oeste, até sumir
+    entre as árvores." / Oryndu: "Por terra, até Ybytuguá, é mato e mais mato. Pelo rio, meio dia."
+  - Ybytuguá, estrada do norte, antes do ato 2: "A estrada do norte sai da cidade e entra na floresta
+    entre as bacias." Antes do contrato, Jarupã: "Floresta não paga escolta." Depois, Xanduí: "O bicho
+    é pra leste, estudante. Contrato é contrato."
+  - Floresta, a trilha do barranco depois da ponte: "Do alto do barranco, a trilha segue a margem rio
+    acima, pro lado de Ymboripe. Na lama, pegadas de passo comprido." Jarupã (depois da ponte): "Corre
+    bem, pra quem lê sentado." Xanduí: "Rio acima é o duque. O contrato é rio abaixo."
+- **A clareira a nordeste** deixa de ser vazia: depois dos batedores, o acampamento deles. "Três
+  mantas enroladas, uma panela de ferro e um saco com dois pães duros." Jarupã: "Pão de quem não
+  volta." Xanduí: "Pão é pão." O grupo leva um Pão de Viagem. Não pus selo de Ymboripe na bolsa: a
+  Contratada diz que "o papel não dizia pra quem", e na dúvida mostra-se menos.
+- **As bordas**: árvore em toda borda que se alcança. A borda leste dos baixios, que era água rasa
+  até a beira do mapa, virou o canal fundo, e o fundo agora se vê (escuro, com espuma onde o raso cai).
+
+**Pra mudar**: as falas estão em `ymonha.ink`, `ybytugua.ink` e `floresta.ink`; os mapas mudaram por
+script, e o cenário sai de `python art/pintar_cenario.py`.

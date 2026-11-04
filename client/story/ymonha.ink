@@ -118,6 +118,12 @@ Oryndu: Ybytuguá é rio abaixo. Meio dia, com a corrente a favor.
 + [Ficar mais um pouco.]
     -> END
 
+// A estrada da margem, pra oeste, na abertura (um `trigger`): o caminho é o rio.
+=== estrada_oeste ===
+A estrada de terra segue a margem rumo oeste, até sumir entre as árvores.
+Oryndu: Por terra, até Ybytuguá, é mato e mais mato. Pelo rio, meio dia.
+-> END
+
 // O portão do castelo, no ato 1: a gente do barco não entra.
 === guarda_portao ===
 Guarda do portão: O castelão não recebe barqueiro. Pagou, desce. Não pagou, volta.

@@ -30,6 +30,8 @@ tem a dela. Quem desenha na tela é `client/src/game/Scenery.ts`, e a regra nunc
 - **`unless`**: a peça sai de cena com aquela variável da história (o barco de Oryndu, depois da cheia). **`smoke`**: de onde sobe a fumaça.
 - **Peça nova que barra**: pinte no script e ponha no mapa um tile que barre o passo (o `gid` 12, que o pintor não desenha). O pintor não muda a regra sozinho.
 - **Os destrutíveis** (`props.png`): pelo `kind`, não pelo tile que o mapa usa.
+- **Nada de parede invisível**: toda borda de mapa que se alcança acaba em árvore (o `gid` 9), e a água que barra o passo (o `gid` 6, o fundo) é
+  pintada escura, com espuma onde o raso cai. Passagem que ainda não abre tem um gatilho que diz por quê (ver task 52 no AGENTS.md).
 
 O que a região pede, e o script segue: terra como a Alemanha antes da unificação (AGENTS.md, decisões do autor), céu nublado de cheia, paleta de lodo. Cidade tem
 terreiro e horta, não gramado. O castelo é o da ficha. O estandarte da cidade não tem brasão, porque o cânone não deu um. Nada de letra legível em placa.

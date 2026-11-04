@@ -4,6 +4,7 @@
 // guarda a ponte dele. Cidade sem comércio aceita senhor. É política humana, explicada no próprio ato.
 
 VAR visto_tabuleta = false
+VAR contratados_vencidos = false
 
 // Um `trigger` em quem chega pelo sul, vindo de Ybytuguá: a primeira vez.
 === floresta_chegada ===
@@ -89,6 +90,7 @@ Xanduí: Então a gente mata o bicho antes da lua cheia, recebe a prata antes de
 
 // Os batedores contratados vencidos (onDefeat): a Tsvirana, paga pelo ducado. Depois, a Cura em Jarupã.
 === contratados_caem ===
+~ contratados_vencidos = true
 O que ainda está de pé larga a espada e levanta as mãos.
 Contratada: Batedora. Assinei numa Mesa rio acima. O papel não dizia pra quem.
 Endyru: E você não leu?
@@ -102,6 +104,30 @@ Jarupã fica branco. Cai sentado de vez, suando frio, puxa o pão duro da mochil
 Jarupã: Reza de estudante é igual imposto. Tira de um buraco e abre outro na barriga.
 Endyru: A cura acelera o corpo. Quem paga é o...
 Jarupã: Eu sei quem paga. Tô pagando.
+-> END
+
+// A clareira a nordeste, depois dos batedores (um `trigger` de uma vez só): o que eles deixaram.
+=== clareira ===
+No canto da clareira, o acampamento dos batedores: três mantas enroladas, uma panela de ferro e um saco com dois pães duros.
+{in_party("jarupa"):
+    Jarupã: Pão de quem não volta.
+}
+{in_party("xandui"):
+    Xanduí: Pão é pão.
+}
+~ give_item("item-pao-de-viagem")
+-> END
+
+// A trilha do barranco, do outro lado da ponte (um `trigger`): por onde Jurendy fugiu, rio acima. Não leva a lugar
+// nenhum que o contrato pague.
+=== trilha_barranco ===
+Do alto do barranco, a trilha segue a margem rio acima, pro lado de Ymboripe. Na lama, pegadas de passo comprido.
+{castelao_vencido && in_party("jarupa"):
+    Jarupã: Corre bem, pra quem lê sentado.
+}
+{in_party("xandui"):
+    Xanduí: Rio acima é o duque. O contrato é rio abaixo.
+}
 -> END
 
 // Uma noite de acampamento antes do vau: o giz e os dados (um `trigger` de uma vez só).

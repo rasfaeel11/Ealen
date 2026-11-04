@@ -390,6 +390,16 @@ Oryndu: Rio acima é contra a corrente. Chega no castelo antes do escuro.
 + [Ficar.]
     -> END
 
+// A estrada do norte antes do ato 2 (um `trigger`): a floresta não paga nada ainda.
+=== estrada_norte ===
+A estrada do norte sai da cidade e entra na floresta entre as bacias.
+{contrato:
+    Xanduí: O bicho é pra leste, estudante. Contrato é contrato.
+- else:
+    Jarupã: Floresta não paga escolta.
+}
+-> END
+
 // O caminho da floresta, com a cheia no alto.
 === vau_coberto ===
 A cheia cobriu o vau da floresta. Da estrada só se vê a água marrom, correndo onde era o caminho.
