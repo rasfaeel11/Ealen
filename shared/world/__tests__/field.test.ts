@@ -253,7 +253,7 @@ test("quem luta de perto corre até o alvo pra abrir a luta; quem atira abre de 
 
   // Do mais próximo pro mais distante; e parede no meio tira o alvo de quem atira.
   const both = openingStrikes(map, archer, heroTile, ability(archer, "attack"), [far, wolf]);
-  assert.deepEqual(both.map((strike) => strike.enemy.id), ["cacador", "longe"]);
+  assert.deepEqual(both.map((strike) => strike.enemy?.id), ["cacador", "longe"]);
   for (let y = 0; y < map.grid.height; y++) {
     const tile = tileAt(map.grid, { x: 5, y })!;
     tile.blocksMove = true;
@@ -292,7 +292,30 @@ test("o golpe dado de fora abre a luta numa trilha do Tiled: o lobo apanha antes
   const types = events.map((event) => event.type);
   assert.ok(types.indexOf("abilityUsed") > 0 && types.indexOf("abilityUsed") < types.indexOf("roundStarted"));
   assert.deepEqual(findUnit(encounter, HERO_ID)!.pos, strike.from);
-  // E a primeira vez de verdade é dele, inteira.
+  // E a primeira vez de verdade é dele, sem a ação: numa emboscada, o golpe de abertura foi ela.
   assert.equal(activeUnit(encounter)!.id, HERO_ID);
-  assert.deepEqual(activeUnit(encounter)!.turn, { movement: 6, action: true, bonus: true, reaction: true });
+  assert.deepEqual(activeUnit(encounter)!.turn, { movement: 6, action: false, bonus: true, reaction: true });
+});
+
+test("o golpe de abertura mira o barril: com inimigo perto, ele entra na luta; sem ninguém, o barril só quebra", () => {
+  const map = room();
+  const heroTile = { x: 1, y: 1 };
+  const archer = sheet(HERO_ID, "espadachim", ARCHER);
+  const [barrel] = standAreaProps({ ...map, props: [{ id: "barril", kind: "barrel", tile: { x: 6, y: 1 } }] } as AreaMap);
+
+  const wolf = enemy("cacador", 8, 1);
+  const near = openingStrikes(map, archer, heroTile, ability(archer, "attack"), [wolf], [barrel]);
+  const onBarrel = near.find((strike) => strike.prop === barrel)!;
+  assert.ok(onBarrel, "o barril está ao alcance");
+  assert.equal(onBarrel.enemy, wolf, "quem está perto do barril acorda");
+  assert.deepEqual(onBarrel.target, { x: 6, y: 1 });
+
+  // Com o inimigo longe do barril (e da emboscada), o golpe só quebra.
+  const alone = openingStrikes(map, archer, heroTile, ability(archer, "attack"), [], [barrel]);
+  assert.equal(alone.length, 1);
+  assert.equal(alone[0].enemy, undefined);
+  assert.equal(alone[0].prop, barrel);
+
+  // Quem não fere não quebra nada.
+  assert.deepEqual(openingStrikes(map, archer, heroTile, ability(archer, "defend"), [], [barrel]), []);
 });

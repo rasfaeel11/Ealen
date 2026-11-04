@@ -123,8 +123,9 @@ export interface EncounterSetup {
 /**
  * O golpe que abre a luta: alguém usou uma habilidade ANTES de a luta
  * existir, e é ela que a começa. Acontece na abertura, antes da primeira
- * rodada e fora da ordem dos turnos — não gasta a ação nem o movimento do
- * primeiro turno de quem o deu. Com `from`, ele antes corre até esse quadrado
+ * rodada e fora da ordem dos turnos. À vista, não gasta a ação nem o
+ * movimento do primeiro turno de quem o deu; numa emboscada (o outro lado
+ * Surpreso), gasta a ação dele: o golpe e a surpresa não vêm os dois de graça. Com `from`, ele antes corre até esse quadrado
  * (a investida de quem luta de perto), com o movimento de um turno.
  *
  * Um golpe de abertura que não vale (habilidade que ele não tem ou não pode
@@ -197,7 +198,12 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     // Dois inícios de turno: cai quando ele for agir pela SEGUNDA vez, e o primeiro turno inteiro é Abalado.
     addStatus(unit, STATUSES.shaken, 2, events);
   }
-  if (setup.opening) strikeFirst(encounter, setup.opening, events);
+  if (setup.opening) {
+    strikeFirst(encounter, setup.opening, events);
+    // Escondido, o golpe de abertura já é a ação do primeiro turno de quem o deu: a surpresa é o que ele ganhou.
+    const opener = findUnit(encounter, setup.opening.unitId);
+    if (opener && setup.surprised !== undefined && setup.surprised !== opener.team) opener.spentOpening = true;
+  }
   if (!concludeIfDecided(encounter, events)) {
     events.push({ type: "roundStarted", round: 1 });
     advanceTurn(encounter, events);
@@ -321,7 +327,8 @@ function advanceTurn(encounter: Encounter, events: TacticalEvent[]): void {
     const harms = next.statuses.filter((status) => status.harm);
     const regens = next.statuses.filter((status) => status.regen);
     tickStatuses(next, events);
-    next.turn = { movement, action: true, bonus: true, reaction: true };
+    next.turn = { movement, action: !next.spentOpening, bonus: true, reaction: true };
+    delete next.spentOpening;
     // O limite de mana é por turno: a conta do corpo recomeça quando a vez dele começa.
     if (next.manaSpent !== undefined) delete next.manaSpent;
     events.push({ type: "turnStarted", unit: next.id });

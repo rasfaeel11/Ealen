@@ -1,5 +1,5 @@
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
-import { tileOfPixel, type AreaEnemy, type AreaMap, type Heading } from "./tiledMap";
+import { pixelOfTile, tileOfPixel, type AreaEnemy, type AreaMap, type Heading, type PixelPos } from "./tiledMap";
 
 /**
  * Chegar escondido, ou não. Nada aqui é obrigatório: é o jogador quem
@@ -21,6 +21,10 @@ import { tileOfPixel, type AreaEnemy, type AreaMap, type Heading } from "./tiled
  *   vantagem a ninguém.
  *
  * Grupo `passive` não olha ninguém: a luta dele é da história.
+ *
+ * Quem está de vigia pode virar a cabeça (`look`) ou andar de ronda
+ * (`patrol`): o olhar dele vai junto (ver sentryAt). Esperar a hora de passar
+ * é parte de chegar escondido.
  */
 
 /** Até quantos quadrados à frente um inimigo enxerga. */
@@ -73,6 +77,74 @@ export function sightTiles(map: AreaMap, enemy: AreaEnemy): Pos[] {
     }
   }
   return tiles;
+}
+
+/** De quantos em quantos segundos quem vira a cabeça (`look`) olha pro lado seguinte. */
+export const LOOK_SECONDS = 3;
+/** Quantos quadrados por segundo anda quem faz ronda. Mais devagar que quem explora. */
+export const PATROL_SPEED = 1.5;
+/** Quantos segundos quem faz ronda fica parado em cada ponta, olhando. */
+export const PATROL_PAUSE = 2;
+
+/** Onde está e pra onde olha um inimigo de vigia agora: o que a tela mostra e o olhar usa. */
+export interface Sentry extends PixelPos {
+  facing: Heading;
+  walking: boolean;
+}
+
+/** O lado de quem vai de `from` a `to`: o eixo que anda mais. */
+function headingOf(from: Pos, to: Pos): Heading {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "right" : "left";
+  return dy >= 0 ? "down" : "up";
+}
+
+/**
+ * Onde `enemy` está e pra onde olha, `seconds` depois de a área abrir. Quem
+ * faz ronda (`patrol`) anda de onde o mapa o pôs até o último ponto e volta,
+ * em linha reta de um a outro, a PATROL_SPEED, parando PATROL_PAUSE em cada
+ * ponta; andando, olha pra onde vai. Quem só vira a cabeça (`look`) troca de
+ * lado a cada LOOK_SECONDS, começando pelo `facing` do mapa. Sem nenhum dos
+ * dois, ele fica como está: undefined. Quem chama põe o resultado no próprio
+ * `enemy` (x, y, facing), e é com ele que o olhar (`watch`) conta.
+ */
+export function sentryAt(map: AreaMap, enemy: AreaEnemy, seconds: number): Sentry | undefined {
+  // O `facing` muda enquanto ele anda: os lados de olhar vêm do mapa, não dele.
+  const sides = enemy.look ?? [enemy.facing ?? "down"];
+  const glance = sides[Math.floor(Math.max(0, seconds) / LOOK_SECONDS) % sides.length];
+  if (!enemy.patrol || enemy.patrol.length === 0) {
+    if (sides.length === 1) return undefined;
+    return { x: enemy.x, y: enemy.y, facing: glance, walking: false };
+  }
+
+  const home = enemy.home ?? { x: enemy.x, y: enemy.y };
+  const route = [tileOfPixel(map, home), ...enemy.patrol];
+  // Ida e volta: a ronda é a lista e ela de trás pra frente.
+  const stops = [...route, ...route.slice(1, -1).reverse()];
+  const legs = stops.map((from, index) => {
+    const to = stops[(index + 1) % stops.length];
+    return { from, to, walk: distance(from, to) / PATROL_SPEED };
+  });
+  const cycle = legs.reduce((sum, leg) => sum + leg.walk + PATROL_PAUSE, 0);
+  let left = Math.max(0, seconds) % cycle;
+  for (const leg of legs) {
+    // Primeiro a parada na ponta de onde sai, olhando pro lado da última ida; depois a caminhada.
+    if (left < PATROL_PAUSE) {
+      const at = leg.from === route[0] ? home : pixelOfTile(map, leg.from);
+      const came = legs[(legs.indexOf(leg) - 1 + legs.length) % legs.length];
+      return { x: at.x, y: at.y, facing: came.walk > 0 ? headingOf(came.from, came.to) : glance, walking: false };
+    }
+    left -= PATROL_PAUSE;
+    if (left < leg.walk) {
+      const share = left / leg.walk;
+      const a = leg.from === route[0] ? home : pixelOfTile(map, leg.from);
+      const b = leg.to === route[0] ? home : pixelOfTile(map, leg.to);
+      return { x: a.x + (b.x - a.x) * share, y: a.y + (b.y - a.y) * share, facing: headingOf(leg.from, leg.to), walking: true };
+    }
+    left -= leg.walk;
+  }
+  return { x: home.x, y: home.y, facing: glance, walking: false };
 }
 
 /** A desconfiança de cada inimigo, pelo id: 0 nada, 1 pegou. Some quem voltou a 0. */

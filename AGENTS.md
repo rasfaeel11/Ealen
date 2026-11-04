@@ -311,7 +311,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 ### P1 — o que todo RPG tem
 | # | Task | O que é |
 |---|---|---|
-| 61 | **Golpe de abertura, o resto** | Balancear (escondido, ainda é golpe grátis MAIS a surpresa); inimigo que vira a cabeça ou anda de ronda; companheiro dar o primeiro golpe; mirar um quadrado com área; acertar destrutível fora de luta (o barril de óleo); mouse na ficha e na mochila. |
 | 66 | **Mapa, o resto** | O mapa da região é a task 48. Falta o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
 | 68 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
 
@@ -676,6 +675,14 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   2 de Fôlego e tira 1d4 + grau. Interceptar: quem está em guarda, colado no aliado que vai levar um golpe de arma, entra na frente e leva com a guarda
   dele. Os dois são automáticos e valem pros dois lados. No `balance:matrix` as lutas de espada ficaram mais longas (o espadachim contra Mbyraku foi de
   47% a 37%). Os nomes e as falas são provisórios, como os da Disparada; a tela não foi vista.
+
+- **61. O golpe de abertura, o resto.** Numa emboscada, o golpe de abertura agora é a ação do primeiro turno de quem bate: a surpresa continua,
+  e o golpe deixa de ser de graça além dela (à vista, nada muda). O inimigo pode virar a cabeça (`look` no Tiled) ou fazer ronda (`patrol`), e o olhar
+  vai junto: na floresta, a Espada da patrulha faz ronda na estrada; a Lança da serra, a Contratada, o Guarda e o Besteiro da estrada olham em volta.
+  Jarupã também dá o golpe de abertura, pela ficha dele; Xanduí não, pelo voto. O golpe que fere mira também o barril e o caixote: com inimigo a até 4
+  quadrados, ele acorda e a luta abre com o barril pegando fogo; sem ninguém, o destrutível só quebra, fora de luta, e fica quebrado. Numa área mirada no
+  chão, há o quadrado que pega mais gente (nenhuma habilidade do jogo é assim ainda). Na ficha e na mochila, cada tecla do rodapé é clicável
+  (`KeyHints`: o clique aperta a tecla). Testado no motor; a tela não foi vista.
 
 ## 9. Onde isto está no cânone
 

@@ -7,7 +7,12 @@ import { HERO_ID } from "../../party";
 import type { Character } from "../../types/character";
 import {
   CLOSE_RANGE,
+  LOOK_SECONDS,
+  PATROL_PAUSE,
+  PATROL_SPEED,
   SIGHT_RANGE,
+  parseTiledMap,
+  sentryAt,
   inCone,
   sees,
   sightTiles,
@@ -134,4 +139,66 @@ test("investida e surpresa não vêm juntas: a surpresa manda", () => {
   const { events } = startAreaEncounter(map, [{ character: structuredClone(hero), tile: { x: 3, y: 8 } }], [guard("a", 8, 8)], 2, [], "enemy", [], [], {}, undefined, "party");
   const started = events.find((event) => event.type === "battleStarted");
   assert.ok(started?.type === "battleStarted" && started.charge === undefined && started.surprised === "enemy");
+});
+
+test("quem vira a cabeça troca de lado a cada LOOK_SECONDS, começando pelo do mapa", () => {
+  const map = room();
+  const sentry = guard("vigia", 5, 5, { facing: "down", look: ["down", "left"] });
+  assert.equal(sentryAt(map, sentry, 0)?.facing, "down");
+  assert.equal(sentryAt(map, sentry, LOOK_SECONDS + 0.1)?.facing, "left");
+  assert.equal(sentryAt(map, sentry, 2 * LOOK_SECONDS + 0.1)?.facing, "down");
+  // Quem não vira a cabeça nem anda fica como está.
+  assert.equal(sentryAt(map, guard("parado", 5, 5), 10), undefined);
+});
+
+test("quem faz ronda para na ponta, anda olhando pra onde vai, e volta pelo mesmo caminho", () => {
+  const map = room();
+  const walker = guard("ronda", 2, 5, { facing: "right", patrol: [{ x: 6, y: 5 }], home: { x: 2 * 16 + 8, y: 5 * 16 + 8 } });
+  const leg = 4 / PATROL_SPEED;
+  const start = sentryAt(map, walker, 0.1)!;
+  assert.deepEqual([start.walking, start.x], [false, 2 * 16 + 8]);
+  const going = sentryAt(map, walker, PATROL_PAUSE + leg / 2)!;
+  assert.deepEqual([going.walking, going.facing], [true, "right"]);
+  assert.ok(going.x > 2 * 16 + 8 && going.x < 6 * 16 + 8);
+  const there = sentryAt(map, walker, PATROL_PAUSE + leg + 0.1)!;
+  assert.deepEqual([there.walking, there.x], [false, 6 * 16 + 8]);
+  const back = sentryAt(map, walker, 2 * PATROL_PAUSE + leg + leg / 2)!;
+  assert.deepEqual([back.walking, back.facing], [true, "left"]);
+  // Uma volta inteira depois, está de novo em casa.
+  const cycle = 2 * (PATROL_PAUSE + leg);
+  assert.equal(sentryAt(map, walker, cycle + 0.1)!.x, 2 * 16 + 8);
+});
+
+test("o mapa lê o `look` e o `patrol` do inimigo, e recusa o que não entende", () => {
+  const tmj = (properties: { name: string; type: string; value: string }[]) => ({
+    width: 8,
+    height: 8,
+    tilewidth: 16,
+    tileheight: 16,
+    layers: [
+      { type: "tilelayer", name: "ground", width: 8, height: 8, data: Array(64).fill(0) },
+      {
+        type: "objectgroup",
+        name: "objects",
+        objects: [
+          { id: 1, name: "inicio", type: "spawn", x: 8, y: 8 },
+          { id: 2, name: "Vigia", type: "enemy", x: 40, y: 40, properties: [{ name: "creature", type: "string", value: "encounter-teste-cacador" }, ...properties] },
+        ],
+      },
+    ],
+    tilesets: [],
+  });
+  const map = parseTiledMap(
+    tmj([
+      { name: "facing", type: "string", value: "left" },
+      { name: "look", type: "string", value: "up down" },
+      { name: "patrol", type: "string", value: "5,2 5,6" },
+    ]) as never,
+  );
+  const [enemy] = map.enemies;
+  assert.deepEqual(enemy.look, ["left", "up", "down"]);
+  assert.deepEqual(enemy.patrol, [{ x: 5, y: 2 }, { x: 5, y: 6 }]);
+  assert.deepEqual(enemy.home, { x: 40, y: 40 });
+  assert.throws(() => parseTiledMap(tmj([{ name: "look", type: "string", value: "atras" }]) as never));
+  assert.throws(() => parseTiledMap(tmj([{ name: "patrol", type: "string", value: "5;2" }]) as never));
 });

@@ -19,7 +19,7 @@ import { SLOT_LABEL, describeEquipment } from "./SheetPanel";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
 import { isAction, keyLabel } from "./settings";
 import { gearIcon, iconKey, itemIcon, type IconName } from "./icons";
-import { Menu, SlotGrid, addBodyText, addCloseButton, addHeading, addModalDim, addPanel, addTitleText, type AddHud, type GridOption, type MenuOption } from "./ui";
+import { KeyHints, Menu, SlotGrid, addBodyText, addCloseButton, addHeading, addModalDim, addPanel, addTitleText, type AddHud, type GridOption, type MenuOption } from "./ui";
 
 const WIDTH = 1040;
 const HEIGHT = 600;
@@ -140,10 +140,9 @@ export class BagPanel {
       this.detail,
       this.notice,
       addHud(
-        addBodyText(scene, X + WIDTH - 30, Y + HEIGHT - 42, `Setas: item  ·  Enter: escolher  ·  O: arrumar  ·  Tab: de quem  ·  ${keyLabel("sheet")}: ficha  ·  Esc: fechar`, {
-          fontSize: "14px",
-          color: TEXT_COLORS.inkDim,
-        }).setOrigin(1, 0.5),
+        new KeyHints(scene, X + WIDTH - 30, Y + HEIGHT - 42, { originX: 1 }).setText(
+          `Setas: item  ·  Enter: escolher  ·  O: arrumar  ·  Tab: de quem  ·  ${keyLabel("sheet")}: ficha  ·  Esc: fechar`,
+        ).root,
       ),
       addHud(addCloseButton(scene, X + WIDTH - 28, Y + 28, () => this.host.onClose())),
     );

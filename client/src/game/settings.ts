@@ -151,6 +151,20 @@ export function keyName(code: string): string {
   return names[code] ?? code;
 }
 
+/**
+ * O contrário de keyName: o código da tecla cujo nome, na tela, é `name`. É o
+ * que o rodapé clicável usa pra apertar a tecla que ele mostra. Undefined pro
+ * que não é uma tecla só ("Setas").
+ */
+export function codeOfName(name: string): string | undefined {
+  const fixed: Record<string, string> = { Enter: "Enter", Esc: "Escape", Tab: "Tab", Espaço: "Space", Backspace: "Backspace" };
+  if (fixed[name]) return fixed[name];
+  if (/^[A-Z]$/.test(name)) return `Key${name}`;
+  if (/^[0-9]$/.test(name)) return `Digit${name}`;
+  const named = ["ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight", "Semicolon", "Comma", "Period", "Slash", "Minus", "Equal", "BracketLeft", "BracketRight", "Backslash", "Quote", "Backquote", "CapsLock"];
+  return named.find((code) => keyName(code) === name);
+}
+
 function readSaved(): Settings {
   adoptOldKeys();
   try {

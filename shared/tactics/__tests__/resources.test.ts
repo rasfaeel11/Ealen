@@ -162,7 +162,7 @@ test("o golpe de abertura paga o Fôlego, e a recarga dele já conta o primeiro 
 
   const { encounter, events } = start();
   assert.equal(eventsOf(events, "breathSpent")[0].remaining, 4);
-  assert.equal(readiness(unit(encounter, "A"), ability(encounter, "A", HEAVY)), "recharging");
+  assert.equal(readiness(unit(encounter, "A"), ability(encounter, "A", HEAVY), true), "recharging");
   nextRound(encounter);
   assert.equal(readiness(unit(encounter, "A"), ability(encounter, "A", HEAVY)), "ready");
 

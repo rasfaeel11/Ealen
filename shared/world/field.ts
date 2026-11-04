@@ -8,7 +8,7 @@ import { GIFTS, abilitiesFor, engravedAbilities } from "../tactics/abilities";
 import { AUTO_ORDER, findSkill, skillRefusal, withSkills, skillPassive, type SkillNode, type SkillRefusal } from "../skillTree";
 import { distance, hasLineOfSight, type Pos } from "../tactics/grid";
 import { reachableTiles } from "../tactics/movement";
-import type { Prop } from "../tactics/props";
+import { isBreakable, type Prop } from "../tactics/props";
 import type { StatusId } from "../tactics/statuses";
 import { rollDice, type RngHolder } from "../tactics/rng";
 import type { Ability, Encounter } from "../tactics/types";
@@ -179,6 +179,13 @@ export function missing(character: Payer, ability: Ability): "breath" | "mana" |
   return magic !== undefined && manaOf(character, magic) >= ability.mana ? undefined : "mana";
 }
 
+/** Cobra de `character` o Fôlego e a mana de `ability`, fora de luta: o golpe que só quebra um destrutível. */
+export function payOutside(character: Character, ability: Ability): void {
+  if (ability.breath) character.breath = breathOf(character) - ability.breath;
+  const magic = magicOf(character);
+  if (ability.mana && magic) character.mana = manaOf(character, magic) - ability.mana;
+}
+
 /** `character` tem com que pagar `ability` fora de luta? */
 export function canAfford(character: Payer, ability: Ability): boolean {
   return missing(character, ability) === undefined;
@@ -256,12 +263,21 @@ export function useItemOutside(owner: Character, itemId: string, target: Charact
   return { ok: true, ...applyImmediateHeal(target, effect) };
 }
 
-/** Um golpe de abertura possível: em quem, de onde (o quadrado até onde se corre; o próprio, se não precisa) e o quadrado mirado. */
+/**
+ * Um golpe de abertura possível: em quem, de onde (o quadrado até onde se
+ * corre; o próprio, se não precisa) e o quadrado mirado. Mirado num
+ * destrutível (`prop`), `enemy` é quem está perto dele e entra na luta — sem
+ * ninguém perto, o golpe só quebra o destrutível, fora de luta.
+ */
 export interface OpeningStrike {
-  enemy: AreaEnemy;
+  enemy?: AreaEnemy;
+  prop?: Prop;
   from: Pos;
   target: Pos;
 }
+
+/** De quão perto de um destrutível quebrado um inimigo acorda pra luta: o barulho do barril arrebentando. */
+export const PROP_ALARM = 4;
 
 /**
  * Em quem `hero`, parado em `heroTile`, pode abrir uma luta com `ability`:
@@ -273,6 +289,11 @@ export interface OpeningStrike {
  * ninguém.
  *
  * Uma habilidade que não mira (`foes`) abre a luta com o grupo mais próximo.
+ *
+ * Golpe que fere também mira os destrutíveis ao alcance (`props`): o barril de
+ * óleo ao lado de quem não viu ninguém. O inimigo de pé a até PROP_ALARM dele
+ * entra na luta; sem nenhum, o golpe só quebra o destrutível (ver OpeningStrike).
+ * Numa área, além do inimigo, vale mirar o quadrado que pega mais gente do grupo.
  */
 export function openingStrikes(
   map: AreaMap,
@@ -288,8 +309,10 @@ export function openingStrikes(
   const hostile = enemies.filter((enemy) => !enemy.passive && findBestiaryEntry(enemy.creature));
   const gap = (enemy: AreaEnemy) => distance(tileOfPixel(map, enemy), heroTile);
   const near = hostile.filter((enemy) => gap(enemy) <= AMBUSH_RANGE).sort((a, b) => gap(a) - gap(b));
-  if (near.length === 0) return [];
-  if (ability.targets === "foes") return [{ enemy: near[0], from: { ...heroTile }, target: { ...heroTile } }];
+  const breakable = props.filter((prop) => isBreakable(prop) && distance(prop.pos, heroTile) <= AMBUSH_RANGE);
+  const hurts = ability.effects.some((effect) => effect.kind === "damage") && ability.targets !== "foes";
+  if (near.length === 0 && !(hurts && breakable.length > 0)) return [];
+  if (ability.targets === "foes") return near.length > 0 ? [{ enemy: near[0], from: { ...heroTile }, target: { ...heroTile } }] : [];
 
   // Uma luta de mentira, só pra perguntar ao motor aonde ele chega: a mesma regra de movimento de dentro dela.
   const unit = unitFromCharacter(hero, { team: "party", pos: heroTile });
@@ -317,11 +340,44 @@ export function openingStrikes(
   };
   const spots = [{ pos: { ...heroTile }, cost: 0 }, ...reachableTiles(probe, unit)].sort((a, b) => a.cost - b.cost);
 
-  return near.flatMap((enemy) => {
+  const reach = (target: Pos) => spots.find(({ pos }) => distance(pos, target) <= ability.range && hasLineOfSight(map.grid, pos, target));
+  const strikes: OpeningStrike[] = near.flatMap((enemy) => {
     const target = tileOfPixel(map, enemy);
-    const spot = spots.find(
-      ({ pos }) => distance(pos, target) <= ability.range && hasLineOfSight(map.grid, pos, target),
-    );
+    const spot = reach(target);
     return spot ? [{ enemy, from: spot.pos, target }] : [];
   });
+
+  // Numa área mirada no chão, o quadrado que pega mais gente de cada grupo (se pega mais de um).
+  if (ability.targets === "tile" && ability.radius !== undefined) {
+    const radius = ability.radius;
+    for (const group of new Set(near.map((enemy) => enemy.group))) {
+      const members = near.filter((enemy) => enemy.group === group).map((enemy) => ({ enemy, tile: tileOfPixel(map, enemy) }));
+      let best: { target: Pos; count: number; from: Pos; enemy: AreaEnemy } | undefined;
+      for (const { tile } of members) {
+        for (let y = tile.y - radius; y <= tile.y + radius; y++) {
+          for (let x = tile.x - radius; x <= tile.x + radius; x++) {
+            const target = { x, y };
+            const hit = members.filter((member) => distance(member.tile, target) <= radius && hasLineOfSight(map.grid, target, member.tile));
+            const spot = hit.length > 1 ? reach(target) : undefined;
+            if (spot && (!best || hit.length > best.count)) best = { target, count: hit.length, from: spot.pos, enemy: hit[0].enemy };
+          }
+        }
+      }
+      if (best) strikes.push({ enemy: best.enemy, from: best.from, target: best.target });
+    }
+  }
+
+  if (hurts) {
+    for (const prop of breakable) {
+      const spot = reach(prop.pos);
+      if (!spot) continue;
+      const woken = hostile
+        .filter((enemy) => distance(tileOfPixel(map, enemy), prop.pos) <= PROP_ALARM)
+        .sort((a, b) => distance(tileOfPixel(map, a), prop.pos) - distance(tileOfPixel(map, b), prop.pos))[0];
+      // Sem ninguém perto, o golpe só quebra: a gravação, que serve uma vez, fica pra luta.
+      if (!woken && ability.engraved) continue;
+      strikes.push({ ...(woken ? { enemy: woken } : {}), prop, from: spot.pos, target: { ...prop.pos } });
+    }
+  }
+  return strikes;
 }

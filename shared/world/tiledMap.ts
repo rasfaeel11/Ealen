@@ -45,7 +45,10 @@ import { CLASS_INFO } from "../types/characterClass";
  *              dele é vencido). E `flood` ("3 2"): a luta do grupo dele tem
  *              cheia — a água come um anel da margem de 3 em 3 rodadas, até
  *              2 vezes (ver Flood em ../tactics/types.ts). E `facing` (down, left,
- *              right ou up; sem ele, down): pra onde ele olha (ver ./stealth.ts)
+ *              right ou up; sem ele, down): pra onde ele olha (ver ./stealth.ts).
+ *              E `look` ("left up"): pra onde mais ele vira a cabeça, um lado
+ *              por vez; e `patrol` ("12,8 16,8"): os quadrados da ronda, em
+ *              linha reta de um ao outro, ida e volta (ver sentryAt)
  *     `npc`    ponto; alguém (ou algo) com quem se fala. O Nome é o que
  *              aparece na caixa; a propriedade `dialog` é o trecho (knot)
  *              da história em client/story que a conversa abre. Com `look`
@@ -149,6 +152,12 @@ export interface AreaEnemy extends AreaCondition {
   flood?: { every: number; rises: number };
   /** Pra onde ele olha, parado (ver ./stealth.ts). Sem isso, pra baixo. */
   facing?: Heading;
+  /** Os lados pra onde ele vira a cabeça, um por vez: o `facing` do mapa primeiro, e os do `look` (ver sentryAt em ./stealth.ts). */
+  look?: Heading[];
+  /** A ronda: os quadrados por onde ele anda, de onde está até o último e de volta, sem parar (ver sentryAt). */
+  patrol?: Pos[];
+  /** Onde o mapa o pôs: é daí que a ronda sai, e pra onde ele volta a cada área que se entra. */
+  home?: PixelPos;
   x: number;
   y: number;
 }
@@ -457,7 +466,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
         });
       } else if (kind === "enemy") {
         const properties = propertiesOf(object);
-        const { creature, group, dialog, onDefeat, facing } = properties;
+        const { creature, group, dialog, onDefeat, facing, look, patrol } = properties;
         if (typeof creature !== "string") {
           throw new Error(`Inimigo "${object.name ?? ""}" precisa da propriedade "creature".`);
         }
@@ -465,6 +474,14 @@ export function parseTiledMap(raw: unknown): AreaMap {
           throw new Error(`Inimigo "${object.name ?? ""}": "facing" é down, left, right ou up, não "${String(facing)}".`);
         }
         const id = `enemy-${object.id}`;
+        const turns = typeof look === "string" ? look.split(/\s+/).filter(Boolean) : [];
+        if (turns.some((turn) => !isHeading(turn))) {
+          throw new Error(`Inimigo "${object.name ?? ""}": "look" é uma lista de down, left, right e up, não "${String(look)}".`);
+        }
+        const route = typeof patrol === "string" ? patrol.split(/\s+/).filter(Boolean).map((point) => point.split(",").map(Number)) : [];
+        if (route.some((point) => point.length !== 2 || point.some((value) => !Number.isInteger(value)))) {
+          throw new Error(`Inimigo "${object.name ?? ""}": "patrol" é uma lista de quadrados "x,y", não "${String(patrol)}".`);
+        }
         enemies.push({
           id,
           name: object.name ?? "",
@@ -475,6 +492,8 @@ export function parseTiledMap(raw: unknown): AreaMap {
           onDefeat: typeof onDefeat === "string" ? onDefeat : undefined,
           ...floodOf(object.name ?? "", properties.flood),
           ...(facing !== undefined ? { facing } : {}),
+          ...(turns.length > 0 ? { look: [(facing as Heading | undefined) ?? "down", ...(turns as Heading[])] } : {}),
+          ...(route.length > 0 ? { patrol: route.map(([x, y]) => ({ x, y })), home: { x: object.x, y: object.y } } : {}),
           x: object.x,
           y: object.y,
           ...conditionOf(properties),

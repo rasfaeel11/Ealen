@@ -42,6 +42,8 @@ import {
   mend,
   npcInReach,
   openingStrikes,
+  payOutside,
+  propTemplate,
   parseTiledMap,
   chargeSavedClock,
   fights,
@@ -53,6 +55,7 @@ import {
   placeParty,
   presentCompanions,
   restoreParty,
+  sentryAt,
   sightTiles,
   wary,
   watch,
@@ -105,6 +108,7 @@ import {
   type Opening,
   type OpeningStrike,
   type PixelPos,
+  type Pos,
   type Prop,
   type StoryEvent,
   type TeamId,
@@ -215,6 +219,10 @@ export default class WorldScene extends Phaser.Scene {
   private campfire = false;
   /** O quanto cada inimigo já desconfia, de 0 a 1, pelo id. */
   private suspicion: Suspicion = {};
+  /** Os segundos de exploração desde que a área abriu: é o relógio de quem vira a cabeça e de quem faz ronda. */
+  private sentryClock = 0;
+  /** Onde e pra onde olhava cada vigia no último quadro: mudou, o olhar pintado no chão se refaz. */
+  private sentryMarks = new Map<string, string>();
   /** O olhar dos inimigos pintado no chão, enquanto se esgueira. */
   private sightMarks?: Phaser.GameObjects.Graphics;
   /** O "?" em cima de quem desconfia, pelo id. */
@@ -251,6 +259,8 @@ export default class WorldScene extends Phaser.Scene {
    */
   private aiming?: {
     ability: Ability;
+    /** Quem dá o golpe: a protagonista, ou um companheiro (pela ficha dele). */
+    striker: Character;
     strikes: OpeningStrike[];
     index: number;
     marks: Phaser.GameObjects.Graphics;
@@ -279,6 +289,8 @@ export default class WorldScene extends Phaser.Scene {
     this.trail = [];
     this.enemies = [];
     this.enemyActors = new Map();
+    this.sentryClock = 0;
+    this.sentryMarks = new Map();
     this.sneaking = false;
     this.suspicion = {};
     this.sightMarks = undefined;
@@ -394,6 +406,7 @@ export default class WorldScene extends Phaser.Scene {
       return;
     }
 
+    this.moveSentries(delta);
     if (this.lookout(delta)) return;
 
     const dx = Number(this.keys.right.isDown || this.keys.d.isDown) - Number(this.keys.left.isDown || this.keys.a.isDown);
@@ -1018,6 +1031,34 @@ export default class WorldScene extends Phaser.Scene {
     return true;
   }
 
+  /**
+   * Quem vira a cabeça e quem anda de ronda (ver sentryAt em shared/world/stealth.ts): a posição e o lado vão pro
+   * próprio inimigo, que é o que o olhar lê, e pro boneco dele. Só corre explorando: na conversa e na pausa o mundo para.
+   */
+  private moveSentries(delta: number): void {
+    this.sentryClock += Math.min(delta, MAX_FRAME_MS) / 1000;
+    let changed = false;
+    for (const enemy of this.enemies) {
+      if (enemy.passive) continue;
+      const sentry = sentryAt(this.map, enemy, this.sentryClock);
+      if (!sentry) continue;
+      enemy.x = sentry.x;
+      enemy.y = sentry.y;
+      enemy.facing = sentry.facing;
+      const actor = this.enemyActors.get(enemy.id);
+      actor?.place(sentry);
+      actor?.face(sentry.facing);
+      actor?.setWalking(sentry.walking);
+      const tile = tileOfPixel(this.map, sentry);
+      const mark = `${tile.x},${tile.y},${sentry.facing}`;
+      if (this.sentryMarks.get(enemy.id) !== mark) {
+        this.sentryMarks.set(enemy.id, mark);
+        changed = true;
+      }
+    }
+    if (changed && this.sneaking) this.drawSight();
+  }
+
   /** O "?" em cima de quem desconfia: mais forte e mais vermelho quanto mais perto de ver. */
   private showWariness(): void {
     for (const [id, mark] of this.wariness) {
@@ -1368,8 +1409,8 @@ export default class WorldScene extends Phaser.Scene {
         this.refreshHint();
       },
       onMend: (caster, ability, target) => this.mendOutside(caster, ability, target),
-      onOpening: (ability) => {
-        if (!this.aimOpening(ability)) return false;
+      onOpening: (ability, striker) => {
+        if (!this.aimOpening(ability, striker)) return false;
         this.closePause();
         return true;
       },
@@ -1454,43 +1495,67 @@ export default class WorldScene extends Phaser.Scene {
    * sai antes da luta e o grupo do alvo entra nela surpreso. Falso se não há
    * ninguém ao alcance — aí nada muda.
    */
-  private aimOpening(ability: Ability): boolean {
-    const strikes = openingStrikes(this.map, this.character, tileOfPixel(this.map, this.pos), ability, this.enemies, this.props);
+  private aimOpening(ability: Ability, striker: Character = this.character): boolean {
+    const strikes = openingStrikes(this.map, striker, this.tileOf(striker), ability, this.enemies, this.props);
     if (strikes.length === 0) return false;
     this.halt();
     sfx("uiOpen");
     const marks = this.addWorld(this.add.graphics().setDepth(AIM_DEPTH));
-    this.aiming = { ability, strikes, index: 0, marks, since: this.time.now };
+    this.aiming = { ability, striker, strikes, index: 0, marks, since: this.time.now };
     this.cameras.main.stopFollow();
     this.drawAim();
     return true;
   }
 
+  /** O quadrado em que `member` está agora: a protagonista onde ela anda, um companheiro onde vem atrás dela. */
+  private tileOf(member: Character): Pos {
+    const follower = this.followers.find((candidate) => candidate.character === member);
+    return tileOfPixel(this.map, follower ? follower.pos : this.pos);
+  }
+
+  /** O boneco de `member` no mapa. */
+  private actorOf(member: Character): MapActor {
+    return this.followers.find((candidate) => candidate.character === member)?.actor ?? this.player;
+  }
+
   /** Marca os alvos possíveis (quatro cantos), o escolhido (cheio) e até onde o personagem corre pra bater. */
   private drawAim(): void {
     if (!this.aiming) return;
-    const { ability, strikes, index, marks } = this.aiming;
+    const { ability, striker, strikes, index, marks } = this.aiming;
     const size = this.map.tileSize;
     const strike = strikes[index];
+    const who = striker === this.character ? "" : `${striker.name}: `;
 
     marks.clear();
-    // O que não mira pega o grupo inteiro; o resto, um alvo por vez.
+    // O que não mira pega o grupo inteiro; o resto, um alvo por vez. O destrutível e o quadrado de área também contam.
     const whole = ability.targets === "foes";
     for (const enemy of this.enemies) {
       const tile = tileOfPixel(this.map, enemy);
-      const chosen = whole ? enemy.group === strike.enemy.group : enemy === strike.enemy;
+      const chosen = whole ? enemy.group === strike.enemy?.group : !strike.prop && samePos(strike.target, tile);
       if (chosen) drawArea(marks, [tile], size, AIM_TARGET_COLOR, 0.3);
-      else if (strikes.some((other) => other.enemy === enemy)) drawBrackets(marks, tile, size, AIM_TARGET_COLOR, 0.6);
+      else if (strikes.some((other) => other.enemy === enemy && !other.prop)) drawBrackets(marks, tile, size, AIM_TARGET_COLOR, 0.6);
     }
-    const here = tileOfPixel(this.map, this.pos);
+    for (const other of strikes) {
+      if (other.prop && other !== strike) drawBrackets(marks, other.target, size, AIM_TARGET_COLOR, 0.6);
+    }
+    if (strike.prop || ability.radius !== undefined) drawArea(marks, [strike.target], size, AIM_TARGET_COLOR, 0.3);
+    const here = this.tileOf(striker);
     if (!samePos(strike.from, here)) drawStop(marks, strike.from, size, AIM_STEP_COLOR);
     drawReach(marks, strike.from, strike.target, size, AIM_TARGET_COLOR);
 
-    this.player.faceToward(strike.enemy);
+    const aimed = pixelOfTile(this.map, strike.target);
+    this.actorOf(striker).faceToward(aimed);
     // A câmera fica entre quem bate e quem apanha: o alvo pode estar fora da tela.
-    this.cameras.main.pan((this.pos.x + strike.enemy.x) / 2, (this.pos.y + strike.enemy.y) / 2, 160, "Sine.easeOut", true);
-    const run = samePos(strike.from, here) ? "" : " (correndo até ele)";
-    this.hud.setPrompts([{ key: "", label: `${ability.name} em ${strike.enemy.name}${run}: o grupo dele perde a primeira vez.\n${AIM_HINT}` }]);
+    const from = pixelOfTile(this.map, here);
+    this.cameras.main.pan((from.x + aimed.x) / 2, (from.y + aimed.y) / 2, 160, "Sine.easeOut", true);
+    const run = samePos(strike.from, here) ? "" : " (correndo até lá)";
+    const what = strike.prop ? `o ${propTemplate(strike.prop).name.toLowerCase()}` : ability.radius !== undefined && !strike.enemy ? "o chão" : (strike.enemy?.name ?? "o chão");
+    const price = !strike.enemy
+      ? "ninguém por perto: só quebra"
+      : this.hidden(strike.enemy.group)
+        ? `${strike.prop ? `${strike.enemy.name} acorda com o barulho; ` : ""}o grupo perde a primeira vez, e o golpe é a ação do primeiro turno`
+        : `${strike.prop ? `${strike.enemy.name} acorda com o barulho; ` : ""}à vista, o grupo não perde a vez`;
+    this.hud.setPrompts([{ key: "", label: `${who}${ability.name} em ${what}${run}: ${price}.\n${AIM_HINT}` }]);
   }
 
   private onAimKey(event: KeyboardEvent): void {
@@ -1541,7 +1606,7 @@ export default class WorldScene extends Phaser.Scene {
     }
     const point = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     const tile = tileOfPixel(this.map, point);
-    const index = aiming.strikes.findIndex((strike) => samePos(tileOfPixel(this.map, strike.enemy), tile));
+    const index = aiming.strikes.findIndex((strike) => samePos(strike.target, tile) || (strike.enemy !== undefined && samePos(tileOfPixel(this.map, strike.enemy), tile)));
     if (index === -1) return;
     aiming.index = index;
     this.strikeFirst();
@@ -1554,16 +1619,40 @@ export default class WorldScene extends Phaser.Scene {
 
   /** O golpe escolhido abre a luta com o grupo do alvo, que entra nela surpreso. */
   private strikeFirst(): void {
-    const { ability, strikes, index } = this.aiming!;
+    const { ability, striker, strikes, index } = this.aiming!;
     const strike = strikes[index];
     this.stopAiming();
+    if (!strike.enemy) {
+      this.breakOutside(striker, ability, strike);
+      return;
+    }
     // Escondido, o golpe pega o grupo surpreso; à vista, só o golpe.
     this.startCombat(strike.enemy.group, this.hidden(strike.enemy.group) ? "enemy" : undefined, {
-      unitId: this.character.id,
+      unitId: striker.id,
       abilityId: ability.id,
       target: strike.target,
       from: strike.from,
     });
+  }
+
+  /**
+   * O golpe num destrutível sem ninguém por perto: ele quebra ali mesmo, fora de luta, e fica quebrado (como os que
+   * quebram numa luta). Paga o Fôlego e a mana do golpe, como pagaria abrindo a luta.
+   */
+  private breakOutside(striker: Character, ability: Ability, strike: OpeningStrike): void {
+    const prop = strike.prop!;
+    payOutside(striker, ability);
+    fellProp(this.map.grid, prop);
+    this.props = this.props.filter((other) => other !== prop);
+    this.propImages.get(prop.id)?.destroy();
+    this.propImages.delete(prop.id);
+    markBroken(this.save, [`${this.area.id}:${prop.id}`]);
+    sfx(prop.kind === "barrel" ? "burst" : "block");
+    this.cameras.main.startFollow(this.player.followTarget, true, 0.2, 0.2);
+    this.showBanner(`${striker.name} quebra o ${propTemplate(prop).name.toLowerCase()}.`);
+    this.persist();
+    this.refreshStatus();
+    this.refreshHint();
   }
 
   /** `J`: o diário de pistas, por cima do mundo parado. */

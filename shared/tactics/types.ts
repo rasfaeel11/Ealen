@@ -351,6 +351,8 @@ export interface Unit {
    * habilidade que sai em quem entrar no alcance, e não o golpe da arma.
    */
   readied?: string;
+  /** Deu o golpe de abertura numa emboscada: o primeiro turno dele começa sem a ação (ver Opening em ./engine.ts). */
+  spentOpening?: boolean;
   /**
    * As marcas que o corpo levou nesta luta e que saem com ele dela (as de
    * `untilRest`, ver ./statuses.ts): o mundo as passa pra história no fim.

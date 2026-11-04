@@ -479,7 +479,7 @@ test("uma emboscada joga até o fim com a IA, e a mesma seed dá a mesma luta", 
 
 // --- O golpe que abre a luta --------------------------------------------------
 
-test("o golpe de abertura acontece antes da primeira rodada e não gasta nada do primeiro turno", () => {
+test("o golpe de abertura acontece antes da primeira rodada; numa emboscada, ele é a ação do primeiro turno", () => {
   const { grid, markers } = gridFromAscii(["A....E"]);
   const { encounter, events } = startEncounter({
     grid,
@@ -496,10 +496,23 @@ test("o golpe de abertura acontece antes da primeira rodada e não gasta nada do
   assert.equal(eventsOf(events, "abilityUsed").length, 1);
   assert.ok(types.indexOf("abilityUsed") < types.indexOf("roundStarted"));
   assert.ok(types.indexOf("attackRoll") < types.indexOf("roundStarted"));
-  // E perde a vez (surpreso) e a primeira de verdade é de A, com tudo.
+  // E perde a vez (surpreso) e a primeira de verdade é de A: anda e tem o bônus, mas a ação foi o golpe.
   assert.equal(activeUnit(encounter)!.id, "A");
-  assert.deepEqual(unit(encounter, "A").turn, { movement: 6, action: true, bonus: true, reaction: true });
+  assert.deepEqual(unit(encounter, "A").turn, { movement: 6, action: false, bonus: true, reaction: true });
   assert.equal(unit(encounter, "A").habit, undefined, "não foi a ação de um turno");
+
+  // À vista, sem surpresa, o golpe não gasta nada do primeiro turno.
+  const open = startEncounter({
+    grid,
+    units: [
+      makeUnit("E", "enemy", markers.E[0], { attributes: { olho: 0 }, currentHp: 500, maxHp: 500 }),
+      makeUnit("A", "party", markers.A[0], { kit: [TEST_KIT.tiro], attributes: { olho: FIRST } }),
+    ],
+    opening: { unitId: "A", abilityId: "teste.tiro", target: markers.E[0] },
+    seed: 1,
+  });
+  assert.equal(activeUnit(open.encounter)!.id, "A");
+  assert.equal(unit(open.encounter, "A").turn.action, true);
 });
 
 test("quem luta de perto corre até o quadrado da investida e bate de lá", () => {

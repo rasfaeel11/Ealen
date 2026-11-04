@@ -19,6 +19,7 @@ import {
   unlearnSkills,
   skillPoints,
   castOf,
+  keepsVow,
   engravingSlots,
   equipRefusal,
   fieldUse,
@@ -66,6 +67,7 @@ import {
   UiSlot,
   addBodyText,
   addCloseButton,
+  KeyHints,
   addHeading,
   addModalDim,
   addPanel,
@@ -171,7 +173,8 @@ export interface SheetHost {
   /** `caster` cura `target` com `ability`, agora. Devolve quanto curou; undefined se não curou nada. */
   onMend: (caster: Character, ability: Ability, target: Character) => number | undefined;
   /** A protagonista quer abrir uma luta com `ability`. Falso se não há em quem: a ficha continua aberta. */
-  onOpening: (ability: Ability) => boolean;
+  /** Mira o golpe de abertura de `striker` (quem está na ficha): a protagonista ou um companheiro. */
+  onOpening: (ability: Ability, striker: Character) => boolean;
   /** `wearer` veste a peça guardada `itemId` (ver equip em shared/equipment.ts). */
   onEquip: (wearer: Character, itemId: string) => EquipResult;
   /** `wearer` tira o que tem em `slot`, que volta pro guardado. */
@@ -205,7 +208,7 @@ export class SheetPanel {
   private readonly detailName: Phaser.GameObjects.Text;
   private readonly detail: Phaser.GameObjects.Text;
   private readonly notice: Phaser.GameObjects.Text;
-  private readonly footer: Phaser.GameObjects.Text;
+  private readonly footer: KeyHints;
   private index: number;
   /** Escolhendo em quem usar uma cura, ou o que vestir: a grade virou lista, e Tab não troca de personagem. */
   private targeting = false;
@@ -240,8 +243,9 @@ export class SheetPanel {
     this.notice = addHud(
       addBodyText(scene, GAME_WIDTH / 2, Y + HEIGHT - 58, "", { fontSize: "17px", color: TEXT_COLORS.goldBright }).setOrigin(0.5).setShadow(0, 2, "#000000", 4),
     );
-    this.footer = addHud(addBodyText(scene, GAME_WIDTH / 2, Y + HEIGHT - 24, "", { fontSize: "14px", color: TEXT_COLORS.inkDim }).setOrigin(0.5));
-    this.frame.push(this.detailName, this.detail, this.notice, this.footer);
+    this.footer = new KeyHints(scene, GAME_WIDTH / 2, Y + HEIGHT - 24, { originX: 0.5 });
+    addHud(this.footer.root);
+    this.frame.push(this.detailName, this.detail, this.notice, this.footer.root);
     this.grid = new SlotGrid(scene, SKILLS_X, TOP + 28, {
       cols: SKILL_COLS,
       rows: SKILL_ROWS,
@@ -462,7 +466,7 @@ export class SheetPanel {
   private usage(ability: Ability): { tag: string; text: string } {
     const use = fights(this.character) ? fieldUse(ability) : undefined;
     // Fora de luta ela custa o mesmo Fôlego e a mesma mana que dentro, e só o descanso os devolve.
-    const short = use !== undefined && (use === "mend" || this.index === 0) ? missing(this.character, ability) : undefined;
+    const short = use !== undefined ? missing(this.character, ability) : undefined;
     if (short === "breath") {
       return {
         tag: "sem fôlego",
@@ -475,13 +479,15 @@ export class SheetPanel {
       return { tag: "sem mana", text: `Falta mana: custa ${ability.mana}${has}. Descansar devolve.` };
     }
     if (use === "mend") return { tag: "cura", text: "Enter ou clique: usar agora em alguém do grupo." };
-    if (use === "opening" && this.index === 0) {
+    if (use === "opening" && keepsVow(this.character)) {
+      return { tag: "", text: `O voto da Ipojy: ${this.character.name} não dá o primeiro golpe.` };
+    }
+    if (use === "opening") {
       return {
         tag: "abre luta",
-        text: "Enter ou clique: mirar em quem ainda não te percebeu. O golpe sai antes da luta, e o grupo dele perde a primeira vez.",
+        text: `Enter ou clique: ${this.character.name} mira em quem ainda não percebeu o grupo. O golpe sai antes da luta; escondido, o grupo dele perde a primeira vez, e o golpe é a ação do primeiro turno.`,
       };
     }
-    if (use === "opening") return { tag: "", text: `Fora de luta, quem dá o primeiro golpe é ${this.host.members[0].name}.` };
     if (isRecited(ability) && isBlow(ability)) {
       return { tag: "", text: "Recitada: leva tempo, então não abre luta. Gravada no descanso, sai na hora — e abre." };
     }
@@ -892,8 +898,8 @@ Enter: pôr um ponto. Sobra${attributePoints(character) > 1 ? "m" : ""} ${attrib
     const use = fights(this.character) ? fieldUse(ability) : undefined;
     if (use !== undefined && !canAfford(this.character, ability)) this.say(this.usage(ability).text);
     else if (use === "mend") this.later(() => this.chooseTarget(ability));
-    else if (use === "opening" && this.index === 0) {
-      if (!this.host.onOpening(ability)) this.say("Ninguém ao alcance que ainda não tenha te percebido.");
+    else if (use === "opening" && !keepsVow(this.character)) {
+      if (!this.host.onOpening(ability, this.character)) this.say("Ninguém ao alcance que ainda não tenha percebido o grupo.");
     } else this.say(this.usage(ability).text);
   }
 

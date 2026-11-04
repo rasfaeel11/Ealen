@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import { sfx } from "./audio";
 import { COLORS, FONT_BODY, FONT_TITLE, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
-import { textPx } from "./settings";
+import { codeOfName, textPx } from "./settings";
 import { portraitKey } from "./dialogue/portraits";
 import { iconKey, type IconName } from "./icons";
 
@@ -19,6 +19,69 @@ export function addBodyText(scene: Phaser.Scene, x: number, y: number, text: str
     resolution: 2,
     ...style,
   });
+}
+
+/**
+ * O rodapé de teclas ("Enter: usar  ·  Esc: voltar") em que cada pedaço é
+ * clicável: o clique aperta a tecla que ele mostra, então quem lê o teclado
+ * (o painel, o menu, a grade) responde ao mouse sem saber dele. O que não é
+ * uma tecla só ("Setas: ...") fica só escrito. Troca-se o texto com setText.
+ */
+export class KeyHints {
+  readonly root: Phaser.GameObjects.Container;
+  private parts: Phaser.GameObjects.Text[] = [];
+
+  constructor(
+    private readonly scene: Phaser.Scene,
+    x: number,
+    y: number,
+    private readonly style: { fontSize?: string; color?: string; originX?: number } = {},
+  ) {
+    this.root = scene.add.container(x, y);
+  }
+
+  setText(text: string): this {
+    for (const part of this.parts) part.destroy();
+    this.parts = [];
+    const pieces = text.split("  ·  ").filter(Boolean);
+    let x = 0;
+    pieces.forEach((piece, index) => {
+      const label = index < pieces.length - 1 ? `${piece}  ·  ` : piece;
+      const part = addBodyText(this.scene, x, 0, label, { fontSize: this.style.fontSize ?? "14px", color: this.style.color ?? TEXT_COLORS.inkDim }).setOrigin(0, 0.5);
+      const code = codeOfName(piece.split(":")[0].trim().split(" ")[0]);
+      if (code && piece.includes(":")) {
+        part.setInteractive({ useHandCursor: true });
+        part.on(Phaser.Input.Events.POINTER_OVER, () => part.setColor(TEXT_COLORS.goldBright));
+        part.on(Phaser.Input.Events.POINTER_OUT, () => part.setColor(this.style.color ?? TEXT_COLORS.inkDim));
+        part.on(Phaser.Input.Events.POINTER_DOWN, () => pressKey(code));
+      }
+      this.root.add(part);
+      this.parts.push(part);
+      x += part.width;
+    });
+    const shift = -x * (this.style.originX ?? 0);
+    for (const part of this.parts) part.x += shift;
+    return this;
+  }
+
+  setVisible(visible: boolean): this {
+    this.root.setVisible(visible);
+    return this;
+  }
+
+  destroy(): void {
+    this.root.destroy();
+  }
+}
+
+/** Aperta e solta a tecla `code`, como se fosse o teclado: todo mundo que lê teclado recebe. */
+export function pressKey(code: string): void {
+  const fixed: Record<string, [string, number]> = { Escape: ["Escape", 27], Enter: ["Enter", 13], Tab: ["Tab", 9], Space: [" ", 32], Backspace: ["Backspace", 8] };
+  const plain = code.replace(/^(Key|Digit)/, "");
+  const [key, keyCode] = fixed[code] ?? [plain.toLowerCase(), plain.length === 1 ? plain.charCodeAt(0) : 0];
+  for (const type of ["keydown", "keyup"] as const) {
+    window.dispatchEvent(new KeyboardEvent(type, { code, key, keyCode, which: keyCode, bubbles: true } as KeyboardEventInit));
+  }
 }
 
 /** Texto de título (Cinzel, dourado). */
