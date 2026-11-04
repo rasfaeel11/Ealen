@@ -399,6 +399,7 @@ export function abilityIcon(ability: Ability): IconName {
 const ITEM_ICON: Record<string, IconName> = {
   "item-unguento-de-barqueiro": "jar",
   "item-pao-de-viagem": "bread",
+  "item-pote-de-oleo": "throw",
 };
 
 export function itemIcon(itemId: string): IconName {

@@ -290,6 +290,10 @@ Mestre da guilda: Seis. Rio acima corda vale mais. Aqui não vale nada até a ch
 ~ give_item("item-unguento-de-barqueiro")
 Ele põe do lado das moedas um pote de unguento com a tampa amarrada.
 Mestre da guilda: De barqueiro. É pra talho de corda. Serve pra talho de espada.
+~ give_item("item-pote-de-oleo")
+~ give_item("item-pote-de-oleo")
+Jarupã volta do armazém com dois potes de óleo debaixo do braço, um de cada lado.
+Mestre da guilda: Óleo eu tenho. Barco pra levar, não. Leva.
 ~ grant_xp(40)
 -> END
 

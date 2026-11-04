@@ -521,6 +521,8 @@ export type TacticalEvent =
       height: -1 | 0 | 1;
       /** O confronto de estilos: 1 = quem ataca leva vantagem, -1 = desvantagem (ver ./styles.ts). */
       style: -1 | 0 | 1;
+      /** O quanto a escola somou ou tirou, com o grau (só quando somou alguma coisa). */
+      styleToHit?: number;
     }
   | { type: "blocked"; unit: string; amount: number }
   /**

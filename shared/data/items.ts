@@ -30,6 +30,20 @@ export const ITEMS: ConsumableItem[] = [
     rarity: "common",
     data: { effect: { kind: "heal_hp", amount: 8 }, usesRemaining: 2, maxUses: 2 },
   },
+  // O óleo de lampião do armazém da guilda (ybytugua.ink, saqueadores_caem): o barril que se derrama, num pote só.
+  {
+    id: "item-pote-de-oleo",
+    name: "Pote de Óleo",
+    description:
+      "Óleo de lampião da guilda dos barqueiros, num pote de barro sem asa e com a boca tapada de pano. Quebra onde cai, e o que cai pega fogo. Na água, não.",
+    category: "consumable",
+    rarity: "common",
+    data: {
+      effect: { kind: "throw", dice: { count: 1, sides: 4 }, type: "impacto", surface: { id: "fire", rounds: 2, radius: 0 } },
+      usesRemaining: 1,
+      maxUses: 1,
+    },
+  },
 ];
 
 /** Busca um item do catálogo pelo id. */

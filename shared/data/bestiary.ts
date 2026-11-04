@@ -126,7 +126,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
       currentHp: 16,
       maxHp: 16,
       equipment: { weapon: "gear-besta", armor: "gear-tunica-de-linho" },
-      arts: { attack: "Virote", defend: "Atrás da Ameia" },
+      // Vigia a corrente da muralha: quem chega perto do guincho leva o virote antes.
+      arts: { attack: "Virote", defend: "Atrás da Ameia", vigiar: "Mira na Corrente" },
     },
   },
 

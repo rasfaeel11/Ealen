@@ -8,6 +8,7 @@ import {
   applyCommand,
   findUnit,
   gridFromAscii,
+  itemTargets,
   reachableTiles,
   startEncounter,
   unitFromCharacter,
@@ -284,6 +285,48 @@ test("item custa a ação bônus, cura e sai da mochila", () => {
     ok: false,
     reason: "item_unavailable",
   });
+});
+
+test("o pote de óleo se joga no inimigo à vista: quebra em cima, sem rolagem, e o chão seco pega fogo", () => {
+  const character = makeCharacter("A", { attributes: { olho: FIRST } });
+  addItemToInventory(character, findItemTemplate("item-pote-de-oleo")!);
+  addItemToInventory(character, findItemTemplate("item-pote-de-oleo")!);
+
+  const { encounter } = setup(["AB.E....F"], (at) => [
+    unitFromCharacter(character, { team: "party", pos: at("A") }),
+    makeUnit("B", "party", at("B")),
+    makeUnit("E", "enemy", at("E"), { currentHp: 50, maxHp: 50 }),
+    makeUnit("F", "enemy", at("F")),
+  ]);
+  const hero = unit(encounter, "A");
+  const pot = hero.inventory!.slots[0].item;
+  // Só o inimigo, e só o que está ao alcance: nem ele, nem o aliado, nem quem está longe.
+  assert.deepEqual(itemTargets(encounter, hero, pot), [unit(encounter, "E").pos]);
+  assert.deepEqual(applyCommand(encounter, { type: "useItem", unitId: "A", itemId: pot.id }), { ok: false, reason: "invalid_target" });
+  assert.deepEqual(applyCommand(encounter, { type: "useItem", unitId: "A", itemId: pot.id, target: unit(encounter, "B").pos }), {
+    ok: false,
+    reason: "invalid_target",
+  });
+
+  const events = run(encounter, { type: "useItem", unitId: "A", itemId: pot.id, target: unit(encounter, "E").pos });
+  const [hit] = eventsOf(events, "damage");
+  assert.equal(eventsOf(events, "attackRoll").length, 0);
+  assert.ok(hit.target === "E" && hit.amount >= 1 && hit.amount <= 4);
+  assert.deepEqual(eventsOf(events, "surfaceCreated")[0].tiles, [unit(encounter, "E").pos]);
+  assert.equal(eventsOf(events, "itemUsed")[0].target, "E");
+  assert.equal(hero.inventory!.slots[0].quantity, 1);
+});
+
+test("o pote de óleo na água não pega fogo", () => {
+  const character = makeCharacter("A", { attributes: { olho: FIRST } });
+  addItemToInventory(character, findItemTemplate("item-pote-de-oleo")!);
+  const { encounter } = setup(["A.w"], (at) => [
+    unitFromCharacter(character, { team: "party", pos: at("A") }),
+    makeUnit("E", "enemy", { x: 2, y: 0 }, { currentHp: 50, maxHp: 50 }),
+  ]);
+  const events = run(encounter, { type: "useItem", unitId: "A", itemId: "item-pote-de-oleo", target: { x: 2, y: 0 } });
+  assert.equal(eventsOf(events, "damage").length, 1);
+  assert.equal(eventsOf(events, "surfaceCreated").length, 0);
 });
 
 test("Foco garante o crítico do próximo ataque e se gasta nele", () => {

@@ -19,6 +19,9 @@ import {
   findUnit,
   interactTargets,
   itemTargets,
+  isThrown,
+  findInventorySlot,
+  type ConsumableItem,
   ITEM_REACH,
   isAlive,
   isBlow,
@@ -250,10 +253,11 @@ export function describeAbility(ability: Ability): string {
 }
 
 /** O que a posição e o confronto de escolas fizeram a um ataque, em palavras: "flanqueado +2", "cobertura +2 na defesa"... */
-function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 | 1; style: -1 | 0 | 1; far?: boolean; crowded?: boolean }): string[] {
+function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 | 1; style: -1 | 0 | 1; styleToHit?: number; far?: boolean; crowded?: boolean }): string[] {
   const notes: string[] = [];
-  if (edge.style > 0) notes.push(`escola leva vantagem +${STYLE_TO_HIT}`);
-  if (edge.style < 0) notes.push(`escola em desvantagem -${STYLE_TO_HIT}`);
+  const style = Math.abs(edge.styleToHit ?? STYLE_TO_HIT);
+  if (edge.style > 0) notes.push(`escola leva vantagem +${style}`);
+  if (edge.style < 0) notes.push(`escola em desvantagem -${style}`);
   if (edge.flanked) notes.push(`flanqueado +${FLANK_TO_HIT}`);
   if (edge.height > 0) notes.push(`de cima +${HEIGHT_TO_HIT}`);
   if (edge.height < 0) notes.push(`de baixo -${HEIGHT_TO_HIT}`);
@@ -295,7 +299,7 @@ export class CombatController {
   private aim:
     | { kind: "interact" }
     | { kind: "support"; supporter: Supporter }
-    | { kind: "item"; itemId: string; name: string }
+    | { kind: "item"; itemId: string; name: string; thrown: boolean }
     | { kind: "order"; unitId: string }
     | null = null;
   /** O que cada inimigo anotado pretende fazer na vez dele: onde parar e o que vai atingir. Some quando a vez dele passa. */
@@ -507,17 +511,21 @@ export class CombatController {
     this.refresh();
   }
 
-  /** O botão de um item: sem aliado ao alcance, usa em si na hora; com, deixa escolher em quem (ele mesmo incluso). */
-  private chooseItem(itemId: string, name: string): void {
+  /**
+   * O botão de um item: sem aliado ao alcance, usa em si na hora; com, deixa escolher em quem (ele mesmo incluso).
+   * O que se joga sempre pede o inimigo.
+   */
+  private chooseItem(item: ConsumableItem): void {
     if (this.busy) return;
     const unit = activeUnit(this.encounter)!;
-    if (itemTargets(this.encounter, unit).length === 1) {
-      void this.issue({ type: "useItem", unitId: unit.id, itemId });
+    const thrown = isThrown(item);
+    if (!thrown && itemTargets(this.encounter, unit).length === 1) {
+      void this.issue({ type: "useItem", unitId: unit.id, itemId: item.id });
       return;
     }
     sfx("uiSelect");
     this.selected = null;
-    this.aim = { kind: "item", itemId, name };
+    this.aim = { kind: "item", itemId: item.id, name: item.name, thrown };
     this.refresh();
   }
 
@@ -868,17 +876,20 @@ export class CombatController {
           cost: "bonus",
           count: slot.quantity,
           body: slot.item.description,
-          enabled: unit.turn.bonus,
-          why: "A ação bônus deste turno já foi gasta.",
+          enabled: unit.turn.bonus && (!isThrown(slot.item) || itemTargets(encounter, unit, slot.item).length > 0),
+          why: unit.turn.bonus ? `Nenhum inimigo à vista a até ${ITEM_REACH} quadrados.` : "A ação bônus deste turno já foi gasta.",
           selected: this.aim?.kind === "item" && this.aim.itemId === slot.item.id,
-          onClick: () => this.chooseItem(slot.item.id, slot.item.name),
+          onClick: () => this.chooseItem(slot.item),
         }),
       ),
     ];
 
     this.hud.setActions(buttons, this.resourcesOf(unit, true), () => this.endTurn());
     if (this.aim?.kind === "interact") this.options = inReach.map((prop) => prop.pos);
-    else if (this.aim?.kind === "item") this.options = itemTargets(encounter, unit);
+    else if (this.aim?.kind === "item") {
+      const slot = findInventorySlot(unit, this.aim.itemId);
+      this.options = slot ? itemTargets(encounter, unit, slot.item) : [];
+    }
     // Todo mundo de pé: o companheiro (segurar), um aliado, quem dá a ordem inclusive (proteger), um inimigo (mirar).
     else if (this.aim?.kind === "order") this.options = encounter.units.filter(isAlive).map((other) => other.pos);
     else if (this.aim?.kind === "support") {
@@ -966,6 +977,11 @@ export class CombatController {
     }
     if (this.aim?.kind === "item") {
       const target = hover ? unitAt(encounter, hover) : undefined;
+      if (this.aim.thrown) {
+        return target && target.team !== unit.team
+          ? `${this.aim.name} em ${target.name}: quebra em cima. Custa a ação bônus.`
+          : `${this.aim.name}: em quem? Num inimigo à vista, até ${ITEM_REACH} quadrados. Esc ou botão direito volta.`;
+      }
       return target
         ? `${this.aim.name} em ${target.name}${target === unit ? "" : ": jogado na mão dele"}. Custa a ação bônus.`
         : `${this.aim.name}: em quem? Em você, ou num aliado à vista, até ${ITEM_REACH} quadrados. Esc ou botão direito volta.`;

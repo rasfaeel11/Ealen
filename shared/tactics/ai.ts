@@ -7,7 +7,7 @@ import { SLAM_PER_TILE, cueEnding } from "./engine";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
 import { counters, punishFactor, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
-import { abilityTargets, affectedProps, affectedUnits, canAimAt, interactTargets, isBlow, itemTargets, liftable, vowAllows, vowForbids } from "./targeting";
+import { abilityTargets, affectedProps, affectedUnits, canAimAt, interactTargets, isBlow, isThrown, itemTargets, liftable, vowAllows, vowForbids } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
@@ -101,6 +101,8 @@ const STEP_COST = 0.01;
 const MIN_VALUE = 0.01;
 /** Abaixo disto um item não vale ser gasto: ele não volta. */
 const MIN_ITEM_VALUE = 3;
+/** O que vale a chama que o pote jogado deixa no quadrado de quem apanhou (ele sai dela ou queima). */
+const THROWN_FIRE_VALUE = 2;
 /** Uma cura de item só sai se pelo menos esta fração dela for aproveitada. */
 const MIN_HEAL_USE = 0.8;
 
@@ -606,8 +608,22 @@ function bestItem(encounter: Encounter, unit: Unit, profile: AiProfile, fight: F
     const other = samePos(pos, unit.pos) ? undefined : unitAt(encounter, pos);
     const state = other ? { engaged: threatAt(encounter, other) > 0, striking: false } : fight;
     for (const slot of slots) {
+      if (isThrown(slot.item)) continue;
       const value = itemValue(other ?? unit, profile, slot.item, state);
       if (value >= MIN_ITEM_VALUE && value > (best?.value ?? 0)) best = { item: slot.item, value, ...(other ? { target: { ...pos } } : {}) };
+    }
+  }
+  // O que se joga vai no inimigo: vale o dano que entra, e a chama que fica, se ele não está na água.
+  for (const slot of slots) {
+    const { effect } = slot.item.data;
+    if (effect.kind !== "throw") continue;
+    for (const pos of itemTargets(encounter, unit, slot.item)) {
+      const foe = unitAt(encounter, pos);
+      if (!foe || foe.invulnerable) continue;
+      const hit = Math.max(1, meanRoll(effect.dice) * resistOf(foe, effect.type) - styleReduction(foe));
+      const burns = effect.surface && !tileAt(encounter.grid, pos)?.water ? THROWN_FIRE_VALUE : 0;
+      const value = profile.aggression * (Math.min(hit, foe.currentHp) + burns);
+      if (value >= MIN_ITEM_VALUE && value > (best?.value ?? 0)) best = { item: slot.item, value, target: { ...pos } };
     }
   }
   return best;
@@ -643,6 +659,9 @@ function itemValue(unit: Unit, profile: AiProfile, item: ConsumableItem, fight: 
     case "focus_charge":
       if (!fight.striking || unit.statuses.some((status) => status.guaranteedCrit)) return 0;
       return profile.aggression * GUARANTEED_CRIT_VALUE;
+    case "throw":
+      // Em aliado, nunca: ver bestItem.
+      return 0;
   }
 }
 

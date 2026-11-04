@@ -2,6 +2,7 @@ import { distance, hasLineOfSight, posOfIndex, tileAt, type Pos } from "./grid";
 import { isBreakable, propAt, propTemplate, type Prop } from "./props";
 import { isSworn } from "./styles";
 import type { Supporter } from "./supports";
+import type { ConsumableItem } from "../types/inventory";
 import type { Ability, Encounter, Unit } from "./types";
 import { isShot } from "./attack";
 import { isAlive, unitAt } from "./units";
@@ -161,20 +162,28 @@ export function interactTargets(encounter: Encounter, unit: Unit): Prop[] {
 /** Até quantos quadrados um item alcança um aliado: o pote jogado na mão de quem precisa. */
 export const ITEM_REACH = 3;
 
+/** O item se joga no inimigo (o pote de óleo), não se dá a um aliado. */
+export function isThrown(item: Pick<ConsumableItem, "data">): boolean {
+  return item.data.effect.kind === "throw";
+}
+
 /**
  * Em quem `unit` pode usar um item (comando `useItem`): ele mesmo e os aliados
- * de pé a até ITEM_REACH quadrados, à vista. Ele vem primeiro.
+ * de pé a até ITEM_REACH quadrados, à vista. Ele vem primeiro. O item que se
+ * joga (`isThrown`) vai só nos inimigos de pé, com o mesmo alcance e a vista.
  */
-export function itemTargets(encounter: Encounter, unit: Unit): Pos[] {
+export function itemTargets(encounter: Encounter, unit: Unit, item?: Pick<ConsumableItem, "data">): Pos[] {
+  const thrown = item !== undefined && isThrown(item);
   const others = encounter.units.filter(
     (other) =>
       other !== unit &&
-      other.team === unit.team &&
+      (thrown ? other.team !== unit.team : other.team === unit.team) &&
       isAlive(other) &&
       distance(unit.pos, other.pos) <= ITEM_REACH &&
       hasLineOfSight(encounter.grid, unit.pos, other.pos),
   );
-  return [{ ...unit.pos }, ...others.map((other) => ({ ...other.pos }))];
+  const reached = others.map((other) => ({ ...other.pos }));
+  return thrown ? reached : [{ ...unit.pos }, ...reached];
 }
 
 /**

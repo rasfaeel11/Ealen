@@ -917,6 +917,7 @@ function rollAttack(
     far: edge.far,
     crowded: edge.crowded,
     style: edge.style,
+    ...(edge.styleToHit !== 0 ? { styleToHit: edge.styleToHit } : {}),
   });
 
   if (guaranteed) removeStatuses(actor, (status) => status.guaranteedCrit === true, events);
@@ -1361,9 +1362,10 @@ function useItem(encounter: Encounter, user: Unit, itemId: string, at: Pos | und
   const slot = findInventorySlot(user, itemId);
   if (!slot || slot.quantity <= 0) return "item_unavailable";
   if (!user.turn.bonus) return "resource_spent";
-  // Sem alvo, em si; com alvo, num aliado ao alcance do braço (ver itemTargets).
+  // Sem alvo, em si; com alvo, num aliado ao alcance do braço, ou no inimigo, se o item se joga (ver itemTargets).
   const unit = at ? unitAt(encounter, at) : user;
-  if (!unit || (at && !itemTargets(encounter, user).some((pos) => samePos(pos, at)))) return "invalid_target";
+  if (slot.item.data.effect.kind === "throw" && !at) return "invalid_target";
+  if (!unit || (at && !itemTargets(encounter, user, slot.item).some((pos) => samePos(pos, at)))) return "invalid_target";
 
   user.turn.bonus = false;
   const { id, name, data } = slot.item;
@@ -1401,6 +1403,20 @@ function useItem(encounter: Encounter, user: Unit, itemId: string, at: Pos | und
         effect.durationTurns,
         events,
       );
+      return undefined;
+    }
+    case "throw": {
+      // Quebra onde cai: sem rolagem, e a armadura não segura o que quebra em cima (a Muralha, sim).
+      announce("Quebra em cima.");
+      if (unit.invulnerable) events.push({ type: "immune", target: unit.id });
+      else {
+        const amount = Math.max(1, Math.round(rollDice(encounter, effect.dice) * resistOf(unit, effect.type)) - styleReduction(unit));
+        dealDamage(encounter, unit, amount, events);
+      }
+      if (effect.surface) {
+        const dry = spreadTiles(encounter.grid, unit.pos, effect.surface.radius).filter((pos) => !tileAt(encounter.grid, pos)?.water);
+        laySurface(encounter, effect.surface.id, dry, effect.surface.rounds, events);
+      }
       return undefined;
     }
     case "focus_charge":

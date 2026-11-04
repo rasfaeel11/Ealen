@@ -1,4 +1,5 @@
 import type { Dice } from "../tactics/rng";
+import type { SurfaceId } from "../tactics/surfaces";
 import type { DamageType } from "../tactics/types";
 import type { Attributes } from "./attributes";
 import type { CharacterClass } from "./characterClass";
@@ -31,7 +32,13 @@ export type ConsumableEffect =
   | { kind: "heal_hp"; amount: number }
   | { kind: "buff_stat"; stat: keyof Attributes; bonus: number; durationTurns: number }
   | { kind: "cure_status" }
-  | { kind: "focus_charge"; guaranteedCritNextHit: boolean };
+  | { kind: "focus_charge"; guaranteedCritNextHit: boolean }
+  /**
+   * Jogado num inimigo à vista, até ITEM_REACH quadrados (ver itemTargets em ../tactics/targeting.ts): quebra onde
+   * cai, sem rolagem de acerto, e dá `dice` de `type`. Com `surface`, deixa a superfície onde quebrou (a água não pega).
+   * Só na luta.
+   */
+  | { kind: "throw"; dice: Dice; type: DamageType; surface?: { id: SurfaceId; rounds: number; radius: number } };
 
 export type ConsumableItem = Item<"consumable", { effect: ConsumableEffect; usesRemaining: number; maxUses: number }>;
 

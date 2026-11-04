@@ -41,3 +41,22 @@ gravado no repositório da história: se aprovar, é você quem passa pra lá (�
 - O texto das três missões fica como está: sai só do que já se diz no roteiro.
 
 **Pra mudar**: os nós estão em `shared/skillTree.ts`, e a banca em `shared/shop.ts`.
+
+## 57. Pote de óleo, besteiro que vigia, e o virote que não entra
+
+**O que decidi**
+- **O item que se joga é o Pote de Óleo**: o óleo de lampião do armazém da guilda (os barris que
+  Endyru lê na cena: "Óleo de lampião. Doze medidas."). Quebra em cima do inimigo sem rolagem, 1d4,
+  e o quadrado pega fogo por 2 rodadas. Na água não pega, então não serve contra o Ykuruã submerso:
+  é pra gente, não pro bicho, e o tema continua (o bicho se vence tirando da água).
+- **De onde vem**: o mestre da guilda dá dois depois do armazém. Falas novas:
+  - narração: "Jarupã volta do armazém com dois potes de óleo debaixo do braço, um de cada lado."
+  - Mestre da guilda: "Óleo eu tenho. Barco pra levar, não. Leva."
+  Essa é a única fala nova; o comércio parado já é o assunto da cidade.
+- **O besteiro do pedágio vigia**, com o nome "Mira na Corrente": quem chega perto do guincho leva o
+  virote antes. É o único do mundo que vigia.
+- **O virote como item não entra**: ninguém do grupo usa besta, e sistema que nenhuma cena pede não
+  entra (cabeçalho do AGENTS.md). Se um dia alguém do grupo pegar uma besta, entra aí.
+
+**Pra mudar**: o pote está em `shared/data/items.ts`, a fala em `client/story/ybytugua.ink`
+(`saqueadores_caem`), o besteiro em `shared/data/bestiary.ts`.

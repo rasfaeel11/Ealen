@@ -155,6 +155,9 @@ test("uma criatura sabe só o que nomeia, com o nome dela — e o bestiário nã
   // O nível não entra: o recitador (Página) não ganha o Desarmar, que é do Círculo, por mais nível que tenha.
   const reader = BESTIARY["encounter-recitador-de-ymboripe"].template;
   assert.equal(abilitiesFor({ ...reader, level: 9 }).some((ability) => ability.id.endsWith("desarmar")), false);
+  // O besteiro do pedágio é o único do mundo que vigia: a corrente.
+  const crossbow = abilitiesFor(BESTIARY["encounter-besteiro-do-pedagio"].template);
+  assert.equal(crossbow.find((ability) => ability.id === "espadachim.vigiar")?.name, "Mira na Corrente");
 });
 
 test("subir de nível não ensina Técnica a ninguém do mundo: o mago aprende pelo nível de mago", () => {

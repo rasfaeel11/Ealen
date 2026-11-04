@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import {
   BELT_SLOTS,
+  ITEM_REACH,
   describePurse,
   fights,
   sortInventory,
@@ -62,6 +63,10 @@ function describeEffect(item: ConsumableItem): string {
       return `+${effect.bonus} ${effect.stat.toUpperCase()} por ${effect.durationTurns} turnos.`;
     case "focus_charge":
       return "O próximo golpe é crítico.";
+    case "throw": {
+      const fire = effect.surface ? " e deixa o chão pegando fogo" : "";
+      return `Só na luta: jogado num inimigo a até ${ITEM_REACH} quadrados, quebra em cima, ${effect.dice.count}d${effect.dice.sides} de dano${fire}.`;
+    }
   }
 }
 

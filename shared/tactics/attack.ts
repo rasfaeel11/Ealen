@@ -53,6 +53,8 @@ export interface AttackEdge {
   height: -1 | 0 | 1;
   /** 1 = o estilo de quem ataca vence o do alvo; -1 = perde pra ele; 0 = neutro. */
   style: -1 | 0 | 1;
+  /** O que a escola soma (ou tira) na rolagem: STYLE_TO_HIT, e o grau de quem ataca na vantagem. */
+  styleToHit: number;
   /** Tiro na segunda metade do alcance. */
   far: boolean;
   /** Tiro com um inimigo colado em quem atira. */
@@ -99,6 +101,7 @@ export function attackEdge(
   const rise = (tileAt(encounter.grid, actor.pos)?.elevation ?? 0) - (tileAt(encounter.grid, target.pos)?.elevation ?? 0);
   const height = Math.sign(rise) as -1 | 0 | 1;
   const style = actor.team !== target.team ? styleMatchup(actor.style, target.style) : 0;
+  const styleToHit = style * STYLE_TO_HIT + (style > 0 ? styleEdgeBonus(actor.grade) : 0);
   const shot = isShot(ability);
   const far = shot && distance(actor.pos, aim) > Math.ceil(ability.range / 2);
   const crowded = shot && encounter.units.some((other) => other.team !== actor.team && isAlive(other) && distance(other.pos, actor.pos) === 1);
@@ -108,9 +111,10 @@ export function attackEdge(
     flanked,
     height,
     style,
+    styleToHit,
     far,
     crowded,
-    toHit: (flanked ? FLANK_TO_HIT : 0) + height * HEIGHT_TO_HIT + style * STYLE_TO_HIT + (style > 0 ? styleEdgeBonus(actor.grade) : 0) - (far ? LONG_SHOT_TO_HIT : 0) - (crowded ? POINT_BLANK_TO_HIT : 0),
+    toHit: (flanked ? FLANK_TO_HIT : 0) + height * HEIGHT_TO_HIT + styleToHit - (far ? LONG_SHOT_TO_HIT : 0) - (crowded ? POINT_BLANK_TO_HIT : 0),
     defense: cover ? COVER_DEFENSE : 0,
   };
 }
