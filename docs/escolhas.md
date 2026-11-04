@@ -25,3 +25,19 @@ gravado no repositório da história: se aprovar, é você quem passa pra lá (�
 
 **Pra mudar**: os números estão em `momentumCap`, `crackFactor` e `styleEdgeBonus`
 (`shared/tactics/styles.ts`).
+
+## 87. Os nomes da árvore, a loja e as missões
+
+**O que decidi**
+- Os 20 nós ficam com o nome e a fala provisórios. Li um por um contra o tom (§1.2) e o cânone, e
+  nenhum inventa técnica nem fato: são o costume de cada um ("Pé de Convés", "Cabo Escorregadio",
+  "Página Certa").
+- Uma troca: o **Fôlego de Biblioteca** dava Fôlego a Endyru, que não gasta Fôlego em nada. Virou
+  **Anos de Biblioteca**: +2 de mana máxima, com a fala "Anos lendo em voz alta pra sala vazia. O
+  texto dura mais que a voz." Quem já tinha o nó velho ganha o ponto de volta.
+- **Sem ramo da Tsvirana**: ninguém do grupo é dela, e sistema que nenhuma cena pede não entra.
+- **A Cura não ganha ramo próprio**: ela já mora no Preparo (Leitura Sem Pressa), que é o ramo do tema.
+- A banca continua com **6 pães e 4 unguentos**, e compra de volta pela metade.
+- O texto das três missões fica como está: sai só do que já se diz no roteiro.
+
+**Pra mudar**: os nós estão em `shared/skillTree.ts`, e a banca em `shared/shop.ts`.
