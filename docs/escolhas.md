@@ -100,3 +100,14 @@ gravado no repositório da história: se aprovar, é você quem passa pra lá (�
   é a pressa, não o passo.
 
 **Pra mudar**: os `riders` e o `resist` estão em `shared/data/bestiary.ts`.
+
+## 60. Mais lojas e o Thrykar
+
+**O que decidi**
+- **Thrykar não vende nada.** A placa dele diz "Conserta o que você estragou", ele tempera as duas
+  espadas e é isso. O Gravado é trabalho de mago no cânone (espadachim usa equipamento feito por mago),
+  então um ferreiro demônio vendendo Gravado contradiria `magia` §5.4.
+- **Nenhuma loja nova.** O dinheiro do trio é curto de propósito (o calote do mercador, a prata do
+  adiantamento indo pro ferreiro), e a banca do cais basta pro que se gasta: pão e unguento.
+
+**Pra mudar**: lojas novas são uma entrada em `SHOPS` (`shared/shop.ts`) e um `shop("id")` no Ink.

@@ -40,8 +40,9 @@ export interface Shop {
 }
 
 /**
- * As lojas do jogo. Os preços e as falas da banca são os do roteiro (task 25), sem fala nova;
- * o estoque e a compra de volta são PROVISÓRIOS, esperando o autor (§1 do AGENTS.md).
+ * As lojas do jogo. Os preços e as falas da banca são os do roteiro (task 25), sem fala nova; o
+ * estoque e a compra de volta foram fechados pelo co-autor (docs/escolhas.md). Thrykar não tem loja:
+ * ele tempera e conserta, não vende.
  */
 export const SHOPS: Record<string, Shop> = {
   banca: {
