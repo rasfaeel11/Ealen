@@ -662,6 +662,8 @@ function itemValue(unit: Unit, profile: AiProfile, item: ConsumableItem, fight: 
     case "throw":
       // Em aliado, nunca: ver bestItem.
       return 0;
+    case "none":
+      return 0;
   }
 }
 

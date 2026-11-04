@@ -67,6 +67,8 @@ function describeEffect(item: ConsumableItem): string {
       const fire = effect.surface ? " e deixa o chão pegando fogo" : "";
       return `Só na luta: jogado num inimigo a até ${ITEM_REACH} quadrados, quebra em cima, ${effect.dice.count}d${effect.dice.sides} de dano${fire}.`;
     }
+    case "none":
+      return "";
   }
 }
 

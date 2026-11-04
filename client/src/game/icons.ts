@@ -400,6 +400,9 @@ const ITEM_ICON: Record<string, IconName> = {
   "item-unguento-de-barqueiro": "jar",
   "item-pao-de-viagem": "bread",
   "item-pote-de-oleo": "throw",
+  "item-estaca-de-ymboripe": "spear",
+  "item-carta-de-mbyraku": "book",
+  "item-copia-do-contrato": "book",
 };
 
 export function itemIcon(itemId: string): IconName {

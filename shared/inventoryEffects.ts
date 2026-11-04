@@ -54,7 +54,8 @@ export function addItemToInventory(character: Character, item: ConsumableItem): 
     return true;
   }
 
-  if (inventory.slots.length >= inventory.maxSlots) return false;
+  // O item-chave sempre cabe: a história não pode perder a prova porque a mochila encheu.
+  if (inventory.slots.length >= inventory.maxSlots && !item.key) return false;
 
   const usedIndexes = new Set(inventory.slots.map((slot) => slot.slotIndex));
   let slotIndex = 0;

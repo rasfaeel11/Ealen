@@ -81,6 +81,7 @@ Endyru: Três nomes. Gente do conselho.
 Oryndu olha pro afluente, que desce pros baixios.
 Oryndu: O bicho não acordou. Acordaram ele.
 Xanduí: Então a gente mata o bicho antes da lua cheia, recebe a prata antes de eles venderem a cadeira e vai embora. Simples.
+~ give_item("item-carta-de-mbyraku")
 ~ note("carta", "No gibão de Mbyraku, o castelão: uma carta de três conselheiros de Ybytuguá ao senhor de Ymboripe. Se o rio continuar fechado até a lua cheia, levam os termos do duque ao conselho.")
 ~ note("jurendy", "Jurendy, mago da corte de Ymboripe, lia de duas em duas noites na beira do afluente que desce pros baixios.")
 ~ grant_xp(80)

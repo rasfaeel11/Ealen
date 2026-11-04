@@ -4,6 +4,7 @@ import "./catalog";
 import { findItemTemplate } from "../../data/items";
 import { addItemToInventory, discardItem, findInventorySlot, passItem, sortInventory } from "../../inventoryEffects";
 import { createProtagonist, joinParty, type PartyMember } from "../../party";
+import { usableOutside } from "../field";
 import type { ConsumableItem } from "../../types/inventory";
 
 /** A mochila: jogar fora, arrumar e o item-chave (task 59). */
@@ -36,6 +37,17 @@ test("o item-chave não se joga fora nem se passa", () => {
   assert.equal(discardItem(hero, paper.id), "key");
   assert.equal(passItem(hero, jarupa, paper.id), "none");
   assert.equal(findInventorySlot(hero, paper.id)?.quantity, 1);
+});
+
+test("o item-chave cabe na mochila cheia, e não se usa nem fora nem dentro da luta", () => {
+  const hero = createProtagonist();
+  hero.inventory = { slots: [], maxSlots: 1 };
+  addItemToInventory(hero, item("item-pao-de-viagem"));
+  assert.equal(addItemToInventory(hero, item("item-unguento-de-barqueiro")), false);
+  const letter = item("item-carta-de-mbyraku");
+  assert.equal(addItemToInventory(hero, letter), true);
+  assert.equal(letter.key, true);
+  assert.equal(usableOutside(letter), false);
 });
 
 test("arrumar põe o item-chave primeiro e o resto por nome, sem buraco", () => {

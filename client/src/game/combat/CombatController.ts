@@ -868,7 +868,7 @@ export class CombatController {
           onClick: () => this.chooseSupport(supporter),
         }),
       ),
-      ...(unit.inventory?.slots ?? []).map(
+      ...(unit.inventory?.slots ?? []).filter((slot) => slot.item.data.effect.kind !== "none").map(
         (slot): ActionButton => ({
           label: slot.item.name,
           icon: itemIcon(slot.item.id),

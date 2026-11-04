@@ -128,6 +128,7 @@ Conselheira: A guilda dos barqueiros sabe o que sobe e desce o rio. Pergunte a e
 {prova:
     Endyru põe a carta do castelão em cima da mesa comprida.
     A conselheira lê em silêncio. Chega nas assinaturas e para. Dobra o papel em quatro e põe a palma da mão em cima.
+    ~ take_item("item-carta-de-mbyraku")
     Conselheira: O conselho vai ler isto. Depois. Agora, o bicho.
 - else:
     Conselheira: A cheia está no alto. Os barcos que ainda flutuam vão sair amanhã, rio acima, de vez.
@@ -154,6 +155,7 @@ Conselheira: A guilda dos barqueiros sabe o que sobe e desce o rio. Pergunte a e
     Escrivão da Mesa: Com o selo da Mesa. Cópia selada a família recebe a parte. Sem selo, a família recebe a notícia.
     Ele copia o edital numa folha estreita, sem olhar pro original, e aperta o selo de cera embaixo.
     Endyru estica a mão. Xanduí pega a folha primeiro, dobra em quatro e guarda no gibão.
+    ~ give_item("item-copia-do-contrato")
     Xanduí: Eu guardo. Estudante perde papel.
     -> END
 + [Deixar o escrivão.]

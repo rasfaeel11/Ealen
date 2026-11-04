@@ -38,7 +38,9 @@ export type ConsumableEffect =
    * cai, sem rolagem de acerto, e dá `dice` de `type`. Com `surface`, deixa a superfície onde quebrou (a água não pega).
    * Só na luta.
    */
-  | { kind: "throw"; dice: Dice; type: DamageType; surface?: { id: SurfaceId; rounds: number; radius: number } };
+  | { kind: "throw"; dice: Dice; type: DamageType; surface?: { id: SurfaceId; rounds: number; radius: number } }
+  /** Não se usa: é um papel ou uma prova que a história pede de volta (o item-chave, `key`). */
+  | { kind: "none" };
 
 export type ConsumableItem = Item<"consumable", { effect: ConsumableEffect; usesRemaining: number; maxUses: number }>;
 

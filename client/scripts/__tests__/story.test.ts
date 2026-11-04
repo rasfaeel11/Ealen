@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   SHOPS,
+  itemCount,
   buyFrom,
   AREAS,
   StoryRunner,
@@ -240,6 +241,8 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   play("saqueadores_caem");
   assert.equal(runner.flag("saqueadores_vencidos"), true);
   assert.equal(host.character.purse?.cobre, 12);
+  const has = (id: string) => itemCount(host.character, id);
+  assert.equal(has("item-pote-de-oleo"), 2, "a guilda dá os dois potes de óleo do armazém");
 
   // O cobre compra na banca do cais, e paga a cópia do contrato no escrivão.
   assert.deepEqual(play("banca", "Ver o que ela tem"), { shop: "banca" });
@@ -247,11 +250,13 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.equal(buyFrom(SHOPS.banca, host.character, "item-unguento-de-barqueiro", runner.ledger()), undefined);
   play("escrivao", "Pagar um cobre");
   assert.equal(host.character.purse?.cobre, 5);
+  assert.equal(has("item-copia-do-contrato"), 1);
 
   // A primeira ida não se vence: a deixa da rodada 3 encerra a luta e abre o ato 2.
   assert.deepEqual(play("primeira_ida", "Entrar na água"), { fight: "primeira" });
   play("primeira_oryndu");
   assert.equal(runner.flag("estaca"), true);
+  assert.equal(has("item-estaca-de-ymboripe"), 1);
   assert.equal(runner.flag("ato2"), true);
   play("conselheira");
   assert.deepEqual(quests(), ["contrato:open", "armazem:done", "acordou:open"]);
@@ -265,10 +270,12 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.deepEqual(host.companions.filter((member) => member.character.aura === 3).map((member) => member.character.name).sort(), ["Jarupã", "Xanduí"]);
   assert.equal(runner.flag("castelao_vencido"), true);
   assert.equal(runner.flag("prova"), true);
+  assert.equal(has("item-carta-de-mbyraku"), 1);
 
   // Ato 3: o conselho chama, a cheia, e o fim.
   play("conselheira");
   assert.equal(runner.flag("ato3"), true);
+  assert.equal(has("item-carta-de-mbyraku"), 0, "a conselheira fica com a carta");
   assert.deepEqual(play("a_cheia", "Riscar os círculos", "Entrar na água"), { fight: "final" });
   assert.equal(runner.flag("preparo"), true);
   assert.deepEqual(play("final_fim"), { travel: { area: "ybytugua", spawn: "depois" } });

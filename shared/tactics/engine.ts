@@ -1360,7 +1360,7 @@ function giveOrder(encounter: Encounter, unit: Unit, targetId: string, order: Ai
 
 function useItem(encounter: Encounter, user: Unit, itemId: string, at: Pos | undefined, events: TacticalEvent[]): CommandError | undefined {
   const slot = findInventorySlot(user, itemId);
-  if (!slot || slot.quantity <= 0) return "item_unavailable";
+  if (!slot || slot.quantity <= 0 || slot.item.data.effect.kind === "none") return "item_unavailable";
   if (!user.turn.bonus) return "resource_spent";
   // Sem alvo, em si; com alvo, num aliado ao alcance do braço, ou no inimigo, se o item se joga (ver itemTargets).
   const unit = at ? unitAt(encounter, at) : user;
@@ -1424,5 +1424,7 @@ function useItem(encounter: Encounter, user: Unit, itemId: string, at: Pos | und
       // Dura até ser gasto num ataque; os turnos são só um teto pra não ficar guardado a luta toda.
       addStatus(unit, STATUSES.focused, 3, events);
       return undefined;
+    case "none":
+      return "item_unavailable";
   }
 }

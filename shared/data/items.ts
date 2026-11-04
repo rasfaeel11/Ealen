@@ -44,6 +44,38 @@ export const ITEMS: ConsumableItem[] = [
       maxUses: 1,
     },
   },
+
+  // Os itens-chave: o que a história dá e pede de volta. Não se usam, não se passam, não se jogam fora.
+  {
+    id: "item-estaca-de-ymboripe",
+    name: "Estaca dos Baixios",
+    description:
+      "Um pedaço de estaca do comprimento de um braço, tirado do lodo dos baixios. Na cabeça, ferro batido com letras cavadas: Ymboripe. Na madeira, um círculo de atração riscado a faca, torto e aberto.",
+    category: "consumable",
+    rarity: "common",
+    key: true,
+    data: { effect: { kind: "none" }, usesRemaining: 1, maxUses: 1 },
+  },
+  {
+    id: "item-carta-de-mbyraku",
+    name: "Carta ao Senhor de Ymboripe",
+    description:
+      "Tirada do gibão de Mbyraku, com a dobra gasta de quem já leu muitas vezes. Três conselheiros de Ybytuguá escrevem ao senhor de Ymboripe: se o rio continuar fechado até a lua cheia, levam os termos do duque ao conselho. Três nomes embaixo.",
+    category: "consumable",
+    rarity: "common",
+    key: true,
+    data: { effect: { kind: "none" }, usesRemaining: 1, maxUses: 1 },
+  },
+  {
+    id: "item-copia-do-contrato",
+    name: "Cópia Selada do Contrato",
+    description:
+      "O edital da cheia copiado numa folha estreita pelo escrivão da Mesa, com o selo de cera embaixo. Cópia selada, a família recebe a parte. Dobrada em quatro, e nunca desdobrada.",
+    category: "consumable",
+    rarity: "common",
+    key: true,
+    data: { effect: { kind: "none" }, usesRemaining: 1, maxUses: 1 },
+  },
 ];
 
 /** Busca um item do catálogo pelo id. */

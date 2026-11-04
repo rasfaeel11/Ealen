@@ -68,6 +68,7 @@ Endyru: "Ymboripe." Está no ferro.
 Endyru: E o círculo está errado. Não fecha.
 Oryndu: Não precisava fechar. Só precisava gritar.
 ~ estaca = true
+~ give_item("item-estaca-de-ymboripe")
 ~ note("estaca", "Uma estaca no lodo dos baixios, com ferro de Ymboripe e um círculo de atração riscado às pressas, aberto.")
 ~ grant_xp(50)
 -> END

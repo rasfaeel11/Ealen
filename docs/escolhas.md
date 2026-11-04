@@ -60,3 +60,25 @@ gravado no repositório da história: se aprovar, é você quem passa pra lá (�
 
 **Pra mudar**: o pote está em `shared/data/items.ts`, a fala em `client/story/ybytugua.ink`
 (`saqueadores_caem`), o besteiro em `shared/data/bestiary.ts`.
+
+## 59. Os itens-chave
+
+**O que decidi**
+- Viraram itens que não se usam, não se passam e não se jogam fora:
+  - **Estaca dos Baixios**: "Um pedaço de estaca do comprimento de um braço, tirado do lodo dos
+    baixios. Na cabeça, ferro batido com letras cavadas: Ymboripe. Na madeira, um círculo de atração
+    riscado a faca, torto e aberto." Fica na mochila até o fim (a conselheira não a quer: "precisa de
+    mais que um pau").
+  - **Carta ao Senhor de Ymboripe**: "Tirada do gibão de Mbyraku, com a dobra gasta de quem já leu
+    muitas vezes. Três conselheiros de Ybytuguá escrevem ao senhor de Ymboripe: se o rio continuar
+    fechado até a lua cheia, levam os termos do duque ao conselho. Três nomes embaixo." Sai da
+    mochila quando a conselheira põe a palma da mão em cima.
+  - **Cópia Selada do Contrato**: "O edital da cheia copiado numa folha estreita pelo escrivão da
+    Mesa, com o selo de cera embaixo. Cópia selada, a família recebe a parte. Dobrada em quatro, e
+    nunca desdobrada." O "nunca desdobrada" é a ironia pra quem sabe do segredo de Xanduí, sem dizer.
+- Tudo sai do que as cenas já dizem; nenhum fato novo.
+- Item-chave sempre cabe, mesmo com a mochila cheia.
+- **Sem limite por peso**: a mochila de 12 lugares e o cinto de 3 já apertam, e nenhuma cena pede
+  carga. Materiais ficam pra quando houver preparo (task 72).
+
+**Pra mudar**: os textos estão em `shared/data/items.ts`.
