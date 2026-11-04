@@ -155,6 +155,16 @@ test("uma criatura sabe só o que nomeia, com o nome dela — e o bestiário nã
   // O nível não entra: o recitador (Página) não ganha o Desarmar, que é do Círculo, por mais nível que tenha.
   const reader = BESTIARY["encounter-recitador-de-ymboripe"].template;
   assert.equal(abilitiesFor({ ...reader, level: 9 }).some((ability) => ability.id.endsWith("desarmar")), false);
+  // O jeito do bicho e do castelão no golpe: a Bocada sangra, a Investida abala, Fechar a Corrente prende.
+  const effectsOf = (key: string, slug: string) => {
+    const entry = BESTIARY[key];
+    const unit = unitFromCharacter(spawnCreature(entry), { team: "enemy", pos: { x: 0, y: 0 }, ...creaturePlacement(entry, "hero") });
+    return unit.abilities.find((ability) => ability.id === `espadachim.${slug}`)!.effects.filter((effect) => effect.kind === "status");
+  };
+  assert.deepEqual(effectsOf("encounter-ykurua", "attack"), [{ kind: "status", statusId: "bleeding", turns: 2 }]);
+  assert.deepEqual(effectsOf("encounter-ykurua", "heavy_attack").at(-1), { kind: "status", statusId: "shaken", turns: 1 });
+  assert.deepEqual(effectsOf("encounter-castelao", "heavy_attack").at(-1), { kind: "status", statusId: "rooted", turns: 1 });
+  assert.deepEqual(effectsOf("encounter-castelao", "attack"), []);
   // O besteiro do pedágio é o único do mundo que vigia: a corrente.
   const crossbow = abilitiesFor(BESTIARY["encounter-besteiro-do-pedagio"].template);
   assert.equal(crossbow.find((ability) => ability.id === "espadachim.vigiar")?.name, "Mira na Corrente");

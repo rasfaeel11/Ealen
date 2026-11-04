@@ -34,6 +34,10 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     glyph: "≈",
     summary: "Bicho de rio, anfíbio, do tamanho de um barco de carga. Na língua dos portos, o Bebe-Cheia.",
     lore: "Couro grosso como casca de árvore velha, coberto de lodo e conchas; boca larga, olhos pequenos, quase cego. Dorme enterrado no lodo dos baixios a maior parte do ano e acorda com a cheia. Sente mana gasta de uma vez e vem até onde ela bateu.",
+    // Couro como casca de árvore velha: a pancada não entra. A boca larga, cheia de concha, abre talho; a investida
+    // de um bicho do tamanho de um barco de carga abala quem está na frente.
+    resist: { impacto: 0.5 },
+    riders: { attack: { statusId: "bleeding", turns: 2 }, heavy_attack: { statusId: "shaken", turns: 1 } },
     // Animal: vai pra cima, sem medo e sem pensar.
     ai: { aggression: 1.3, caution: 0.4 },
     drops: [],
@@ -62,6 +66,9 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     drawnToMana: true,
     invulnerable: true,
     style: { id: "baluarte", grade: 1 },
+    // O mesmo bicho, a mesma boca (ver encounter-ykurua).
+    resist: { impacto: 0.5 },
+    riders: { attack: { statusId: "bleeding", turns: 2 }, heavy_attack: { statusId: "shaken", turns: 1 } },
     glyph: "≈",
     summary: "O Ykuruã, acordado pela cheia. Na água, nada que se faça a ele pega.",
     lore: "Só a ponta das costas à vista, e o lodo subindo onde ele passa. Nenhum barqueiro bate nele: espera.",
@@ -141,6 +148,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     summary: "O castelão do pedágio: dono de uma margem do Ymonhã e da corrente atravessada nela.",
     lore: "Cobra de quem desce o que o senhor de cima manda cobrar, e guarda a diferença. Aprendeu a espada com quem lia o outro antes de bater; bate quando o outro se repete.",
     ai: { finisher: 1.2, caution: 0.8 },
+    // Fechar a Corrente: o golpe de quem vive de parar o que desce. Quem leva fica onde está.
+    riders: { heavy_attack: { statusId: "rooted", turns: 1 } },
     drops: [{ itemId: "item-unguento-de-barqueiro", chance: 1 }],
     template: {
       id: "enemy-castelao",
@@ -369,6 +378,7 @@ export function creaturePlacement(entry: BestiaryEntry, heroId: string): Omit<Un
     drawnToMana: entry.drawnToMana,
     magic: entry.magic,
     resist: entry.resist,
+    riders: entry.riders,
   };
 }
 

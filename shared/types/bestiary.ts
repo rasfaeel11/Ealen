@@ -1,5 +1,6 @@
 import type { StyleId } from "../tactics/styles";
 import type { AiProfile, AiQuirks, DamageType } from "../tactics/types";
+import type { Rider } from "../tactics/units";
 import type { Character } from "./character";
 import type { Magic } from "../mana";
 
@@ -49,6 +50,11 @@ export interface BestiaryEntry {
   drawnToMana?: boolean;
   /** O que cada tipo de dano faz nela: 0.5 resiste, 1.5 sofre mais (ver `resist` em Unit). Só com a entrada no bestiário da história. */
   resist?: Partial<Record<DamageType, number>>;
+  /**
+   * O que um golpe dela deixa em quem pega, além do dano: pela chave da Arte (`attack`, `heavy_attack`...), a
+   * condição e quantos turnos ela dura (ver `riders` em UnitPlacement). É o jeito do bicho, não técnica nova.
+   */
+  riders?: Record<string, Rider>;
   /** Conjura: o conceito e o nível de mago de quem é gente e lê (ver ../mana.ts). A mana dele vem cheia. */
   magic?: Magic;
   /**

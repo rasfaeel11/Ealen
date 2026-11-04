@@ -82,3 +82,21 @@ gravado no repositório da história: se aprovar, é você quem passa pra lá (�
   carga. Materiais ficam pra quando houver preparo (task 72).
 
 **Pra mudar**: os textos estão em `shared/data/items.ts`.
+
+## 95. Condições, resistência e o relógio
+
+**O que decidi**
+- **O Ykuruã**: a Bocada (boca larga, cheia de concha) deixa **Sangrando** por 2 turnos; a Investida
+  (um bicho do tamanho de um barco de carga) deixa **Abalado** por 1; o couro de casca de árvore
+  **resiste à pancada** (metade do dano de impacto: o bordão de Endyru e o pote). Corte e ponta entram
+  normal, porque o jogo ensina que a espada entra quando o couro racha.
+- Testei a Investida com **Atordoado** (perde a vez) e tirei: o espadachim sozinho contra o bicho caía
+  de 18% pra 8% de vitória. Com Abalado, ficou nos 18%.
+- **Mbyraku**: o Fechar a Corrente deixa **Preso** por 1 turno. O golpe de quem vive de parar o que desce.
+- **Fica sem uso**: Envenenado (ninguém no mundo do jogo envenena arma; o tom é cruel, mas veneno pede
+  uma cena), Calado, Com medo, Cego. Ficam prontos no motor.
+- **O relógio não muda**: a deixa `clock N` (luta que acaba quando a Cheia chega) e o custo por área
+  ficam sem uso. A Cheia já cobra o descanso e a luta; cobrar por andar castigaria explorar, e o tema
+  é a pressa, não o passo.
+
+**Pra mudar**: os `riders` e o `resist` estão em `shared/data/bestiary.ts`.

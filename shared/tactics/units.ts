@@ -8,6 +8,7 @@ import { GIFTS, abilitiesFor, engravedAbilities, engravedId, type GiftId } from 
 import { proficiency, type StyleId } from "./styles";
 import { skillPassive, withSkills } from "../skillTree";
 import { samePos, type Pos } from "./grid";
+import type { StatusId } from "./statuses";
 import type { Ability, AiProfile, AiQuirks, DamageType, Encounter, TeamId, Unit } from "./types";
 
 /** Quadrados de movimento por turno de quem não diz o contrário. */
@@ -38,6 +39,23 @@ export interface UnitPlacement {
   drawnToMana?: boolean;
   /** O que cada tipo de dano faz nele (ver `resist` em Unit). */
   resist?: Partial<Record<DamageType, number>>;
+  /** A condição que um golpe dele deixa em quem pega, pela chave da Arte (`attack`, `heavy_attack`...). */
+  riders?: Record<string, Rider>;
+}
+
+/** Uma condição que um golpe deixa, além do dano. */
+export interface Rider {
+  statusId: StatusId;
+  turns: number;
+}
+
+/** `abilities` com a condição de cada `riders` somada ao golpe da Arte dela (`<classe>.<chave>`). */
+function withRiders(characterClass: string, abilities: Ability[], riders: Record<string, Rider> | undefined): Ability[] {
+  if (!riders) return abilities;
+  return abilities.map((ability) => {
+    const rider = Object.entries(riders).find(([slug]) => ability.id === `${characterClass}.${slug}`)?.[1];
+    return rider ? { ...ability, effects: [...ability.effects, { kind: "status", statusId: rider.statusId, turns: rider.turns }] } : ability;
+  });
 }
 
 /**
@@ -46,7 +64,11 @@ export interface UnitPlacement {
  * mexe em `character` até alguém chamar syncCharacterFromUnit.
  */
 export function unitFromCharacter(character: Character, placement: UnitPlacement): Unit {
-  const known = withSkills(character, [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))]);
+  const known = withRiders(
+    character.characterClass,
+    withSkills(character, [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))]),
+    placement.riders,
+  );
   const own = known.filter((ability) => !character.benched?.includes(ability.id));
   return {
     id: placement.id ?? character.id,
