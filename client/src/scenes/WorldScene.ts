@@ -83,6 +83,9 @@ import {
   autoRaise,
   discardItem,
   passItem,
+  buyFrom,
+  findShop,
+  sellTo,
   equip,
   unequip,
   walk,
@@ -120,6 +123,7 @@ import { drawArea, drawBrackets, drawReach, drawStop } from "../game/combat/mark
 import { DialogueBox, isSilent } from "../game/dialogue/DialogueBox";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, REGISTRY_SESSION, SCENES, TEXT_COLORS } from "../game/config";
 import { JournalPanel } from "../game/JournalPanel";
+import { ShopPanel } from "../game/ShopPanel";
 import { RegionMapPanel } from "../game/RegionMapPanel";
 import { MapActor } from "../game/MapActor";
 import { SheetPanel } from "../game/SheetPanel";
@@ -940,8 +944,12 @@ export default class WorldScene extends Phaser.Scene {
     return lines;
   }
 
-  /** Cumpre o que o texto deixou pra depois da última fala: uma luta, uma viagem. */
-  private settle({ fight, travel }: Aftermath): void {
+  /** Cumpre o que o texto deixou pra depois da última fala: uma luta, uma viagem, uma loja. */
+  private settle({ fight, travel, shop }: Aftermath): void {
+    if (shop !== undefined && fight === undefined && !travel) {
+      this.openShop(shop);
+      return;
+    }
     if (fight !== undefined && this.enemies.some((enemy) => enemy.group === fight)) {
       // A viagem pedida junto com a luta fica pra depois dela, e só pra quem vence.
       this.travelAfterFight = travel;
@@ -1577,6 +1585,30 @@ export default class WorldScene extends Phaser.Scene {
       },
       () => this.closePause(),
     );
+  }
+
+  /** A loja `id` (ver shared/shop.ts), aberta pelo texto. O que se vende fica no estado da história, e grava-se a cada troca. */
+  private openShop(id: string): void {
+    const shop = findShop(id);
+    if (!shop) return;
+    this.halt();
+    sfx("uiOpen");
+    const ledger = this.story.ledger();
+    const traded = <T>(refusal: T | undefined): T | undefined => {
+      if (refusal === undefined) {
+        this.save.story = this.story.save();
+        this.persist();
+      }
+      return refusal;
+    };
+    this.pause = new ShopPanel(this, (object) => this.addHud(object), {
+      shop,
+      owner: this.character,
+      ledger,
+      onBuy: (itemId) => traded(buyFrom(shop, this.character, itemId, ledger)),
+      onSell: (itemId) => traded(sellTo(shop, this.character, itemId, ledger)),
+      onClose: () => this.closePause(),
+    });
   }
 
   private openJournal(): void {

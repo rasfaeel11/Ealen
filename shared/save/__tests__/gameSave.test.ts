@@ -197,6 +197,7 @@ test("save da versão 4, do elenco do Eälen, vira o do elenco de agora: mesmo n
   const story = packStory(JSON.stringify({ flows: {} }), {
     journal: [],
     quests: [],
+    sold: {},
     clock: null,
     afflictions: { "companion:lish": ["wounded_arm"], hero: ["wounded_arm"] },
   });

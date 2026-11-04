@@ -68,6 +68,8 @@ export interface StoryMemory {
   journal: JournalEntry[];
   /** As missões, na ordem em que foram abertas. */
   quests: Quest[];
+  /** O que cada loja já vendeu ou comprou de volta (ver ../shop.ts): é o estoque que acabou. */
+  sold: Record<string, Record<string, number>>;
   /** Null = não há relógio correndo. */
   clock: StoryClock | null;
   /**
@@ -79,7 +81,7 @@ export interface StoryMemory {
 }
 
 export function emptyMemory(): StoryMemory {
-  return { journal: [], quests: [], clock: null, afflictions: {} };
+  return { journal: [], quests: [], sold: {}, clock: null, afflictions: {} };
 }
 
 /** Põe a condição `status` em quem tem a ficha `id`. Devolve se mudou. */
@@ -247,6 +249,18 @@ function readQuests(raw: unknown): Quest[] {
   return quests;
 }
 
+function readSold(raw: unknown): Record<string, Record<string, number>> {
+  const sold: Record<string, Record<string, number>> = {};
+  if (!isObject(raw)) return sold;
+  for (const [shop, items] of Object.entries(raw)) {
+    if (!isObject(items)) continue;
+    for (const [item, count] of Object.entries(items)) {
+      if (typeof count === "number" && Number.isInteger(count) && count !== 0) (sold[shop] ??= {})[item] = count;
+    }
+  }
+  return sold;
+}
+
 function readClock(raw: unknown): StoryClock | null {
   if (!isObject(raw) || typeof raw.label !== "string") return null;
   if (typeof raw.value !== "number" || typeof raw.limit !== "number") return null;
@@ -283,6 +297,7 @@ export function packStory(ink: string, memory: StoryMemory): string {
     ink: JSON.parse(ink) as unknown,
     journal: memory.journal,
     quests: memory.quests,
+    sold: memory.sold,
     clock: memory.clock,
     afflictions: memory.afflictions,
   });
@@ -306,6 +321,7 @@ export function unpackStory(saved: string): { ink: string; memory: StoryMemory }
     memory: {
       journal: readJournal(parsed.journal),
       quests: readQuests(parsed.quests),
+      sold: readSold(parsed.sold),
       clock: readClock(parsed.clock),
       afflictions: readAfflictions(parsed.afflictions),
     },

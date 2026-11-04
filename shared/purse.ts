@@ -8,7 +8,7 @@ import type { Character } from "./types/character";
  *
  * As duas moedas não se trocam uma pela outra: o cânone não diz quanto cobre
  * vale uma prata, e o jogo não diz por ele. Quem cobra em prata quer prata.
- * Não há loja nem preço de item: nenhuma cena pede.
+ * O preço de item é de cada loja (ver ./shop.ts).
  */
 export const COINS = ["cobre", "prata"] as const;
 

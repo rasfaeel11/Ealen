@@ -99,6 +99,7 @@ function describeEvent(event: StoryEvent): { text: string; color: string } | nul
         ? { text: `${event.name} não tem mais: ${event.status}.`, color: TEXT_COLORS.goldBright }
         : { text: `${event.name}: ${event.status}. Fica até alguém cuidar.`, color: TEXT_COLORS.danger };
     case "fight":
+    case "shop":
     case "travel":
     // O relógio não se anuncia: a barra no alto da tela mostra.
     case "clock":

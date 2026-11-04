@@ -4,6 +4,7 @@ import { findItem, giveItem, itemCount, takeItem, type GameItem } from "../inven
 import { applyXpGain } from "../leveling";
 import { MAGE_LEVELS, mageLevelName } from "../mana";
 import { coinsOf, earnCoins, isCoin, payCoins, type Coin } from "../purse";
+import { findShop } from "../shop";
 import { HERO_ID, auraOf, castId, castOf, isInParty, joinParty, leaveParty, magicOf, presentCompanions, type PartyMember } from "../party";
 import { learnedAtMage } from "../tactics/abilities";
 import { AURA_LEVELS, auraName, proficiency, styleLabel } from "../tactics/styles";
@@ -74,6 +75,8 @@ import {
  *                            na escola; só sobe, e só em quem já tem ficha
  *   start_fight("grupo")     quando a conversa acabar, luta com esse grupo
  *                            de inimigos da área em que se está
+ *   shop("banca")            quando a conversa acabar, abre essa loja (SHOPS,
+ *                            ../shop.ts)
  *   travel("area", "ponto")  quando a conversa acabar, leva o personagem a
  *                            esse ponto de chegada dessa área
  *   join_party("jarupa")     põe um companheiro no grupo (as chaves estão
@@ -137,6 +140,8 @@ export type StoryEvent =
   | { type: "auraRose"; name: string; level: string; style: string }
   /** A conversa termina em luta com este grupo de inimigos da área atual. */
   | { type: "fight"; group: string }
+  /** A conversa termina com a loja `shop` aberta (ver ../shop.ts). */
+  | { type: "shop"; shop: string }
   /** A conversa termina com o personagem levado a outro lugar. */
   | { type: "travel"; area: string; spawn: string }
   | { type: "joined"; name: string }
@@ -153,6 +158,8 @@ export type StoryEvent =
 /** O que uma conversa deixa pra cena fazer quando a última fala passar. */
 export interface Aftermath {
   fight?: string;
+  /** A loja que abre quando a conversa acaba (ver ../shop.ts). */
+  shop?: string;
   travel?: { area: string; spawn: string };
 }
 
@@ -167,6 +174,7 @@ export function aftermath(steps: readonly DialogueStep[]): Aftermath {
     for (const beat of step.beats) {
       if (beat.kind !== "event") continue;
       if (beat.event.type === "fight") result.fight = beat.event.group;
+      else if (beat.event.type === "shop") result.shop = beat.event.shop;
       else if (beat.event.type === "travel") result.travel = { area: beat.event.area, spawn: beat.event.spawn };
     }
   }
@@ -391,6 +399,10 @@ export class StoryRunner {
     story.BindExternalFunction("start_fight", (group: string) => {
       this.pending.push({ type: "fight", group: String(group) });
     });
+    story.BindExternalFunction("shop", (id: string) => {
+      if (!findShop(String(id))) throw new Error(`A história abre uma loja que não existe: "${String(id)}"`);
+      this.pending.push({ type: "shop", shop: String(id) });
+    });
     story.BindExternalFunction("travel", (area: string, spawn: string) => {
       if (!AREAS[area]) throw new Error(`A história leva a uma área que não existe: "${area}"`);
       this.pending.push({ type: "travel", area, spawn: String(spawn) });
@@ -527,6 +539,11 @@ export class StoryRunner {
   /** O diário, na ordem em que foi escrito. */
   journal(): readonly JournalEntry[] {
     return this.memory.journal;
+  }
+
+  /** O que cada loja já vendeu (ver ../shop.ts). MUTADO pela loja: comprar gasta o estoque, e vai no save da história. */
+  ledger(): Record<string, Record<string, number>> {
+    return this.memory.sold;
   }
 
   /** O registro de missões, na ordem em que foram abertas. */

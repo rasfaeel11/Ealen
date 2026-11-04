@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
+  SHOPS,
+  buyFrom,
   AREAS,
   StoryRunner,
   aftermath,
@@ -240,7 +242,9 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.equal(host.character.purse?.cobre, 12);
 
   // O cobre compra na banca do cais, e paga a cópia do contrato no escrivão.
-  play("banca", "Comprar um pão", "Comprar um unguento", "Ir embora");
+  assert.deepEqual(play("banca", "Ver o que ela tem"), { shop: "banca" });
+  assert.equal(buyFrom(SHOPS.banca, host.character, "item-pao-de-viagem", runner.ledger()), undefined);
+  assert.equal(buyFrom(SHOPS.banca, host.character, "item-unguento-de-barqueiro", runner.ledger()), undefined);
   play("escrivao", "Pagar um cobre");
   assert.equal(host.character.purse?.cobre, 5);
 
@@ -276,6 +280,7 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   assert.equal(runner.clock(), null);
   assert.equal(host.character.purse?.prata, 4, "seis da pilha dele, menos duas pra parte de quem fica");
   assert.deepEqual(quests(), ["contrato:done", "armazem:done", "acordou:done"]);
+  assert.deepEqual(runner.ledger(), { banca: { "item-pao-de-viagem": 1, "item-unguento-de-barqueiro": 1 } }, "o que a banca vendeu vai no save da história");
 });
 
 test("a luta final dos baixios tem cheia: a água sobe dentro dela", () => {

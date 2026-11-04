@@ -350,16 +350,10 @@ Vendedora do cais: Pão, dois de cobre. Unguento, quatro. Prata eu não troco. T
 -> escolhas
 
 = escolhas
-+ {money("cobre") >= 2} [Comprar um pão de viagem, por dois de cobre.]
-    ~ pay("cobre", 2)
-    ~ give_item("item-pao-de-viagem")
-    Vendedora do cais: Duro até a lua que vem. Molha no rio.
-    -> escolhas
-+ {money("cobre") >= 4} [Comprar um unguento, por quatro de cobre.]
-    ~ pay("cobre", 4)
-    ~ give_item("item-unguento-de-barqueiro")
-    Vendedora do cais: Passa no talho e não olha. Arde.
-    -> escolhas
+// O que ela tem, o preço e o estoque estão em SHOPS (shared/shop.ts); a loja abre quando a conversa acaba.
++ [Ver o que ela tem.]
+    ~ shop("banca")
+    -> END
 + [Ir embora.]
     -> END
 

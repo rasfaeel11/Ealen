@@ -26,6 +26,7 @@ EXTERNAL pay(coin, amount)  // pay("prata", 2): paga se tem tudo e devolve se pa
 EXTERNAL earn(coin, amount) // earn("cobre", 30): põe na bolsa
 EXTERNAL grant_xp(amount)
 EXTERNAL start_fight(group) // start_fight("pedagio"): acabada a conversa, luta com esse grupo DESTA área
+EXTERNAL shop(id)           // shop("banca"): acabada a conversa, abre essa loja (o que vende e por quanto está em shared/shop.ts)
 EXTERNAL travel(area, spawn) // travel("ybytugua", "cais"): acabada a conversa, o personagem vai pra lá
 EXTERNAL join_party(who)    // join_party("jarupa"): entra no grupo. As chaves estão em shared/party.ts
 EXTERNAL leave_party(who)   // sai do grupo; a ficha dele fica guardada pra quando voltar

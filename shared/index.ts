@@ -11,6 +11,7 @@ export * from "./skillTree";
 export * from "./breath";
 export * from "./mana";
 export * from "./purse";
+export * from "./shop";
 export * from "./party";
 export * from "./tactics";
 export * from "./world";
