@@ -306,18 +306,15 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 ### P1 — o conteúdo
 | # | Task | O que é |
 |---|---|---|
-| 15 | **Retoque dos mapas no Tiled** | Só se o autor quiser mudar a disposição: os mapas mandam na regra, o cenário sai deles. Mexeu no mapa, rode `art/pintar_cenario.py` (`docs/arte.md`). |
-| 13 | **Bichos da floresta** | Só se o autor quiser: cada um entra primeiro como entrada no bestiário da história (`referencias/bestiario.md`). A gente do mundo já entrou (ver Feito). |
 | 47 | **Gerar a arte** | O autor gera pelo navegador (Nano Banana Pro) com os prompts de `art/PROMPTS.md` (ficha de design, retrato, folha e splash de cada um) e o script importa (`importar <pasta>`). Os retratos de Jarupã e Xanduí, do primeiro lote, ficam. Toda a gente do jogo já tem folha, e quem fala muito tem retrato. Faltam o Ykuruã (a folha, e a seca sai dela), a tela de título e, se o autor quiser, os retratos dos saqueadores, da Contratada e do guarda do portão, que falam pouco. O que falta é o que `list` marca como `falta`, e quem tem `proposal` o autor ainda não viu desenhado. O quadro de Xanduí no aviso de cabeça pra baixo, se houver, é sutil (§3.3). Olhar cada folha: a que sair torta se refaz. |
 
 ### P1 — o que todo RPG tem
 | # | Task | O que é |
 |---|---|---|
 | 61 | **Golpe de abertura, o resto** | Balancear (escondido, ainda é golpe grátis MAIS a surpresa); inimigo que vira a cabeça ou anda de ronda; companheiro dar o primeiro golpe; mirar um quadrado com área; acertar destrutível fora de luta (o barril de óleo); mouse na ficha e na mochila. |
-| 63 | **Mais verbos de combate, o resto** | A Disparada, o Ajudar e o Vigiar já entraram (ver Feito). Falta: empurrar e derrubar como verbo de todo mundo, agarrar (os dois esbarram nos dons de Jarupã e Xanduí: pede o autor), esconder-se no meio da luta, preparar outra ação que não o golpe; reações além do ataque de oportunidade (aparar, interceptar). |
+| 63 | **Mais verbos de combate, o resto** | A Disparada, o Ajudar e o Vigiar já entraram (ver Feito). Falta: esconder-se no meio da luta, preparar outra ação que não o golpe; reações além do ataque de oportunidade (aparar, interceptar). |
 | 66 | **Mapa, o resto** | O mapa da região é a task 48. Falta o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
 | 68 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
-| 92 | **Modo de luta por pessoa** | O modo à vista já entrou (ver Feito). Falta, se o autor quiser, o modo de cada um (Jarupã sozinho, Xanduí na mão). |
 
 ### P2 — corpo
 | # | Task | O que é |
@@ -662,6 +659,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 - **95. As peças novas em uso** (decidido pelo co-autor em 2026-11-04, ver `docs/escolhas.md`). O golpe de uma criatura pode deixar uma condição (`riders` no bestiário, pela chave da Arte). A Bocada do Ykuruã sangra por 2 turnos e a Investida abala por 1; o Fechar a Corrente de Mbyraku prende por 1. O Ykuruã resiste à pancada (`impacto` 0.5). O atordoar na Investida foi testado e saiu: no `balance:matrix` o espadachim sozinho contra o bicho caiu de 18% a 8%; com o abalar, ficou em 18%. Veneno, Atordoado, Calado, Com medo e Cego continuam no motor sem uso, e a deixa `clock N` e o custo `area` do relógio também: nenhuma cena pede, e a Cheia já cobra o descanso e a luta. O item-chave entrou com a 59.
 - **60. As lojas, fechadas** (decidido pelo co-autor em 2026-11-04, ver `docs/escolhas.md`). A banca do cais é a única loja. Thrykar não vende: a placa dele diz "Conserta o que você estragou", ele só tempera as duas espadas, e o Gravado é trabalho de mago (`magia` §5.4, §7.4). O estoque da banca e a compra de volta pela metade ficam.
 - **52 e 53. Sem passagem muda e sem parede invisível** (decidido pelo co-autor em 2026-11-04, ver `docs/escolhas.md`). Cada passagem fechada diz por quê, num gatilho que fala toda vez que se pisa: a estrada pra oeste do Ymonhã, na abertura (`estrada_oeste`: "Pelo rio, meio dia."); a estrada do norte de Ybytuguá antes do ato 2 (`estrada_norte`, com o contrato ou sem); a trilha do barranco, depois da ponte, rio acima (`trilha_barranco`). A clareira a nordeste da floresta, depois dos batedores, tem o acampamento deles e um Pão de Viagem (`clareira`, `contratados_vencidos`). As bordas que se alcançam ganharam árvore (o Ymonhã dos dois lados da margem norte, os baixios a oeste, as pontas do cais de Ybytuguá, a trilha do barranco), e a borda leste dos baixios virou canal fundo, que barra o passo; o fundo agora é pintado escuro, com espuma na beira (`paint_baixios`). Os cenários foram repintados.
+- **13, 15, 92 e a 63 dos dons** (decidido pelo co-autor em 2026-11-04, ver `docs/escolhas.md`). Não entram bichos da floresta: o Ykuruã é a primeira criatura do bestiário, e a floresta é de gente (os homens de Ymboripe, os batedores). Os mapas ficam com a disposição de hoje. O modo de luta por pessoa não entra: o manual e o automático à vista bastam. Empurrar, derrubar e agarrar não viram verbo de todo mundo: são os dons de Jarupã (a Ombrada) e de Xanduí (Segurar o Bote), e dar a todos tiraria deles o que é deles.
 
 ## 9. Onde isto está no cânone
 

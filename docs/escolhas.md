@@ -134,3 +134,16 @@ gravado no repositório da história: se aprovar, é você quem passa pra lá (�
 
 **Pra mudar**: as falas estão em `ymonha.ink`, `ybytugua.ink` e `floresta.ink`; os mapas mudaram por
 script, e o cenário sai de `python art/pintar_cenario.py`.
+
+## 13, 15, 92 e parte da 63. O que fica de fora
+
+- **13. Bichos da floresta: não.** O Ykuruã é a primeira criatura do bestiário do mundo, e criatura
+  nova é cânone que os livros vão ter de respeitar. A floresta já tem quem lutar: a patrulha e o vau
+  de Ymboripe, os batedores, a ponte. Na dúvida, mostre menos.
+- **15. Os mapas ficam como estão.** Só mexi nas bordas (52 e 53).
+- **92. Modo de luta por pessoa: não.** O manual e o automático à vista bastam pra três pessoas.
+- **63. Empurrar, derrubar e agarrar não viram verbo de todo mundo.** A Ombrada é de Jarupã e o
+  Segurar o Bote é de Xanduí; se todo mundo empurra e agarra, os dons deixam de ser deles. O resto da
+  63 (esconder-se na luta, preparar outra ação, aparar, interceptar) não dependia de você e continua
+  na lista.
+- **47. A arte continua com você**: as imagens saem do seu navegador. Não mexi.
