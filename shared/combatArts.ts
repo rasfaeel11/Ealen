@@ -113,6 +113,11 @@ export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>>
       flavor: "O bordão em riste e o olho no caminho. Quem vier por ali chega na ponta dele.",
       level: 1,
     },
+    esconder: {
+      name: "Esconder-se",
+      flavor: "Atrás do muro, de costas pra pedra, o livro fechado no peito. Quem não vê não mira.",
+      level: 1,
+    },
     desarmar: {
       name: "Desarmar",
       flavor: "Atração na arma, não no corpo: o cabo escorrega da mão de quem a segurava.",
@@ -142,6 +147,11 @@ export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>>
     vigiar: {
       name: "Vigiar",
       flavor: "A espada parada e o pé atrás. Quem atravessar a distância dela atravessa a lâmina primeiro.",
+      level: 1,
+    },
+    esconder: {
+      name: "Esconder-se",
+      flavor: "Agachado atrás do barranco, a lâmina deitada pra não brilhar. Sai de lá batendo.",
       level: 1,
     },
   },

@@ -109,6 +109,14 @@ const HELP: Body = { cost: "action", range: 1, targets: "ally", others: true, ef
  */
 const WATCH: Body = { cost: "action", range: 0, targets: "self", effects: [{ kind: "status", statusId: "watching", turns: 1 }] };
 
+/**
+ * Esconder-se: a ação gasta em sumir atrás do que houver. Só se usa fora da
+ * vista de todo inimigo de pé (atrás da parede, da crista, da pedra alta). Fica
+ * Escondido por dois turnos: de longe ninguém o mira, e o golpe que sai do
+ * esconderijo entra mais certo e o descobre (ver `concealed` em ./statuses.ts).
+ */
+const HIDE: Body = { cost: "action", range: 0, targets: "self", unseen: true, effects: [{ kind: "status", statusId: "hidden", turns: 2 }] };
+
 /** A Cura de quem conjura (`magia` §4.3): o mesmo texto de primeiros socorros, pago em mana, e recitado. */
 const CURE: Body = { cost: "action", range: HEAL_RANGE, targets: "ally", effects: [{ kind: "heal", dice: D6, attribute: "fator" }], mana: 2 };
 
@@ -147,6 +155,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
     disparada: DASH,
     ajudar: HELP,
     vigiar: WATCH,
+    esconder: HIDE,
     desarmar: {
       cost: "action",
       range: 4,
@@ -183,6 +192,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
     disparada: DASH,
     ajudar: HELP,
     vigiar: WATCH,
+    esconder: HIDE,
   }),
 };
 

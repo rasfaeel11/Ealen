@@ -312,7 +312,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 | # | Task | O que é |
 |---|---|---|
 | 61 | **Golpe de abertura, o resto** | Balancear (escondido, ainda é golpe grátis MAIS a surpresa); inimigo que vira a cabeça ou anda de ronda; companheiro dar o primeiro golpe; mirar um quadrado com área; acertar destrutível fora de luta (o barril de óleo); mouse na ficha e na mochila. |
-| 63 | **Mais verbos de combate, o resto** | A Disparada, o Ajudar e o Vigiar já entraram (ver Feito). Falta: esconder-se no meio da luta, preparar outra ação que não o golpe; reações além do ataque de oportunidade (aparar, interceptar). |
 | 66 | **Mapa, o resto** | O mapa da região é a task 48. Falta o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
 | 68 | **Objetos do mundo fora de luta** | Baú, porta com chave, alavanca, armadilha, coisa pra pegar no chão. Hoje só se mexe em objeto dentro de luta (`interact`). |
 
@@ -668,6 +667,15 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   sobe barranco: a margem seca dos baixios ficou alta, e é onde o grupo se segura. No Ymonhã o besteiro do pedágio atira da plataforma do guincho, e o
   da estrada, da terra alta; em Ybytuguá a cidade sobe em três patamares; na floresta, quem é puxado do barranco de Jurendy cai. Os testes do motor
   conferem a regra; a tela não foi vista.
+
+- **63. Os verbos que faltavam.** Esconder-se (um verbo de todo mundo do grupo, desde o nível 1): gasta a ação e só vale fora da vista de todo
+  inimigo, atrás de parede, pedra alta ou crista. Escondido por dois turnos, ninguém o mira de longe, só colado; o golpe que sai do esconderijo tem +2 e o
+  descobre, e quem termina de andar à vista de um inimigo perto também é descoberto. Na tela o boneco fica meio apagado. Preparar: o botão novo da barra
+  troca os botões das habilidades pelo que fica pronto, e o primeiro inimigo que entrar no alcance dela leva ela, na reação (o golpe pesado, a Ombrada, o
+  Bordão; o que se recita não se prepara). Aparar: quem é de escola de espada e luta de perto, levando golpe de perto que tira 4 ou mais, gasta a reação e
+  2 de Fôlego e tira 1d4 + grau. Interceptar: quem está em guarda, colado no aliado que vai levar um golpe de arma, entra na frente e leva com a guarda
+  dele. Os dois são automáticos e valem pros dois lados. No `balance:matrix` as lutas de espada ficaram mais longas (o espadachim contra Mbyraku foi de
+  47% a 37%). Os nomes e as falas são provisórios, como os da Disparada; a tela não foi vista.
 
 ## 9. Onde isto está no cânone
 

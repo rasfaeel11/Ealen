@@ -562,6 +562,8 @@ function statusFavor(
     const spared = threatAt(encounter, victim) - threatAt(encounter, shielded);
     favor += profile.caution * THREAT_DISCOUNT * spared * Math.min(turns, PROTECTION_TURNS);
   }
+  // Escondido, quem está longe não o mira: vale parte do que ele leva onde está.
+  if (status.concealed) favor += profile.caution * THREAT_DISCOUNT * threatAt(encounter, victim) * 0.5;
   if (status.guaranteedCrit) favor += GUARANTEED_CRIT_VALUE;
   for (const points of Object.values(status.attributeBonus ?? {})) favor += ATTRIBUTE_POINT_VALUE * points * turns;
   // Acerto a mais só vale pra quem tem em quem bater logo; acerto a menos sempre atrapalha.

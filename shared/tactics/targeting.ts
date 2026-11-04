@@ -5,7 +5,7 @@ import type { Supporter } from "./supports";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, Encounter, Unit } from "./types";
 import { isShot } from "./attack";
-import { isAlive, unitAt } from "./units";
+import { isAlive, isRecited, unitAt } from "./units";
 
 /** Quanto da vida volta a quem é levantado no meio da luta. */
 export const LIFT_SHARE = 0.25;
@@ -74,7 +74,31 @@ export function abilityTargets(encounter: Encounter, unit: Unit, ability: Abilit
   return reachTargets(encounter, unit, ability).filter((pos) => vowAllows(encounter, unit, ability, pos));
 }
 
+/**
+ * O que se pode Preparar (ver `ready` em ./engine.ts): o que mira um inimigo e
+ * não se recita — quem recita não segura a palavra no meio do texto.
+ */
+export function readyable(ability: Ability): boolean {
+  return ability.targets === "enemy" && !isRecited(ability);
+}
+
+/** De quantos quadrados um inimigo que vê o Escondido o descobre (ver `concealed` em ./statuses.ts). */
+export const REVEAL_RANGE = 3;
+
+/** Algum inimigo de pé tem `unit` à vista, a até `range` quadrados (sem `range`, de qualquer distância). */
+export function seenByFoe(encounter: Encounter, unit: Unit, range = Infinity): boolean {
+  return encounter.units.some(
+    (other) => other.team !== unit.team && isAlive(other) && distance(other.pos, unit.pos) <= range && hasLineOfSight(encounter.grid, other.pos, unit.pos),
+  );
+}
+
+/** Escondido, `other` só é achado por quem está colado nele. */
+function hiddenFrom(unit: Unit, other: Unit): boolean {
+  return other.team !== unit.team && other.statuses.some((status) => status.concealed) && distance(unit.pos, other.pos) > 1;
+}
+
 function reachTargets(encounter: Encounter, unit: Unit, ability: Ability): Pos[] {
+  if (ability.unseen && seenByFoe(encounter, unit)) return [];
   if (ability.targets === "self") return [{ ...unit.pos }];
   // Sai de quem usa e pega todo inimigo de pé: só existe o que mirar se houver algum.
   if (ability.targets === "foes") {
@@ -89,7 +113,7 @@ function reachTargets(encounter: Encounter, unit: Unit, ability: Ability): Pos[]
 
   const wantsAlly = ability.targets === "ally";
   const targets = encounter.units
-    .filter((other) => isAlive(other) && (other.team === unit.team) === wantsAlly && !(ability.others && other.id === unit.id))
+    .filter((other) => isAlive(other) && (other.team === unit.team) === wantsAlly && !(ability.others && other.id === unit.id) && !hiddenFrom(unit, other))
     .filter((other) => canTarget(encounter, unit, ability, other.pos))
     .map((other) => ({ ...other.pos }));
   if (wantsAlly || !dealsDamage(ability)) return targets;

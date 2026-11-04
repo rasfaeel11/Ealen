@@ -34,6 +34,7 @@ import {
   tileAt,
   reachableTiles,
   readiness,
+  readyable,
   samePos,
   styleLabel,
   supportTargets,
@@ -301,6 +302,8 @@ export class CombatController {
     | { kind: "support"; supporter: Supporter }
     | { kind: "item"; itemId: string; name: string; thrown: boolean }
     | { kind: "order"; unitId: string }
+    /** Preparar: escolhe-se depois QUAL habilidade fica pronta (um dos botões dela). */
+    | { kind: "ready" }
     | null = null;
   /** O que cada inimigo anotado pretende fazer na vez dele: onde parar e o que vai atingir. Some quando a vez dele passa. */
   private readonly foreseen = new Map<string, { tile: Pos; areas: { target: Pos; radius: number }[] }>();
@@ -499,6 +502,15 @@ export class CombatController {
     sfx(ability ? "uiSelect" : "uiCancel");
     this.selected = ability;
     this.aim = null;
+    this.refresh();
+  }
+
+  /** O botão de Preparar: os botões das habilidades passam a ser o que fica pronto. De novo, volta ao normal. */
+  private chooseReady(): void {
+    if (this.busy) return;
+    sfx(this.aim?.kind === "ready" ? "uiCancel" : "uiSelect");
+    this.selected = null;
+    this.aim = this.aim?.kind === "ready" ? null : { kind: "ready" };
     this.refresh();
   }
 
@@ -796,8 +808,22 @@ export class CombatController {
         selected: this.selected === null && !this.aim,
         onClick: () => this.select(null),
       },
-      ...unit.abilities.map(
-        (ability): ActionButton => ({
+      ...unit.abilities.map((ability): ActionButton => {
+        // Preparando: o botão é o da habilidade que fica pronta, e só acende o que se prepara.
+        if (this.aim?.kind === "ready") {
+          const fits = readyable(ability) && readiness(unit, ability, true) === "ready";
+          return {
+            label: ability.name,
+            icon: abilityIcon(ability),
+            tag: "Preparar",
+            cost: "action",
+            body: `Deixa ${ability.name} pronta: até a sua próxima vez, sai no primeiro inimigo que entrar no alcance dela, na reação.\n${describeAbility(ability)}`,
+            enabled: fits,
+            why: readyable(ability) ? why(ability) : "Isso não se prepara: só o que mira um inimigo e não se recita.",
+            onClick: () => void this.issue({ type: "ready", unitId: unit.id, abilityId: ability.id }),
+          };
+        }
+        return {
           label: ability.name,
           icon: abilityIcon(ability),
           tag: price(ability),
@@ -805,11 +831,27 @@ export class CombatController {
           wait: cooldownLeft(unit, ability) || undefined,
           body: `${ability.flavor}\n${describeAbility(ability)}`,
           enabled: canPay(ability) && abilityTargets(encounter, unit, ability).length > 0,
-          why: why(ability),
+          why: ability.unseen && canPay(ability) && abilityTargets(encounter, unit, ability).length === 0 ? "Algum inimigo está vendo: saia da vista dele antes (atrás de parede, pedra alta ou barranco)." : why(ability),
           selected: this.selected?.id === ability.id,
           onClick: () => this.select(ability),
-        }),
-      ),
+        };
+      }),
+      // Preparar: o Vigiar de outra habilidade. Escolhe-se depois qual, num dos botões delas.
+      ...(unit.team === "party" && unit.abilities.some(readyable)
+        ? [
+            {
+              label: this.aim?.kind === "ready" ? "Preparar: escolha o quê" : "Preparar",
+              icon: "hourglass",
+              tag: "Ação",
+              cost: "action",
+              body: "Gasta a ação deixando uma habilidade pronta: até a sua próxima vez, ela sai no primeiro inimigo que entrar no alcance dela, na reação. Clique e escolha qual. O que se recita não se prepara.",
+              enabled: unit.turn.action && !vowForbids(encounter, unit),
+              why: unit.turn.action ? `O voto da Ipojy: ${unit.name} não dá o primeiro golpe da luta. Espere alguém abrir.` : "A ação deste turno já foi gasta.",
+              selected: this.aim?.kind === "ready",
+              onClick: () => this.chooseReady(),
+            } satisfies ActionButton,
+          ]
+        : []),
       ...(usable.length > 0
         ? [
             {
@@ -892,6 +934,7 @@ export class CombatController {
     }
     // Todo mundo de pé: o companheiro (segurar), um aliado, quem dá a ordem inclusive (proteger), um inimigo (mirar).
     else if (this.aim?.kind === "order") this.options = encounter.units.filter(isAlive).map((other) => other.pos);
+    else if (this.aim?.kind === "ready") this.options = [];
     else if (this.aim?.kind === "support") {
       this.options = supportTargets(encounter, unit, this.aim.supporter).map((target) => target.pos);
     } else if (this.selected) this.options = abilityTargets(encounter, unit, this.selected);
@@ -1290,6 +1333,42 @@ export class CombatController {
           this.hud.log(`Acertou ${target.name} (${sum}).`);
         }
         await this.wait(event.outcome === "hit" ? 40 : event.outcome === "crit" ? 120 : 220);
+        return;
+      }
+
+      case "readied": {
+        this.floatOver(event.unit, "Pronto", TEXT_COLORS.goldBright, -22);
+        this.hud.log(`${this.unit(event.unit).name} prepara ${event.name} pra quem chegar.`);
+        await this.wait(120);
+        return;
+      }
+
+      case "revealed": {
+        this.actor(event.unit)?.setHidden(false);
+        this.floatOver(event.unit, "Visto!", TEXT_COLORS.danger, -22);
+        this.hud.log(`${this.unit(event.unit).name} foi descoberto.`);
+        await this.wait(100);
+        return;
+      }
+
+      case "parried": {
+        const actor = this.actor(event.unit);
+        sfx("block");
+        this.floatOver(event.unit, `Aparou ${event.amount}`, TEXT_COLORS.guard, -22);
+        if (actor) this.spark(this.center(actor), COLORS.goldBright, 9);
+        this.hud.log(`${this.unit(event.unit).name} apara com a lâmina: ${event.amount} a menos.`);
+        await this.wait(100);
+        return;
+      }
+
+      case "intercepted": {
+        const actor = this.actor(event.unit);
+        const ally = this.actor(event.ally);
+        sfx("block");
+        this.floatOver(event.unit, "Na frente!", TEXT_COLORS.guard, -22, 24);
+        if (actor && ally) this.slash(this.center(ally), this.center(actor));
+        this.hud.log(`${this.unit(event.unit).name} entra na frente de ${this.unit(event.ally).name}.`);
+        await this.wait(160);
         return;
       }
 
@@ -1731,6 +1810,7 @@ export class CombatController {
     if (on && statusId === STATUSES.submerged.id) actor.setImmersion("submerged");
     if (on && statusId === STATUSES.beached.id) actor.setImmersion("beached");
     if (statusId === NOSEBLEED) actor.setBleeding(on);
+    if (statusId === STATUSES.hidden.id) actor.setHidden(on);
   }
 
   /** Um corte de luz de `from` a `to` que some depressa: o golpe de reação, antes de ele chegar. */

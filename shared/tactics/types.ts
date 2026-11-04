@@ -98,6 +98,8 @@ export interface Ability {
    * rodadas, acerte ou erre o golpe. Ver ./surfaces.ts.
    */
   surface?: { id: SurfaceId; rounds: number };
+  /** Só se usa fora da vista de todo inimigo de pé (Esconder-se): à vista, não há alvo. */
+  unseen?: boolean;
   /** Num aliado, só nos OUTROS: quem usa não se mira (ajudar a si mesmo não existe). */
   others?: boolean;
   /** Pode ser usada como ataque de oportunidade, gastando a reação. */
@@ -345,6 +347,11 @@ export interface Unit {
    */
   reciting?: { abilityId: string; target: Pos; unit?: string };
   /**
+   * O que ele deixou preparado (Preparar): enquanto estiver de vigia, é ESTA
+   * habilidade que sai em quem entrar no alcance, e não o golpe da arma.
+   */
+  readied?: string;
+  /**
    * As marcas que o corpo levou nesta luta e que saem com ele dela (as de
    * `untilRest`, ver ./statuses.ts): o mundo as passa pra história no fim.
    * Ficam aqui mesmo que ele caia, quando as condições se apagam.
@@ -449,6 +456,12 @@ export type Command =
   | { type: "lift"; unitId: string; targetId: string }
   /** Quem tem a vez dá a `targetId`, do mesmo lado, a ordem `order` (ver AiOrder). Não gasta nada. */
   | { type: "order"; unitId: string; targetId: string; order: AiOrder }
+  /**
+   * Preparar: gasta a ação, e até a vez seguinte o primeiro inimigo que ENTRAR no
+   * alcance de `abilityId` leva ela, na reação (ver `readied` em Unit). O golpe
+   * da arma é o Vigiar; aqui vale outra habilidade de mirar inimigo.
+   */
+  | { type: "ready"; unitId: string; abilityId: string }
   | { type: "endTurn"; unitId: string };
 
 export type AttackOutcome = "hit" | "miss" | "crit" | "fumble";
@@ -551,6 +564,14 @@ export type TacticalEvent =
   | { type: "slammed"; unit: string; into: "wall" | "prop" | "unit"; name?: string; pos: Pos }
   /** Tirado do lugar, `unit` desceu `steps` degraus e caiu. O `damage` vem logo depois. */
   | { type: "fell"; unit: string; steps: number }
+  /** `unit` aparou com a lâmina o golpe que pegou: `amount` a menos, pago em Fôlego. */
+  | { type: "parried"; unit: string; amount: number }
+  /** `unit`, em guarda, entrou na frente do golpe de `attacker` que ia em `ally`. */
+  | { type: "intercepted"; unit: string; ally: string; attacker: string }
+  /** `unit` preparou `abilityId` pra quem entrar no alcance (Preparar). */
+  | { type: "readied"; unit: string; abilityId: string; name: string }
+  /** `unit` saiu do esconderijo: deu um golpe, ou foi visto. */
+  | { type: "revealed"; unit: string }
   | { type: "statusApplied"; target: string; statusId: string; name: string; turns: number }
   | { type: "statusExpired"; target: string; statusId: string; name: string }
   | { type: "surfaceCreated"; surfaceId: SurfaceId; name: string; tiles: Pos[]; rounds: number }

@@ -153,6 +153,21 @@ export function punishFactor(actor: Unit, target: Unit): number {
 }
 
 /** VOTO: quem luta na escola `style` jurou nunca dar o primeiro golpe? Vale pra unidade e pra ficha do elenco. */
+/** Quanto Fôlego custa aparar um golpe com a lâmina (ver PARRY_MIN e parry em ./engine.ts). */
+export const PARRY_BREATH = 2;
+/** Golpe que tira menos que isto não se apara: não vale gastar a reação. */
+export const PARRY_MIN = 4;
+
+/**
+ * Quem apara: quem é de uma escola de espada (o triângulo, não o Baluarte de
+ * bicho) e bate de perto. Com besta na mão não se apara nada.
+ */
+export function parries(unit: Pick<Unit, "style" | "abilities" | "characterClass">): boolean {
+  if (unit.style === undefined || unit.style === "baluarte") return false;
+  const weapon = unit.abilities.find((ability) => ability.id === `${unit.characterClass}.attack`);
+  return weapon !== undefined && weapon.range <= 2;
+}
+
 export function isSworn(style: StyleId | undefined): boolean {
   return template(style)?.vow === true;
 }

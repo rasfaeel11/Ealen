@@ -8,7 +8,7 @@ import { FALL_PER_STEP, findPath, forcedPath } from "./movement";
 import { PROPS, fellProp, propTemplate, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
 import { STATUSES, isHarmful, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
-import { STYLES, counters, isSworn, punishFactor, styleReduction, waveBonus } from "./styles";
+import { PARRY_BREATH, PARRY_MIN, STYLES, counters, isSworn, parries, punishFactor, styleReduction, waveBonus } from "./styles";
 import {
   SURFACES,
   enterCost,
@@ -29,7 +29,10 @@ import {
   supportTargets,
   vowForbids,
   LIFT_SHARE,
+  REVEAL_RANGE,
   liftable,
+  readyable,
+  seenByFoe,
 } from "./targeting";
 import type {
   AiOrder,
@@ -266,6 +269,8 @@ function execute(encounter: Encounter, unit: Unit, command: Command, events: Tac
       return lift(encounter, unit, command.targetId, events);
     case "order":
       return giveOrder(encounter, unit, command.targetId, command.order, events);
+    case "ready":
+      return ready(encounter, unit, command.abilityId, events);
     case "endTurn":
       closeTurn(unit);
       events.push({ type: "turnEnded", unit: unit.id });
@@ -597,6 +602,7 @@ function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]
     for (const watch of watchThreats(encounter, unit, before)) {
       flush();
       watch.watcher.turn.reaction = false;
+      delete watch.watcher.readied;
       removeStatuses(watch.watcher, (status) => status.watch === true, events);
       events.push({ type: "watchTriggered", unit: watch.watcher.id, target: unit.id });
       charge(encounter, watch.watcher, watch.ability, false, events);
@@ -612,13 +618,33 @@ function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]
   }
   flush();
   soak(encounter, unit, events);
+  uncover(encounter, unit, events);
   return undefined;
 }
 
 /**
+ * Depois de `mover` andar: se ele estava Escondido e terminou à vista de um
+ * inimigo perto (REVEAL_RANGE), foi visto; e todo Escondido do outro lado que
+ * ele agora vê de perto, também.
+ */
+function uncover(encounter: Encounter, mover: Unit, events: TacticalEvent[]): void {
+  const hidden = (unit: Unit) => isAlive(unit) && unit.statuses.some((status) => status.concealed);
+  if (hidden(mover) && seenByFoe(encounter, mover, REVEAL_RANGE)) reveal(mover, events);
+  for (const other of encounter.units) {
+    if (other.team === mover.team || !hidden(other) || !isAlive(mover)) continue;
+    if (distance(other.pos, mover.pos) <= REVEAL_RANGE && hasLineOfSight(encounter.grid, mover.pos, other.pos)) reveal(other, events);
+  }
+}
+
+function reveal(unit: Unit, events: TacticalEvent[]): void {
+  removeStatuses(unit, (status) => status.concealed === true, events);
+  events.push({ type: "revealed", unit: unit.id });
+}
+
+/**
  * Quem está de vigia (`watch`) e vê `mover` ENTRAR no alcance do golpe dele,
- * vindo de `from` (onde não alcançava, ou não via): o golpe é o da arma
- * (`<classe>.attack`), pago como reação. Quem é da Ipojy, antes de a luta abrir,
+ * vindo de `from` (onde não alcançava, ou não via): o golpe é o que ele
+ * preparou (`readied`) ou, no Vigiar, o da arma (`<classe>.attack`), pago como reação. Quem é da Ipojy, antes de a luta abrir,
  * não vigia ninguém.
  */
 export function watchThreats(encounter: Encounter, mover: Unit, from: Pos): { watcher: Unit; ability: Ability }[] {
@@ -626,7 +652,9 @@ export function watchThreats(encounter: Encounter, mover: Unit, from: Pos): { wa
   for (const watcher of encounter.units) {
     if (watcher.team === mover.team || !isAlive(watcher) || !watcher.turn.reaction) continue;
     if (!watcher.statuses.some((status) => status.watch) || vowForbids(encounter, watcher)) continue;
-    const ability = watcher.abilities.find((candidate) => candidate.id === `${watcher.characterClass}.attack`);
+    // O que ele preparou (Preparar), ou o golpe da arma (Vigiar).
+    const wanted = watcher.readied ?? `${watcher.characterClass}.attack`;
+    const ability = watcher.abilities.find((candidate) => candidate.id === wanted);
     if (!ability || readiness(watcher, ability, true) !== "ready") continue;
     const sees = (pos: Pos) => distance(watcher.pos, pos) <= ability.range && hasLineOfSight(encounter.grid, watcher.pos, pos);
     if (!sees(from) && sees(mover.pos)) threats.push({ watcher, ability });
@@ -733,6 +761,7 @@ function useAbility(
 
   if (ability.cost === "action") unit.turn.action = false;
   else unit.turn.bonus = false;
+  if (ability.cost === "action") delete unit.readied;
   // O que ele fez com a ação deste turno: é o que a Rachadura e as manias da IA leem depois.
   if (ability.cost === "action") unit.habit = { repeated: false, attackTurns: 0, ...unit.habit, now: ability.id };
   if (isRecited(ability)) {
@@ -818,7 +847,12 @@ function resolveAbility(
 
   // Quem é da Ipojy e foi atacado em vão devolve o golpe — depois que este acabar de acontecer.
   const countering: Unit[] = [];
-  for (const target of targets) {
+  for (const aimed of targets) {
+    const target = interceptor(encounter, actor, ability, aimed) ?? aimed;
+    if (target !== aimed) {
+      target.turn.reaction = false;
+      events.push({ type: "intercepted", unit: target.id, ally: aimed.id, attacker: actor.id });
+    }
     const strike = ability.radius === undefined && dealsDamage(ability) && target.team !== actor.team;
     let critical = false;
     if (ability.attack) {
@@ -851,7 +885,57 @@ function resolveAbility(
     laySurface(encounter, ability.surface.id, surfaceTiles(encounter, ability, targetPos), ability.surface.rounds, events);
   }
 
+  // O golpe que sai do esconderijo o descobre.
+  if (isBlow(ability) && actor.statuses.some((status) => status.concealed)) reveal(actor, events);
+
   for (const defender of countering) counterStrike(encounter, defender, actor, events);
+}
+
+/**
+ * INTERCEPTAR: quem está em guarda, colado no aliado que `actor` acabou de
+ * mirar com um golpe de arma de um alvo só, entra na frente e leva o golpe no
+ * lugar dele (com a guarda dele), pago com a reação. Precisa estar ao alcance
+ * e à vista de quem bate. Magia não se intercepta: quem recita não mira o corpo.
+ */
+function interceptor(encounter: Encounter, actor: Unit, ability: Ability, aimed: Unit): Unit | undefined {
+  if (aimed.team === actor.team || ability.radius !== undefined || ability.targets !== "enemy" || ability.mana || !dealsDamage(ability)) return undefined;
+  return encounter.units.find(
+    (other) =>
+      other !== aimed &&
+      other !== actor &&
+      other.team === aimed.team &&
+      isAlive(other) &&
+      other.turn.reaction &&
+      other.statuses.some((status) => status.guard) &&
+      distance(other.pos, aimed.pos) === 1 &&
+      distance(other.pos, actor.pos) <= ability.range &&
+      hasLineOfSight(encounter.grid, actor.pos, other.pos),
+  );
+}
+
+/**
+ * PREPARAR: `unit` gasta a ação deixando `abilityId` pronta, e até a vez
+ * seguinte o primeiro inimigo que entrar no alcance dela leva ela, na reação
+ * (ver watchThreats). Vale o que mira um inimigo e não se recita (quem recita
+ * não segura a palavra no meio); o preço sai quando ela sair.
+ */
+function ready(encounter: Encounter, unit: Unit, abilityId: string, events: TacticalEvent[]): CommandError | undefined {
+  const ability = unit.abilities.find((candidate) => candidate.id === abilityId);
+  if (!ability) return "unknown_ability";
+  if (!readyable(ability)) return "invalid_target";
+  if (!unit.turn.action) return "resource_spent";
+  const state = readiness(unit, ability, true);
+  if (state === "breath") return "no_breath";
+  if (state === "recharging") return "recharging";
+  if (state !== "ready") return "resource_spent";
+  if (vowForbids(encounter, unit)) return "invalid_target";
+
+  unit.turn.action = false;
+  unit.habit = { repeated: false, attackTurns: 0, ...unit.habit, now: "ready" };
+  unit.readied = ability.id;
+  events.push({ type: "readied", unit: unit.id, abilityId: ability.id, name: ability.name });
+  addStatus(unit, STATUSES.watching, 1, events);
+  return undefined;
 }
 
 /**
@@ -974,6 +1058,14 @@ function applyEffect(
         const blocked = Math.min(amount, targetOr + rollDie(encounter, 6));
         amount -= blocked;
         events.push({ type: "blocked", unit: target.id, amount: blocked });
+      } else if (canParry(actor, ability, target, amount)) {
+        // APARAR: a lâmina no caminho da outra, pago com a reação e com Fôlego.
+        const parried = Math.min(amount - 1, rollDie(encounter, 4) + (target.grade ?? 0));
+        target.turn.reaction = false;
+        target.breath -= PARRY_BREATH;
+        events.push({ type: "breathSpent", unit: target.id, amount: PARRY_BREATH, remaining: target.breath });
+        events.push({ type: "parried", unit: target.id, amount: parried });
+        amount -= parried;
       }
       if (amount <= 0) return;
       const taken = Math.min(amount, target.currentHp);
@@ -1036,6 +1128,17 @@ function applyEffect(
       return;
     }
   }
+}
+
+/**
+ * Se `target` apara o golpe de arma de perto que `actor` acabou de acertar:
+ * ele é de escola de espada e luta de perto (`parries`), tem a reação e o
+ * Fôlego, e o golpe tira ao menos PARRY_MIN. Magia, tiro e área não se aparam.
+ */
+function canParry(actor: Unit, ability: Ability, target: Unit, amount: number): boolean {
+  if (actor.team === target.team || ability.mana || ability.radius !== undefined || ability.range > 2) return false;
+  if (!target.turn.reaction || target.breath < PARRY_BREATH || amount < PARRY_MIN || !parries(target)) return false;
+  return !target.statuses.some((status) => status.skipsTurn);
 }
 
 /** Devolve até `amount` de vida a `unit`, se alguma cura pega nele (ver `noHeal`) e se falta alguma. */

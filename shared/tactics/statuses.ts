@@ -47,6 +47,12 @@ export interface StatusTemplate {
    * o golpe, na reação dele (ver Vigiar em ./abilities.ts). A condição se gasta nele.
    */
   watch?: boolean;
+  /**
+   * Escondido: quem está do outro lado só o acha colado nele — de longe ninguém o
+   * mira. Sai quando o portador dá um golpe, ou quando termina de andar à vista de
+   * um inimigo perto (ver Esconder-se em ./abilities.ts).
+   */
+  concealed?: boolean;
   /** Cura nenhuma pega no portador — nem de habilidade, nem de item. */
   noHeal?: boolean;
   /** Com fome: a cura cobra do portador o dobro de Fôlego (ver HEAL_PER_BREATH em ../breath.ts). */
@@ -104,6 +110,8 @@ export const STATUSES = {
   held: { id: "held", name: "Seguro", speed: -4 },
   /** De vigia (Vigiar, ver ./abilities.ts): até a vez seguinte, bate no primeiro que entrar no alcance. */
   watching: { id: "watching", name: "De vigia", watch: true },
+  /** Escondido (Esconder-se, ver ./abilities.ts): de longe ninguém o mira, e o golpe que sai do esconderijo entra mais certo. */
+  hidden: { id: "hidden", name: "Escondido", concealed: true, toHit: 2 },
   /** Quem levou a ajuda de um aliado colado (Ajudar, ver ./abilities.ts): o próximo golpe sai mais certo. */
   aided: { id: "aided", name: "Ajudado", toHit: 2 },
 

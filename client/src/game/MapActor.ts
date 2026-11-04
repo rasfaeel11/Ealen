@@ -228,6 +228,11 @@ export class MapActor {
   }
 
   /** Liga (ou desliga) o sangue pingando do nariz: a marca da mana gasta de uma vez. */
+  /** Escondido (na luta): o corpo fica meio apagado, pra quem joga saber que de longe ninguém o mira. */
+  setHidden(hidden: boolean): void {
+    this.scene.tweens.add({ targets: [this.sprite, this.shadow], alpha: hidden ? 0.45 : 1, duration: 220 });
+  }
+
   setBleeding(bleeding: boolean): void {
     if (!bleeding) {
       this.bleeding?.remove();
