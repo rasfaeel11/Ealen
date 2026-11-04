@@ -21,7 +21,13 @@ export interface Tile {
   moveCost: number;
   /** Dá cobertura a quem está colado nele, do outro lado de quem ataca: pedra, mureta. Ver ./attack.ts. */
   cover: boolean;
-  /** Altura do chão, em degraus. 0 = o nível do mapa. Quem ataca de cima acerta mais; de baixo, menos. */
+  /**
+   * Altura do chão, em degraus. 0 = o nível do mapa. Quem ataca de cima acerta
+   * mais e mira por cima da mureta; de baixo, menos. Subir custa passo
+   * (`CLIMB_COST`), a crista corta a visão de quem está abaixo dela, e quem é
+   * empurrado de cima cai (ver push em ./engine.ts). O paredão que ninguém
+   * sobe é a face do degrau com `blocksMove`.
+   */
   elevation: number;
   /**
    * Água: o rio, o baixio. Pra quem anda, é só o custo do passo; pra bicho de
@@ -61,6 +67,18 @@ export function samePos(a: Pos, b: Pos): boolean {
 /** Distância em quadrados, com diagonal valendo 1. */
 export function distance(a: Pos, b: Pos): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
+/** Quanto de passo custa subir cada degrau, além do custo do quadrado. Descer não custa. */
+export const CLIMB_COST = 1;
+
+export function elevationAt(grid: Grid, pos: Pos): number {
+  return tileAt(grid, pos)?.elevation ?? 0;
+}
+
+/** Quantos degraus se sobe indo de `from` a `to` (0 descendo ou no plano). */
+export function climbOf(grid: Grid, from: Pos, to: Pos): number {
+  return Math.max(0, elevationAt(grid, to) - elevationAt(grid, from));
 }
 
 function blocksMoveAt(grid: Grid, x: number, y: number): boolean {
@@ -135,16 +153,18 @@ export function tilesBetween(grid: Grid, from: Pos, to: Pos): Pos[] {
 
 /**
  * Linha de visão entre dois quadrados: traça uma reta e falha se algum
- * quadrado NO MEIO do caminho bloqueia a visão — as pontas não contam.
+ * quadrado NO MEIO do caminho bloqueia a visão — as pontas não contam. O chão
+ * mais alto que as duas pontas também bloqueia: atrás da crista não se vê.
  */
 export function hasLineOfSight(grid: Grid, from: Pos, to: Pos): boolean {
   const steps = lineSteps(grid, from, to);
+  const eye = Math.max(elevationAt(grid, from), elevationAt(grid, to));
   return steps.every((step, index) => {
     const { x, y } = step.from;
     const { x: nx, y: ny } = step.to;
     // Passo diagonal espremido entre duas paredes: não passa olhar nenhum.
     if (nx !== x && ny !== y && blocksSightAt(grid, nx, y) && blocksSightAt(grid, x, ny)) return false;
-    return index === steps.length - 1 || !blocksSightAt(grid, nx, ny);
+    return index === steps.length - 1 || (!blocksSightAt(grid, nx, ny) && elevationAt(grid, step.to) <= eye);
   });
 }
 

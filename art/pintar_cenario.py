@@ -35,6 +35,8 @@ LOGIC_T = 16  # o quadrado do mapa, em pixels de mundo
 # Os gids do chão, como estão nos mapas.
 GRASS, FLOWERS, DIRT, PAVE, TALL, DEEP, SAND, WOOD = 1, 2, 3, 4, 5, 6, 7, 8
 HIGH, FACE = 17, 18
+# Na camada `relief`: a altura 2 e a face dela. A altura 1 e a face dela são HIGH e FACE.
+HIGH2, FACE2 = 19, 20
 SHALLOW, MUD, CHAIN = 21, 22, 23
 # Os gids de pé.
 TREE, ROCK, WALL, POST, COLUMN = 9, 10, 11, 12, 13
@@ -106,6 +108,11 @@ class Area:
         self.h: int = self.data["height"]
         self.ground = self._layer("ground")
         self.sorted = self._layer("sorted")
+        has_relief = any(l["name"] == "relief" for l in self.data["layers"])
+        self.relief = self._layer("relief") if has_relief else [[0] * self.w for _ in range(self.h)]
+        # A altura de cada quadrado, em degraus, como o motor a lê (a maior das camadas).
+        level = {HIGH: 1, HIGH2: 2}
+        self.elevation = [[max(level.get(self.ground[y][x], 0), level.get(self.relief[y][x], 0)) for x in range(self.w)] for y in range(self.h)]
         self.objects = next(l for l in self.data["layers"] if l["type"] == "objectgroup")["objects"]
 
     def _layer(self, name: str) -> list[list[int]]:
@@ -120,6 +127,16 @@ class Area:
         for y in range(self.h):
             for x in range(self.w):
                 if layer[y][x] in gids:
+                    px[x, y] = 255
+        return small.resize((self.w * T, self.h * T), Image.NEAREST)
+
+    def where(self, test) -> Image.Image:
+        """A máscara dos quadrados em que `test(x, y)` vale, com bordas duras."""
+        small = Image.new("L", (self.w, self.h), 0)
+        px = small.load()
+        for y in range(self.h):
+            for x in range(self.w):
+                if test(x, y):
                     px[x, y] = 255
         return small.resize((self.w * T, self.h * T), Image.NEAREST)
 
@@ -801,6 +818,86 @@ class Canvas:
         patch = Image.new("RGBA", (w, h), (8, 12, 16, alpha))
         self.img.alpha_composite(patch, dest=(x, y))
 
+    # O relevo --------------------------------------------------------------------------------------------------------
+
+    def relief(self, wall: Color = (112, 106, 94), slope: Color = (40, 36, 26)) -> None:
+        """
+        Os patamares do mapa (`elevation`), um degrau por vez, de baixo pra cima: o topo um pouco mais claro, a borda
+        de cima com luz, o talude escuro descendo pro sul (é a face que se vê), os lados com sombra fina e, embaixo, a
+        sombra que o patamar joga. Onde o mapa põe a face que barra o passo (FACE), é muro de pedra; o vão no meio dele
+        é escada. Pinta por cima do chão e por baixo do que está de pé, e não toca na água.
+        """
+        a = self.area
+        top_level = max(max(row) for row in a.elevation)
+        if top_level == 0:
+            return
+        dry = ImageChops.invert(a.tile_mask({DEEP, SHALLOW, CHAIN}))
+        if self.water_alpha is not None:
+            dry = ImageChops.multiply(dry, self.water_alpha.point(lambda v: 255 if v < 128 else 0))
+        faces = {FACE, FACE2}
+        is_face = lambda x, y: a.relief[y][x] in faces or a.ground[y][x] in faces
+        wall_mask = a.where(is_face)
+        drop = 22
+        for level in range(1, top_level + 1):
+            hard = a.where(lambda x, y, level=level: a.elevation[y][x] >= level)
+            soft = hard.filter(ImageFilter.GaussianBlur(13))
+            n = noise(self.w, self.h, 30, self.rng, 3)
+            top = threshold(ImageChops.add(soft.point(lambda v: int(v * 0.66)), n.point(lambda v: int(v * 0.34))), 128)
+            top = ImageChops.multiply(top, dry)
+            # A sombra que o patamar joga no chão de baixo, pro sul e pro leste.
+            cast = ImageChops.subtract(ImageChops.offset(top, 10, drop + 12).filter(ImageFilter.GaussianBlur(9)), top)
+            shade(self.img, ImageChops.multiply(cast, dry), (14, 16, 22), 0.32)
+            # O talude: a faixa logo abaixo da borda de baixo, escura em cima e sumindo embaixo.
+            band = Image.new("L", top.size, 0)
+            for i in range(1, drop + 1):
+                step = ImageChops.subtract(ImageChops.offset(top, 0, i), top)
+                band = ImageChops.lighter(band, step.point(lambda v, i=i: int(v * (1 - (i - 1) / drop))))
+            band = ImageChops.multiply(ImageChops.subtract(band, wall_mask), dry)
+            shade(self.img, band, slope, 0.62)
+            grain = noise(self.w, self.h, 4, self.rng, 2).point(lambda v: 255 if v > 150 else 0)
+            shade(self.img, ImageChops.multiply(band, grain), lit(slope, -0.3), 0.5)
+            # O pé do talude: uma linha fina mais escura onde ele encontra o chão de baixo.
+            foot = ImageChops.subtract(ImageChops.offset(top, 0, drop).filter(ImageFilter.MaxFilter(3)), ImageChops.offset(top, 0, drop - 2))
+            shade(self.img, ImageChops.multiply(ImageChops.subtract(foot, top), dry), (16, 14, 12), 0.45)
+            # Os lados: sombra estreita do lado de fora.
+            sides = ImageChops.subtract(ImageChops.lighter(ImageChops.offset(top, 11, 0), ImageChops.offset(top, -11, 0)), top)
+            sides = ImageChops.multiply(ImageChops.subtract(sides, band), dry)
+            shade(self.img, sides, slope, 0.5)
+            shade(self.img, ImageChops.subtract(sides, sides.filter(ImageFilter.MinFilter(5))), (18, 16, 14), 0.4)
+            # O topo e a borda de cima, onde a luz bate.
+            shade(self.img, top, (232, 222, 180), 0.07)
+            rim = ImageChops.subtract(top, ImageChops.offset(top, 0, 4))
+            shade(self.img, rim, (238, 230, 196), 0.34)
+            lip = ImageChops.subtract(top, ImageChops.offset(top, 0, -3))
+            shade(self.img, lip, (24, 20, 16), 0.55)
+        # O muro de arrimo: pedra aparelhada no quadrado da face, com a capa em cima e o musgo embaixo.
+        if wall_mask.getbbox():
+            stone = masonry(self.w, self.h, self.rng, wall, 12).convert("RGBA")
+            stone.putalpha(wall_mask)
+            self.img.alpha_composite(stone)
+            cap = ImageChops.subtract(wall_mask, ImageChops.offset(wall_mask, 0, 7))
+            shade(self.img, cap, lit(wall, 0.35), 0.85)
+            shade(self.img, ImageChops.subtract(ImageChops.offset(cap, 0, 7), cap), (18, 16, 16), 0.5)
+            grain = noise(self.w, self.h, 6, self.rng, 2).point(lambda v: 255 if v > 120 else 0)
+            moss = ImageChops.multiply(ImageChops.subtract(wall_mask, ImageChops.offset(wall_mask, 0, -12)), grain)
+            shade(self.img, moss, (58, 76, 44), 0.6)
+            foot = ImageChops.subtract(ImageChops.offset(wall_mask, 6, 14).filter(ImageFilter.GaussianBlur(5)), wall_mask)
+            shade(self.img, foot, (12, 14, 20), 0.4)
+        # A escada: o vão do muro, ao lado de uma face, ganha degraus de pedra.
+        d = ImageDraw.Draw(self.img)
+        for y in range(1, a.h):
+            for x in range(a.w):
+                if is_face(x, y) or a.elevation[y - 1][x] <= a.elevation[y][x]:
+                    continue
+                if not ((x > 0 and is_face(x - 1, y)) or (x + 1 < a.w and is_face(x + 1, y))):
+                    continue
+                x0, y0 = x * T, y * T
+                for k in range(6):
+                    tone = lit(wall, 0.2 - k * 0.07)
+                    d.rectangle([x0, y0 + k * 8, x0 + T - 1, y0 + k * 8 + 7], fill=tone + (255,))
+                    d.line([(x0, y0 + k * 8), (x0 + T - 1, y0 + k * 8)], fill=lit(tone, 0.3) + (255,))
+                    d.line([(x0, y0 + k * 8 + 7), (x0 + T - 1, y0 + k * 8 + 7)], fill=(30, 26, 24, 255))
+
     # Enfeites --------------------------------------------------------------------------------------------------------
 
     def tufts(self, where: Image.Image, count: int, colors: list[Color], tall: int = 7) -> None:
@@ -1299,6 +1396,8 @@ def paint_ymonha(canvas: Canvas) -> None:
     canvas.tufts(grass, 1100, [(92, 104, 56), (104, 112, 60), (74, 86, 46)])
     canvas.flowers(a.tile_mask({FLOWERS}), 90, [(214, 204, 150), (180, 88, 72), (172, 160, 200)])
     canvas.pebbles(road, 300)
+    # A terra alta da margem norte, a plataforma do guincho, o outeiro e as lombas da lavoura.
+    canvas.relief(wall=(110, 104, 94), slope=(42, 36, 26))
 
     # O cais de madeira, sobre a água.
     dock = a.tile_mask({WOOD})
@@ -1570,6 +1669,8 @@ def paint_ybytugua(canvas: Canvas) -> None:
     canvas.pebbles(street, 500)
     margin = ImageChops.subtract(water.filter(ImageFilter.MaxFilter(17)), water)
     canvas.reeds(margin, 140)
+    # Os três patamares: o cais, a cidade do meio e a cidade alta, com o muro de arrimo e as duas escadas.
+    canvas.relief(wall=(118, 110, 96), slope=(46, 38, 28))
 
     # O cais de madeira.
     dock = a.tile_mask({WOOD})
@@ -1700,6 +1801,8 @@ def paint_baixios(canvas: Canvas) -> None:
     # A faixa de lodo escuro da beira.
     mud = a.organic({MUD, SAND}, rng, soft=22, rough=0.45)
     canvas.lay(mud_texture(w, h, rng, False), mud, (24, 22, 18))
+    # A margem seca de oeste, alta: a cheia não sobe nela.
+    canvas.relief(slope=(34, 30, 22))
 
     # A água: raso em quase tudo, e o canal fundo no canto.
     water = a.organic({SHALLOW, DEEP}, rng, soft=22, rough=0.45)
@@ -1792,16 +1895,9 @@ def paint_floresta(canvas: Canvas) -> None:
     canvas.lay(road_texture(w, h, rng, "mata"), road, (28, 24, 18))
     canvas.pebbles(road, 340)
 
-    # O barranco alto de Jurendy: o topo de capim ralo, de borda torta, e a face de terra e pedra na frente.
-    high = a.organic({HIGH}, rng, soft=14, rough=0.42)
-    face_mask = ImageChops.subtract(ImageChops.offset(high, 0, 20).filter(ImageFilter.MaxFilter(3)), high)
-    cliff = ramp(Image.blend(noise(w, h, 12, rng, 3), noise(w, h, 3, rng, 2), 0.35), [(42, 36, 30), (54, 46, 36), (66, 56, 44), (84, 74, 60), (104, 96, 82)])
-    canvas.wall_shadow(3 * T, 6 * T - 2, 8 * T, 6 * T + 26, 110)
-    canvas.lay(cliff, face_mask, (18, 16, 14))
-    top = ramp(Image.blend(noise(w, h, 40, rng, 3), noise(w, h, 3, rng, 2), 0.45), [(58, 66, 42), (68, 76, 46), (80, 84, 50), (94, 94, 58), (108, 104, 66)])
-    canvas.lay(top, high, (24, 22, 18))
-    canvas.tufts(high, 300, [(104, 110, 62), (122, 122, 70), (84, 94, 52)], 8)
-    canvas.pebbles(high, 40)
+    # O barranco alto de Jurendy, a colina da clareira e o morro do sul (o relevo do mapa).
+    canvas.relief(wall=(100, 92, 78), slope=(40, 34, 26))
+    canvas.tufts(a.where(lambda x, y: a.elevation[y][x] > 0), 300, [(104, 110, 62), (122, 122, 70), (84, 94, 52)], 8)
 
     # A areia da margem do Ymonhã.
     bank = a.organic({SAND}, rng, soft=10)

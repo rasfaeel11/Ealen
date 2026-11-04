@@ -549,6 +549,8 @@ export type TacticalEvent =
    * `damage` (ou o `immune`) vem logo depois, e o `propDamaged` do destrutível, se foi nele.
    */
   | { type: "slammed"; unit: string; into: "wall" | "prop" | "unit"; name?: string; pos: Pos }
+  /** Tirado do lugar, `unit` desceu `steps` degraus e caiu. O `damage` vem logo depois. */
+  | { type: "fell"; unit: string; steps: number }
   | { type: "statusApplied"; target: string; statusId: string; name: string; turns: number }
   | { type: "statusExpired"; target: string; statusId: string; name: string }
   | { type: "surfaceCreated"; surfaceId: SurfaceId; name: string; tiles: Pos[]; rounds: number }

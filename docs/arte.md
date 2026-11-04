@@ -29,6 +29,11 @@ tem a dela. Quem desenha na tela é `client/src/game/Scenery.ts`, e a regra nunc
   O prédio de que se entra tem o corte pintado no chão: piso, parede do fundo e o topo das outras.
 - **`unless`**: a peça sai de cena com aquela variável da história (o barco de Oryndu, depois da cheia). **`smoke`**: de onde sobe a fumaça.
 - **Peça nova que barra**: pinte no script e ponha no mapa um tile que barre o passo (o `gid` 12, que o pintor não desenha). O pintor não muda a regra sozinho.
+- **O relevo** (`Canvas.relief`): a camada `relief` do mapa (altura 1 e 2, e a face de cada uma; ver `docs/motor.md`). Cada degrau ganha o topo um
+  pouco mais claro, a borda de cima com luz, o talude escuro descendo pro sul (a face que se vê de cima), sombra estreita nos lados e a sombra que ele
+  joga embaixo. A face que barra o passo é muro de arrimo de pedra, e o vão no meio do muro é escada. Os quatro mapas têm: a terra alta e o outeiro da
+  margem norte do Ymonhã, a plataforma de pedra do guincho, as lombas da lavoura; os três patamares de Ybytuguá (o cais, a cidade do meio, a cidade
+  alta da Mesa, com o muro e duas escadas); a margem seca dos baixios, alta; o barranco de Jurendy, a colina da clareira e os morros do sul da floresta.
 - **Os destrutíveis** (`props.png`): pelo `kind`, não pelo tile que o mapa usa.
 - **Nada de parede invisível**: toda borda de mapa que se alcança acaba em árvore (o `gid` 9), e a água que barra o passo (o `gid` 6, o fundo) é
   pintada escura, com espuma onde o raso cai. Passagem que ainda não abre tem um gatilho que diz por quê (ver task 52 no AGENTS.md).

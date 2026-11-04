@@ -4,7 +4,7 @@ import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from ".
 import { HUNGER, healCap, healToll } from "../breath";
 import { CONCEPTS } from "../mana";
 import { distance, hasLineOfSight, samePos, tileAt, type Grid, type Pos } from "./grid";
-import { findPath } from "./movement";
+import { FALL_PER_STEP, findPath, forcedPath } from "./movement";
 import { PROPS, fellProp, propTemplate, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
 import { STATUSES, isHarmful, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
@@ -590,7 +590,7 @@ function move(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]
     }
 
     const before = { ...unit.pos };
-    unit.turn.movement -= enterCost(encounter, step);
+    unit.turn.movement -= enterCost(encounter, step, before);
     unit.pos = { ...step };
     walked.push({ ...step });
 
@@ -1079,6 +1079,10 @@ export const SLAM_PER_TILE = 2;
  * a água também (`soak`). Quem carrega uma condição `immovable` não sai do
  * lugar; quem é pesado (`heft`) sai esse tanto a menos.
  *
+ * O chão mais alto barra como parede (barranco não se sobe empurrado), e quem
+ * desce degrau no caminho cai: FALL_PER_STEP por degrau, puxado ou empurrado
+ * (ver forcedPath em ./movement.ts).
+ *
  * Empurrado (não puxado) contra o que barra o passo, o alvo bate: leva
  * SLAM_PER_TILE por quadrado que faltou andar, sem armadura no meio, e o
  * destrutível em que bateu leva o mesmo (o barril de óleo quebra e derrama).
@@ -1086,30 +1090,25 @@ export const SLAM_PER_TILE = 2;
  */
 function push(encounter: Encounter, origin: Pos, target: Unit, pushDistance: number, events: TacticalEvent[]): void {
   if (target.statuses.some((status) => status.immovable)) return;
-  const direction = Math.sign(pushDistance);
-  const dx = Math.sign(target.pos.x - origin.x) * direction;
-  const dy = Math.sign(target.pos.y - origin.y) * direction;
-  if (dx === 0 && dy === 0) return;
+  const path = forcedPath(encounter, origin, target, pushDistance);
+  if (!path) return;
 
   const from = { ...target.pos };
-  const steps = Math.abs(pushDistance) - (target.heft ?? 0);
-  let left = 0;
-  let stop: Pos | undefined;
-  for (let step = 0; step < steps; step++) {
-    const next = { x: target.pos.x + dx, y: target.pos.y + dy };
-    if ((tileAt(encounter.grid, next)?.blocksMove ?? true) || unitAt(encounter, next)) {
-      left = steps - step;
-      stop = next;
-      break;
-    }
-    target.pos = next;
-  }
+  target.pos = { ...path.to };
   if (!samePos(from, target.pos)) {
     events.push({ type: "pushed", unit: target.id, from, to: { ...target.pos } });
-    touchSurface(encounter, target, events);
+    if (path.fall > 0) fall(encounter, target, path.fall, events);
+    if (isAlive(target)) touchSurface(encounter, target, events);
     soak(encounter, target, events);
   }
-  if (direction > 0 && stop && isAlive(target)) slam(encounter, target, stop, left * SLAM_PER_TILE, events);
+  if (pushDistance > 0 && path.stop && isAlive(target)) slam(encounter, target, path.stop, path.left * SLAM_PER_TILE, events);
+}
+
+/** `target` caiu `steps` degraus, tirado do lugar: FALL_PER_STEP por degrau, sem armadura no meio. */
+function fall(encounter: Encounter, target: Unit, steps: number, events: TacticalEvent[]): void {
+  events.push({ type: "fell", unit: target.id, steps });
+  if (target.invulnerable) events.push({ type: "immune", target: target.id });
+  else dealDamage(encounter, target, steps * FALL_PER_STEP, events);
 }
 
 /** `target` bateu no que está em `into` com a força de `amount` (ver push). */
@@ -1164,6 +1163,7 @@ function dry(unit: Unit, events: TacticalEvent[]): void {
 /**
  * A água sobe um anel: todo quadrado seco que não barra o passo e encosta
  * (de lado, não na diagonal) em água vira água, e custa o passo de água (2).
+ * Barranco a água não sobe: o chão mais alto que a água do lado fica seco.
  * Destrutível de pé barra o passo: o chão dele fica seco — menos o que a água
  * apaga (`washes`, o círculo gravado), que some antes e alaga junto. Na primeira vez, a
  * luta passa a ter a própria grade (`ownGrid`), pra cheia não alagar o mapa
@@ -1186,13 +1186,16 @@ function riseWater(encounter: Encounter, events: TacticalEvent[]): void {
     fellProp(grid, prop);
     events.push({ type: "propDestroyed", prop: prop.id, name: propTemplate(prop).name, pos: { ...prop.pos } });
   }
-  const wet = (x: number, y: number) => x >= 0 && y >= 0 && x < grid.width && y < grid.height && grid.tiles[y * grid.width + x].water === true;
+  // A água não sobe barranco: só alaga o chão que não é mais alto que ela.
+  const wet = (x: number, y: number, level: number) =>
+    x >= 0 && y >= 0 && x < grid.width && y < grid.height && grid.tiles[y * grid.width + x].water === true && grid.tiles[y * grid.width + x].elevation >= level;
   const tiles: Pos[] = [];
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
       const tile = grid.tiles[y * grid.width + x];
       if (tile.water || tile.blocksMove) continue;
-      if (wet(x - 1, y) || wet(x + 1, y) || wet(x, y - 1) || wet(x, y + 1)) tiles.push({ x, y });
+      const level = tile.elevation;
+      if (wet(x - 1, y, level) || wet(x + 1, y, level) || wet(x, y - 1, level) || wet(x, y + 1, level)) tiles.push({ x, y });
     }
   }
   if (tiles.length === 0) return;

@@ -18,9 +18,13 @@ import { CLASS_INFO } from "../types/characterClass";
  *     `blocksSight` (bool) não se enxerga através
  *     `moveCost` (int)     custo de entrar em combate; padrão 1
  *     `cover` (bool)       dá cobertura a quem se encosta nele (pedra, mureta)
- *     `elevation` (int)    altura do chão, em degraus; padrão 0. É só vantagem
- *                          de combate: quem barra a subida é o `blocksMove` da
- *                          face do degrau, e a escada é o quadrado sem ele
+ *     `elevation` (int)    altura do chão, em degraus; padrão 0. Pesa na luta
+ *                          (subir custa passo, a crista corta a visão, de cima
+ *                          se acerta mais, empurrado de cima se cai; ver Tile
+ *                          em ../tactics/grid.ts). Quem barra a subida é o
+ *                          `blocksMove` da face do degrau, e a escada é o
+ *                          quadrado sem ele. Os mapas do jogo a põem na
+ *                          camada `relief`
  *     `water` (bool)       água (o rio, o baixio): é onde bicho de rio se cura
  *                          e se esconde; pra quem anda, use `moveCost` junto
  *   Assim, pintar uma árvore já faz dela um obstáculo — não existe camada

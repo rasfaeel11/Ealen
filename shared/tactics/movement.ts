@@ -1,13 +1,14 @@
-import { inBounds, posOfIndex, stepNeighbors, tileIndex, type Pos } from "./grid";
+import { elevationAt, inBounds, posOfIndex, stepNeighbors, tileAt, tileIndex, type Pos } from "./grid";
 import { enterCost, surfaceHarm } from "./surfaces";
 import type { Encounter, Unit } from "./types";
-import { isAlive } from "./units";
+import { isAlive, unitAt } from "./units";
 
 /**
  * Por onde alguém consegue andar neste turno.
  *
  * Regras: parede e inimigo de pé barram o caminho; aliado deixa passar mas
- * não deixa parar em cima; terreno difícil custa mais; diagonal custa o
+ * não deixa parar em cima; terreno difícil custa mais, e subir um degrau
+ * também (ver CLIMB_COST em ./grid.ts); diagonal custa o
  * mesmo que reto e não corta quina (ver stepNeighbors em ./grid.ts).
  *
  * Entre dois caminhos do mesmo custo, vale o que fere menos: ninguém corta
@@ -52,7 +53,7 @@ function explore(encounter: Encounter, unit: Unit): Map<number, Visit> {
       const occupant = occupants.get(index);
       if (occupant && occupant.team !== unit.team) continue;
 
-      const cost = here.cost + enterCost(encounter, next);
+      const cost = here.cost + enterCost(encounter, next, posOfIndex(grid, current));
       if (cost > unit.turn.movement) continue;
 
       const reached = { cost, hazard: here.hazard + surfaceHarm(encounter, next) };
@@ -103,4 +104,47 @@ export function findPath(encounter: Encounter, unit: Unit, to: Pos): Route | und
     path.unshift(posOfIndex(grid, index));
   }
   return { path, cost: destination.cost, hazard: destination.hazard };
+}
+
+/** Quanto dói cada degrau de queda: quem é empurrado (ou puxado) de um chão mais alto pra um mais baixo. */
+export const FALL_PER_STEP = 3;
+
+export interface ForcedPath {
+  /** Onde o alvo para. */
+  to: Pos;
+  /** Quantos quadrados de deslocamento sobraram quando ele parou no que barra. */
+  left: number;
+  /** O quadrado em que ele parou de encontro (parede, corpo, barranco acima dele). */
+  stop?: Pos;
+  /** Quantos degraus ele desceu no caminho. */
+  fall: number;
+}
+
+/**
+ * Por onde vai quem é empurrado (distância positiva, pra longe de `origin`) ou
+ * puxado (negativa, pra perto), em linha reta, um quadrado por vez: para no
+ * que barra o passo, num corpo ou num chão mais alto que o dele (barranco não
+ * se sobe empurrado). Descer degrau conta como queda. O peso (`heft`) tira
+ * quadrados. Só a conta: quem move é push em ./engine.ts, e a IA lê o mesmo.
+ */
+export function forcedPath(encounter: Encounter, origin: Pos, target: Unit, pushDistance: number): ForcedPath | undefined {
+  const direction = Math.sign(pushDistance);
+  const dx = Math.sign(target.pos.x - origin.x) * direction;
+  const dy = Math.sign(target.pos.y - origin.y) * direction;
+  if (dx === 0 && dy === 0) return undefined;
+
+  const { grid } = encounter;
+  const steps = Math.abs(pushDistance) - (target.heft ?? 0);
+  let pos = target.pos;
+  let fall = 0;
+  for (let step = 0; step < steps; step++) {
+    const next = { x: pos.x + dx, y: pos.y + dy };
+    const rise = elevationAt(grid, next) - elevationAt(grid, pos);
+    if ((tileAt(grid, next)?.blocksMove ?? true) || unitAt(encounter, next) || rise > 0) {
+      return { to: pos, left: steps - step, stop: next, fall };
+    }
+    fall -= Math.min(0, rise);
+    pos = next;
+  }
+  return { to: pos, left: 0, fall };
 }

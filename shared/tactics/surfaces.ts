@@ -1,4 +1,4 @@
-import { distance, hasLineOfSight, inBounds, samePos, tileAt, type Grid, type Pos } from "./grid";
+import { CLIMB_COST, climbOf, distance, hasLineOfSight, inBounds, samePos, tileAt, type Grid, type Pos } from "./grid";
 import type { Dice } from "./rng";
 import type { Ability, Encounter } from "./types";
 
@@ -39,9 +39,13 @@ export function surfaceAt(encounter: Encounter, pos: Pos): SurfaceTemplate | und
   return surface && SURFACES[surface.id];
 }
 
-/** Quanto de movimento custa entrar em `pos`: o do terreno ou o da superfície, o que for maior. */
-export function enterCost(encounter: Encounter, pos: Pos): number {
-  return Math.max(tileAt(encounter.grid, pos)?.moveCost ?? 1, surfaceAt(encounter, pos)?.moveCost ?? 1);
+/**
+ * Quanto de movimento custa entrar em `pos`: o do terreno ou o da superfície,
+ * o que for maior, e mais CLIMB_COST por degrau subido vindo de `from`.
+ */
+export function enterCost(encounter: Encounter, pos: Pos, from?: Pos): number {
+  const climb = from ? climbOf(encounter.grid, from, pos) * CLIMB_COST : 0;
+  return Math.max(tileAt(encounter.grid, pos)?.moveCost ?? 1, surfaceAt(encounter, pos)?.moveCost ?? 1) + climb;
 }
 
 /** O dano médio que a superfície de `pos` causa a cada vez que pega alguém (0 onde não há nenhuma que fira). */

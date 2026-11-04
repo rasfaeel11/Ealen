@@ -661,6 +661,14 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 - **52 e 53. Sem passagem muda e sem parede invisível** (decidido pelo co-autor em 2026-11-04, ver `docs/escolhas.md`). Cada passagem fechada diz por quê, num gatilho que fala toda vez que se pisa: a estrada pra oeste do Ymonhã, na abertura (`estrada_oeste`: "Pelo rio, meio dia."); a estrada do norte de Ybytuguá antes do ato 2 (`estrada_norte`, com o contrato ou sem); a trilha do barranco, depois da ponte, rio acima (`trilha_barranco`). A clareira a nordeste da floresta, depois dos batedores, tem o acampamento deles e um Pão de Viagem (`clareira`, `contratados_vencidos`). As bordas que se alcançam ganharam árvore (o Ymonhã dos dois lados da margem norte, os baixios a oeste, as pontas do cais de Ybytuguá, a trilha do barranco), e a borda leste dos baixios virou canal fundo, que barra o passo; o fundo agora é pintado escuro, com espuma na beira (`paint_baixios`). Os cenários foram repintados.
 - **13, 15, 92 e a 63 dos dons** (decidido pelo co-autor em 2026-11-04, ver `docs/escolhas.md`). Não entram bichos da floresta: o Ykuruã é a primeira criatura do bestiário, e a floresta é de gente (os homens de Ymboripe, os batedores). Os mapas ficam com a disposição de hoje. O modo de luta por pessoa não entra: o manual e o automático à vista bastam. Empurrar, derrubar e agarrar não viram verbo de todo mundo: são os dons de Jarupã (a Ombrada) e de Xanduí (Segurar o Bote), e dar a todos tiraria deles o que é deles.
 
+- **O relevo** (pedido pelo autor em 2026-11-04: "não ser tudo plano"). A altura do chão já existia na regra e não aparecia em lugar nenhum. Agora os
+  quatro mapas têm uma camada `relief`, de altura 1 e 2, e o pintor a desenha (talude, sombra, muro de arrimo, escada). Na luta, subir custa 1 de passo
+  por degrau; atrás da crista não se vê (vale pra furtividade); de cima, +2 no acerto e a mureta do alvo não conta; quem é empurrado ou puxado para no
+  chão mais alto como numa parede e, descendo degrau, cai (3 por degrau, evento `fell`). A IA lê a queda no empurrão como lê o choque. A cheia não
+  sobe barranco: a margem seca dos baixios ficou alta, e é onde o grupo se segura. No Ymonhã o besteiro do pedágio atira da plataforma do guincho, e o
+  da estrada, da terra alta; em Ybytuguá a cidade sobe em três patamares; na floresta, quem é puxado do barranco de Jurendy cai. Os testes do motor
+  conferem a regra; a tela não foi vista.
+
 ## 9. Onde isto está no cânone
 
 Gravado no repositório da história com a aprovação de 2026-10-19:

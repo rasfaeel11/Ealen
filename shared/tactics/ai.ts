@@ -1,7 +1,7 @@
 import { distance, hasLineOfSight, posOfIndex, samePos, stepNeighbors, tileAt, tileIndex, type Pos } from "./grid";
 import { attackOdds } from "./attack";
 import { healCap, healToll } from "../breath";
-import { reachableTiles } from "./movement";
+import { FALL_PER_STEP, forcedPath, reachableTiles } from "./movement";
 import { PROPS, propTemplate, type Prop, type PropTemplate } from "./props";
 import { SLAM_PER_TILE, cueEnding } from "./engine";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
@@ -397,7 +397,7 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
         case "push": {
           if (victim.statuses.some((status) => status.immovable)) break;
           shove += outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
-          // Jogado contra o que barra o passo, ele bate: é dano, e o barril em que bateu quebra (ver push em ./engine.ts).
+          // Jogado contra o que barra o passo, ele bate, e de cima do barranco, cai: é dano, e o barril em que bateu quebra (ver push em ./engine.ts).
           const crash = slamOf(encounter, actor.pos, victim, effect.distance);
           if (crash) {
             if (!victim.invulnerable) slammed += outlook.lands * crash.amount;
@@ -459,27 +459,18 @@ function spillValue(encounter: Encounter, actor: Unit, profile: AiProfile, prop:
 }
 
 /**
- * Onde o empurrão de `pushDistance` vindo de `origin` faz `victim` bater, e com
- * que força: o espelho de push em ./engine.ts. Nada, se ele não bate (puxão ou
- * caminho livre).
+ * O que o empurrão (ou puxão) de `pushDistance` vindo de `origin` faz `victim`
+ * levar no corpo, e em que destrutível ele bate: o espelho de push em
+ * ./engine.ts. Bater só no empurrão; cair de degrau, nos dois. Nada, se o
+ * caminho é livre e plano.
  */
 function slamOf(encounter: Encounter, origin: Pos, victim: Unit, pushDistance: number): { amount: number; prop?: Prop } | undefined {
-  if (pushDistance <= 0) return undefined;
-  const dx = Math.sign(victim.pos.x - origin.x);
-  const dy = Math.sign(victim.pos.y - origin.y);
-  if (dx === 0 && dy === 0) return undefined;
-
-  const steps = pushDistance - (victim.heft ?? 0);
-  let pos = victim.pos;
-  for (let step = 0; step < steps; step++) {
-    const next = { x: pos.x + dx, y: pos.y + dy };
-    if ((tileAt(encounter.grid, next)?.blocksMove ?? true) || unitAt(encounter, next)) {
-      const prop = encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, next));
-      return { amount: (steps - step) * SLAM_PER_TILE, ...(prop ? { prop } : {}) };
-    }
-    pos = next;
-  }
-  return undefined;
+  const path = forcedPath(encounter, origin, victim, pushDistance);
+  if (!path) return undefined;
+  const amount = path.fall * FALL_PER_STEP + (pushDistance > 0 && path.stop ? path.left * SLAM_PER_TILE : 0);
+  if (amount <= 0) return undefined;
+  const prop = pushDistance > 0 && path.stop ? encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, path.stop!)) : undefined;
+  return { amount, ...(prop ? { prop } : {}) };
 }
 
 /** O golpe que `defender` devolve em `attacker` se for atacado e errar (o Contragolpe, ver counterStrike em ./engine.ts). */
@@ -851,7 +842,7 @@ function walkingDistances(encounter: Encounter, sources: Pos[]): number[] {
     const current = queue[head];
     for (const next of stepNeighbors(grid, posOfIndex(grid, current))) {
       const index = tileIndex(grid, next);
-      const cost = distances[current] + enterCost(encounter, next);
+      const cost = distances[current] + enterCost(encounter, next, posOfIndex(grid, current));
       if (cost >= distances[index]) continue;
       distances[index] = cost;
       queue.push(index);

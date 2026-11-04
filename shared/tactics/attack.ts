@@ -11,7 +11,8 @@ import { defenseBonus, effectiveAttribute, isAlive, primaryAttribute } from "./u
  *
  * - COBERTURA: o alvo está colado num quadrado de `cover` (pedra, mureta) e
  *   a reta de quem ataca passa por ele. Soma na defesa do alvo. Só existe a
- *   dois quadrados ou mais: de perto não há o que se esconder atrás.
+ *   dois quadrados ou mais: de perto não há o que se esconder atrás. E quem
+ *   ataca de um chão mais alto mira por cima dela.
  * - FLANCO: golpe corpo a corpo com um aliado de pé do outro lado do alvo
  *   (qualquer um dos três quadrados opostos a quem bate). Soma no ataque.
  * - ALTURA: quem ataca de um chão mais alto soma no ataque; de um mais
@@ -96,10 +97,10 @@ export function attackEdge(
   aim: Pos = target.pos,
 ): AttackEdge {
   const area = ability.radius !== undefined;
-  const cover = actor !== target && hasCover(encounter, area ? aim : actor.pos, target.pos);
-  const flanked = !area && actor.team !== target.team && isFlanked(encounter, actor, target);
   const rise = (tileAt(encounter.grid, actor.pos)?.elevation ?? 0) - (tileAt(encounter.grid, target.pos)?.elevation ?? 0);
   const height = Math.sign(rise) as -1 | 0 | 1;
+  const cover = actor !== target && !(height > 0 && !area) && hasCover(encounter, area ? aim : actor.pos, target.pos);
+  const flanked = !area && actor.team !== target.team && isFlanked(encounter, actor, target);
   const style = actor.team !== target.team ? styleMatchup(actor.style, target.style) : 0;
   const styleToHit = style * STYLE_TO_HIT + (style > 0 ? styleEdgeBonus(actor.grade) : 0);
   const shot = isShot(ability);

@@ -259,7 +259,7 @@ function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 |
   if (edge.style > 0) notes.push(`escola leva vantagem +${style}`);
   if (edge.style < 0) notes.push(`escola em desvantagem -${style}`);
   if (edge.flanked) notes.push(`flanqueado +${FLANK_TO_HIT}`);
-  if (edge.height > 0) notes.push(`de cima +${HEIGHT_TO_HIT}`);
+  if (edge.height > 0) notes.push(`de cima +${HEIGHT_TO_HIT}, por cima da mureta`);
   if (edge.height < 0) notes.push(`de baixo -${HEIGHT_TO_HIT}`);
   if (edge.cover) notes.push(`cobertura +${COVER_DEFENSE} na defesa`);
   if (edge.far) notes.push(`longe -${LONG_SHOT_TO_HIT}`);
@@ -1387,6 +1387,15 @@ export class CombatController {
         sfx("push");
         this.hud.log(`${this.unit(event.unit).name} é tirado do lugar.`);
         if (actor) await this.glide(actor, pixelOfTile(this.host.map, event.to), 160, false);
+        return;
+      }
+
+      case "fell": {
+        sfx("block");
+        this.shake(160, 0.007);
+        this.hud.log(`${this.unit(event.unit).name} cai do barranco${event.steps > 1 ? `, ${event.steps} degraus` : ""}.`);
+        this.floatOver(event.unit, "Caiu!", TEXT_COLORS.danger, -22);
+        await this.wait(140);
         return;
       }
 
