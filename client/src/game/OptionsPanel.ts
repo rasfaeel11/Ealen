@@ -101,7 +101,7 @@ const TABS: { name: string; rows: () => Row[] }[] = [
           { value: false, label: "Eu escolho" },
           { value: true, label: "Eles escolhem" },
         ],
-        "Eles escolhem: ao subir de nível, Jarupã e Xanduí gastam os pontos da árvore sozinhos. A de Endyru é sempre sua.",
+        "Eles escolhem: ao subir de nível, Jarupã e Xanduí gastam sozinhos os pontos da árvore e os de atributo. A de Endyru é sempre sua.",
       ),
       option(
         "autoAdvance",

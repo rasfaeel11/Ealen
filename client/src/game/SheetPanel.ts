@@ -7,6 +7,7 @@ import {
   RACE_INFO,
   STATUSES,
   STYLES,
+  attributePoints,
   auraName,
   auraOf,
   branchesFor,
@@ -35,6 +36,7 @@ import {
   maxMana,
   missing,
   proficiency,
+  raiseAttribute,
   sheetAbilities,
   toggleBenched,
   storedGear,
@@ -545,7 +547,9 @@ export class SheetPanel {
     }
     const points = fights(character) && !character.arts ? skillPoints(character) : 0;
     const tree = fights(character) ? `  ·  R: árvore${points > 0 ? ` (${points} ponto${points > 1 ? "s" : ""})` : ""}` : "";
-    this.setFooter(`Setas: habilidade  ·  Enter: usar  ·  ${keyLabel("interact")}: equipar  ·  ${keyLabel("bag")}: mochila${tree}  ·  Esc: fechar`);
+    const spare = attributePoints(character);
+    const raise = spare > 0 ? `  ·  T: atributos (${spare} ponto${spare > 1 ? "s" : ""})` : "";
+    this.setFooter(`Setas: habilidade  ·  Enter: usar  ·  ${keyLabel("interact")}: equipar  ·  ${keyLabel("bag")}: mochila${tree}${raise}  ·  Esc: fechar`);
   }
 
   /** `R`: a coluna da direita vira a árvore de habilidades: um ramo por coluna, de cima pra baixo, com o que cada nó pede. */
@@ -756,6 +760,42 @@ export class SheetPanel {
     }
   }
 
+  /** `T`: a coluna da direita vira a lista dos atributos, pra pôr os pontos que o nível deu (ver raiseAttribute). */
+  private listAttributes(focus = 0): void {
+    const { character } = this;
+    if (attributePoints(character) < 1) {
+      this.say(`${character.name} não tem ponto de atributo: cada nível dá um.`);
+      return;
+    }
+    this.heading.setText("ATRIBUTOS");
+    const options = ATTRIBUTE_KEYS.map((key): MenuOption => {
+      const [name, meaning] = ATTRIBUTE_LABEL[key];
+      const now = character.attributes[key];
+      return {
+        label: `${name}  ${now} → ${now + 1}`,
+        onFocus: () =>
+          this.detail.setText(
+            `${name}: ${meaning}.${key === "vigor" ? " Cada ponto dá 3 de vida máxima." : ""}
+
+Enter: pôr um ponto. Sobra${attributePoints(character) > 1 ? "m" : ""} ${attributePoints(character)}. Não se tira depois.`,
+          ),
+        onSelect: () => this.later(() => this.raiseAt(key, ATTRIBUTE_KEYS.indexOf(key))),
+      };
+    });
+    this.setMenu(options, () => this.later(() => this.listAbilities()), focus);
+    this.setFooter("Setas: atributo  ·  Enter: pôr um ponto  ·  Esc: voltar");
+  }
+
+  private raiseAt(key: keyof Attributes, focus: number): void {
+    const { character } = this;
+    if (!raiseAttribute(character, key)) return;
+    sfx("uiOpen");
+    this.host.onPacked();
+    this.show();
+    this.say(`${character.name}: ${ATTRIBUTE_LABEL[key][0]} ${character.attributes[key]}.`);
+    if (attributePoints(character) > 0) this.listAttributes(focus);
+  }
+
   /** `E`: a coluna da direita vira a dos três lugares do corpo. */
   private listSlots(focus?: EquipmentSlot): void {
     const { character } = this;
@@ -906,6 +946,7 @@ export class SheetPanel {
     else if (isAction(event, "bag")) this.host.onBag();
     else if (isAction(event, "interact") && !this.targeting) this.listSlots();
     else if (event.code === "KeyR" && !this.targeting) this.listTree();
+    else if (event.code === "KeyT" && !this.targeting) this.listAttributes();
     else if (event.code === "KeyX" && !this.targeting && this.focusedAbility) this.toggleFocused(this.focusedAbility);
     else if (event.code === "Tab" && !this.targeting && this.host.members.length > 1) {
       event.preventDefault();

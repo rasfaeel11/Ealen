@@ -80,6 +80,7 @@ import {
   unusedItems,
   useItemOutside,
   autoLearn,
+  autoRaise,
   discardItem,
   passItem,
   equip,
@@ -929,7 +930,11 @@ export default class WorldScene extends Phaser.Scene {
       .filter((member) => member.id !== this.character.id && fights(member))
       .flatMap((member) => {
         const learned = autoLearn(member);
-        return learned.length > 0 ? [`${member.name} aprendeu ${learned.map((node) => node.name).join(" e ")}.`] : [];
+        const raised = autoRaise(member);
+        return [
+          ...(learned.length > 0 ? [`${member.name} aprendeu ${learned.map((node) => node.name).join(" e ")}.`] : []),
+          ...(raised.length > 0 ? [`${member.name} pôs ${raised.length} ponto${raised.length > 1 ? "s" : ""} de atributo.`] : []),
+        ];
       });
     if (lines.length > 0) this.persist();
     return lines;

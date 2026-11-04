@@ -11,6 +11,12 @@ export interface Character {
   level: number;
   xp: number;
   attributes: Attributes;
+  /**
+   * Onde o jogador pôs os pontos de atributo (ver attributePoints em
+   * ../leveling.ts): quantos em cada um. Já está somado em `attributes`; isto
+   * só conta o que se gastou. Ausente = nada.
+   */
+  raised?: Partial<Record<keyof Attributes, number>>;
   currentHp: number;
   maxHp: number;
   /** O Fôlego que resta (ver ../breath.ts). Ausente = cheio. */
