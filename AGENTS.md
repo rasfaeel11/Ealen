@@ -341,7 +341,6 @@ O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ai
 | 97 | **Ver o combate novo na tela** | Ninguém jogou: as três faixas na mira e no registro, o custo, a esquiva, a cadeia ("Cadeia 2", "Troca!"), os quatro verbos na barra (são mais quatro botões: ver se a barra cabe), Caído se levantando. Jogar a abertura e o armazém e corrigir o que sair torto. |
 | 98 | **Os custos que faltam** | Entraram Fôlego, ferida própria e marca. Faltam os outros da `combate` §2.2: tempo (a recitação que quebra como preço), posição (perder a altura, sair Prensado), equipamento (a lâmina lasca, a gravação se gasta), gente em volta (fora da deixa de Oryndu) e lei (conjurar sem licença). Cada um pede uma regra de quando cai: vai pro autor antes. |
 | 100 | **A margem e a borda do barco** | A `combate` §4.1 diz que borda do barco e margem prensam. Hoje prensa o que barra o passo (parede, corpo, caixote, barranco); a água não barra. Decidir com o autor se empurrar pra dentro d'água é Prensado, Caído ou outra coisa (no Ykuruã, o contrário de tirá-lo da água). |
-| 102 | **A IA que monta a cadeia** | A IA emenda o próximo verbo quando ele vale a pena, mas não planeja Agarrar → Empurrar → Golpear de propósito nem pesa o Fôlego da cadeia, e não usa a troca da Tsvirana. |
 | 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. |
 
 ### P1 — pedidos do autor (2026-10-31)
@@ -769,6 +768,13 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   de um inimigo de pé que estava colado; andar de lado, ainda colado, não é, e ser empurrado também não. O voto ("não
   recuar o primeiro passo"): quem é do Gryskar não recua antes de dar o primeiro golpe da luta, acerte ou erre; depois,
   recua como qualquer um. O quadrado de recuo não acende, e o clique nele diz o voto. A IA lê a mesma lista de quadrados.
+- **102. A IA que monta a cadeia.** Antes ela não emendava nada: com a ação gasta, encerrava. Agora o verbo que abre vale
+  também o melhor verbo que ele deixa emendar no mesmo alvo, com a condição que deixou (Agarrado, Prensado, Caído) e no
+  quadrado aonde o empurrão o levou, pela chance de pegar e menos o Fôlego do passo. Com a cadeia aberta, ela emenda sem
+  sair do lugar e paga o Fôlego (sem ele, para); o Gryskar sabe que o segundo golpe sai fraco, e a Tsvirana pesa a troca
+  de verbo, que sai de graça e não se apara. O Ykuruã não monta cadeia: não tem mente (`bestiario` §1). No
+  `balance:matrix` as lutas ficaram meio turno mais curtas dos dois lados; o mago sozinho contra Jurendy foi de 66% a 41%
+  (os dois do Círculo emendam), o espadachim contra o Ykuruã ficou no ruído (21% a 15%). Os números são da task 103.
 
 ## 9. Onde isto está no cânone
 
