@@ -360,7 +360,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 ### P2 — corpo
 | # | Task | O que é |
 |---|---|---|
-| 94 | **Ver na tela o que só se testou no motor** | Ninguém abriu no jogo: a árvore desenhada (`R` na ficha) e o desaprender no acampamento, o item jogado num aliado, as ordens, a Disparada e o Ajudar, jogar fora e arrumar a mochila, a opção Árvore dos companheiros. Jogar cada um e corrigir o que sair torto. |
 | 96 | **Ícones e arte das peças novas** | Os ícones da árvore, da Disparada, do Ajudar e das ordens são os provisórios de `icons.ts`, emprestados de outras coisas. Entram com a task 70. |
 | 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
 | 71 | **Relíquias e runas** | Itens que não se gastam: efeito passivo além de atributo (o acessório de hoje só soma atributo), encaixe em equipamento. As armas lendárias da história entram aqui. |
@@ -785,6 +784,16 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   Força/2", com o atributo de quem a usa; e num clone novo o `npm run dev` subia sem a história (o `story.json` nascia
   depois de o Vite listar o `public/`). O servidor de dev deixa `window.__jogo` pra um teste no navegador chegar à cena;
   o build não leva. O que é número foi pra task 103.
+- **94. O que só se testou no motor, visto na tela** (2026-11-13, no navegador, por script). Funcionam: a árvore desenhada
+  (`R` na ficha: aprender, a linha dourada, o nó que pede o de cima recusado com o motivo) e o desaprender (fora do
+  acampamento, "Só no acampamento"; depois de acampar, `U: refazer a árvore` no rodapé devolve os pontos), os pontos de
+  atributo (`T`), a mochila (usar, passar, jogar fora com um sim antes, `O` arrumar, `Tab` o cinto de cada um), o Ajudar
+  (Ajudado no aliado), a ordem pelo botão do companheiro (no modo automático), a Disparada (pela IA) e a opção Árvore dos
+  companheiros nas Opções. Corrigido: o Unguento ia na mão de quem estava com a vida cheia e se gastava ("Restaura 0
+  HP"): o que só devolve vida agora não pega em quem está inteiro, nem em si, no motor e na tela (o botão apagado diz
+  por quê); "HP" e as "corrupções recentes" do Eälen saíram do texto dos itens ("de vida"); o registro da ordem dizia
+  "Endyru a Jarupã: segurar posição" (agora "Endyru manda Jarupã segurar posição"); e a opção dizia "Eu comando / Por
+  conta própria" enquanto o botão da luta diz "manual / automático" (agora os dois dizem o mesmo).
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão

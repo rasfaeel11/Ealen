@@ -242,7 +242,8 @@ export function isThrown(item: Pick<ConsumableItem, "data">): boolean {
 /**
  * Em quem `unit` pode usar um item (comando `useItem`): ele mesmo e os aliados
  * de pé a até ITEM_REACH quadrados, à vista. Ele vem primeiro. O item que se
- * joga (`isThrown`) vai só nos inimigos de pé, com o mesmo alcance e a vista.
+ * joga (`isThrown`) vai só nos inimigos de pé, com o mesmo alcance e a vista. O
+ * que só devolve vida (`heal_hp`) não vai em quem está com a vida cheia.
  */
 export function itemTargets(encounter: Encounter, unit: Unit, item?: Pick<ConsumableItem, "data">): Pos[] {
   const thrown = item !== undefined && isThrown(item);
@@ -254,8 +255,11 @@ export function itemTargets(encounter: Encounter, unit: Unit, item?: Pick<Consum
       distance(unit.pos, other.pos) <= ITEM_REACH &&
       hasLineOfSight(encounter.grid, unit.pos, other.pos),
   );
-  const reached = others.map((other) => ({ ...other.pos }));
-  return thrown ? reached : [{ ...unit.pos }, ...reached];
+  // O que só devolve vida não vai em quem está inteiro: gastaria o pote à toa.
+  const heals = item !== undefined && item.data.effect.kind === "heal_hp";
+  const wants = (other: Unit) => !heals || other.currentHp < other.maxHp;
+  const reached = others.filter(wants).map((other) => ({ ...other.pos }));
+  return thrown ? reached : [...(wants(unit) ? [{ ...unit.pos }] : []), ...reached];
 }
 
 /**

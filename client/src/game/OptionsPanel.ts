@@ -89,10 +89,11 @@ const TABS: { name: string; rows: () => Row[] }[] = [
         "companionsAuto",
         "Companheiros na luta",
         [
-          { value: false, label: "Eu comando" },
-          { value: true, label: "Por conta própria" },
+          // Os mesmos nomes do botão de modo na luta.
+          { value: false, label: "Manual" },
+          { value: true, label: "Automático" },
         ],
-        "Por conta própria, Jarupã e Xanduí jogam a vez deles sozinhos. Endyru é sempre seu. Na luta, G (ou Select) troca.",
+        "Manual, você comanda o grupo inteiro; automático, Jarupã e Xanduí jogam a vez deles sozinhos. Endyru é sempre seu. Na luta, G (ou Select) troca.",
       ),
       option(
         "skillsAuto",

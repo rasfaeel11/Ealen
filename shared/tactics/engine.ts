@@ -1708,7 +1708,7 @@ function useItem(encounter: Encounter, user: Unit, itemId: string, at: Pos | und
   // Sem alvo, em si; com alvo, num aliado ao alcance do braço, ou no inimigo, se o item se joga (ver itemTargets).
   const unit = at ? unitAt(encounter, at) : user;
   if (slot.item.data.effect.kind === "throw" && !at) return "invalid_target";
-  if (!unit || (at && !itemTargets(encounter, user, slot.item).some((pos) => samePos(pos, at)))) return "invalid_target";
+  if (!unit || !itemTargets(encounter, user, slot.item).some((pos) => samePos(pos, unit.pos))) return "invalid_target";
 
   user.turn.bonus = false;
   const { id, name, data } = slot.item;

@@ -565,7 +565,8 @@ export class CombatController {
     if (this.busy) return;
     const unit = activeUnit(this.encounter)!;
     const thrown = isThrown(item);
-    if (!thrown && itemTargets(this.encounter, unit).length === 1) {
+    const targets = itemTargets(this.encounter, unit, item);
+    if (!thrown && targets.length === 1 && samePos(targets[0], unit.pos)) {
       void this.issue({ type: "useItem", unitId: unit.id, itemId: item.id });
       return;
     }
@@ -971,8 +972,12 @@ export class CombatController {
           cost: "bonus",
           count: slot.quantity,
           body: slot.item.description,
-          enabled: unit.turn.bonus && (!isThrown(slot.item) || itemTargets(encounter, unit, slot.item).length > 0),
-          why: unit.turn.bonus ? `Nenhum inimigo à vista a até ${ITEM_REACH} quadrados.` : "A ação bônus deste turno já foi gasta.",
+          enabled: unit.turn.bonus && itemTargets(encounter, unit, slot.item).length > 0,
+          why: !unit.turn.bonus
+            ? "A ação bônus deste turno já foi gasta."
+            : isThrown(slot.item)
+              ? `Nenhum inimigo à vista a até ${ITEM_REACH} quadrados.`
+              : `Ninguém ferido ao alcance: com a vida cheia, o ${slot.item.name} se gastaria à toa.`,
           selected: this.aim?.kind === "item" && this.aim.itemId === slot.item.id,
           onClick: () => this.chooseItem(slot.item),
         }),
@@ -1564,7 +1569,7 @@ export class CombatController {
         if (actor) this.ring(actor.pos, COLORS.hp);
         actor?.setHp(event.remainingHp, unit.maxHp);
         this.floatOver(event.target, `+${event.amount}`, TEXT_COLORS.hp);
-        this.hud.log(`${unit.name} recupera ${event.amount} de HP.`);
+        this.hud.log(`${unit.name} recupera ${event.amount} de vida.`);
         this.refreshRoster();
         await this.wait(320);
         return;
@@ -1695,7 +1700,7 @@ export class CombatController {
       }
 
       case "ordered":
-        this.hud.log(`${this.unit(event.unit).name} a ${this.unit(event.target).name}: ${orderLabel(event.order, this.encounter)}.`);
+        this.hud.log(`${this.unit(event.unit).name} manda ${this.unit(event.target).name} ${orderLabel(event.order, this.encounter)}.`);
         sfx("uiSelect");
         return;
 

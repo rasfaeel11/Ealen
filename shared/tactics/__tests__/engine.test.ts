@@ -289,6 +289,31 @@ test("item custa a ação bônus, cura e sai da mochila", () => {
   });
 });
 
+test("o unguento não vai em quem está com a vida cheia: nem em si, nem no aliado", () => {
+  const character = makeCharacter("A", { attributes: { olho: FIRST } });
+  addItemToInventory(character, findItemTemplate("item-unguento-de-barqueiro")!);
+  const { encounter } = setup(["AB...E"], (at) => [
+    unitFromCharacter(character, { team: "party", pos: at("A") }),
+    makeUnit("B", "party", at("B"), { currentHp: 20, maxHp: 20 }),
+    makeUnit("E", "enemy", at("E")),
+  ]);
+  const hero = unit(encounter, "A");
+  hero.currentHp = hero.maxHp;
+  const ointment = hero.inventory!.slots[0].item;
+  assert.deepEqual(itemTargets(encounter, hero, ointment), []);
+  assert.deepEqual(applyCommand(encounter, { type: "useItem", unitId: "A", itemId: ointment.id }), { ok: false, reason: "invalid_target" });
+  assert.deepEqual(applyCommand(encounter, { type: "useItem", unitId: "A", itemId: ointment.id, target: unit(encounter, "B").pos }), {
+    ok: false,
+    reason: "invalid_target",
+  });
+
+  unit(encounter, "B").currentHp = 12;
+  assert.deepEqual(itemTargets(encounter, hero, ointment), [unit(encounter, "B").pos]);
+  const events = run(encounter, { type: "useItem", unitId: "A", itemId: ointment.id, target: unit(encounter, "B").pos });
+  assert.equal(eventsOf(events, "heal")[0].amount, 8);
+  assert.equal(eventsOf(events, "itemUsed")[0].description, "Restaura 8 de vida.");
+});
+
 test("o pote de óleo se joga no inimigo à vista: quebra em cima, sem rolagem, e o chão seco pega fogo", () => {
   const character = makeCharacter("A", { attributes: { olho: FIRST } });
   addItemToInventory(character, findItemTemplate("item-pote-de-oleo")!);
