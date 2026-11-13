@@ -294,6 +294,7 @@ npm run build --workspace=client                # typecheck + build
 npm test                                        # testes sem tela: motor tático, mundo, história, save e validação dos mapas e do texto
 npm run balance:matrix                          # taxa de vitória de cada classe (com o equipamento de começo) x criatura (com o estilo e o que ela veste), pelo motor real
 npm run balance:matrix -- --nos 100             # cada nó da árvore sozinho, no nível 1, contra a mesma pessoa sem nó (o espadachim por escola, o mago na Página e no Círculo)
+npm run balance:grupo                           # o trio, em campanha (nível pelo XP, Círculo depois da margem, Corpo depois da ponte), contra cada luta do jogo no mapa dela, pela IA dos dois lados
 npm run desktop                                 # build do client e o jogo numa janela do Electron
 npm run desktop:pack                            # o app empacotado numa pasta (desktop/release), pro sistema em que roda
 npm run desktop:dist                            # os instaladores do sistema em que roda (ver `build` em desktop/package.json)

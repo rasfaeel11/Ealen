@@ -340,7 +340,7 @@ O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ai
 |---|---|---|
 | 98 | **Os custos que faltam** | Entraram Fôlego, ferida própria e marca. Faltam os outros da `combate` §2.2: tempo (a recitação que quebra como preço), posição (perder a altura, sair Prensado), equipamento (a lâmina lasca, a gravação se gasta), gente em volta (fora da deixa de Oryndu) e lei (conjurar sem licença). Cada um pede uma regra de quando cai: vai pro autor antes. |
 | 100 | **A margem e a borda do barco** | A `combate` §4.1 diz que borda do barco e margem prensam. Hoje prensa o que barra o passo (parede, corpo, caixote, barranco); a água não barra. Decidir com o autor se empurrar pra dentro d'água é Prensado, Caído ou outra coisa (no Ykuruã, o contrário de tirá-lo da água). |
-| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. Visto na tela (task 97): na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; com dois guardas e o besteiro em cima, toda recitação dele quebra antes de sair; o Golpe Pesado tira 27 a 36 e derruba guarda e saqueador de uma vez; o Fôlego do espadachim zera pela rodada 4. E uma pergunta pro autor: o chuço alcança 2, e da Ipojy com espada (alcance 1) nenhum Contragolpe sai contra quem cutuca de longe — os guardas erraram Xanduí rodadas a fio sem levar nada de volta. |
+| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. Visto na tela (task 97): na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; com dois guardas e o besteiro em cima, toda recitação dele quebra antes de sair; o Golpe Pesado tira 27 a 36 e derruba guarda e saqueador de uma vez; o Fôlego do espadachim zera pela rodada 4. No `balance:grupo` (100 lutas por luta, a IA dos dois lados): o grupo vence todas as lutas do jogo, em 1 a 4 rodadas, quase sem ninguém cair; a patrulha cai em pouco mais de uma rodada, porque o Golpe Pesado com custo tira 31 e a Espada tem 30. E a luta final não pede o que o cânone pede (`bestiario`, §5.3 aqui): as espadas comem o Ykuruã de 82 a 0 com ele dentro d'água, em umas 4 rodadas, sem ninguém o puxar, e o preparo na margem não muda nada (com e sem, o mesmo número). E uma pergunta pro autor: o chuço alcança 2, e da Ipojy com espada (alcance 1) nenhum Contragolpe sai contra quem cutuca de longe — os guardas erraram Xanduí rodadas a fio sem levar nada de volta. |
 
 ### P1 — pedidos do autor (2026-10-31)
 Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
@@ -371,7 +371,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 | 77 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
 | 78 | **Terreno que muda** | A água e a cheia já existem. Falta lama, ponte que cai, porta que se fecha no meio da luta; luz e escuro pesando na visão; hora do dia e clima. |
 | 79 | **Tutorial** | Ensinar movimento, ação, bônus, reação, cobertura, flanco, estilo e emboscada dentro do jogo, na ordem em que aparecem. |
-| 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1. O herói já entra com o equipamento de começo da classe. Falta grupo x grupo, por nível (é onde as Técnicas aparecem), com item; os números dos kits e das peças, que são os primeiros a conferir; e os números do Fôlego (quanto cada coisa custa, quanto a guarda devolve). |
+| 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1, e `balance:grupo` o trio em campanha contra cada luta do jogo (ver Feito). Falta: os números dos kits e das peças, que são os primeiros a conferir; os números do Fôlego (quanto cada coisa custa, quanto a guarda devolve); e o item, que nenhuma das duas usa. Mexer em número é com o autor (task 103). |
 
 ### P3 — produto
 | # | Task | O que é |
@@ -801,6 +801,13 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   dentro do jogo, também no navegador, e não do Google: sem internet, o título saía em Georgia. Feito e aberto aqui o
   app de Linux, rodando sozinho: o título com as fontes, o jogo novo, e o save que continua depois de fechar e abrir. O
   que faltou é o resto da task 81. Detalhe em `docs/motor.md`.
+- **80. O balanço em grupo** (2026-11-13). `npm run balance:grupo` (`client/scripts/balanceParty.ts`) roda o trio, com
+  Oryndu de apoio, contra cada grupo de inimigos dos quatro mapas, no próprio mapa (chão, altura, água, destrutíveis,
+  cheia e as deixas da luta, como o guincho e o estouro do ato 3), pela IA do jogo dos dois lados. O grupo segue a
+  campanha do roteiro: o nível sai do XP das lutas de antes, os pontos se gastam pela ordem automática, Endyru chega
+  ao Círculo depois da primeira ida e os dois ao Corpo depois da ponte. Começa onde a luta começaria (no gatilho perto,
+  ou chegando a 6 quadrados). A final roda com e sem o preparo. Por luta: vitória, rodadas, quantos do trio caem,
+  quantas vezes Endyru cai, e as lutas sem fim; `TRACE=1` mostra cada golpe. O que ela mostrou foi pra task 103.
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão
