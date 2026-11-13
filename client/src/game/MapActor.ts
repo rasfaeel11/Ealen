@@ -68,6 +68,7 @@ export class MapActor {
   private alert = false;
   private crouched = false;
   private fallen = false;
+  private downTween?: Phaser.Tweens.Tween;
 
   /**
    * `scale`: quanto a folha encolhe pra caber no quadrado do mapa (ver
@@ -233,6 +234,17 @@ export class MapActor {
     this.scene.tweens.add({ targets: [this.sprite, this.shadow], alpha: hidden ? 0.45 : 1, duration: 220 });
   }
 
+  /**
+   * Caído (na luta): o corpo deita pro lado em que olha, girando nos pés, e levanta quando a condição sai. A folha não
+   * tem pose de chão; o giro basta pra quem joga ver de longe quem está no chão.
+   */
+  setDown(down: boolean): void {
+    if (this.fallen) return;
+    const side = this.facing === "left" ? -1 : 1;
+    this.downTween?.stop();
+    this.downTween = this.scene.tweens.add({ targets: this.sprite, angle: down ? 78 * side : 0, duration: down ? 180 : 260, ease: down ? "Cubic.easeIn" : "Back.easeOut" });
+  }
+
   setBleeding(bleeding: boolean): void {
     if (!bleeding) {
       this.bleeding?.remove();
@@ -344,7 +356,7 @@ export class MapActor {
   /** Desfaz `collapse`: quem caiu numa luta vencida está de pé de novo. */
   rise(): void {
     this.scene.tweens.killTweensOf([this.sprite, this.shadow]);
-    this.sprite.clearTint().setAlpha(1).setScale(this.scale);
+    this.sprite.clearTint().setAlpha(1).setScale(this.scale).setAngle(0);
     this.shadow.setAlpha(1);
     this.fallen = false;
     this.idle();

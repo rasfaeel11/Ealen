@@ -202,7 +202,8 @@ export function describeStatus(status: StatusTemplate): string {
   if (status.toHit) notes.push(`acerto ${status.toHit > 0 ? "+" : ""}${status.toHit}`);
   if (status.damageTaken) notes.push(status.damageTaken > 0 ? `sofre +${status.damageTaken} por golpe` : `sofre ${status.damageTaken} por golpe`);
   if (status.harm) notes.push(`${status.harm.count}d${status.harm.sides} de dano por turno`);
-  if (status.speed) notes.push(`movimento ${status.speed > 0 ? "+" : ""}${status.speed}`);
+  // -99 é "não sai do lugar" (Agarrado, Preso): o número não diz nada a quem lê.
+  if (status.speed) notes.push(status.speed <= -99 ? "não anda" : `movimento ${status.speed > 0 ? "+" : ""}${status.speed}`);
   if (status.immovable) notes.push("nada o tira do lugar");
   if (status.noHeal) notes.push("não pode ser curado");
   if (status.silenced) notes.push("não conjura");
@@ -334,6 +335,8 @@ export class CombatController {
   /** A rodada e os objetos usados como os eventos os mostraram até agora — é o que os objetivos contam. */
   private shownRound = 1;
   private readonly usedProps = new Set<string>();
+  /** Quem a última linha de erro já deu como Exposto: o `statusApplied` que vem atrás não repete. */
+  private exposedSaid?: string;
   /** Os quadrados clicáveis no modo atual. Não se desenham todos: ver `drawOptions`. */
   private options: Pos[] = [];
   private hover: Pos | null = null;
@@ -659,7 +662,9 @@ export class CombatController {
       return;
     }
     const life = under.invulnerable ? "" : `  ${under.currentHp}/${under.maxHp}`;
-    this.hud.setChip(`${under.name}${life}`, this.chipAt.x, this.chipAt.y);
+    // As condições de quem está ali: do outro lado, é o único lugar além do registro em que Agarrado ou Prensado aparecem.
+    const conditions = under.statuses.map((status) => status.name).join(", ");
+    this.hud.setChip(`${under.name}${life}${conditions ? `  ·  ${conditions}` : ""}`, this.chipAt.x, this.chipAt.y);
   }
 
   /** Marca no mapa quem está sob o mouse, na ordem dos turnos. */
@@ -1092,8 +1097,11 @@ export class CombatController {
     const odds = attackOdds(encounter, unit, selected, target);
     const plain = Math.round((odds.hit - odds.cost) * 100);
     const cost = Math.round(odds.cost * 100);
-    const fail = Math.max(0, 100 - plain - cost - Math.round(odds.crit * 100));
-    return [`${selected.name} em ${target.name}: ${plain}% pleno, ${cost}% com custo, ${fail}% falha`, ...describeEdge(odds.edge)].join(" · ");
+    const crit = Math.round(odds.crit * 100);
+    const fail = Math.max(0, 100 - plain - cost - crit);
+    // O improvável (o 20 natural, `combate` §5.2) entra na conta: sem ele, as faixas somavam menos que 100.
+    const bands = `${plain}% pleno, ${cost}% com custo${crit > 0 ? `, ${crit}% improvável` : ""}, ${fail}% falha`;
+    return [`${selected.name} em ${target.name}: ${bands}`, ...describeEdge(odds.edge)].join(" · ");
   }
 
   /** O que o clique faria aqui: o caminho até o quadrado, ou a área que a habilidade pega. */
@@ -1359,9 +1367,11 @@ export class CombatController {
         } else if (event.outcome === "fumble") {
           this.floatOver(event.actor, "Falhou", TEXT_COLORS.danger);
           this.hud.log(`Falhou feio (1 natural): ${this.unit(event.actor).name} fica Exposto.`);
+          this.exposedSaid = event.actor;
         } else if (event.outcome === "miss") {
           this.floatOver(event.target, "Errou", TEXT_COLORS.inkDim);
           this.hud.log(`Errou ${target.name} (${sum}): ${this.unit(event.actor).name} fica Exposto.`);
+          this.exposedSaid = event.actor;
           await this.dodge(event.target, event.actor);
         } else {
           this.hud.log(`Acertou ${target.name} (${sum}).`);
@@ -1575,7 +1585,10 @@ export class CombatController {
         if (actor) this.ring(actor.pos, COLORS.guard);
         sfx("status");
         this.floatOver(event.target, event.name, TEXT_COLORS.guard, -22);
-        this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
+        // A linha do erro já disse "fica Exposto": não se repete.
+        const said = event.statusId === STATUSES.exposto.id && this.exposedSaid === event.target;
+        if (event.statusId === STATUSES.exposto.id) this.exposedSaid = undefined;
+        if (!said) this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
         this.refreshRoster();
         await this.wait(200);
         return;
@@ -1891,6 +1904,7 @@ export class CombatController {
     if (on && statusId === STATUSES.beached.id) actor.setImmersion("beached");
     if (statusId === NOSEBLEED) actor.setBleeding(on);
     if (statusId === STATUSES.hidden.id) actor.setHidden(on);
+    if (statusId === STATUSES.caido.id) actor.setDown(on);
   }
 
   /** Um corte de luz de `from` a `to` que some depressa: o golpe de reação, antes de ele chegar. */
