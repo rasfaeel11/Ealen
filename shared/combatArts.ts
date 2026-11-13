@@ -118,6 +118,21 @@ export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>>
       flavor: "Atrás do muro, de costas pra pedra, o livro fechado no peito. Quem não vê não mira.",
       level: 1,
     },
+    agarrar: {
+      name: "Agarrar",
+      flavor: "A mão no colarinho do outro. Quem está seguro pela gola não anda, e não lê.",
+      level: 1,
+    },
+    empurrar: {
+      name: "Empurrar",
+      flavor: "O livro no peito do outro e o corpo atrás dele. Com parede, prensa; sem, derruba.",
+      level: 1,
+    },
+    derrubar: {
+      name: "Derrubar",
+      flavor: "O pé atrás do calcanhar. Nada de mágico: só um chão que estava mais perto.",
+      level: 1,
+    },
     desarmar: {
       name: "Desarmar",
       flavor: "Atração na arma, não no corpo: o cabo escorrega da mão de quem a segurava.",
@@ -127,6 +142,18 @@ export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>>
     arremesso: {
       name: "Arremesso",
       flavor: "Repulsão do tamanho de um círculo: o outro voa três passos e se arrebenta no que encontrar.",
+      level: 1,
+      mage: 4,
+    },
+    desviar: {
+      name: "Desviar",
+      flavor: "O texto lido até a última linha e a boca parada nela. Quando o virote vem, a linha sai, e ele passa ao lado.",
+      level: 1,
+      mage: 4,
+    },
+    puxar_se: {
+      name: "Puxar-se",
+      flavor: "Os dois corpos nomeados são ele e a parede. A parede não sai do lugar.",
       level: 1,
       mage: 4,
     },
@@ -152,6 +179,26 @@ export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>>
     esconder: {
       name: "Esconder-se",
       flavor: "Agachado atrás do barranco, a lâmina deitada pra não brilhar. Sai de lá batendo.",
+      level: 1,
+    },
+    agarrar: {
+      name: "Agarrar",
+      flavor: "A mão livre no pulso do outro. A espada dele fica onde está, e ele também.",
+      level: 1,
+    },
+    empurrar: {
+      name: "Empurrar",
+      flavor: "O ombro e o peso inteiro. Contra a parede, ele fica preso nela; no aberto, no chão.",
+      level: 1,
+    },
+    derrubar: {
+      name: "Derrubar",
+      flavor: "A lâmina presa na dele e a perna varrendo. Quem está no chão briga com o chão primeiro.",
+      level: 1,
+    },
+    desarmar: {
+      name: "Desarmar",
+      flavor: "Torcer o pulso até a mão abrir. Sem arma, sobra o corpo.",
       level: 1,
     },
   },

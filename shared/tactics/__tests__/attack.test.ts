@@ -172,6 +172,7 @@ test("a chance que attackOdds promete é a que o dado entrega", () => {
     const odds = attackOdds(sample, actor, ability(actor, "attack"), findUnit(sample, "E")!);
 
     let landed = 0;
+    let costly = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
       const encounter = scene();
       encounter.rngState = seed * 7919;
@@ -179,10 +180,13 @@ test("a chance que attackOdds promete é a que o dado entrega", () => {
         run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: { x: 5, y: 0 } }),
         "attackRoll",
       );
-      if (roll.outcome === "hit" || roll.outcome === "crit") landed++;
+      // A rolagem que pegou, nas três faixas — mesmo que o alvo depois tenha esquivado o sucesso com custo.
+      if (roll.outcome === "hit" || roll.outcome === "cost" || roll.outcome === "crit") landed++;
+      if (roll.outcome === "cost") costly++;
     }
     const promised = odds.hit + odds.crit;
     assert.ok(Math.abs(landed / SEEDS - promised) < 0.06, `${name}: prometeu ${promised}, entregou ${landed / SEEDS}`);
+    assert.ok(Math.abs(costly / SEEDS - odds.cost) < 0.06, `${name}: prometeu ${odds.cost} com custo, entregou ${costly / SEEDS}`);
   }
 });
 

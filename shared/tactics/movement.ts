@@ -1,7 +1,29 @@
-import { elevationAt, inBounds, posOfIndex, stepNeighbors, tileAt, tileIndex, type Pos } from "./grid";
+import { distance, elevationAt, inBounds, posOfIndex, stepNeighbors, tileAt, tileIndex, type Pos } from "./grid";
 import { enterCost, surfaceHarm } from "./surfaces";
 import type { Encounter, Unit } from "./types";
 import { isAlive, unitAt } from "./units";
+import { strikesFirst } from "./styles";
+
+/**
+ * RECUAR (`combate` §3.2): terminar o movimento longe de um inimigo de pé que
+ * estava colado em quem anda. Andar de lado, sem sair de perto dele, não é
+ * recuar; ser empurrado ou puxado também não (não é movimento de quem vai).
+ * Devolve de quem `unit` recuaria indo até `to`.
+ */
+export function retreatsFrom(encounter: Encounter, unit: Unit, to: Pos): Unit[] {
+  return encounter.units.filter(
+    (other) => other.team !== unit.team && isAlive(other) && distance(other.pos, unit.pos) === 1 && distance(other.pos, to) > 1,
+  );
+}
+
+/**
+ * O VOTO DO GRYSKAR (`combate` §4.2, `gryskar`): não recuar o primeiro passo.
+ * Quem é do Bate-Primeiro não Recua antes de dar o primeiro golpe da luta dele
+ * (`swung`): o primeiro passo é pra frente. Depois do golpe, recua como qualquer um.
+ */
+export function holdsGround(unit: Unit): boolean {
+  return strikesFirst(unit) && !unit.swung;
+}
 
 /**
  * Por onde alguém consegue andar neste turno.
@@ -40,6 +62,8 @@ function explore(encounter: Encounter, unit: Unit): Map<number, Visit> {
     a.cost < b.cost || (a.cost === b.cost && a.hazard < b.hazard);
   const open = [start];
 
+  // O voto do Gryskar: dá pra passar por onde quiser, mas não parar longe de quem está colado nele.
+  const vow = holdsGround(unit) && encounter.units.some((other) => other.team !== unit.team && isAlive(other) && distance(other.pos, unit.pos) === 1);
   while (open.length > 0) {
     let cheapest = 0;
     for (let i = 1; i < open.length; i++) {
@@ -59,7 +83,7 @@ function explore(encounter: Encounter, unit: Unit): Map<number, Visit> {
       const reached = { cost, hazard: here.hazard + surfaceHarm(encounter, next) };
       const known = visits.get(index);
       if (known && !better(reached, known)) continue;
-      visits.set(index, { ...reached, prev: current, canStop: !occupant });
+      visits.set(index, { ...reached, prev: current, canStop: !occupant && !(vow && retreatsFrom(encounter, unit, next).length > 0) });
       if (!open.includes(index)) open.push(index);
     }
   }

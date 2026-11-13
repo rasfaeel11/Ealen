@@ -1,19 +1,23 @@
 import * as Phaser from "phaser";
 import {
   CONCEPTS,
+  CHAIN_BREATH,
   COVER_DEFENSE,
+  EXPOSED_TO_HIT,
   FLANK_TO_HIT,
   HEAL_PER_BREATH,
   HEIGHT_TO_HIT,
   PROPS,
   STATUSES,
-  STYLE_TO_HIT,
   SUPPORTS,
   SURFACES,
   abilityTargets,
   activeUnit,
+  holdsGround,
+  retreatsFrom,
   applyCommand,
   attackOdds,
+  chainable,
   chooseCommand,
   findPath,
   findUnit,
@@ -182,6 +186,7 @@ const ERROR_TEXT: Record<CommandError, string> = {
   reciting: "Já está recitando: uma magia de cada vez.",
   recharging: "Ainda está em recarga.",
   silenced: "Calado: não sai magia nenhuma.",
+  disarmed: "Desarmado: sem golpe de arma. Sobram os verbos do corpo.",
   invalid_target: "Alvo fora de alcance ou fora de vista.",
   item_unavailable: "Esse item não está na mochila.",
 };
@@ -193,14 +198,17 @@ export function describeStatus(status: StatusTemplate): string {
     notes.push(`${stat.charAt(0).toUpperCase()}${stat.slice(1)} ${points > 0 ? "+" : ""}${points}`);
   }
   if (status.guard) notes.push("bloqueia parte de cada golpe");
-  if (status.evasion) notes.push(`esquiva +${status.evasion}`);
+  if (status.evasion) notes.push(status.evasion > 0 ? `esquiva +${status.evasion}` : `o golpe contra ele sai mais fácil (+${-status.evasion})`);
   if (status.toHit) notes.push(`acerto ${status.toHit > 0 ? "+" : ""}${status.toHit}`);
   if (status.damageTaken) notes.push(status.damageTaken > 0 ? `sofre +${status.damageTaken} por golpe` : `sofre ${status.damageTaken} por golpe`);
   if (status.harm) notes.push(`${status.harm.count}d${status.harm.sides} de dano por turno`);
-  if (status.speed) notes.push(`movimento ${status.speed > 0 ? "+" : ""}${status.speed}`);
+  // -99 é "não sai do lugar" (Agarrado, Preso): o número não diz nada a quem lê.
+  if (status.speed) notes.push(status.speed <= -99 ? "não anda" : `movimento ${status.speed > 0 ? "+" : ""}${status.speed}`);
   if (status.immovable) notes.push("nada o tira do lugar");
   if (status.noHeal) notes.push("não pode ser curado");
   if (status.silenced) notes.push("não conjura");
+  if (status.unarmed) notes.push("sem golpe de arma");
+  if (status.prone) notes.push("levantar come metade do passo");
   if (status.hunger) notes.push("a cura custa o dobro de Fôlego");
   if (status.untilRest) notes.push("até o descanso");
   if (status.guaranteedCrit) notes.push("o próximo golpe é crítico");
@@ -240,11 +248,13 @@ export function describeAbility(ability: Ability): string {
     }
     else if (effect.kind === "breath") parts.push(effect.amount < 0 ? `tira ${-effect.amount} de Fôlego do alvo` : `devolve ${effect.amount} de Fôlego`);
     else if (effect.kind === "stride") parts.push("anda o passo inteiro de novo neste turno");
-    else parts.push(effect.distance > 0 ? `empurra ${effect.distance}` : `puxa ${-effect.distance}`);
+    else if (effect.distance > 0) parts.push(effect.pin ? `empurra ${effect.distance}: contra a parede, Prensado; no aberto, Caído` : `empurra ${effect.distance}`);
+    else parts.push(`puxa ${-effect.distance}`);
   }
   if (ability.surface) parts.push(`deixa ${SURFACES[ability.surface.id].name} por ${ability.surface.rounds} rodadas`);
   if (ability.limit !== undefined) parts.push(ability.limit === 1 ? "uma vez por luta" : `${ability.limit} vezes por luta`);
   if (ability.breath) parts.push(`custa ${ability.breath} de Fôlego`);
+  if (chainable(ability)) parts.push(`encadeia: no mesmo alvo, depois de pegar, sai por +${CHAIN_BREATH} de Fôlego no lugar da ação`);
   if (ability.mana) parts.push(`custa ${ability.mana} de mana`);
   if (ability.engraved) parts.push("gravada: sai na hora, uma vez");
   else if (isRecited(ability)) parts.push("recitada: sai no começo do seu próximo turno, e apanhar no meio pode quebrar");
@@ -253,12 +263,22 @@ export function describeAbility(ability: Ability): string {
   return parts.join(" · ");
 }
 
-/** O que a posição e o confronto de escolas fizeram a um ataque, em palavras: "flanqueado +2", "cobertura +2 na defesa"... */
-function describeEdge(edge: { cover: boolean; flanked: boolean; height: -1 | 0 | 1; style: -1 | 0 | 1; styleToHit?: number; far?: boolean; crowded?: boolean }): string[] {
+/** O que a chance teve a mais ou a menos num ataque, em palavras: "flanqueado +2", "cobertura +2 na defesa"... */
+function describeEdge(edge: {
+  cover: boolean;
+  flanked: boolean;
+  height: -1 | 0 | 1;
+  style: -1 | 0 | 1;
+  styleToHit?: number;
+  exposed?: boolean;
+  levelToHit?: number;
+  far?: boolean;
+  crowded?: boolean;
+}): string[] {
   const notes: string[] = [];
-  const style = Math.abs(edge.styleToHit ?? STYLE_TO_HIT);
-  if (edge.style > 0) notes.push(`escola leva vantagem +${style}`);
-  if (edge.style < 0) notes.push(`escola em desvantagem -${style}`);
+  if (edge.styleToHit) notes.push(`grau da escola +${edge.styleToHit}`);
+  if (edge.exposed) notes.push(`repetiu: Exposto pra Rachadura +${EXPOSED_TO_HIT}`);
+  if (edge.levelToHit) notes.push(`nível ${edge.levelToHit > 0 ? "+" : ""}${edge.levelToHit}`);
   if (edge.flanked) notes.push(`flanqueado +${FLANK_TO_HIT}`);
   if (edge.height > 0) notes.push(`de cima +${HEIGHT_TO_HIT}, por cima da mureta`);
   if (edge.height < 0) notes.push(`de baixo -${HEIGHT_TO_HIT}`);
@@ -315,6 +335,8 @@ export class CombatController {
   /** A rodada e os objetos usados como os eventos os mostraram até agora — é o que os objetivos contam. */
   private shownRound = 1;
   private readonly usedProps = new Set<string>();
+  /** Quem a última linha de erro já deu como Exposto: o `statusApplied` que vem atrás não repete. */
+  private exposedSaid?: string;
   /** Os quadrados clicáveis no modo atual. Não se desenham todos: ver `drawOptions`. */
   private options: Pos[] = [];
   private hover: Pos | null = null;
@@ -631,11 +653,18 @@ export class CombatController {
     const inRange = this.options.some((option) => samePos(option, this.hover!));
     if (aiming?.attack && aiming.radius === undefined && inRange && !under.invulnerable) {
       const odds = attackOdds(this.encounter, unit, aiming, under);
-      this.hud.setChip(`${Math.round((odds.hit + odds.crit) * 100)}%  ·  ${under.name}`, this.chipAt.x, this.chipAt.y);
+      const cost = Math.round(odds.cost * 100);
+      this.hud.setChip(
+        `${Math.round((odds.hit + odds.crit) * 100)}%${cost > 0 ? ` (${cost}% com custo)` : ""}  ·  ${under.name}`,
+        this.chipAt.x,
+        this.chipAt.y,
+      );
       return;
     }
     const life = under.invulnerable ? "" : `  ${under.currentHp}/${under.maxHp}`;
-    this.hud.setChip(`${under.name}${life}`, this.chipAt.x, this.chipAt.y);
+    // As condições de quem está ali: do outro lado, é o único lugar além do registro em que Agarrado ou Prensado aparecem.
+    const conditions = under.statuses.map((status) => status.name).join(", ");
+    this.hud.setChip(`${under.name}${life}${conditions ? `  ·  ${conditions}` : ""}`, this.chipAt.x, this.chipAt.y);
   }
 
   /** Marca no mapa quem está sob o mouse, na ordem dos turnos. */
@@ -723,6 +752,10 @@ export class CombatController {
       if (this.selected || this.aim) {
         sfx("deny");
         this.hud.warn(ERROR_TEXT.invalid_target);
+      } else if (holdsGround(unit) && retreatsFrom(this.encounter, unit, tile).length > 0) {
+        // O quadrado não acende porque seria recuar: diz por quê.
+        sfx("deny");
+        this.hud.warn(`O voto do Gryskar: ${unit.name} não recua o primeiro passo.`);
       }
       return;
     }
@@ -783,6 +816,7 @@ export class CombatController {
       if (ready === "mana") return ERROR_TEXT.no_mana;
       if (ready === "reciting") return ERROR_TEXT.reciting;
       if (ready === "silenced") return ERROR_TEXT.silenced;
+      if (ready === "disarmed") return ERROR_TEXT.disarmed;
       if (abilityTargets(encounter, unit, ability).length > 0) return undefined;
       const surprised = encounter.units.some(
         (other) => other.team !== unit.team && isAlive(other) && other.statuses.some((status) => status.id === "surprised"),
@@ -1061,8 +1095,13 @@ export class CombatController {
     if (!target || !selected.attack) return `${describeAbility(selected)} — ${selected.flavor}`;
 
     const odds = attackOdds(encounter, unit, selected, target);
-    const chance = Math.round((odds.hit + odds.crit) * 100);
-    return [`${selected.name} em ${target.name}: ${chance}% de acerto`, ...describeEdge(odds.edge)].join(" · ");
+    const plain = Math.round((odds.hit - odds.cost) * 100);
+    const cost = Math.round(odds.cost * 100);
+    const crit = Math.round(odds.crit * 100);
+    const fail = Math.max(0, 100 - plain - cost - crit);
+    // O improvável (o 20 natural, `combate` §5.2) entra na conta: sem ele, as faixas somavam menos que 100.
+    const bands = `${plain}% pleno, ${cost}% com custo${crit > 0 ? `, ${crit}% improvável` : ""}, ${fail}% falha`;
+    return [`${selected.name} em ${target.name}: ${bands}`, ...describeEdge(odds.edge)].join(" · ");
   }
 
   /** O que o clique faria aqui: o caminho até o quadrado, ou a área que a habilidade pega. */
@@ -1313,26 +1352,77 @@ export class CombatController {
         const sum = [`${event.total} contra ${event.defense}`, ...edge].join(", ");
         this.blow = { actor: event.actor, target: event.target, outcome: event.outcome };
         if (event.outcome === "crit") sfx("crit");
-        else if (event.outcome !== "hit") sfx("miss");
+        else if (event.outcome !== "hit" && event.outcome !== "cost") sfx("miss");
         if (event.outcome === "crit") {
-          this.floatOver(event.target, "Crítico!", TEXT_COLORS.goldBright, -30, 32);
-          this.hud.log(`Acerto crítico em ${target.name}!`);
+          // O improvável (`combate` §5.2).
+          this.floatOver(event.target, "Improvável!", TEXT_COLORS.goldBright, -30, 32);
+          this.hud.log(`O improvável: ${target.name} leva em cheio!`);
+        } else if (event.outcome === "cost") {
+          this.hud.log(`Pegou ${target.name}, com custo (${sum}).`);
         } else if (event.outcome === "miss" && event.cover && event.total >= event.defense - COVER_DEFENSE) {
           // Teria acertado em campo aberto: quem segurou o golpe foi a cobertura.
           this.floatOver(event.target, "Cobertura", TEXT_COLORS.guard);
           this.hud.log(`A cobertura salva ${target.name} (${sum}).`);
           await this.dodge(event.target, event.actor);
         } else if (event.outcome === "fumble") {
-          this.floatOver(event.actor, "Falha crítica", TEXT_COLORS.danger);
-          this.hud.log(`Falha crítica (1 natural).`);
+          this.floatOver(event.actor, "Falhou", TEXT_COLORS.danger);
+          this.hud.log(`Falhou feio (1 natural): ${this.unit(event.actor).name} fica Exposto.`);
+          this.exposedSaid = event.actor;
         } else if (event.outcome === "miss") {
           this.floatOver(event.target, "Errou", TEXT_COLORS.inkDim);
-          this.hud.log(`Errou ${target.name} (${sum}).`);
+          this.hud.log(`Errou ${target.name} (${sum}): ${this.unit(event.actor).name} fica Exposto.`);
+          this.exposedSaid = event.actor;
           await this.dodge(event.target, event.actor);
         } else {
           this.hud.log(`Acertou ${target.name} (${sum}).`);
         }
-        await this.wait(event.outcome === "hit" ? 40 : event.outcome === "crit" ? 120 : 220);
+        await this.wait(event.outcome === "hit" || event.outcome === "cost" ? 40 : event.outcome === "crit" ? 120 : 220);
+        return;
+      }
+
+      case "costPaid": {
+        const name = this.unit(event.unit).name;
+        if (event.first) {
+          this.floatOver(event.unit, "Primeiro!", TEXT_COLORS.goldBright, -22);
+          this.hud.log(`${name} paga ${event.amount} de Fôlego pra agir antes de todos.`);
+        } else {
+          const what = event.kind === "breath" ? `${event.amount} de Fôlego` : event.kind === "wound" ? `${event.amount} de vida, a própria ferida` : `${event.amount} de mana a mais`;
+          this.floatOver(event.unit, "Custo", TEXT_COLORS.danger, -22);
+          this.hud.log(`O custo: ${name} paga ${what}.`);
+        }
+        await this.wait(80);
+        return;
+      }
+
+      case "deflected": {
+        sfx("push");
+        this.floatOver(event.target, "Desviado", TEXT_COLORS.guard, -22);
+        const who = this.unit(event.unit).name;
+        const target = event.target === event.unit ? "" : ` que ia em ${this.unit(event.target).name}`;
+        this.hud.log(`${who} diz a última linha: o tiro de ${this.unit(event.attacker).name}${target} passa ao lado.`);
+        await this.wait(160);
+        return;
+      }
+
+      case "dodged": {
+        this.floatOver(event.unit, "Esquivou", TEXT_COLORS.guard, -22);
+        this.hud.log(`${this.unit(event.unit).name} sai da frente do golpe de ${this.unit(event.attacker).name}.`);
+        await this.dodge(event.unit, event.attacker);
+        return;
+      }
+
+      case "stoodUp": {
+        this.floatOver(event.unit, "De pé", TEXT_COLORS.inkDim, -22);
+        this.hud.log(`${this.unit(event.unit).name} se levanta do chão.`);
+        await this.wait(80);
+        return;
+      }
+
+      case "chained": {
+        this.floatOver(event.unit, event.feint ? "Troca!" : `Cadeia ${event.verbs}`, TEXT_COLORS.goldBright, -22);
+        const paid = event.breath > 0 ? `${event.breath} de Fôlego` : "sem Fôlego";
+        this.hud.log(`${this.unit(event.unit).name} emenda o ${event.verbs}º verbo (${paid}${event.feint ? ", trocando de verbo" : ""}).`);
+        await this.wait(60);
         return;
       }
 
@@ -1464,7 +1554,7 @@ export class CombatController {
       case "pushed": {
         const actor = this.actor(event.unit);
         sfx("push");
-        this.hud.log(`${this.unit(event.unit).name} é tirado do lugar.`);
+        this.hud.log(event.self ? `${this.unit(event.unit).name} se puxa até lá.` : `${this.unit(event.unit).name} é tirado do lugar.`);
         if (actor) await this.glide(actor, pixelOfTile(this.host.map, event.to), 160, false);
         return;
       }
@@ -1495,7 +1585,10 @@ export class CombatController {
         if (actor) this.ring(actor.pos, COLORS.guard);
         sfx("status");
         this.floatOver(event.target, event.name, TEXT_COLORS.guard, -22);
-        this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
+        // A linha do erro já disse "fica Exposto": não se repete.
+        const said = event.statusId === STATUSES.exposto.id && this.exposedSaid === event.target;
+        if (event.statusId === STATUSES.exposto.id) this.exposedSaid = undefined;
+        if (!said) this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
         this.refreshRoster();
         await this.wait(200);
         return;
@@ -1811,6 +1904,7 @@ export class CombatController {
     if (on && statusId === STATUSES.beached.id) actor.setImmersion("beached");
     if (statusId === NOSEBLEED) actor.setBleeding(on);
     if (statusId === STATUSES.hidden.id) actor.setHidden(on);
+    if (statusId === STATUSES.caido.id) actor.setDown(on);
   }
 
   /** Um corte de luz de `from` a `to` que some depressa: o golpe de reação, antes de ele chegar. */

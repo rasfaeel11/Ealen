@@ -141,7 +141,9 @@ test("um ataque gasta a ação; o golpe rápido cabe na ação bônus do mesmo t
 
     const [roll] = eventsOf(events, "attackRoll");
     const damage = eventsOf(events, "damage");
-    if (roll.outcome === "hit" || roll.outcome === "crit") {
+    // A rolagem pegou, e o alvo não esquivou o sucesso com custo.
+    const landed = (roll.outcome === "hit" || roll.outcome === "cost" || roll.outcome === "crit") && eventsOf(events, "dodged").length === 0;
+    if (landed) {
       hits += 1;
       assert.equal(damage.length, 1);
       assert.equal(unit(encounter, "E").currentHp, 200 - damage[0].amount);
@@ -150,10 +152,10 @@ test("um ataque gasta a ação; o golpe rápido cabe na ação bônus do mesmo t
       assert.equal(unit(encounter, "E").currentHp, 200);
     }
 
-    assert.deepEqual(applyCommand(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target }), {
-      ok: false,
-      reason: "resource_spent",
-    });
+    // Pegou: a cadeia abre, e o segundo golpe no mesmo alvo sai pago em Fôlego. Falhou: a ação já foi.
+    const again = applyCommand(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.attack", target });
+    if (landed) assert.ok(again.ok && again.events.some((event) => event.type === "chained"));
+    else assert.deepEqual(again, { ok: false, reason: "resource_spent" });
     assert.equal(
       applyCommand(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.quick_attack", target }).ok,
       true,
@@ -200,7 +202,7 @@ test("o golpe que empurra arremessa o alvo, e a parede segura o arremesso", () =
     });
 
     const [roll] = eventsOf(events, "attackRoll");
-    const landed = roll.outcome === "hit" || roll.outcome === "crit";
+    const landed = (roll.outcome === "hit" || roll.outcome === "cost" || roll.outcome === "crit") && eventsOf(events, "dodged").length === 0;
     // Empurrão de 2, mas só há um quadrado livre antes da parede.
     assert.deepEqual(unit(encounter, "E").pos, { x: landed ? 2 : 1, y: 0 });
     assert.equal(eventsOf(events, "pushed").length, landed ? 1 : 0);

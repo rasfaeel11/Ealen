@@ -685,7 +685,7 @@ test("mage_rise sobe Endyru de nível de mago (só sobe) e anuncia o que ele apr
   assert.deepEqual(lines(step.beats), ["Antes, 3.", "Depois, 4."]);
   const events = step.beats.flatMap((beat) => (beat.kind === "event" ? [beat.event] : []));
   // Chamado de novo no mesmo nível, ou pra baixo, não faz nada.
-  assert.deepEqual(events, [{ type: "mageRose", level: "Círculo", learned: ["Desarmar", "Arremesso"] }]);
+  assert.deepEqual(events, [{ type: "mageRose", level: "Círculo", learned: ["Desarmar", "Arremesso", "Desviar", "Puxar-se"] }]);
   assert.equal(host.character.mageLevel, 4);
 });
 

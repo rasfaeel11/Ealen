@@ -5,13 +5,13 @@ import { FALL_PER_STEP, forcedPath, reachableTiles } from "./movement";
 import { PROPS, propTemplate, type Prop, type PropTemplate } from "./props";
 import { SLAM_PER_TILE, cueEnding } from "./engine";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
-import { counters, punishFactor, styleReduction, waveBonus } from "./styles";
+import { PARRY_BREATH, SPENT_DAMAGE, counters, feints, parries, strikesFirst, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
 import { abilityTargets, affectedProps, affectedUnits, canAimAt, interactTargets, isBlow, isThrown, itemTargets, liftable, vowAllows, vowForbids } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
-import { activeUnit, damageTakenOf, resistOf, effectiveAttribute, isAlive, movementOf, primaryAttribute, readiness, unitAt } from "./units";
+import { CHAIN_MAX, activeUnit, chainStep, chainable, damageTakenOf, resistOf, effectiveAttribute, isAlive, movementOf, primaryAttribute, readiness, unitAt } from "./units";
 
 /**
  * A IA de inimigo, por utilidade.
@@ -53,6 +53,13 @@ import { activeUnit, damageTakenOf, resistOf, effectiveAttribute, isAlive, movem
  * O empurrão vale pelo que bate: o alvo jogado contra parede, corpo ou barril
  * (ver push em ./engine.ts). A Disparada vale o caminho que encurta, quando
  * não há em quem bater; o Ajudar, o golpe a mais que o aliado acerta.
+ *
+ * A CADEIA (`combate` §3.1): o verbo que abre vale também o melhor verbo que
+ * ele deixa emendar no mesmo alvo, com a condição que deixou (Agarrado,
+ * Prensado, Caído), pela chance de pegar e menos o Fôlego do passo seguinte.
+ * Com a cadeia aberta, ela emenda sem sair do lugar (andar a solta), pagando o
+ * Fôlego, e o Gryskar sabe que o segundo golpe sai fraco. A Tsvirana troca de
+ * verbo de graça, e o verbo trocado não se apara nem se devolve: ela pesa isso.
  */
 
 export const DEFAULT_AI_PROFILE: AiProfile = { aggression: 1, finisher: 1, support: 1, caution: 0.5 };
@@ -97,6 +104,10 @@ const CIRCLE_PULL_VALUE = 4;
 const TO_HIT_CHANCE = 0.05;
 /** Desempate: entre jogadas iguais, a que anda menos. */
 const STEP_COST = 0.01;
+/** Quanto custa, na nota, cada ponto de Fôlego que o passo da cadeia cobra a mais: é o que faltará pra aparar e pro golpe pesado. */
+const CHAIN_BREATH_VALUE = 1;
+/** Quanto do verbo seguinte entra na nota do que abre a cadeia: ele ainda pode não sair. */
+const CHAIN_FORESIGHT = 0.8;
 /** Abaixo disto uma habilidade não vale o gesto. */
 const MIN_VALUE = 0.01;
 /** Abaixo disto um item não vale ser gasto: ele não volta. */
@@ -233,6 +244,11 @@ export function planTurn(encounter: Encounter): AiPlan {
     let canStrike = false;
     for (const ability of usable) {
       if (mirrors && ability.cost === "action" && stanceOf(ability.id) !== copied) continue;
+      // A ação já foi: só o próximo verbo da cadeia aberta, sem sair do lugar (andar a solta) e com o Fôlego do passo.
+      // O bicho de rio não tem mente (`bestiario` §1): morde, mas não monta cadeia.
+      const step = ability.cost === "action" && !me.turn.action && !me.river ? chainStep(me, ability) : undefined;
+      if (ability.cost === "action" && !me.turn.action && (step === undefined || stop.cost > 0 || me.breath < (ability.breath ?? 0) + step)) continue;
+      const feint = step !== undefined && feints(me) && ability.id !== me.turn.chain!.last;
       const offensive = isOffensive(ability);
       for (const target of aimPoints(sim, me, ability, foes)) {
         const struck = offensive ? affectedUnits(sim, ability, target).filter((unit) => unit.team !== me.team) : [];
@@ -241,12 +257,17 @@ export function planTurn(encounter: Encounter): AiPlan {
         if (prey && offensive && !struck.includes(prey)) continue;
         if (struck.length > 0) canStrike = true;
 
-        let value = abilityValue(sim, me, profile, ability, target);
+        let value = abilityValue(sim, me, profile, ability, target, feint);
+        if (step !== undefined) {
+          // O Gryskar pôs a aura toda no primeiro golpe: o segundo da cadeia sai fraco.
+          if (me.turn.chain!.struck && strikesFirst(me) && offensive) value *= SPENT_DAMAGE;
+          value -= CHAIN_BREATH_VALUE * step;
+        } else if (me.turn.action && !me.river && chainable(ability)) value += chainValue(sim, me, profile, ability, target, usable);
         if (ability.effects.some((effect) => effect.kind === "stride")) value += strideValue(sim, me, profile, toWard ?? toFoe, ability);
         if (!reachesFoe && watches(ability)) value += profile.aggression * watchValue(sim, me);
         if (value < MIN_VALUE) continue;
         if (ability.cost === "action") {
-          if (me.turn.action && value > (action?.value ?? 0)) action = { ability, target, value };
+          if ((me.turn.action || step !== undefined) && value > (action?.value ?? 0)) action = { ability, target, value };
         } else if (me.turn.bonus && value > (bonus?.value ?? 0)) {
           bonus = { ability, target, value };
         }
@@ -357,7 +378,7 @@ function aimPoints(encounter: Encounter, unit: Unit, ability: Ability, foes: Uni
 }
 
 /** A nota de usar `ability` de `actor` mirando `target`: o que rende em média, pesado pelo perfil. */
-function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, ability: Ability, target: Pos): number {
+function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, ability: Ability, target: Pos, feint = false): number {
   let value = 0;
 
   for (const victim of affectedUnits(encounter, ability, target)) {
@@ -399,6 +420,8 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
           shove += outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
           // Jogado contra o que barra o passo, ele bate, e de cima do barranco, cai: é dano, e o barril em que bateu quebra (ver push em ./engine.ts).
           const crash = slamOf(encounter, actor.pos, victim, effect.distance);
+          // Prensado contra o que barra, Caído sem nada atrás (ver push em ./engine.ts): a condição que facilita o próximo golpe.
+          if (effect.pin && effect.distance > 0) favor += outlook.lands * statusFavor(encounter, victim, crash ? "prensado" : "caido", 1, profile);
           if (crash) {
             if (!victim.invulnerable) slammed += outlook.lands * crash.amount;
             if (crash.prop) value += outlook.lands * spillValue(encounter, actor, profile, crash.prop, crash.amount);
@@ -421,13 +444,67 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
     } else {
       value += profile.aggression * (harm - favor) + profile.finisher * KILL_VALUE * outlook.kill;
       // O companheiro conta o golpe que a Espera devolve se ele errar.
-      if (actor.team === "party" && ability.attack) value -= profile.caution * (1 - outlook.lands) * counterDamage(encounter, victim, actor);
+      // Com a luta parada (ninguém abriu, e a Espera só se guarda), o cuidado vai cedendo: alguém tem de bater primeiro.
+      if (feint) {
+        // O verbo trocado da Tsvirana não se apara (nem se devolve): o que a lâmina do outro tiraria entra inteiro.
+        if (parries(victim) && victim.turn.reaction && victim.breath >= PARRY_BREATH && outlook.damage > 0) value += profile.aggression * outlook.lands * (2.5 + (victim.grade ?? 0));
+      } else if (actor.team === "party" && ability.attack) value -= profile.caution * patience(encounter) * (1 - outlook.lands) * counterDamage(encounter, victim, actor);
     }
   }
   if (ability.surface) {
     value += spreadValue(encounter, actor, profile, SURFACES[ability.surface.id], surfaceTiles(encounter, ability, target));
   }
   return value + propValue(encounter, actor, profile, ability, target);
+}
+
+/**
+ * O que rende a cadeia que `opener`, mirado em `target`, abre: o melhor verbo
+ * que emendaria no mesmo alvo, já com a condição que o primeiro deixou (e no
+ * quadrado aonde o empurrão o levou), menos o Fôlego do passo, vezes a chance
+ * de o primeiro pegar. Um passo só à frente: depois que ele pega, a IA pensa de
+ * novo com a cadeia aberta de verdade. Não mexe em `encounter` (devolve o que
+ * mudou pra simular).
+ */
+function chainValue(encounter: Encounter, me: Unit, profile: AiProfile, opener: Ability, target: Pos, usable: Ability[]): number {
+  const victim = unitAt(encounter, target);
+  if (!victim || victim.team === me.team) return 0;
+  const verbs = (me.turn.chain?.verbs ?? 0) + 1;
+  if (verbs >= CHAIN_MAX) return 0;
+  const { lands, kill } = forecast(encounter, me, opener, victim, target);
+  if (lands <= 0 || kill >= 1) return 0;
+
+  // O que o primeiro verbo deixa: as condições dele, e o empurrão que prensa (ou derruba e leva o alvo).
+  const left: StatusTemplate[] = [];
+  let pos = victim.pos;
+  for (const effect of opener.effects) {
+    if (effect.kind === "status") left.push(STATUSES[effect.statusId]);
+    if (effect.kind === "push" && !victim.statuses.some((status) => status.immovable)) {
+      const path = forcedPath(encounter, me.pos, victim, effect.distance);
+      if (path) pos = path.to;
+      if (effect.pin && effect.distance > 0) left.push(path?.stop ? STATUSES.prensado : STATUSES.caido);
+    }
+  }
+  const saved = { statuses: victim.statuses, pos: victim.pos, turn: me.turn };
+  victim.statuses = [...saved.statuses, ...left.map((status) => ({ ...status, turnsLeft: 1 }))];
+  victim.pos = { ...pos };
+  me.turn = { ...saved.turn, action: false, chain: { target: victim.id, verbs, last: opener.id, struck: opener.effects.some((effect) => effect.kind === "damage") } };
+  let best = 0;
+  try {
+    for (const follow of usable) {
+      const step = chainStep(me, follow);
+      if (step === undefined || me.breath < (opener.breath ?? 0) + (follow.breath ?? 0) + step) continue;
+      if (!abilityTargets(encounter, me, follow).some((spot) => samePos(spot, victim.pos))) continue;
+      const feint = feints(me) && follow.id !== opener.id;
+      let value = abilityValue(encounter, me, profile, follow, victim.pos, feint);
+      if (me.turn.chain!.struck && strikesFirst(me) && isOffensive(follow)) value *= SPENT_DAMAGE;
+      best = Math.max(best, value - CHAIN_BREATH_VALUE * step);
+    }
+  } finally {
+    victim.statuses = saved.statuses;
+    victim.pos = saved.pos;
+    me.turn = saved.turn;
+  }
+  return CHAIN_FORESIGHT * lands * best;
 }
 
 /**
@@ -471,6 +548,14 @@ function slamOf(encounter: Encounter, origin: Pos, victim: Unit, pushDistance: n
   if (amount <= 0) return undefined;
   const prop = pushDistance > 0 && path.stop ? encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, path.stop!)) : undefined;
   return { amount, ...(prop ? { prop } : {}) };
+}
+
+/** Em quantas rodadas sem ninguém abrir a luta o cuidado com o Contragolpe some de todo. */
+const STALL_ROUNDS = 4;
+
+/** Quanto do cuidado com o Contragolpe ainda vale: inteiro numa luta aberta; numa parada, vai cedendo a cada rodada. */
+function patience(encounter: Encounter): number {
+  return encounter.opened ? 1 : Math.max(0, 1 - (encounter.round - 1) / STALL_ROUNDS);
 }
 
 /** O golpe que `defender` devolve em `attacker` se for atacado e errar (o Contragolpe, ver counterStrike em ./engine.ts). */
@@ -714,10 +799,10 @@ function forecast(encounter: Encounter, actor: Unit, ability: Ability, target: U
       if (effect.kind !== "damage") continue;
       let amount = (attributeOf(actor, effect.attribute) + meanRoll(effect.dice)) * (effect.multiplier ?? 1);
       if (effect.bonus) amount += Math.floor(effectiveAttribute(actor, effect.bonus.attribute) / effect.bonus.divisor);
-      // Na mesma ordem do motor: Onda, crítico, Rachadura, o que as condições do alvo somam, armadura (se o golpe não a fura), Muralha.
+      // Na mesma ordem do motor: Onda, crítico, o que as condições do alvo somam, armadura (se o golpe não a fura), Muralha.
       amount += waveBonus(actor, ability, target);
       if (critical) amount *= 2;
-      amount *= punishFactor(actor, target) * resistOf(target, effect.type);
+      amount *= resistOf(target, effect.type);
       amount = Math.max(1, amount + damageTakenOf(target) - (effect.piercing ? 0 : Math.floor(targetOr / 2)));
       amount = Math.max(1, amount - styleReduction(target));
       if (guarded) amount -= Math.min(amount, targetOr + 3.5);

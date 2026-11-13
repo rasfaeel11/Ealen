@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import * as Phaser from "phaser";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from "./game/config";
 import BootScene from "./scenes/BootScene";
@@ -28,7 +29,7 @@ async function waitForFonts(): Promise<void> {
 void waitForFonts().then(() => {
   watchWindowShape();
   watchGamepad();
-  new Phaser.Game({
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game",
     width: GAME_WIDTH,
@@ -42,4 +43,6 @@ void waitForFonts().then(() => {
     audio: { noAudio: true },
     scene: [BootScene, TitleScene, SaveSlotsScene, WorldScene],
   });
+  // Só no servidor de desenvolvimento: deixa um teste no navegador chegar à cena e mexer nela. O build não leva.
+  if (import.meta.env.DEV) (window as unknown as { __jogo?: Phaser.Game }).__jogo = game;
 });

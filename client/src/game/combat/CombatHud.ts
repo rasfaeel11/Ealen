@@ -295,12 +295,13 @@ export class CombatHud {
     this.logFrame.setVisible(this.logSize.lines > 0);
 
     this.detail = add(
-      addBodyText(scene, GAME_WIDTH / 2 + 80, BAR_Y - 6, "", {
+      // À direita do nome de quem age, que fica na mesma altura, no canto esquerdo da barra.
+      addBodyText(scene, GAME_WIDTH / 2 + 110, BAR_Y - 6, "", {
         fontSize: "15px",
         fontStyle: "italic",
         align: "center",
         color: TEXT_COLORS.ink,
-        wordWrap: { width: 600 },
+        wordWrap: { width: 540 },
         backgroundColor: "rgba(10, 8, 7, 0.82)",
         padding: { x: 12, y: 5 },
       })
@@ -420,6 +421,9 @@ export class CombatHud {
     (this.barZone.input?.hitArea as Phaser.Geom.Rectangle | undefined)?.setSize(BAR_WIDTH, height);
     this.slots.forEach((slot, i) => slot.root.setY(top + BAR_TOP_PAD + Math.floor(i / COLS) * (SLOT + SLOT_GAP)));
     this.who.setY(top - 6);
+    // A linha do que o clique faria e o aviso andam com o topo da barra: com duas fileiras, ficavam em cima do Passo.
+    this.detail?.setY(top - 6);
+    this.warning?.setY(top - 56);
     const middle = top + height / 2;
     this.endIcon.setY(middle - 1);
     this.endZone.setY(middle - END_R);

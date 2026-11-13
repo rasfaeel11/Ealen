@@ -15,7 +15,9 @@ function inkStory(): Plugin {
 
   return {
     name: "ink-story",
-    buildStart: compile,
+    // No `config`, e não no `buildStart`: o servidor de dev lista o `public/` ao subir, e um arquivo que nasce depois
+    // disso não é servido. Num clone novo, sem o story.json de antes, o jogo subia sem a história.
+    config: compile,
     configureServer(server) {
       server.watcher.add(STORY_DIR);
       server.watcher.on("change", (file) => {

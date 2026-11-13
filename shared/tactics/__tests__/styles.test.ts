@@ -16,11 +16,10 @@ import {
   styleMatchup,
   unitFromCharacter,
   usesLeft,
-  STYLE_TO_HIT,
+  EXPOSED_TO_HIT,
   MOMENTUM_CAP,
-  crackFactor,
+  gradeToHit,
   momentumCap,
-  styleEdgeBonus,
   type Encounter,
   type EncounterSetup,
   type Pos,
@@ -94,7 +93,7 @@ test("a proficiência vai de 1 a 7 e nunca passa do nível de aura", () => {
   assert.deepEqual([capped.style, capped.grade, capped.aura], ["ipojy", 2, 2]);
 });
 
-test("a vantagem de escola entra na rolagem de ataque, pros dois lados, e só entre inimigos", () => {
+test("o triângulo não soma na rolagem (`combate` §4): quem soma é o grau, e só entre inimigos", () => {
   const { encounter } = stage(["AE.B"], (at) => [
     styled(makeUnit("A", "party", at("A"), { attributes: { olho: FIRST } }), "tsvirana"),
     styled(makeUnit("E", "enemy", at("E"), TOUGH), "ipojy"),
@@ -105,10 +104,11 @@ test("a vantagem de escola entra na rolagem de ataque, pros dois lados, e só en
 
   const edge = attackEdge(encounter, striker, strike, guard);
   assert.equal(edge.style, 1);
-  // Grau 3: a vantagem cresce 1; a desvantagem não muda com o grau.
-  assert.equal(edge.toHit, STYLE_TO_HIT + 1);
-  assert.equal(attackEdge(encounter, guard, strike, striker).toHit, -STYLE_TO_HIT);
+  // Grau 3: 1 a mais, dos dois lados do triângulo — a vantagem dele sai do traço, não da conta.
+  assert.equal(edge.toHit, 1);
+  assert.equal(attackEdge(encounter, guard, strike, striker).toHit, 1);
   assert.equal(attackEdge(encounter, striker, strike, ally).style, 0);
+  assert.equal(attackEdge(encounter, striker, strike, ally).toHit, 0);
 
   const [roll] = eventsOf(run(encounter, { type: "ability", unitId: "A", abilityId: strike.id, target: guard.pos }), "attackRoll");
   assert.equal(roll.style, 1);
@@ -130,11 +130,13 @@ test("Onda do Gryskar: cada golpe seguido no mesmo alvo soma no dano do próximo
     const { events, damage, other } = compare(
       encounter,
       { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: enemy.pos },
-      (copy) => delete findUnit(copy, "A")!.style,
+      // Sem a sequência, e com a mesma escola: a chance (o grau) é a mesma, só a Onda some.
+      (copy) => delete findUnit(copy, "A")!.streak,
     );
     const [roll] = eventsOf(events, "attackRoll");
     const wave = eventsOf(events, "styleTrait");
-    if (roll.outcome === "hit" || roll.outcome === "crit") {
+    const landed = roll.outcome === "hit" || roll.outcome === "cost" || roll.outcome === "crit";
+    if (landed && eventsOf(events, "dodged").length === 0) {
       // Quatro golpes seguidos é o teto: daí em diante soma o mesmo.
       const bonus = Math.min(streak, 4);
       assert.deepEqual(wave, streak > 0 ? [{ type: "styleTrait", unit: "A", target: "E", trait: "wave", name: "Onda", hits: streak }] : []);
@@ -168,16 +170,16 @@ test("Onda do Gryskar: trocar de alvo recomeça a conta, e área não é insist�
   assert.deepEqual(hero.streak, roll.outcome === "fumble" ? undefined : { target: "F", hits: 1 });
 });
 
-test("o grau rende: a vantagem, o teto da Onda e o tanto da Rachadura crescem com ele", () => {
-  assert.deepEqual([1, 2, 3, 4].map(styleEdgeBonus), [0, 0, 1, 2]);
+test("o grau rende: na chance, e no teto da Onda", () => {
+  assert.deepEqual([1, 2, 3, 4].map((grade) => gradeToHit({ style: "ipojy", grade })), [0, 0, 1, 2]);
+  // O Baluarte não é escola: grau nenhum soma.
+  assert.equal(gradeToHit({ style: "baluarte", grade: 4 }), 0);
   assert.deepEqual([1, 2, 3].map(momentumCap), [2, 3, 4]);
-  assert.deepEqual([1, 2, 3].map(crackFactor), [1.75, 2, 2.25]);
   // Sem grau (criatura sem escola dita), o de sempre.
   assert.equal(momentumCap(undefined), MOMENTUM_CAP);
-  assert.equal(crackFactor(undefined), 2);
 });
 
-test("Rachadura da Tsvirana: no grau 2, o dano dobra em quem acabou de repetir a ação do turno anterior", () => {
+test("Rachadura da Tsvirana: quem acabou de repetir a ação do turno anterior fica Exposto pra ela", () => {
   const { encounter } = stage(["AE"], (at) => [
     styled(makeUnit("A", "party", at("A"), { attributes: { olho: FIRST, forca: 60, couro: 60 } }), "tsvirana", 2),
     makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 0 } }),
@@ -185,15 +187,20 @@ test("Rachadura da Tsvirana: no grau 2, o dano dobra em quem acabou de repetir a
   const enemy = findUnit(encounter, "E")!;
   enemy.habit = { last: "espadachim.attack", repeated: true, attackTurns: 2 };
 
-  const { events, damage, other } = compare(
-    encounter,
-    { type: "ability", unitId: "A", abilityId: "espadachim.attack", target: enemy.pos },
-    (copy) => (findUnit(copy, "E")!.habit!.repeated = false),
-  );
+  const hero = findUnit(encounter, "A")!;
+  const strike = hero.abilities.find((ability) => ability.id === "espadachim.attack")!;
+  const repeated = attackEdge(encounter, hero, strike, enemy);
+  assert.equal(repeated.exposed, true);
+  enemy.habit.repeated = false;
+  assert.equal(repeated.toHit - attackEdge(encounter, hero, strike, enemy).toHit, EXPOSED_TO_HIT);
+  enemy.habit.repeated = true;
+
+  const events = run(encounter, { type: "ability", unitId: "A", abilityId: strike.id, target: enemy.pos });
   const [roll] = eventsOf(events, "attackRoll");
-  if (roll.outcome === "fumble") return;
-  assert.deepEqual(eventsOf(events, "styleTrait"), [{ type: "styleTrait", unit: "A", target: "E", trait: "crack", name: "Rachadura" }]);
-  assert.equal(damage, other * 2);
+  assert.equal(roll.exposed, true);
+  if (eventsOf(events, "damage").some((event) => event.target === "E")) {
+    assert.deepEqual(eventsOf(events, "styleTrait"), [{ type: "styleTrait", unit: "A", target: "E", trait: "crack", name: "Rachadura" }]);
+  }
 });
 
 test("o motor anota o que cada um faz com a ação: repetir, variar e bater em seguida", () => {
@@ -294,7 +301,8 @@ test("Contragolpe da Ipojy: não alcança quem errou de longe, e não vem de que
   const { encounter } = stage(["A..E", "F..."], (at) => [
     makeUnit("A", "party", at("A"), { ...TOUGH, kit: [TEST_KIT.puxao], attributes: { olho: FIRST } }),
     styled(makeUnit("E", "enemy", at("E"), { ...TOUGH, attributes: { couro: 200 } }), "ipojy"),
-    styled(makeUnit("F", "enemy", at("F"), { ...TOUGH, attributes: { couro: 200 } }), "gryskar"),
+    // Da Tsvirana: o do Gryskar abriria a ordem da luta antes dela.
+    styled(makeUnit("F", "enemy", at("F"), { ...TOUGH, attributes: { couro: 200 } }), "tsvirana"),
   ]);
   // O puxão de três quadrados erra de longe: o golpe dela é de perto e não chega.
   const far = run(encounter, { type: "ability", unitId: "A", abilityId: TEST_KIT.puxao.id, target: findUnit(encounter, "E")!.pos });

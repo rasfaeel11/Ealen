@@ -93,7 +93,8 @@ function shoves(rows: string[], heights: string[], abilityId: string): TacticalE
     const target = encounter.units[1].pos;
     const events = run(encounter, { type: "ability", unitId: "A", abilityId, target });
     const roll = eventsOf(events, "attackRoll")[0]?.outcome;
-    if (roll !== "miss" && roll !== "fumble") hits.push(events);
+    // O golpe que pega por pouco pode ser esquivado: não houve empurrão.
+    if (roll !== "miss" && roll !== "fumble" && eventsOf(events, "dodged").length === 0) hits.push(events);
   }
   assert.ok(hits.length > 0, "algum golpe deveria ter acertado");
   return hits;
