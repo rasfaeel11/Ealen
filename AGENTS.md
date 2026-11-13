@@ -357,7 +357,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 ### P1 — o que todo RPG tem
 | # | Task | O que é |
 |---|---|---|
-| 66 | **Mapa, o resto** | O mapa da região é a task 48. Falta o grafo de áreas, marcadores e viagem rápida entre lugares já visitados. |
 
 ### P2 — corpo
 | # | Task | O que é |
@@ -775,6 +774,15 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   de verbo, que sai de graça e não se apara. O Ykuruã não monta cadeia: não tem mente (`bestiario` §1). No
   `balance:matrix` as lutas ficaram meio turno mais curtas dos dois lados; o mago sozinho contra Jurendy foi de 66% a 41%
   (os dois do Círculo emendam), o espadachim contra o Ykuruã ficou no ruído (21% a 15%). Os números são da task 103.
+- **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
+  (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
+  passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão
+  nova; o save de antes começa pela área em que está). No `M`, `Tab` troca a região pela página da viagem: o desenho das
+  áreas (cada vizinha do lado por onde a saída sai, nada inventado), as ligações, o grupo, e a lista de aonde se vai, com
+  quantas áreas se cruza. Enter (ou o clique) viaja; cada área no caminho gasta o tempo como se o grupo tivesse entrado
+  nela (o custo `area` do relógio, que nenhum mapa usa ainda). Com inimigo que não é passivo a até 8 quadrados, não se
+  viaja. Visto no navegador (de Ybytuguá aos baixios). Marcadores próprios (o jogador marcar um ponto) não entraram: nenhuma
+  cena pede.
 
 ## 9. Onde isto está no cânone
 

@@ -45,6 +45,8 @@ export interface GameSave {
    * O save que não tem isto não mexeu em nada.
    */
   things: string[];
+  /** As áreas em que o grupo já pisou, na ordem em que pisou: é aonde a viagem leva (ver ../world/travel.ts). */
+  visited: string[];
   /** O estado da história (flags, trechos lidos, escolhas gastas), como o StoryRunner o entrega. */
   story: string | null;
   /** Quantas pausas curtas ainda cabem antes do próximo acampamento (ver ../world/rest.ts). */
@@ -230,6 +232,7 @@ export function newGame(character: Character): GameSave {
     defeated: [],
     broken: [],
     things: [],
+    visited: [],
     story: null,
     shortRests: SHORT_RESTS,
     playTimeMs: 0,
@@ -278,6 +281,8 @@ export function parseSave(raw: unknown): ParsedSave {
       defeated: readKeys(current.defeated),
       broken: readKeys(current.broken),
       things: readKeys(current.things),
+      // O save de antes disto não sabe por onde andou: começa pela área em que está, que entra ao abrir.
+      visited: readKeys(current.visited).filter((id) => id in AREAS),
       story,
       shortRests: Math.min(SHORT_RESTS, readCount(current.shortRests)),
       playTimeMs: readCount(current.playTimeMs),
@@ -294,6 +299,11 @@ export function isDefeated(save: GameSave, key: string): boolean {
 
 export function markDefeated(save: GameSave, key: string): void {
   if (!save.defeated.includes(key)) save.defeated.push(key);
+}
+
+/** Anota que o grupo pisou em `areaId` (ver `visited`). */
+export function markVisited(save: GameSave, areaId: string): void {
+  if (!save.visited.includes(areaId)) save.visited.push(areaId);
 }
 
 export function markBroken(save: GameSave, keys: string[]): void {

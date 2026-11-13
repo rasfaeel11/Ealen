@@ -39,6 +39,10 @@ import {
   manaOf,
   markBroken,
   markDefeated,
+  markVisited,
+  travelSpots,
+  worldLinks,
+  type TravelSpot,
   mend,
   npcInReach,
   openingStrikes,
@@ -366,6 +370,7 @@ export default class WorldScene extends Phaser.Scene {
     this.uiCamera = this.cameras.add(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     this.enterArea();
+    markVisited(save, this.area.id);
     this.drawMap();
     this.story = new StoryRunner(
       this.cache.text.get(STORY_KEY) as string,
@@ -1869,9 +1874,60 @@ export default class WorldScene extends Phaser.Scene {
         pos: this.pos,
         people: [...this.npcActors.values()].map((actor) => actor.pos),
         exits: this.exits,
+        travel: this.travelView(),
       },
       () => this.closePause(),
     );
+  }
+
+  /** Os mapas de todas as áreas, lidos uma vez por cena: é deles que sai o grafo da viagem. */
+  private allMaps(): Record<string, AreaMap> {
+    return Object.fromEntries(
+      Object.keys(AREAS).map((id) => [id, id === this.area.id ? this.map : parseTiledMap(this.cache.tilemap.get(mapKey(id)).data)]),
+    );
+  }
+
+  /** A página da viagem do mapa: o grafo das saídas abertas agora e aonde se vai (ver shared/world/travel.ts). */
+  private travelView() {
+    const maps = this.allMaps();
+    const open = (exit: Parameters<typeof isActive>[0]) => isActive(exit, this.flag);
+    return {
+      here: this.area.id,
+      visited: this.save.visited,
+      maps,
+      links: worldLinks(maps, open),
+      spots: travelSpots(maps, this.area.id, this.save.visited, open),
+      blocked: this.travelBlocked(),
+      onTravel: (spot: TravelSpot) => this.fastTravel(spot),
+    };
+  }
+
+  /** De quantos quadrados um inimigo que não é passivo segura o grupo onde está: ninguém viaja com ele por perto. */
+  private static readonly TRAVEL_GUARD_TILES = 8;
+
+  /** Por que o grupo não pode viajar agora, se não pode. */
+  private travelBlocked(): string | undefined {
+    const reach = WorldScene.TRAVEL_GUARD_TILES * this.map.tileSize;
+    const near = this.enemies.some((enemy) => {
+      if (enemy.passive) return false;
+      const at = this.enemyActors.get(enemy.id)?.pos ?? enemy;
+      return Math.hypot(at.x - this.pos.x, at.y - this.pos.y) <= reach;
+    });
+    return near ? "Com inimigo por perto, ninguém pega a estrada." : undefined;
+  }
+
+  /**
+   * Viaja até `spot`: cada área no caminho antes da última gasta o tempo como
+   * se o grupo tivesse entrado nela; a última, a cena gasta ao chegar.
+   */
+  private fastTravel(spot: TravelSpot): void {
+    if (this.travelBlocked()) return;
+    this.closePause(true);
+    if (spot.steps > 1 && this.story.spend("area", spot.steps - 1)) {
+      this.save.story = this.story.save();
+      this.clockBar.set(this.story.clock());
+    }
+    this.leave({ area: spot.area, spawn: spot.spawn });
   }
 
   /** A loja `id` (ver shared/shop.ts), aberta pelo texto. O que se vende fica no estado da história, e grava-se a cada troca. */
