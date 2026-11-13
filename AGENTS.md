@@ -808,6 +808,14 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   ao Círculo depois da primeira ida e os dois ao Corpo depois da ponte. Começa onde a luta começaria (no gatilho perto,
   ou chegando a 6 quadrados). A final roda com e sem o preparo. Por luta: vitória, rodadas, quantos do trio caem,
   quantas vezes Endyru cai, e as lutas sem fim; `TRACE=1` mostra cada golpe. O que ela mostrou foi pra task 103.
+- **O que o Feito dizia que não foi visto, visto** (2026-11-13, no navegador, por script). Funcionam na tela: as missões
+  (`J`, `Tab`: a aberta em cima, a falhada e a cumprida embaixo, com o sinal de cada uma), a loja da banca (comprar, o
+  estoque que desce, a fala da vendedora, vender pela metade na outra aba), o Preparar (a barra só acende o que se
+  prepara), o Vigiar, o Esconder-se (apagado à vista, dizendo por quê), o Levantar quem caiu (Xanduí levanta Endyru), a
+  investida com `F` (o outro lado sai Abalado) e o relevo na chance ("de cima +2, por cima da mureta"). Não se viu a
+  emboscada: de onde o script chegou, a patrulha já via o grupo. Corrigido: o Preparar dizia duas vezes no registro
+  ("prepara Golpe Pesado pra quem chegar" e "De vigia"); e, numa investida, o Gryskar do lado que a levou pagava 1 de
+  Fôlego pra abrir a ordem e agia depois de todos do mesmo jeito: agora quem leva a investida não paga (teste novo).
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão

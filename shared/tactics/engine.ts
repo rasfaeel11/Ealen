@@ -175,10 +175,14 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
   // Na investida, quem a deu vem antes de todo mundo, na ordem que rolou entre os seus.
   const charge = setup.surprised ? undefined : setup.charge;
   // O Gryskar aceita o custo pra agir antes de todos (`combate` §4.2): paga Fôlego e abre a ordem, entre os do lado
-  // dele numa investida. Quem foi pego de surpresa não abre nada.
+  // dele numa investida. Quem foi pego de surpresa não abre nada, e quem levou a investida também não: o outro lado
+  // já vem antes de todos, e ele pagaria por nada.
   const first = new Set(
     rolls
-      .filter(({ unit }) => strikesFirst(unit) && isAlive(unit) && unit.team !== setup.surprised && unit.breath >= FIRST_BREATH)
+      .filter(
+        ({ unit }) =>
+          strikesFirst(unit) && isAlive(unit) && unit.team !== setup.surprised && (!charge || unit.team === charge) && unit.breath >= FIRST_BREATH,
+      )
       .map(({ unit }) => unit.id),
   );
   rolls.sort((a, b) => Number(first.has(b.unit.id)) - Number(first.has(a.unit.id)));

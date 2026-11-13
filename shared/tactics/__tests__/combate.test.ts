@@ -9,6 +9,8 @@ import {
   attackEdge,
   canBeImprobable,
   findUnit,
+  gridFromAscii,
+  startEncounter,
   type Encounter,
   type Pos,
   type StyleId,
@@ -225,6 +227,15 @@ test("Gryskar: paga Fôlego pra abrir a ordem, e o segundo golpe da cadeia sai f
   };
   const seed = seedWhere((seed) => ({ seed, ...second(true, seed) }), ({ events }) => eventsOf(events, "attackRoll")[0].outcome === "hit").seed;
   assert.ok(second(true, seed).damage < second(false, seed).damage);
+});
+
+test("Gryskar: quem leva a investida não paga pra abrir a ordem, que já é do outro lado", () => {
+  const { grid, markers } = gridFromAscii(["A.E"]);
+  const units = [makeUnit("A", "party", markers.A[0]), styled(makeUnit("E", "enemy", markers.E[0], { ...TOUGH, breath: 3 }), "gryskar")];
+  const { encounter, events } = startEncounter({ grid, units, seed: 3, charge: "party" });
+  assert.equal(activeUnit(encounter)!.id, "A", "quem deu a investida vem antes");
+  assert.deepEqual(eventsOf(events, "costPaid"), []);
+  assert.equal(findUnit(encounter, "E")!.breath, 3);
 });
 
 test("Tsvirana: trocar de verbo no meio da cadeia sai sem Fôlego, e não se apara nem se devolve", () => {

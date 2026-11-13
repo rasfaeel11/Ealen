@@ -349,6 +349,8 @@ export class CombatController {
   private readonly usedProps = new Set<string>();
   /** Quem a última linha de erro já deu como Exposto: o `statusApplied` que vem atrás não repete. */
   private exposedSaid?: string;
+  /** Quem acabou de Preparar: o "De vigia" que vem atrás não repete. */
+  private watchSaid?: string;
   /** Os quadrados clicáveis no modo atual. Não se desenham todos: ver `drawOptions`. */
   private options: Pos[] = [];
   private hover: Pos | null = null;
@@ -1453,6 +1455,7 @@ export class CombatController {
       case "readied": {
         this.floatOver(event.unit, "Pronto", TEXT_COLORS.goldBright, -22);
         this.hud.log(`${this.unit(event.unit).name} prepara ${event.name} pra quem chegar.`);
+        this.watchSaid = event.unit;
         await this.wait(120);
         return;
       }
@@ -1610,8 +1613,12 @@ export class CombatController {
         sfx("status");
         this.floatOver(event.target, event.name, TEXT_COLORS.guard, -22);
         // A linha do erro já disse "fica Exposto": não se repete.
-        const said = event.statusId === STATUSES.exposto.id && this.exposedSaid === event.target;
+        // Nem o "De vigia" que o Preparar põe: a linha dele já disse o que fica pronto.
+        const said =
+          (event.statusId === STATUSES.exposto.id && this.exposedSaid === event.target) ||
+          (event.statusId === STATUSES.watching.id && this.watchSaid === event.target);
         if (event.statusId === STATUSES.exposto.id) this.exposedSaid = undefined;
+        if (event.statusId === STATUSES.watching.id) this.watchSaid = undefined;
         if (!said) this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
         this.refreshRoster();
         await this.wait(200);
