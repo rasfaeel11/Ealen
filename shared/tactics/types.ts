@@ -391,6 +391,8 @@ export interface Unit {
   readied?: string;
   /** Deu o golpe de abertura numa emboscada: o primeiro turno dele começa sem a ação (ver Opening em ./engine.ts). */
   spentOpening?: boolean;
+  /** Já deu um golpe nesta luta (acertando ou não): o voto do Gryskar só o segura até lá (ver holdsGround em ./movement.ts). */
+  swung?: boolean;
   /**
    * As marcas que o corpo levou nesta luta e que saem com ele dela (as de
    * `untilRest`, ver ./statuses.ts): o mundo as passa pra história no fim.

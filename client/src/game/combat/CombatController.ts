@@ -13,6 +13,8 @@ import {
   SURFACES,
   abilityTargets,
   activeUnit,
+  holdsGround,
+  retreatsFrom,
   applyCommand,
   attackOdds,
   chainable,
@@ -745,6 +747,10 @@ export class CombatController {
       if (this.selected || this.aim) {
         sfx("deny");
         this.hud.warn(ERROR_TEXT.invalid_target);
+      } else if (holdsGround(unit) && retreatsFrom(this.encounter, unit, tile).length > 0) {
+        // O quadrado não acende porque seria recuar: diz por quê.
+        sfx("deny");
+        this.hud.warn(`O voto do Gryskar: ${unit.name} não recua o primeiro passo.`);
       }
       return;
     }

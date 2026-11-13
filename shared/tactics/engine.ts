@@ -926,7 +926,10 @@ function resolveAbility(
     target: { ...targetPos },
     reaction,
   });
-  if (isBlow(ability)) encounter.opened = true;
+  if (isBlow(ability)) {
+    encounter.opened = true;
+    actor.swung = true;
+  }
 
   // Quem é da Ipojy e foi atacado em vão devolve o golpe — depois que este acabar de acontecer.
   const countering: Unit[] = [];

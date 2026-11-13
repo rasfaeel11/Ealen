@@ -147,3 +147,20 @@ script, e o cenário sai de `python art/pintar_cenario.py`.
   63 (esconder-se na luta, preparar outra ação, aparar, interceptar) não dependia de você e continua
   na lista.
 - **47. A arte continua com você**: as imagens saem do seu navegador. Não mexi.
+
+## 101. O que é recuar, e o voto do Gryskar (2026-11-13)
+
+**O que decidi**
+- **Recuar** é terminar o movimento longe de um inimigo de pé que estava colado em quem anda. Andar de lado,
+  ainda colado nele, não é recuar; ser empurrado ou puxado também não (não é movimento de quem vai). A
+  `combate` §3.2 só diz "Recuar: movimento, distância", e isto é o menor sentido que serve.
+- **O voto** ("não recuar o primeiro passo", `gryskar`; "não usa Recuar na primeira vez", `combate` §4.2): quem é
+  do Gryskar não recua antes de dar o primeiro golpe dele na luta, acertando ou não. O primeiro passo é pra
+  frente; depois do golpe, que leva a aura toda, ele recua como qualquer um.
+- Nenhum custo novo: o ataque de oportunidade já cobra quem sai de perto.
+
+**Por quê**: "na primeira vez" lido como "uma vez por luta, recusada" daria um voto que some sozinho. Lido
+como "antes do primeiro golpe", ele casa com o princípio de aura da escola (tudo no primeiro golpe) e com o
+custo de entrada (perder não impede, recuar sim).
+
+**Pra mudar**: `holdsGround` e `retreatsFrom` em `shared/tactics/movement.ts`.
