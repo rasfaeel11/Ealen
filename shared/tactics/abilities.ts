@@ -224,6 +224,24 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
       ],
       mana: 4,
     },
+    // Os outros dois verbos do Círculo (`combate` §3.4). Desviar é segurado: a ação lê o texto até a última linha, e
+    // a última linha (e a mana) sai na reação, com o tiro. Puxar-se é recitado como o resto: sai no turno seguinte.
+    desviar: {
+      cost: "action",
+      range: 0,
+      targets: "self",
+      effects: [{ kind: "status", statusId: "deflecting", turns: 1 }],
+      mana: 2,
+      held: true,
+    },
+    puxar_se: {
+      cost: "action",
+      range: 4,
+      targets: "tile",
+      anchor: true,
+      effects: [],
+      mana: 2,
+    },
   }),
 
   // Jarupã e Xanduí: a lâmina. O que pesa custa Fôlego; a escola (o traço, o triângulo) vem do elenco.

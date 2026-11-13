@@ -107,6 +107,18 @@ export interface Ability {
    * rodadas, acerte ou erre o golpe. Ver ./surfaces.ts.
    */
   surface?: { id: SurfaceId; rounds: number };
+  /**
+   * Segurada: a magia é lida agora até a última linha, e a última linha (com a
+   * mana) só sai quando a hora chega — Desviar, com o tiro. Não leva o turno
+   * seguinte como a recitada: o tempo se pagou na ação. A mana se cobra quando sai.
+   */
+  held?: boolean;
+  /**
+   * PUXAR-SE ATÉ UM PONTO (`combate` §3.4): mira o quadrado aonde quem usa vai,
+   * em linha reta, colado num corpo, numa parede ou num destrutível do outro lado
+   * dele, e ele se puxa até lá (ver pullSelf em ./engine.ts).
+   */
+  anchor?: boolean;
   /** Só se usa fora da vista de todo inimigo de pé (Esconder-se): à vista, não há alvo. */
   unseen?: boolean;
   /** Num aliado, só nos OUTROS: quem usa não se mira (ajudar a si mesmo não existe). */
@@ -596,7 +608,9 @@ export type TacticalEvent =
   | { type: "healDenied"; target: string; name: string }
   /** A condição `name` feriu `unit` no começo do turno dele (ver `harm`). O `damage` vem logo depois. */
   | { type: "statusTriggered"; unit: string; statusId: string; name: string }
-  | { type: "pushed"; unit: string; from: Pos; to: Pos }
+  | { type: "pushed"; unit: string; from: Pos; to: Pos; self?: true }
+  /** `unit` desviou com atração e repulsão o tiro de `attacker` que ia em `target` (ele mesmo ou um aliado colado). */
+  | { type: "deflected"; unit: string; target: string; attacker: string }
   /**
    * Empurrado, `unit` bateu no que barrava o passo em `pos` (parede, o destrutível `name` ou o corpo `name`). O
    * `damage` (ou o `immune`) vem logo depois, e o `propDamaged` do destrutível, se foi nele.

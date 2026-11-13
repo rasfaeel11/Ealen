@@ -66,8 +66,8 @@ const COMMON = ["disparada", "ajudar", "vigiar", "esconder", "agarrar", "empurra
 /** Os verbos de todo mundo, desde o nível 1 (`combate` §3.2). O espadachim também desarma com a mão; o mago desarma no Círculo, com a magia. */
 const verbsOf = (order: CharacterClass) => (order === "espadachim" ? [...COMMON, "desarmar"] : COMMON);
 
-/** Quantas Técnicas cada classe ensina: duas pro mago (as do Círculo); o espadachim, nenhuma (o golpe-selo é por iniciação). Mais os verbos. */
-const TECHNIQUES = (order: CharacterClass) => (order === "espadachim" ? 0 : 2) + verbsOf(order).length;
+/** Quantas Técnicas cada classe ensina: quatro pro mago (as do Círculo: desarmar, arremessar, desviar, puxar-se); o espadachim, nenhuma (o golpe-selo é por iniciação). Mais os verbos. */
+const TECHNIQUES = (order: CharacterClass) => (order === "espadachim" ? 0 : 4) + verbsOf(order).length;
 
 test("cada classe tem o kit dela: as Artes no nível 1, e as Técnicas chegam com o nível", () => {
   for (const order of CLASSES) {
@@ -186,6 +186,8 @@ test("subir de nível não ensina Técnica a ninguém do mundo: o mago aprende p
   assert.deepEqual(learnedAtMage("atracao_repulsao", 4).map((ability) => ability.id), [
     "atracao_repulsao.desarmar",
     "atracao_repulsao.arremesso",
+    "atracao_repulsao.desviar",
+    "atracao_repulsao.puxar_se",
   ]);
 });
 

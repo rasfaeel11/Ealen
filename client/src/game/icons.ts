@@ -379,6 +379,9 @@ const ABILITY_ICON: Record<string, IconName> = {
   "Golpe Pesado": "heavy",
   Desarmar: "disarm",
   Arremesso: "throw",
+  // Os outros dois verbos do Círculo: provisórios, emprestados (task 96).
+  Desviar: "shield",
+  "Puxar-se": "pull",
   Ombrada: "shoulder",
   "Segurar o Bote": "grip",
   Disparada: "move",

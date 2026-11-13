@@ -53,6 +53,13 @@ export interface StatusTemplate {
    * um inimigo perto (ver Esconder-se em ./abilities.ts).
    */
   concealed?: boolean;
+  /**
+   * Desviando: o texto de desviar projétil lido até a última linha, que só se
+   * diz quando o tiro vem (ver Desviar em ./abilities.ts). O primeiro tiro no
+   * portador ou num aliado colado nele se desvia, pago com a reação e com a
+   * mana. Apanhar pode quebrar o texto, como quebra a recitação.
+   */
+  deflect?: boolean;
   /** Sem arma na mão: o portador não dá golpe de arma (`weapon`), só os verbos do corpo e a magia. */
   unarmed?: boolean;
   /** No chão: no começo do turno ele se levanta, e levantar come metade do passo (evento `stoodUp`). */
@@ -114,6 +121,8 @@ export const STATUSES = {
   held: { id: "held", name: "Seguro", speed: -4 },
   /** De vigia (Vigiar, ver ./abilities.ts): até a vez seguinte, bate no primeiro que entrar no alcance. */
   watching: { id: "watching", name: "De vigia", watch: true },
+  /** Com o texto de desviar projétil pronto na boca (Desviar, ver ./abilities.ts). */
+  deflecting: { id: "deflecting", name: "Desviando", deflect: true },
   /** Escondido (Esconder-se, ver ./abilities.ts): de longe ninguém o mira, e o golpe que sai do esconderijo entra mais certo. */
   hidden: { id: "hidden", name: "Escondido", concealed: true, toHit: 2 },
   /** Quem levou a ajuda de um aliado colado (Ajudar, ver ./abilities.ts): o próximo golpe sai mais certo. */

@@ -340,7 +340,6 @@ O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ai
 |---|---|---|
 | 97 | **Ver o combate novo na tela** | Ninguém jogou: as três faixas na mira e no registro, o custo, a esquiva, a cadeia ("Cadeia 2", "Troca!"), os quatro verbos na barra (são mais quatro botões: ver se a barra cabe), Caído se levantando. Jogar a abertura e o armazém e corrigir o que sair torto. |
 | 98 | **Os custos que faltam** | Entraram Fôlego, ferida própria e marca. Faltam os outros da `combate` §2.2: tempo (a recitação que quebra como preço), posição (perder a altura, sair Prensado), equipamento (a lâmina lasca, a gravação se gasta), gente em volta (fora da deixa de Oryndu) e lei (conjurar sem licença). Cada um pede uma regra de quando cai: vai pro autor antes. |
-| 99 | **Os verbos da magia** | Atração e repulsão no Círculo desvia projétil e puxa-se até um ponto (`combate` §3.4); nenhum dos dois existe. Desviar é reação contra o tiro; puxar-se é andar forçado até uma parede ou corpo. |
 | 100 | **A margem e a borda do barco** | A `combate` §4.1 diz que borda do barco e margem prensam. Hoje prensa o que barra o passo (parede, corpo, caixote, barranco); a água não barra. Decidir com o autor se empurrar pra dentro d'água é Prensado, Caído ou outra coisa (no Ykuruã, o contrário de tirá-lo da água). |
 | 101 | **Recuar e o voto do Gryskar** | O Gryskar não usa Recuar na primeira vez (`combate` §4.2), mas o motor não tem Recuar: andar é andar. Dizer o que é recuar (sair do alcance de quem está colado?) e pôr o voto. |
 | 102 | **A IA que monta a cadeia** | A IA emenda o próximo verbo quando ele vale a pena, mas não planeja Agarrar → Empurrar → Golpear de propósito nem pesa o Fôlego da cadeia, e não usa a troca da Tsvirana. |
@@ -759,6 +758,14 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   da Espera, vai perdendo o medo do Contragolpe (o mago sozinho contra a Lança de Ymboripe ficava fugindo pra sempre). Os
   nomes dos verbos são os da `combate` §3.2; as falas de cada um são provisórias, como as da Disparada. Os números são
   provisórios (task 103), e a tela não foi vista (task 97). Detalhe em `docs/motor.md`.
+
+- **99. Os verbos da magia.** Endyru no Círculo ganhou os outros dois verbos da `combate` §3.4. Desviar: a ação lê o texto até
+  a última linha (Desviando, até a vez seguinte), sem recitar nem cobrar; o primeiro tiro nele ou num aliado colado passa ao
+  lado, sem rolar, e a última linha cobra 2 de mana na reação, que conta no limite e chama o bicho como qualquer gasto.
+  Apanhar quebra o texto pelo mesmo teste da recitação, e Agarrado o perde. Puxar-se: recitado, 2 de mana, mira o quadrado em
+  linha reta, até 4, colado numa parede, destrutível ou corpo; no turno seguinte ele se puxa até lá, sem ataque de
+  oportunidade, subindo barranco; se o corpo saiu do lugar, a recitação se perde. Não é golpe e não abre a luta. Os nomes, as
+  falas, os números e os ícones (emprestados) são provisórios; a IA ainda não os usa (task 102), e a tela não foi vista.
 
 ## 9. Onde isto está no cânone
 

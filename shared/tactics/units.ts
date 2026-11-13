@@ -184,9 +184,9 @@ export function chainStep(unit: Unit, ability: Ability): number | undefined {
   return feints(unit) && ability.id !== chain.last ? 0 : CHAIN_BREATH;
 }
 
-/** Magia que se recita: leva tempo (sai no turno seguinte) e pode quebrar. A gravada, não. */
+/** Magia que se recita: leva tempo (sai no turno seguinte) e pode quebrar. A gravada e a segurada (`held`), não. */
 export function isRecited(ability: Ability): boolean {
-  return (ability.mana ?? 0) > 0 && !ability.engraved;
+  return (ability.mana ?? 0) > 0 && !ability.engraved && !ability.held;
 }
 
 /**

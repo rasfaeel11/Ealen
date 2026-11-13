@@ -1,5 +1,5 @@
 import { foresee } from "./ai";
-import { COST_BAND, attackEdge, attackTotals, canBeImprobable } from "./attack";
+import { COST_BAND, attackEdge, attackTotals, canBeImprobable, isShot } from "./attack";
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { HUNGER, healCap, healToll } from "../breath";
 import { CONCEPTS } from "../mana";
@@ -23,6 +23,7 @@ import {
   abilityTargets,
   affectedProps,
   affectedUnits,
+  anchorTargets,
   interactTargets,
   itemTargets,
   isBlow,
@@ -732,7 +733,8 @@ function charge(encounter: Encounter, unit: Unit, ability: Ability, inTurn: bool
     unit.breath -= ability.breath;
     events.push({ type: "breathSpent", unit: unit.id, amount: ability.breath, remaining: unit.breath });
   }
-  if (ability.mana) spendMana(encounter, unit, ability.mana, events);
+  // A segurada (Desviar) paga a mana quando a última linha sai, não quando se começa a ler.
+  if (ability.mana && !ability.held) spendMana(encounter, unit, ability.mana, events);
   if (ability.cooldown) unit.cooldowns = { ...unit.cooldowns, [ability.id]: ability.cooldown + (inTurn ? 1 : 0) };
 }
 
@@ -938,6 +940,17 @@ function resolveAbility(
       events.push({ type: "intercepted", unit: target.id, ally: aimed.id, attacker: actor.id });
     }
     const blow = ability.radius === undefined && dealsDamage(ability) && target.team !== actor.team;
+    const deflector = isShot(ability) && target.team !== actor.team ? deflecting(encounter, target) : undefined;
+    if (deflector) {
+      // DESVIAR PROJÉTIL (`combate` §3.4): a última linha sai, o virote encontra a força que empurra e passa ao lado.
+      deflector.turn.reaction = false;
+      removeStatuses(deflector, (status) => status.deflect === true, events);
+      events.push({ type: "deflected", unit: deflector.id, target: target.id, attacker: actor.id });
+      spendMana(encounter, deflector, DEFLECT_MANA, events);
+      if (blow) delete actor.streak;
+      first ??= "miss";
+      continue;
+    }
     let critical = false;
     let outcome: AttackOutcome = "hit";
     if (ability.attack && !strike.sure) {
@@ -987,11 +1000,36 @@ function resolveAbility(
     laySurface(encounter, ability.surface.id, surfaceTiles(encounter, ability, targetPos), ability.surface.rounds, events);
   }
 
+  if (ability.anchor && isAlive(actor)) pullSelf(encounter, actor, targetPos, events);
+
   // O golpe que sai do esconderijo o descobre.
   if (isBlow(ability) && actor.statuses.some((status) => status.concealed)) reveal(actor, events);
 
   for (const defender of countering) counterStrike(encounter, defender, actor, events);
   return first;
+}
+
+/** A mana que a última linha do Desviar cobra quando sai (ver `held` em Ability). */
+export const DEFLECT_MANA = 2;
+/** De quão longe quem está Desviando cobre um aliado: colado nele. */
+export const DEFLECT_REACH = 1;
+
+/**
+ * Quem desvia o tiro que vai em `target`: alguém do lado dele, Desviando (ver
+ * `deflect` em ./statuses.ts), com a reação e a mana da última linha, e colado
+ * nele (ou ele mesmo). Calado ou Agarrado não diz linha nenhuma.
+ */
+function deflecting(encounter: Encounter, target: Unit): Unit | undefined {
+  return encounter.units.find(
+    (other) =>
+      other.team === target.team &&
+      isAlive(other) &&
+      other.turn.reaction &&
+      other.statuses.some((status) => status.deflect) &&
+      !other.statuses.some((status) => status.silenced) &&
+      (other.mana ?? 0) >= DEFLECT_MANA &&
+      distance(other.pos, target.pos) <= DEFLECT_REACH,
+  );
 }
 
 /** O Fôlego que Esquivar custa. */
@@ -1265,6 +1303,7 @@ function applyEffect(
       addStatus(target, status, effect.turns, events);
       // Agarrado (ou Calado) no meio do texto: a boca e as mãos ocupadas, a recitação se perde.
       if (status.silenced && target.reciting) breakRecitation(target, "hit", events);
+      if (status.silenced) removeStatuses(target, (active) => active.deflect === true, events);
       return;
     }
     case "breath": {
@@ -1327,6 +1366,11 @@ function dealDamage(encounter: Encounter, target: Unit, amount: number, events: 
     if (target.reciting && rollDie(encounter, 20) + effectiveAttribute(target, "saber") + focus < RECITE_FOCUS + Math.floor(amount / 2)) {
       breakRecitation(target, "hit", events);
     }
+    // O texto do Desviar, segurado na boca, quebra do mesmo jeito.
+    const holds = target.statuses.some((status) => status.deflect);
+    if (holds && rollDie(encounter, 20) + effectiveAttribute(target, "saber") + focus < RECITE_FOCUS + Math.floor(amount / 2)) {
+      removeStatuses(target, (status) => status.deflect === true, events);
+    }
     return;
   }
 
@@ -1374,6 +1418,27 @@ function push(encounter: Encounter, origin: Pos, target: Unit, pushDistance: num
   if (pinned && isAlive(target) && !(pinned.prone && target.statuses.some((status) => status.id === "submerged"))) {
     addStatus(target, pinned, 1, events);
   }
+}
+
+/**
+ * PUXAR-SE ATÉ UM PONTO (`combate` §3.4): `unit` se puxa em linha reta até
+ * `to`, colado no corpo, na parede ou no destrutível do outro lado (ver
+ * anchorTargets em ./targeting.ts). É movimento forçado: não provoca ataque de
+ * oportunidade nem vigia, e não gasta o passo. Sobe barranco (quem puxa é ele) e
+ * desce sem cair. A superfície de onde ele chega age, e a água também. Se o
+ * ponto já não está lá (o corpo saiu do lugar), não acontece nada.
+ */
+function pullSelf(encounter: Encounter, unit: Unit, to: Pos, events: TacticalEvent[]): void {
+  const spot = anchorTargets(encounter, unit, Infinity).find((candidate) => samePos(candidate.to, to));
+  if (!spot) return;
+  const from = { ...unit.pos };
+  unit.pos = { ...spot.to };
+  // Quem se puxou soltou o que segurava: a cadeia acaba.
+  delete unit.turn.chain;
+  events.push({ type: "pushed", unit: unit.id, from, to: { ...unit.pos }, self: true });
+  touchSurface(encounter, unit, events);
+  soak(encounter, unit, events);
+  uncover(encounter, unit, events);
 }
 
 /** `target` caiu `steps` degraus, tirado do lugar: FALL_PER_STEP por degrau, sem armadura no meio. */

@@ -1378,6 +1378,16 @@ export class CombatController {
         return;
       }
 
+      case "deflected": {
+        sfx("push");
+        this.floatOver(event.target, "Desviado", TEXT_COLORS.guard, -22);
+        const who = this.unit(event.unit).name;
+        const target = event.target === event.unit ? "" : ` que ia em ${this.unit(event.target).name}`;
+        this.hud.log(`${who} diz a última linha: o tiro de ${this.unit(event.attacker).name}${target} passa ao lado.`);
+        await this.wait(160);
+        return;
+      }
+
       case "dodged": {
         this.floatOver(event.unit, "Esquivou", TEXT_COLORS.guard, -22);
         this.hud.log(`${this.unit(event.unit).name} sai da frente do golpe de ${this.unit(event.attacker).name}.`);
@@ -1528,7 +1538,7 @@ export class CombatController {
       case "pushed": {
         const actor = this.actor(event.unit);
         sfx("push");
-        this.hud.log(`${this.unit(event.unit).name} é tirado do lugar.`);
+        this.hud.log(event.self ? `${this.unit(event.unit).name} se puxa até lá.` : `${this.unit(event.unit).name} é tirado do lugar.`);
         if (actor) await this.glide(actor, pixelOfTile(this.host.map, event.to), 160, false);
         return;
       }

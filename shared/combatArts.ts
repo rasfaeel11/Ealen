@@ -145,6 +145,18 @@ export const CLASS_TECHNIQUES: Record<CharacterClass, Record<string, Technique>>
       level: 1,
       mage: 4,
     },
+    desviar: {
+      name: "Desviar",
+      flavor: "O texto lido até a última linha e a boca parada nela. Quando o virote vem, a linha sai, e ele passa ao lado.",
+      level: 1,
+      mage: 4,
+    },
+    puxar_se: {
+      name: "Puxar-se",
+      flavor: "Os dois corpos nomeados são ele e a parede. A parede não sai do lugar.",
+      level: 1,
+      mage: 4,
+    },
   },
 
   // O golpe-selo de cada escola só vem por iniciação, a partir do grau 4: o trio não chega lá.

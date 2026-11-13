@@ -39,9 +39,9 @@ function dealsDamage(ability: Ability): boolean {
   return ability.effects.some((effect) => effect.kind === "damage");
 }
 
-/** Um golpe: o que se mira no outro lado (um inimigo, um quadrado, todos eles). Usar um abre a luta (`Encounter.opened`). */
+/** Um golpe: o que se mira no outro lado (um inimigo, um quadrado, todos eles). Usar um abre a luta (`Encounter.opened`). Puxar-se não é golpe. */
 export function isBlow(ability: Ability): boolean {
-  return ability.targets !== "self" && ability.targets !== "ally";
+  return ability.targets !== "self" && ability.targets !== "ally" && !ability.anchor;
 }
 
 /**
@@ -89,6 +89,46 @@ export function readyable(ability: Ability): boolean {
   return ability.targets === "enemy" && !isRecited(ability);
 }
 
+const DIRECTIONS: readonly Pos[] = [
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 0, y: 1 },
+  { x: 0, y: -1 },
+  { x: 1, y: 1 },
+  { x: 1, y: -1 },
+  { x: -1, y: 1 },
+  { x: -1, y: -1 },
+];
+
+/**
+ * Aonde `unit` pode se puxar (PUXAR-SE ATÉ UM PONTO, `combate` §3.4): em linha
+ * reta, de lado ou na diagonal, até `range` quadrados, parando colado no que
+ * está do outro lado — uma parede, um destrutível de pé, um corpo. A borda do
+ * mapa e o chão aberto não são ponto nenhum: atração é entre dois corpos. O
+ * caminho tem de estar livre; subir e descer não contam (quem puxa é ele).
+ * `path` são os quadrados por onde ele passa, sem o de partida.
+ */
+export function anchorTargets(encounter: Encounter, unit: Unit, range: number): { to: Pos; path: Pos[] }[] {
+  const spots: { to: Pos; path: Pos[] }[] = [];
+  for (const direction of DIRECTIONS) {
+    const path: Pos[] = [];
+    let pos = unit.pos;
+    for (let step = 0; step <= range; step++) {
+      const next = { x: pos.x + direction.x, y: pos.y + direction.y };
+      const tile = tileAt(encounter.grid, next);
+      if (!tile) break;
+      if (tile.blocksMove || unitAt(encounter, next)) {
+        if (path.length > 0) spots.push({ to: { ...pos }, path });
+        break;
+      }
+      if (step === range) break;
+      path.push(next);
+      pos = next;
+    }
+  }
+  return spots;
+}
+
 /** De quantos quadrados um inimigo que vê o Escondido o descobre (ver `concealed` em ./statuses.ts). */
 export const REVEAL_RANGE = 3;
 
@@ -112,6 +152,7 @@ function reachTargets(encounter: Encounter, unit: Unit, ability: Ability): Pos[]
     return encounter.units.some((other) => other.team !== unit.team && isAlive(other)) ? [{ ...unit.pos }] : [];
   }
 
+  if (ability.anchor) return anchorTargets(encounter, unit, ability.range).map((spot) => spot.to);
   if (ability.targets === "tile") {
     return encounter.grid.tiles
       .map((_, index) => posOfIndex(encounter.grid, index))
