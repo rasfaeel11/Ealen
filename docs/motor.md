@@ -8,6 +8,7 @@ Monorepo com npm workspaces:
 
 - **`shared/`** — as regras do jogo, em TypeScript puro (sem DOM, sem Node, sem rede). Tipos, classes, o elenco (`party.ts`), os dados do jogo (`shared/data/`: bestiário, itens, equipamento), o motor de combate (`shared/tactics/`), o mundo (`shared/world/`), a história (`shared/story/`) e o formato do save (`shared/save/`). Tudo que é regra mora aqui.
 - **`client/`** — o jogo: Phaser 3 + Vite. Só apresentação e entrada; não calcula regra nenhuma. Também guarda o TEXTO do jogo, em Ink (`client/story/`), e as ferramentas de Node (`client/scripts/`: a compilação da história e o `balance:matrix`).
+- **`desktop/`** — o jogo empacotado (Electron). `main.cjs` abre uma janela com o build do client, copiado pra `desktop/game` (`scripts/copyGame.mjs`), servido pelo protocolo `app://jogo/` (não file://: o Phaser lê história e mapas por XHR, e o localStorage dos saves ganha uma origem fixa). Sem menu, sem navegação pra fora (link http abre no navegador do sistema), F11 ou Alt+Enter troca a tela cheia. O nome interno é sem acento (`Tres na Estrada`): ele vai no User-Agent e na pasta dos dados, e um "ê" ali derruba os pedidos do protocolo. As fontes (Cinzel e Spectral, OFL) vão no bundle pelo `@fontsource`, não pela rede. `electron-builder` empacota (Windows: instalador NSIS e portátil; Linux: AppImage e pasta; Mac: dmg), com `npmRebuild` desligado: o app não tem dependência de produção, e o passo de instalar as de produção podava o `node_modules` do monorepo.
 
 ### As decisões de design
 
@@ -282,7 +283,7 @@ Uma partida é UM objeto, `GameSave` (`shared/save/gameSave.ts`): o personagem, 
 
 ### Restrições que valem ouro
 
-- **Nada de dependência de servidor no caminho do jogo.** O alvo de longo prazo inclui empacotar com Electron e vender na Steam; por isso o motor roda no cliente, o save é local e o Vite builda com caminhos relativos (`base: "./"`). Assets são referenciados sem barra inicial (`sprites/x.png`, não `/sprites/x.png`).
+- **Nada de dependência de servidor no caminho do jogo.** O jogo empacota com Electron (`desktop/`) e o alvo é a Steam; por isso o motor roda no cliente, o save é local e o Vite builda com caminhos relativos (`base: "./"`). Assets são referenciados sem barra inicial (`sprites/x.png`, não `/sprites/x.png`).
 - **`shared/` continua puro.** Se precisar de `window`, `fs` ou `fetch`, não é lá. (Os testes em `__tests__/` podem usar Node.)
 
 ### Comandos
@@ -293,6 +294,9 @@ npm run build --workspace=client                # typecheck + build
 npm test                                        # testes sem tela: motor tático, mundo, história, save e validação dos mapas e do texto
 npm run balance:matrix                          # taxa de vitória de cada classe (com o equipamento de começo) x criatura (com o estilo e o que ela veste), pelo motor real
 npm run balance:matrix -- --nos 100             # cada nó da árvore sozinho, no nível 1, contra a mesma pessoa sem nó (o espadachim por escola, o mago na Página e no Círculo)
+npm run desktop                                 # build do client e o jogo numa janela do Electron
+npm run desktop:pack                            # o app empacotado numa pasta (desktop/release), pro sistema em que roda
+npm run desktop:dist                            # os instaladores do sistema em que roda (ver `build` em desktop/package.json)
 ```
 
 `npm test` lê os mapas de verdade e acusa saída pra área inexistente, ponto de chegada em parede, trecho sem acesso (já com os destrutíveis de pé), criatura ou destrutível que não existe, destrutível em cima de parede, saída ou de alguém, inimigo hostil colado num ponto de chegada, inimigo que fala sem ser `passive`, passivo dividindo quadrado, gatilho sem tamanho ou onde ninguém pisa, deixa de grupo que não existe, repetida, ou esperando alguém ou algo que não está lá (ou que tem xará), deixa que espera quebrar o que não se quebra ou mexer no que não é de mexer, deixa que aplica condição inexistente ou em quem não está lá, e grupo com criatura sem vida e nenhuma deixa que encerre a luta. Também compila a história de verdade e percorre cada trecho que um mapa abre (`npc`, inimigo que fala, `onDefeat`, `trigger`, `cue`) por todos os caminhos, passando e falhando nos testes: trecho que não existe, item inexistente, conversa que não termina, `if`/`unless` com variável não declarada (ou `party:` com companheiro que não existe, ou `clock:` sem número), `join_party` com chave que não existe, `start_fight` com grupo que a área não tem, `travel` pra ponto de chegada que não existe e trecho de deixa que mexe na ficha no meio de uma luta que continua aparecem aqui.

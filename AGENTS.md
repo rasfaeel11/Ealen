@@ -376,7 +376,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 ### P3 — produto
 | # | Task | O que é |
 |---|---|---|
-| 81 | **Empacotar** | Electron, página na Steam, conquistas. O build já usa caminhos relativos. |
+| 81 | **Empacotar, o resto** | O Electron entrou (ver Feito). Faltam a página na Steam e as conquistas (pedem a conta do Steamworks e o que o autor quer premiar), o ícone do app (sai com a arte, task 70), e os builds de Windows e Mac feitos e abertos numa máquina de cada um: aqui só o de Linux foi feito e aberto. |
 | 82 | **Save na nuvem** | Não existe servidor: seria do zero, e o jogo não pode depender dele. |
 | 83 | **Jogo novo com o que se levou** | New Game+. Falta tudo. |
 | 84 | **Tradução e acessibilidade** | Texto fora do código (o do jogo já está em Ink; o da interface não), daltonismo, leitor de tela onde der. |
@@ -794,6 +794,13 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   por quê); "HP" e as "corrupções recentes" do Eälen saíram do texto dos itens ("de vida"); o registro da ordem dizia
   "Endyru a Jarupã: segurar posição" (agora "Endyru manda Jarupã segurar posição"); e a opção dizia "Eu comando / Por
   conta própria" enquanto o botão da luta diz "manual / automático" (agora os dois dizem o mesmo).
+- **81. O jogo no desktop** (2026-11-13). O workspace `desktop/` empacota o build do client com Electron: `npm run desktop` abre
+  o jogo numa janela, `npm run desktop:pack` faz o app numa pasta e `npm run desktop:dist` os instaladores (Windows: NSIS e
+  portátil; Linux: AppImage; Mac: dmg). O jogo é servido por um protocolo próprio (`app://jogo/`), sem rede e sem
+  servidor; a janela não navega pra fora, e F11 ou Alt+Enter troca a tela cheia. As fontes (Cinzel e Spectral) agora vão
+  dentro do jogo, também no navegador, e não do Google: sem internet, o título saía em Georgia. Feito e aberto aqui o
+  app de Linux, rodando sozinho: o título com as fontes, o jogo novo, e o save que continua depois de fechar e abrir. O
+  que faltou é o resto da task 81. Detalhe em `docs/motor.md`.
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão

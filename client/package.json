@@ -11,6 +11,8 @@
     "balance:matrix": "tsx scripts/balanceMatrix.ts"
   },
   "dependencies": {
+    "@fontsource/cinzel": "^5.1.0",
+    "@fontsource/spectral": "^5.1.0",
     "@jogo/shared": "*",
     "phaser": "^3.90.0"
   },

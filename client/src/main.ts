@@ -1,5 +1,9 @@
 /// <reference types="vite/client" />
 import * as Phaser from "phaser";
+// As fontes vão dentro do jogo, não da rede: o jogo empacotado (Electron, Steam) abre sem internet.
+import "@fontsource/cinzel/latin-700.css";
+import "@fontsource/spectral/latin-400.css";
+import "@fontsource/spectral/latin-400-italic.css";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from "./game/config";
 import BootScene from "./scenes/BootScene";
 import TitleScene from "./scenes/TitleScene";
@@ -14,7 +18,7 @@ const FONT_LOAD_TIMEOUT_MS = 3000;
  * O Phaser desenha texto num canvas, e um canvas não redesenha sozinho
  * quando a webfont chega: se o jogo subir antes, o primeiro texto sai na
  * fonte de fallback e fica assim. Por isso espera as fontes (com teto de
- * tempo — sem rede o jogo sobe do mesmo jeito, só que em Georgia).
+ * tempo — se a fonte não carregar, o jogo sobe do mesmo jeito, só que em Georgia).
  */
 async function waitForFonts(): Promise<void> {
   const faces = ['bold 16px "Cinzel"', '16px "Spectral"', 'italic 16px "Spectral"'];
