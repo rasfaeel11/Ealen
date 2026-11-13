@@ -366,7 +366,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 | 72 | **Coleta e preparo** | Materiais no mapa e no espólio; receitas de consumível. |
 | 73 | **Companheiros como gente** | Afinidade, conversa de acampamento, comentário no meio do diálogo dos outros, missão pessoal, discordar de uma escolha. |
 | 74 | **Reputação** | Como cada facção e cada lugar vê o grupo, e o que isso abre ou fecha (preço, diálogo, saída). |
-| 75 | **Códice** | O que o jogador já viu: bestiário (com o que descobriu de cada criatura — estilo, mania, fraqueza), gente, lugares. |
 | 76 | **Mais apoios** | Hoje só existe Ler a água (Oryndu). Apoio novo é uma linha em `SUPPORTS`, mas faltam os tipos (curar de fora, distrair, avisar). |
 | 77 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
 | 78 | **Terreno que muda** | A água e a cheia já existem. Falta lama, ponte que cai, porta que se fecha no meio da luta; luz e escuro pesando na visão; hora do dia e clima. |
@@ -816,6 +815,13 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   emboscada: de onde o script chegou, a patrulha já via o grupo. Corrigido: o Preparar dizia duas vezes no registro
   ("prepara Golpe Pesado pra quem chegar" e "De vigia"); e, numa investida, o Gryskar do lado que a levou pagava 1 de
   Fôlego pra abrir a ordem e agia depois de todos do mesmo jeito: agora quem leva a investida não paga (teste novo).
+- **75. O códice** (2026-11-13). A terceira aba do `J` (Diário · Missões · Códice) mostra o que o jogador já viu: quem o
+  grupo enfrentou, com o que a luta mostrou de cada um (nome, escola e grau, aura, arma, os golpes com os nomes do
+  registro, quantas vezes enfrentou e derrubou, onde); com quem falou, e onde; e por onde andou. Nada de texto novo do
+  mundo: o `summary` e o `lore` do bestiário, que o jogo nunca mostrou, ficam de fora, e a fraqueza de cada bicho também
+  (o que ele aguenta é fato dele, e espera o bestiário da história, como na task 62). Vai no save (`codex`, sem versão
+  nova; o save de antes começa vazio). As abas que abrem na primeira página (Missões, Códice) agora enchem a primeira,
+  e não a última. Visto no navegador, depois da luta do pedágio.
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão

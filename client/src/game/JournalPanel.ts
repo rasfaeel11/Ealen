@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import type { JournalEntry, Quest, QuestState } from "@jogo/shared";
+import { AREAS, codexCreatures, codexPeople, type Codex, type JournalEntry, type Quest, type QuestState } from "@jogo/shared";
 import { GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "./config";
 import { isAction } from "./settings";
 import { addBodyText, addCloseButton, addHeading, addModalDim, addPanel, type AddHud } from "./ui";
@@ -41,17 +41,52 @@ function journalLines(entries: readonly JournalEntry[]): Line[] {
   return entries.map((entry) => ({ text: `—  ${entry.text}`, color: TEXT_COLORS.ink }));
 }
 
-/** As duas abas: o diário de pistas e o registro de missões. A página abre onde fica o mais novo de cada uma. */
+const times = (count: number) => (count === 1 ? "uma vez" : `${count} vezes`);
+
+/**
+ * O códice em linhas (ver shared/codex.ts): quem o grupo enfrentou, com o que a luta mostrou dele; com quem falou,
+ * e onde; e os lugares onde pisou. Nada além do que já passou pela tela.
+ */
+function codexLines(codex: Codex, visited: readonly string[]): Line[] {
+  const heading = (text: string): Line => ({ text, color: TEXT_COLORS.goldBright });
+  const lines: Line[] = [];
+  const creatures = codexCreatures(codex);
+  if (creatures.length > 0) {
+    lines.push(heading("Quem o grupo enfrentou"));
+    for (const creature of creatures) {
+      const what = [creature.style, creature.aura].filter(Boolean).join("  ·  ");
+      const gear = [creature.weapon && `Arma: ${creature.weapon}`, creature.arts.length > 0 && `Golpes: ${creature.arts.join(", ")}`].filter(Boolean).join("  ·  ");
+      // Os nomes das áreas trazem o artigo ("O Ymonhã...", "Os baixios"): "em" + artigo não se escreve, então vai "Onde:".
+      const fought = `Enfrentado ${times(creature.met)}${creature.beaten > 0 ? `, derrubado ${times(creature.beaten)}` : ""}. Onde: ${creature.areas.join("; ")}.`;
+      lines.push({ text: [`${creature.name}${what ? `  ·  ${what}` : ""}`, gear, fought].filter(Boolean).join("\n"), color: TEXT_COLORS.ink });
+    }
+  }
+  const people = codexPeople(codex);
+  if (people.length > 0) {
+    lines.push(heading("Com quem falou"));
+    for (const person of people) lines.push({ text: `${person.name}  ·  ${person.areas.join("; ")}`, color: TEXT_COLORS.ink });
+  }
+  const places = visited.flatMap((area) => (AREAS[area] ? [AREAS[area].name] : []));
+  if (places.length > 0) {
+    lines.push(heading("Por onde andou"));
+    for (const place of places) lines.push({ text: place, color: TEXT_COLORS.ink });
+  }
+  return lines;
+}
+
+/** As abas: o diário de pistas, o registro de missões e o códice. A página abre onde fica o mais novo de cada uma. */
 const TABS: { name: string; empty: string; lines: (panel: JournalPanel) => Line[]; openAt: "first" | "last" }[] = [
   { name: "Diário", empty: "Nada anotado ainda.", lines: (panel) => journalLines(panel.entries), openAt: "last" },
   { name: "Missões", empty: "Nada pra fazer ainda.", lines: (panel) => questLines(panel.quests), openAt: "first" },
+  { name: "Códice", empty: "Nada visto ainda.", lines: (panel) => codexLines(panel.codex, panel.visited), openAt: "first" },
 ];
 
 /**
- * O diário, aberto por cima do mundo, em duas abas: as anotações (pistas, na
- * ordem em que foram feitas, abrindo na mais recente) e as missões (as abertas
- * em cima, depois as cumpridas e as falhadas). Só lê: quem escreve é a
- * história (ver shared/story/memory.ts).
+ * O diário, aberto por cima do mundo, em três abas: as anotações (pistas, na
+ * ordem em que foram feitas, abrindo na mais recente), as missões (as abertas
+ * em cima, depois as cumpridas e as falhadas) e o códice (quem o grupo
+ * enfrentou, com quem falou, por onde andou). Só lê: quem escreve é a
+ * história (ver shared/story/memory.ts) e o que acontece no jogo (shared/codex.ts).
  *
  * Tab (ou clique) troca de aba; ↑/↓ (ou W/S) trocam de página; Esc, J ou Enter fecham.
  */
@@ -72,6 +107,8 @@ export class JournalPanel {
     private readonly addHud: AddHud,
     readonly entries: readonly JournalEntry[],
     readonly quests: readonly Quest[],
+    readonly codex: Codex,
+    readonly visited: readonly string[],
     private readonly onClose: () => void,
   ) {
     this.objects.push(addHud(addModalDim(scene)), addHud(addPanel(scene, X, Y, WIDTH, HEIGHT)));
@@ -124,9 +161,9 @@ export class JournalPanel {
   }
 
   /**
-   * Reparte as linhas em páginas pelo tamanho que cada uma ocupa escrita.
-   * Enche de trás pra frente: a última página vem cheia, e o que sobra fica na
-   * primeira (no diário, a que se abre é a última, das mais recentes).
+   * Reparte as linhas em páginas pelo tamanho que cada uma ocupa escrita. A aba que abre na última página (o
+   * diário, nas mais recentes) enche de trás pra frente, e a última vem cheia; a que abre na primeira (missões,
+   * códice) enche de frente pra trás, e a primeira vem cheia. O que sobra fica na ponta que não se abre.
    */
   private paginate(): [number, number][] {
     const heights = this.lines.map((line) => {
@@ -135,12 +172,27 @@ export class JournalPanel {
       probe.destroy();
       return height;
     });
+    const room = LIST_BOTTOM - LIST_TOP;
 
     const pages: [number, number][] = [];
+    if (TABS[this.tab].openAt === "first") {
+      let start = 0;
+      let used = 0;
+      for (let index = 0; index < this.lines.length; index++) {
+        if (used + heights[index] > room && index > start) {
+          pages.push([start, index]);
+          start = index;
+          used = 0;
+        }
+        used += heights[index];
+      }
+      pages.push([start, this.lines.length]);
+      return pages;
+    }
     let end = this.lines.length;
     let used = 0;
     for (let index = this.lines.length - 1; index >= 0; index--) {
-      if (used + heights[index] > LIST_BOTTOM - LIST_TOP && index < end - 1) {
+      if (used + heights[index] > room && index < end - 1) {
         pages.unshift([index + 1, end]);
         end = index + 1;
         used = 0;

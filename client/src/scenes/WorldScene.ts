@@ -132,6 +132,8 @@ import {
   type TeamId,
   type Trail,
   type WalkBody,
+  noteFight,
+  notePerson,
 } from "@jogo/shared";
 import { areaMusic, playMusic, sfx } from "../game/audio";
 import { BagPanel } from "../game/BagPanel";
@@ -1117,6 +1119,8 @@ export default class WorldScene extends Phaser.Scene {
       let step = this.story.start(knot);
       for (;;) {
         steps.push(step);
+        // O códice anota quem falou, e onde.
+        for (const beat of step.beats) if (beat.kind === "line" && beat.speaker) notePerson(this.save.codex, beat.speaker, this.area.id, this.character.name);
         // Um trecho que só mexe em flags (ou decide que não tem nada a dizer) passa sem abrir a caixa.
         if (!box && !isSilent(step)) {
           if (walking) this.hud.setVisible(false);
@@ -1443,6 +1447,9 @@ export default class WorldScene extends Phaser.Scene {
     const unit = findUnit(encounter, character.id)!;
     const company = this.followers.map((follower) => follower.character);
     syncPartyFromEncounter(encounter, [character, ...company], winner !== "enemy");
+    // O códice anota quem estava do outro lado e quem caiu, vencida ou perdida a luta.
+    const fallen = (enemy: AreaEnemy) => (findUnit(encounter, enemy.id)?.currentHp ?? 1) <= 0;
+    noteFight(this.save.codex, this.area.id, fighters.map((enemy) => enemy.creature), fighters.filter(fallen).map((enemy) => enemy.creature));
     // O que a história pediu pra depois: no meio da luta (as deixas) e, antes disso, na conversa que a começou.
     const after = aftermath(this.fightSteps);
     after.travel ??= this.travelAfterFight;
@@ -1957,7 +1964,7 @@ export default class WorldScene extends Phaser.Scene {
   private openJournal(): void {
     this.halt();
     sfx("uiOpen");
-    const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), this.story.quests(), () => this.closePause());
+    const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), this.story.quests(), this.save.codex, this.save.visited, () => this.closePause());
     this.pause = panel;
   }
 
