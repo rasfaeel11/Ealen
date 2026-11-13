@@ -338,10 +338,9 @@ O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ai
 
 | # | Task | O que é |
 |---|---|---|
-| 97 | **Ver o combate novo na tela** | Jogada a abertura (2026-11-13, no navegador, por script): as faixas na mira e no registro, o custo, a esquiva, Agarrar, Empurrar e Derrubar emendando o Golpe, Caído se levantando, e a barra com os verbos (cabe em duas fileiras). Corrigido: a linha da chance ficava em cima do Passo com duas fileiras e não somava 100 (faltava o improvável); o cartão do Agarrar dizia "movimento -99" (agora "não anda"); o Exposto saía duas vezes no registro; Caído não aparecia no mapa (agora o boneco deita) e as condições do outro lado só se liam no registro (agora no rótulo do mouse); num clone novo o `npm run dev` subia sem a história. Falta: a magia de Endyru (recitar e soltar), o armazém. Visto e vai pra 103: na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; o Fôlego do espadachim zera pela rodada 4. |
 | 98 | **Os custos que faltam** | Entraram Fôlego, ferida própria e marca. Faltam os outros da `combate` §2.2: tempo (a recitação que quebra como preço), posição (perder a altura, sair Prensado), equipamento (a lâmina lasca, a gravação se gasta), gente em volta (fora da deixa de Oryndu) e lei (conjurar sem licença). Cada um pede uma regra de quando cai: vai pro autor antes. |
 | 100 | **A margem e a borda do barco** | A `combate` §4.1 diz que borda do barco e margem prensam. Hoje prensa o que barra o passo (parede, corpo, caixote, barranco); a água não barra. Decidir com o autor se empurrar pra dentro d'água é Prensado, Caído ou outra coisa (no Ykuruã, o contrário de tirá-lo da água). |
-| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. |
+| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. Visto na tela (task 97): na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; com dois guardas e o besteiro em cima, toda recitação dele quebra antes de sair; o Golpe Pesado tira 27 a 36 e derruba guarda e saqueador de uma vez; o Fôlego do espadachim zera pela rodada 4. E uma pergunta pro autor: o chuço alcança 2, e da Ipojy com espada (alcance 1) nenhum Contragolpe sai contra quem cutuca de longe — os guardas erraram Xanduí rodadas a fio sem levar nada de volta. |
 
 ### P1 — pedidos do autor (2026-10-31)
 Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
@@ -774,6 +773,18 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   de verbo, que sai de graça e não se apara. O Ykuruã não monta cadeia: não tem mente (`bestiario` §1). No
   `balance:matrix` as lutas ficaram meio turno mais curtas dos dois lados; o mago sozinho contra Jurendy foi de 66% a 41%
   (os dois do Círculo emendam), o espadachim contra o Ykuruã ficou no ruído (21% a 15%). Os números são da task 103.
+- **97. O combate novo visto na tela** (2026-11-13, no navegador, por script). Jogadas a abertura (pagando e
+  lutando), a recitação de Endyru (declarar num turno, sair no seguinte: Puxão tira do lugar, Empurrão derruba; e quebrar
+  apanhando) e o armazém. Funcionam: as faixas na mira e no registro, o custo, a esquiva, o aparar, Agarrar, Empurrar e
+  Derrubar emendando o Golpe ("emenda o 2º verbo"), Caído se levantando, a barra com os verbos (duas fileiras), o modo
+  automático. Corrigido: a linha da chance ficava em cima do Passo com duas fileiras e não somava 100 (faltava o
+  improvável); o cartão do Agarrar dizia "movimento -99" (agora "não anda"); o Exposto saía duas vezes no registro; Caído
+  não aparecia no mapa (o boneco agora deita, `setDown`); as condições do outro lado e a recitação pendente só se liam
+  no registro (agora no rótulo do mouse: "recitando Empurrão em Guarda do pedágio"); o cartão do dano mostrava só os
+  dados ("1d10 x1.8") e escondia o atributo, e o pesado tirava 30 — agora diz a conta inteira, "(Força + 1d10) x1.8 +
+  Força/2", com o atributo de quem a usa; e num clone novo o `npm run dev` subia sem a história (o `story.json` nascia
+  depois de o Vite listar o `public/`). O servidor de dev deixa `window.__jogo` pra um teste no navegador chegar à cena;
+  o build não leva. O que é número foi pra task 103.
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão

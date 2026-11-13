@@ -1,5 +1,7 @@
 import * as Phaser from "phaser";
 import {
+  ATTRIBUTE_NAMES,
+  CLASS_INFO,
   CONCEPTS,
   CHAIN_BREATH,
   COVER_DEFENSE,
@@ -218,7 +220,8 @@ export function describeStatus(status: StatusTemplate): string {
 }
 
 /** O que uma habilidade faz, em uma linha — pra quem vai decidir se usa. */
-export function describeAbility(ability: Ability): string {
+/** O que a habilidade faz, em números. Com `who`, o atributo da conta do dano sai pelo nome (o principal da classe dele). */
+export function describeAbility(ability: Ability, who?: Pick<Unit, "characterClass">): string {
   const parts: string[] = [ability.cost === "action" ? "Ação" : "Ação bônus"];
 
   if (ability.targets === "self") parts.push("em si");
@@ -233,8 +236,17 @@ export function describeAbility(ability: Ability): string {
 
   for (const effect of ability.effects) {
     if (effect.kind === "damage") {
+      // A conta inteira, como o motor faz (`rollDamage`): (atributo + dados) x multiplicador + bônus. Só os dados
+      // escondiam metade do golpe: o pesado dizia "1d10 x1.8" e tirava 30.
       const dice = `${effect.dice.count}d${effect.dice.sides}`;
-      parts.push(effect.multiplier ? `dano ${dice} x${effect.multiplier}` : `dano ${dice}`);
+      const attribute =
+        effect.attribute === undefined ? undefined : effect.attribute === "primary"
+            ? who ? ATTRIBUTE_NAMES[CLASS_INFO[who.characterClass].primaryAttributes[0]] : "atributo"
+            : ATTRIBUTE_NAMES[effect.attribute];
+      const base = attribute ? `${attribute} + ${dice}` : dice;
+      const scaled = effect.multiplier ? `(${base}) x${effect.multiplier}` : base;
+      const bonus = effect.bonus ? ` + ${ATTRIBUTE_NAMES[effect.bonus.attribute]}/${effect.bonus.divisor}` : "";
+      parts.push(`dano ${scaled}${bonus}`);
       if (effect.type) parts.push(DAMAGE_LABEL[effect.type]);
       if (effect.piercing) parts.push("fura a armadura");
       if (effect.leech) parts.push(effect.leech === 1 ? "devolve como vida o que tirar" : `devolve ${Math.round(effect.leech * 100)}% como vida`);
@@ -663,7 +675,14 @@ export class CombatController {
     }
     const life = under.invulnerable ? "" : `  ${under.currentHp}/${under.maxHp}`;
     // As condições de quem está ali: do outro lado, é o único lugar além do registro em que Agarrado ou Prensado aparecem.
-    const conditions = under.statuses.map((status) => status.name).join(", ");
+    const notes = under.statuses.map((status) => status.name);
+    // O que ele está recitando, e em quem: a recitação não é condição, e até ela sair só o registro a dizia.
+    if (under.reciting) {
+      const spell = under.abilities.find((ability) => ability.id === under.reciting!.abilityId)?.name;
+      const aimed = under.reciting.unit ? this.encounter.units.find((unit) => unit.id === under.reciting!.unit) : undefined;
+      if (spell) notes.unshift(`recitando ${spell}${aimed ? ` em ${aimed.name}` : ""}`);
+    }
+    const conditions = notes.join(", ");
     this.hud.setChip(`${under.name}${life}${conditions ? `  ·  ${conditions}` : ""}`, this.chipAt.x, this.chipAt.y);
   }
 
@@ -851,7 +870,7 @@ export class CombatController {
             icon: abilityIcon(ability),
             tag: "Preparar",
             cost: "action",
-            body: `Deixa ${ability.name} pronta: até a sua próxima vez, sai no primeiro inimigo que entrar no alcance dela, na reação.\n${describeAbility(ability)}`,
+            body: `Deixa ${ability.name} pronta: até a sua próxima vez, sai no primeiro inimigo que entrar no alcance dela, na reação.\n${describeAbility(ability, unit)}`,
             enabled: fits,
             why: readyable(ability) ? why(ability) : "Isso não se prepara: só o que mira um inimigo e não se recita.",
             onClick: () => void this.issue({ type: "ready", unitId: unit.id, abilityId: ability.id }),
@@ -863,7 +882,7 @@ export class CombatController {
           tag: price(ability),
           cost: ability.cost === "action" ? "action" : "bonus",
           wait: cooldownLeft(unit, ability) || undefined,
-          body: `${ability.flavor}\n${describeAbility(ability)}`,
+          body: `${ability.flavor}\n${describeAbility(ability, unit)}`,
           enabled: canPay(ability) && abilityTargets(encounter, unit, ability).length > 0,
           why: ability.unseen && canPay(ability) && abilityTargets(encounter, unit, ability).length === 0 ? "Algum inimigo está vendo: saia da vista dele antes (atrás de parede, pedra alta ou barranco)." : why(ability),
           selected: this.selected?.id === ability.id,
@@ -1092,7 +1111,7 @@ export class CombatController {
 
     const target = hover && selected.radius === undefined ? unitAt(encounter, hover) : undefined;
     if (target?.invulnerable) return `${target.name} não tem vida pra perder: golpe nenhum o fere.`;
-    if (!target || !selected.attack) return `${describeAbility(selected)} — ${selected.flavor}`;
+    if (!target || !selected.attack) return `${describeAbility(selected, unit)} — ${selected.flavor}`;
 
     const odds = attackOdds(encounter, unit, selected, target);
     const plain = Math.round((odds.hit - odds.cost) * 100);

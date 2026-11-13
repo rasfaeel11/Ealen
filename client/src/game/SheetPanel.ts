@@ -497,7 +497,7 @@ export class SheetPanel {
   private showAbility(ability: Ability, text: string, tag = ""): void {
     this.detailName.setText(`${ability.name}${tag ? `  ·  ${tag}` : ""}`);
     this.detail.setY(this.detailName.y + this.detailName.height + 4);
-    this.detail.setText(`${ability.flavor}\n\n${describeAbility(ability)}\n\n${text}`);
+    this.detail.setText(`${ability.flavor}\n\n${describeAbility(ability, this.character)}\n\n${text}`);
   }
 
   /** A coluna da direita volta a ser a grade de habilidades. */

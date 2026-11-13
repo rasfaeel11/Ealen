@@ -88,7 +88,7 @@ export class EngravePanel {
     ].join("\n");
     this.detail.setText(summary);
 
-    const describe = (spell: Ability) => () => this.detail.setText(`${spell.name}\n\n${spell.flavor}\n\n${describeAbility(spell)}\n\n${summary}`);
+    const describe = (spell: Ability) => () => this.detail.setText(`${spell.name}\n\n${spell.flavor}\n\n${describeAbility(spell, caster)}\n\n${summary}`);
     const options: MenuOption[] = [
       ...spells.map((spell) => ({
         label: `${spell.name}  ·  ${spell.mana} mana`,
