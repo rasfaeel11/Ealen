@@ -62,10 +62,12 @@ function seedWhere<T>(scene: (seed: number) => T, check: (result: T) => boolean)
 }
 
 /** Os verbos de luta que todo mundo sabe desde o nível 1 (task 63): não são técnica, mas moram com elas. */
-const VERBS = ["disparada", "ajudar", "vigiar", "esconder"];
+const COMMON = ["disparada", "ajudar", "vigiar", "esconder", "agarrar", "empurrar", "derrubar"];
+/** Os verbos de todo mundo, desde o nível 1 (`combate` §3.2). O espadachim também desarma com a mão; o mago desarma no Círculo, com a magia. */
+const verbsOf = (order: CharacterClass) => (order === "espadachim" ? [...COMMON, "desarmar"] : COMMON);
 
 /** Quantas Técnicas cada classe ensina: duas pro mago (as do Círculo); o espadachim, nenhuma (o golpe-selo é por iniciação). Mais os verbos. */
-const TECHNIQUES = (order: CharacterClass) => (order === "espadachim" ? 0 : 2) + VERBS.length;
+const TECHNIQUES = (order: CharacterClass) => (order === "espadachim" ? 0 : 2) + verbsOf(order).length;
 
 test("cada classe tem o kit dela: as Artes no nível 1, e as Técnicas chegam com o nível", () => {
   for (const order of CLASSES) {
@@ -73,7 +75,7 @@ test("cada classe tem o kit dela: as Artes no nível 1, e as Técnicas chegam co
     const novice = abilitiesFor(makeCharacter("x", { characterClass: order, level: 1 }));
     assert.deepEqual(
       novice.map((ability) => ability.id).sort(),
-      [...arts, ...VERBS].map((slug) => `${order}.${slug}`).sort(),
+      [...arts, ...verbsOf(order)].map((slug) => `${order}.${slug}`).sort(),
       order,
     );
 
@@ -91,7 +93,7 @@ test("cada classe tem o kit dela: as Artes no nível 1, e as Técnicas chegam co
         assert.ok(!learnedAt(order, technique.level).some((ability) => ability.id === id));
         continue;
       }
-      if (VERBS.includes(slug)) {
+      if (verbsOf(order).includes(slug)) {
         assert.equal(technique.level, 1, `${id} é de todo mundo desde o começo`);
         continue;
       }
@@ -137,7 +139,9 @@ test("o mago de atração e repulsão paga a magia em mana e a recita; o bordão
 
   // O espadachim: a lâmina, e o que pesa custa Fôlego.
   const blade = Object.fromEntries(kitOf({ characterClass: "espadachim" }).map((entry) => [entry.slug, entry.ability]));
-  assert.deepEqual(Object.keys(blade).sort(), ["ajudar", "attack", "defend", "disparada", "esconder", "heavy_attack", "quick_attack", "vigiar"]);
+  assert.deepEqual(Object.keys(blade).sort(), [
+    "agarrar", "ajudar", "attack", "defend", "derrubar", "desarmar", "disparada", "empurrar", "esconder", "heavy_attack", "quick_attack", "vigiar",
+  ]);
   assert.ok(Object.values(blade).every((ability) => ability.mana === undefined));
   assert.equal(blade.heavy_attack.breath, 2);
 });

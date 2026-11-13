@@ -30,7 +30,9 @@ function landed(rows: string[], abilityId: string, target: { x: number; y: numbe
   for (let seed = 1; seed <= 16; seed++) {
     const encounter = shove(rows, seed);
     const events = run(encounter, { type: "ability", unitId: "A", abilityId, target });
-    if (eventsOf(events, "attackRoll")[0]?.outcome !== "miss" && eventsOf(events, "attackRoll")[0]?.outcome !== "fumble") {
+    const outcome = eventsOf(events, "attackRoll")[0]?.outcome;
+    // O golpe que pega por pouco pode ser esquivado: não houve empurrão.
+    if (outcome !== "miss" && outcome !== "fumble" && eventsOf(events, "dodged").length === 0) {
       hits.push(events);
     }
   }

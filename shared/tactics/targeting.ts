@@ -5,7 +5,7 @@ import type { Supporter } from "./supports";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, Encounter, Unit } from "./types";
 import { isShot } from "./attack";
-import { isAlive, isRecited, unitAt } from "./units";
+import { chainStep, findUnit, isAlive, isRecited, unitAt } from "./units";
 
 /** Quanto da vida volta a quem é levantado no meio da luta. */
 export const LIFT_SHARE = 0.25;
@@ -68,10 +68,17 @@ export function vowAllows(encounter: Encounter, unit: Unit, ability: Ability, po
   );
 }
 
-/** Todo quadrado que `unit` pode mirar com `ability` de onde está. Golpe que fere também mira um destrutível. */
+/**
+ * Todo quadrado que `unit` pode mirar com `ability` de onde está. Golpe que
+ * fere também mira um destrutível. No meio de uma cadeia (ver chainStep em
+ * ./units.ts), o verbo seguinte só mira quem a cadeia segura.
+ */
 export function abilityTargets(encounter: Encounter, unit: Unit, ability: Ability): Pos[] {
   if (vowForbids(encounter, unit) && isBlow(ability)) return [];
-  return reachTargets(encounter, unit, ability).filter((pos) => vowAllows(encounter, unit, ability, pos));
+  const reached = reachTargets(encounter, unit, ability).filter((pos) => vowAllows(encounter, unit, ability, pos));
+  if (chainStep(unit, ability) === undefined) return reached;
+  const held = findUnit(encounter, unit.turn.chain!.target);
+  return held && isAlive(held) ? reached.filter((pos) => pos.x === held.pos.x && pos.y === held.pos.y) : [];
 }
 
 /**

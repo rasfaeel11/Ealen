@@ -5,7 +5,7 @@ import type { Attributes } from "../types/attributes";
 import type { Character } from "../types/character";
 import { CLASS_INFO } from "../types/characterClass";
 import { GIFTS, abilitiesFor, engravedAbilities, engravedId, type GiftId } from "./abilities";
-import { proficiency, type StyleId } from "./styles";
+import { feints, proficiency, type StyleId } from "./styles";
 import { skillPassive, withSkills } from "../skillTree";
 import { samePos, type Pos } from "./grid";
 import type { StatusId } from "./statuses";
@@ -69,7 +69,10 @@ export function unitFromCharacter(character: Character, placement: UnitPlacement
     withSkills(character, [...abilitiesFor(character), ...(placement.gifts ?? []).map((gift): Ability => ({ ...GIFTS[gift] }))]),
     placement.riders,
   );
-  const own = known.filter((ability) => !character.benched?.includes(ability.id));
+  // Bicho não tem arma pra perder: a Bocada não cai da mão.
+  const own = known
+    .filter((ability) => !character.benched?.includes(ability.id))
+    .map((ability) => (character.race === "bicho" && ability.weapon ? { ...ability, weapon: undefined } : ability));
   return {
     id: placement.id ?? character.id,
     name: character.name,
@@ -154,7 +157,32 @@ export function cooldownLeft(unit: Unit, ability: Ability): number {
  * falta (quem não conjura não tem nenhuma) e `reciting` uma magia recitada
  * pedida por quem já está recitando outra. Não olha alvo.
  */
-export type Readiness = "ready" | "spent" | "limit" | "recharging" | "breath" | "mana" | "reciting" | "silenced";
+export type Readiness = "ready" | "spent" | "limit" | "recharging" | "breath" | "mana" | "reciting" | "silenced" | "disarmed";
+
+/** Até quantos verbos uma cadeia leva num turno (`combate` §3.1): o primeiro paga a ação, os outros, Fôlego. */
+export const CHAIN_MAX = 3;
+/** O Fôlego que cada verbo depois do primeiro custa, além do que ele já custa. */
+export const CHAIN_BREATH = 1;
+
+/**
+ * Um verbo que entra numa cadeia: o que gasta a ação e mira um inimigo só, com
+ * rolagem — Golpear, Agarrar, Empurrar, Derrubar, Desarmar. A magia recitada
+ * não: ela leva o turno inteiro.
+ */
+export function chainable(ability: Ability): boolean {
+  return ability.cost === "action" && ability.targets === "enemy" && ability.radius === undefined && ability.attack !== undefined && !ability.mana;
+}
+
+/**
+ * Se `ability` agora seria o próximo verbo da cadeia aberta de `unit` (a ação
+ * já foi, a cadeia está aberta e não encheu): o Fôlego que ele custa a mais.
+ * A Tsvirana troca de verbo de graça. Undefined quando não é passo de cadeia.
+ */
+export function chainStep(unit: Unit, ability: Ability): number | undefined {
+  const chain = unit.turn.chain;
+  if (unit.turn.action || !chain || !chainable(ability) || chain.verbs >= CHAIN_MAX) return undefined;
+  return feints(unit) && ability.id !== chain.last ? 0 : CHAIN_BREATH;
+}
 
 /** Magia que se recita: leva tempo (sai no turno seguinte) e pode quebrar. A gravada, não. */
 export function isRecited(ability: Ability): boolean {
@@ -167,10 +195,12 @@ export function isRecited(ability: Ability): boolean {
  * fora dele (o de abertura, o ataque de oportunidade).
  */
 export function readiness(unit: Unit, ability: Ability, outOfTurn = false): Readiness {
-  if (!outOfTurn && !(ability.cost === "action" ? unit.turn.action : unit.turn.bonus)) return "spent";
+  const step = outOfTurn ? undefined : chainStep(unit, ability);
+  if (!outOfTurn && !(ability.cost === "action" ? unit.turn.action || step !== undefined : unit.turn.bonus)) return "spent";
   if (usesLeft(unit, ability) <= 0) return "limit";
   if ((unit.cooldowns?.[ability.id] ?? 0) > 0) return "recharging";
-  if (unit.breath < (ability.breath ?? 0)) return "breath";
+  if (unit.breath < (ability.breath ?? 0) + (step ?? 0)) return "breath";
+  if (ability.weapon && unit.statuses.some((status) => status.unarmed)) return "disarmed";
   if ((ability.mana ?? 0) > 0 && unit.statuses.some((status) => status.silenced)) return "silenced";
   if ((ability.mana ?? 0) > 0 && (unit.mana ?? 0) < ability.mana!) return "mana";
   if (isRecited(ability) && unit.reciting) return "reciting";

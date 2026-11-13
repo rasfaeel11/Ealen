@@ -1,43 +1,42 @@
 import type { Ability, Unit } from "./types";
 
 /**
- * As escolas de espada (`magia` §5.5 no repositório da história): o JEITO de
- * lutar de um espadachim. O kit diz o que ele sabe fazer (as habilidades); a
- * escola diz contra quem isso rende e dá um traço que vale em todo golpe.
+ * As escolas de espada (`magia` §5.5 e `combate` §4 no repositório da
+ * história): o JEITO de lutar de um espadachim. O kit diz o que ele sabe
+ * fazer (as habilidades e os verbos); a escola diz como ele os ENCADEIA.
  *
- * - O TRIÂNGULO, fechado: Ipojy (a Espera) vence Gryskar (o Bate-Primeiro),
- *   Gryskar vence Tsvirana (a Correnteza), Tsvirana vence Ipojy. Quem ataca
- *   com vantagem soma STYLE_TO_HIT na rolagem; quem ataca a escola que vence
- *   a sua perde o mesmo tanto; escola igual empata. A conta entra em
- *   `attackEdge` (./attack.ts), como cobertura, flanco e altura.
- * - O TRAÇO, um por escola, todo em dados:
- *     Gryskar — ONDA (`momentum`): toda a aura no ataque. Cada golpe que pega
- *       no MESMO alvo, em seguida, soma no dano do próximo. Errar, ou trocar
- *       de alvo, zera.
- *     Tsvirana — RACHADURA (`punishRepeat`): a aura que nunca para lê quem se
- *       repete. Multiplica o dano em quem acabou de repetir a ação do turno
- *       anterior (ver `habit` em Unit).
- *     Ipojy — CONTRAGOLPE (`counter`): a aura guardada parada até o golpe do
- *       outro. Quem ataca um da Espera e erra leva o golpe de volta, na
- *       reação dele (ver `counterStrike`).
+ * O TRIÂNGULO, fechado: Ipojy (a Espera) vence Gryskar (o Bate-Primeiro),
+ * Gryskar vence Tsvirana (a Correnteza), Tsvirana vence Ipojy. Ele não soma
+ * nada na rolagem (`combate` §4): sai do traço de cada uma.
+ *
+ *   Gryskar — toda a aura no primeiro golpe. Aceita o custo pra agir antes de
+ *     todos (`first`: abre a ordem da luta pagando Fôlego, ver startEncounter),
+ *     e o segundo golpe da mesma cadeia sai fraco (`spent`). A ONDA
+ *     (`momentum`): cada golpe que pega no MESMO alvo, em seguida, soma no dano
+ *     do próximo. Errar, ou trocar de alvo, zera.
+ *   Tsvirana — troca de verbo no meio da ação (`feints`): o verbo diferente do
+ *     anterior, na mesma cadeia, sai sem Fôlego e não se apara nem se devolve.
+ *     A RACHADURA (`punishRepeat`): quem repete a mesma ação do turno anterior
+ *     fica Exposto pra ela (ver EXPOSED_TO_HIT em ./attack.ts).
+ *   Ipojy — o CONTRAGOLPE (`counter`): quem a ataca e falha leva o golpe de
+ *     volta, na reação dela, e o golpe sai como sucesso pleno, sem rolar: a
+ *     falha do outro vira o acerto dela (ver `counterStrike`).
  *
  * O VOTO da Ipojy (`vow`): quem é da Espera nunca dá o primeiro golpe. Não
  * abre a luta (nada hostil sai dele antes de alguém, de qualquer lado, dar o
  * primeiro golpe — `Encounter.opened`), não embosca (não mira quem ainda está
  * Surpreso) e não dá golpe de abertura. A regra mora em ./targeting.ts
- * (`vowAllows`), que é a mesma pro motor, pra IA e pra interface.
+ * (`vowAllows`), que é a mesma pro motor, pra IA e pra interface. O voto do
+ * Gryskar (não recuar o primeiro passo) não tem peça: o motor não tem Recuar.
  *
  * Fora do triângulo há o BALUARTE, que não é escola: é o couro de criatura
  * grande, com a MURALHA (`damageReduction`), um tanto fixo a menos em cada
  * golpe que recebe, depois da armadura.
  *
  * A PROFICIÊNCIA (o `grade` da unidade, 1 a 7) é o quanto alguém domina a
- * escola. Nunca passa do nível de aura dele (`proficiency`). O grau é o quanto
- * a escola rende, não a força: a vantagem no triângulo cresce 1 por grau acima
- * do 2 (`styleEdgeBonus`), a Onda acumula até o grau mais 1 golpes
- * (`momentumCap`), e a Rachadura multiplica 1,5 mais um quarto por grau
- * (`crackFactor`). O Contragolpe não cresce: a Espera rende pela vantagem.
- * O grau não sobe na árvore: o que se sabe da escola é anos de estrada, e
+ * escola. Nunca passa do nível de aura dele (`proficiency`). Entra na chance
+ * (`gradeToHit`: 1 por grau acima do 2, `combate` §5.1) e na Onda, que
+ * acumula até o grau mais 1 golpes (`momentumCap`). O grau não sobe na árvore:
  * quem o corta é a aura (`aura_rise`). O golpe-selo de cada escola, que vem a
  * partir do grau 4 e só por iniciação, não existe no jogo: o trio não chega lá.
  *
@@ -55,7 +54,12 @@ export interface StyleTemplate {
   /** O nome do traço, pra interface. */
   trait: string;
   momentum?: number;
-  punishRepeat?: number;
+  /** Gryskar: abre a ordem da luta pagando o custo, e o segundo golpe da cadeia sai fraco. */
+  first?: boolean;
+  /** Tsvirana: a troca de verbo no meio da cadeia sai sem Fôlego e não se apara nem se devolve. */
+  feints?: boolean;
+  /** Tsvirana: quem repete a ação do turno anterior fica Exposto pra ela. */
+  punishRepeat?: boolean;
   /** Devolve o golpe a quem o ataca e erra (ver `counterStrike`). */
   counter?: boolean;
   /** O voto de nunca dar o primeiro golpe (ver `isSworn`). */
@@ -65,8 +69,8 @@ export interface StyleTemplate {
 
 export const STYLES = {
   ipojy: { id: "ipojy", name: "Ipojy", alias: "a Espera", school: true, beats: "gryskar", trait: "Contragolpe", counter: true, vow: true },
-  gryskar: { id: "gryskar", name: "Gryskar", alias: "o Bate-Primeiro", school: true, beats: "tsvirana", trait: "Onda", momentum: 1 },
-  tsvirana: { id: "tsvirana", name: "Tsvirana", alias: "a Correnteza", school: true, beats: "ipojy", trait: "Rachadura", punishRepeat: 2 },
+  gryskar: { id: "gryskar", name: "Gryskar", alias: "o Bate-Primeiro", school: true, beats: "tsvirana", trait: "Onda", momentum: 1, first: true },
+  tsvirana: { id: "tsvirana", name: "Tsvirana", alias: "a Correnteza", school: true, beats: "ipojy", trait: "Rachadura", punishRepeat: true, feints: true },
   baluarte: { id: "baluarte", name: "Baluarte", trait: "Muralha", damageReduction: 2 },
 } satisfies Record<string, StyleTemplate>;
 
@@ -76,8 +80,6 @@ export function isStyleId(id: unknown): id is StyleId {
   return typeof id === "string" && id in STYLES;
 }
 
-/** Quanto a vantagem de escola soma na rolagem de ataque (e a desvantagem tira). */
-export const STYLE_TO_HIT = 2;
 /** Até quantos golpes seguidos a Onda acumula, no grau 3 (ver momentumCap). */
 export const MOMENTUM_CAP = 4;
 
@@ -86,15 +88,13 @@ export function momentumCap(grade: number | undefined): number {
   return grade === undefined ? MOMENTUM_CAP : Math.max(1, grade + 1);
 }
 
-/** Por quanto a Rachadura de quem tem grau `grade` multiplica: 1,5 mais um quarto por grau (o 2 dá o dobro). */
-export function crackFactor(grade: number | undefined): number {
-  return 1.5 + 0.25 * (grade ?? 2);
+/** O que o grau soma na chance de quem é de escola (`combate` §5.1): 1 por grau acima do 2. O Baluarte não tem grau. */
+export function gradeToHit(unit: Pick<Unit, "style" | "grade">): number {
+  return template(unit.style)?.school ? Math.max(0, (unit.grade ?? 2) - 2) : 0;
 }
 
-/** O que o grau de quem ataca soma à vantagem de escola, além de STYLE_TO_HIT: 1 por grau acima do 2. */
-export function styleEdgeBonus(grade: number | undefined): number {
-  return Math.max(0, (grade ?? 2) - 2);
-}
+/** Quanto do dano sai no segundo golpe da mesma cadeia de quem é do Gryskar: a aura foi toda no primeiro. */
+export const SPENT_DAMAGE = 0.5;
 /** A maior proficiência numa escola, e o maior nível de aura. */
 export const PROFICIENCY_MAX = 7;
 
@@ -146,10 +146,19 @@ export function waveBonus(actor: Unit, ability: Ability, target: Unit): number {
   return momentum * Math.min(actor.streak.hits, momentumCap(actor.grade));
 }
 
-/** RACHADURA: por quanto o dano de `actor` em `target` é multiplicado. 1 = não é. */
-export function punishFactor(actor: Unit, target: Unit): number {
-  const factor = template(actor.style)?.punishRepeat;
-  return factor && target.habit?.repeated ? crackFactor(actor.grade) : 1;
+/** RACHADURA: `actor` deixa Exposto quem repete a ação do turno anterior? (ver EXPOSED_TO_HIT em ./attack.ts) */
+export function punishesRepeat(actor: Pick<Unit, "style">): boolean {
+  return template(actor.style)?.punishRepeat === true;
+}
+
+/** GRYSKAR: `unit` paga pra abrir a ordem da luta, e o segundo golpe da cadeia dele sai fraco. */
+export function strikesFirst(unit: Pick<Unit, "style">): boolean {
+  return template(unit.style)?.first === true;
+}
+
+/** TSVIRANA: `unit` troca de verbo no meio da cadeia sem Fôlego, e o golpe trocado não se apara nem se devolve. */
+export function feints(unit: Pick<Unit, "style">): boolean {
+  return template(unit.style)?.feints === true;
 }
 
 /** VOTO: quem luta na escola `style` jurou nunca dar o primeiro golpe? Vale pra unidade e pra ficha do elenco. */

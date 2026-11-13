@@ -67,8 +67,8 @@ function heavy(arm: Arm): Damage {
 }
 
 /** De onde e com que acerto sai um golpe de arma num inimigo. */
-function wield(arm: Arm, toHit = 0): Pick<Body, "range" | "targets" | "attack"> {
-  return { range: arm.range, targets: "enemy", attack: { toHit: toHit + arm.toHit }, ...(arm.ammo !== undefined ? { limit: arm.ammo } : {}) };
+function wield(arm: Arm, toHit = 0): Pick<Body, "range" | "targets" | "attack" | "weapon"> {
+  return { range: arm.range, targets: "enemy", attack: { toHit: toHit + arm.toHit }, weapon: true, ...(arm.ammo !== undefined ? { limit: arm.ammo } : {}) };
 }
 
 /** Só quem luta de perto pune quem sai de perto. */
@@ -117,6 +117,52 @@ const WATCH: Body = { cost: "action", range: 0, targets: "self", effects: [{ kin
  */
 const HIDE: Body = { cost: "action", range: 0, targets: "self", unseen: true, effects: [{ kind: "status", statusId: "hidden", turns: 2 }] };
 
+/**
+ * OS VERBOS DO CORPO (`combate` §3.2): de todo mundo do grupo, desde o nível 1.
+ * Cada um gasta a ação (ou, no meio de uma cadeia, Fôlego: ver chainStep em
+ * ./units.ts) e cria a condição que facilita o próximo: Agarrar → Empurrar
+ * contra a parede → Golpear. Não são golpe de arma: Desarmado ainda os usa.
+ */
+/** Agarrar: o colarinho, o pulso. Agarrado não anda nem recita (e a recitação que vinha se perde). */
+const GRAB: Body = {
+  cost: "action",
+  range: 1,
+  targets: "enemy",
+  attack: { toHit: 0 },
+  breath: 1,
+  verb: "agarrar",
+  effects: [{ kind: "status", statusId: "agarrado", turns: 1 }],
+};
+/** Empurrar: contra a parede, o mastro, o barranco, Prensado; sem nada atrás, Caído. */
+const SHOVE: Body = {
+  cost: "action",
+  range: 1,
+  targets: "enemy",
+  attack: { toHit: 0 },
+  breath: 1,
+  verb: "empurrar",
+  effects: [{ kind: "push", distance: 1, pin: true }],
+};
+/** Derrubar: o pé atrás do calcanhar do outro. Caído. */
+const TRIP: Body = {
+  cost: "action",
+  range: 1,
+  targets: "enemy",
+  attack: { toHit: -1 },
+  breath: 1,
+  verb: "derrubar",
+  effects: [{ kind: "status", statusId: "caido", turns: 1 }],
+};
+/** Desarmar com a mão: torcer o pulso até a arma cair. Desarmado só tem os verbos do corpo. */
+const STRIP: Body = {
+  cost: "action",
+  range: 1,
+  targets: "enemy",
+  attack: { toHit: -2 },
+  verb: "desarmar",
+  effects: [{ kind: "status", statusId: "disarmed", turns: 2 }],
+};
+
 /** A Cura de quem conjura (`magia` §4.3): o mesmo texto de primeiros socorros, pago em mana, e recitado. */
 const CURE: Body = { cost: "action", range: HEAL_RANGE, targets: "ally", effects: [{ kind: "heal", dice: D6, attribute: "fator" }], mana: 2 };
 
@@ -146,7 +192,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
       attack: { toHit: 0 },
       effects: [
         { kind: "damage", dice: D6, attribute: "primary", type: "atracao_repulsao" },
-        { kind: "push", distance: 2 },
+        { kind: "push", distance: 2, pin: true },
       ],
       mana: 2,
     },
@@ -156,6 +202,9 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
     ajudar: HELP,
     vigiar: WATCH,
     esconder: HIDE,
+    agarrar: GRAB,
+    empurrar: SHOVE,
+    derrubar: TRIP,
     desarmar: {
       cost: "action",
       range: 4,
@@ -171,7 +220,7 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
       attack: { toHit: 0 },
       effects: [
         { kind: "damage", dice: D8, attribute: "primary", multiplier: 1.5, type: "atracao_repulsao" },
-        { kind: "push", distance: 3 },
+        { kind: "push", distance: 3, pin: true },
       ],
       mana: 4,
     },
@@ -193,6 +242,10 @@ const KITS: Record<CharacterClass, (arm: Arm) => Record<string, Body>> = {
     ajudar: HELP,
     vigiar: WATCH,
     esconder: HIDE,
+    agarrar: GRAB,
+    empurrar: SHOVE,
+    derrubar: TRIP,
+    desarmar: STRIP,
   }),
 };
 
@@ -225,7 +278,7 @@ export const GIFTS = {
     range: 1,
     targets: "enemy",
     attack: { toHit: 1 },
-    effects: [{ kind: "push", distance: 1 }],
+    effects: [{ kind: "push", distance: 1, pin: true }],
     breath: 1,
     cooldown: 2,
   },

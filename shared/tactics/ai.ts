@@ -5,7 +5,7 @@ import { FALL_PER_STEP, forcedPath, reachableTiles } from "./movement";
 import { PROPS, propTemplate, type Prop, type PropTemplate } from "./props";
 import { SLAM_PER_TILE, cueEnding } from "./engine";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
-import { counters, punishFactor, styleReduction, waveBonus } from "./styles";
+import { counters, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
 import { abilityTargets, affectedProps, affectedUnits, canAimAt, interactTargets, isBlow, isThrown, itemTargets, liftable, vowAllows, vowForbids } from "./targeting";
 import type { Attributes } from "../types/attributes";
@@ -399,6 +399,8 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
           shove += outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
           // Jogado contra o que barra o passo, ele bate, e de cima do barranco, cai: é dano, e o barril em que bateu quebra (ver push em ./engine.ts).
           const crash = slamOf(encounter, actor.pos, victim, effect.distance);
+          // Prensado contra o que barra, Caído sem nada atrás (ver push em ./engine.ts): a condição que facilita o próximo golpe.
+          if (effect.pin && effect.distance > 0) favor += outlook.lands * statusFavor(encounter, victim, crash ? "prensado" : "caido", 1, profile);
           if (crash) {
             if (!victim.invulnerable) slammed += outlook.lands * crash.amount;
             if (crash.prop) value += outlook.lands * spillValue(encounter, actor, profile, crash.prop, crash.amount);
@@ -421,7 +423,8 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
     } else {
       value += profile.aggression * (harm - favor) + profile.finisher * KILL_VALUE * outlook.kill;
       // O companheiro conta o golpe que a Espera devolve se ele errar.
-      if (actor.team === "party" && ability.attack) value -= profile.caution * (1 - outlook.lands) * counterDamage(encounter, victim, actor);
+      // Com a luta parada (ninguém abriu, e a Espera só se guarda), o cuidado vai cedendo: alguém tem de bater primeiro.
+      if (actor.team === "party" && ability.attack) value -= profile.caution * patience(encounter) * (1 - outlook.lands) * counterDamage(encounter, victim, actor);
     }
   }
   if (ability.surface) {
@@ -471,6 +474,14 @@ function slamOf(encounter: Encounter, origin: Pos, victim: Unit, pushDistance: n
   if (amount <= 0) return undefined;
   const prop = pushDistance > 0 && path.stop ? encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, path.stop!)) : undefined;
   return { amount, ...(prop ? { prop } : {}) };
+}
+
+/** Em quantas rodadas sem ninguém abrir a luta o cuidado com o Contragolpe some de todo. */
+const STALL_ROUNDS = 4;
+
+/** Quanto do cuidado com o Contragolpe ainda vale: inteiro numa luta aberta; numa parada, vai cedendo a cada rodada. */
+function patience(encounter: Encounter): number {
+  return encounter.opened ? 1 : Math.max(0, 1 - (encounter.round - 1) / STALL_ROUNDS);
 }
 
 /** O golpe que `defender` devolve em `attacker` se for atacado e errar (o Contragolpe, ver counterStrike em ./engine.ts). */
@@ -714,10 +725,10 @@ function forecast(encounter: Encounter, actor: Unit, ability: Ability, target: U
       if (effect.kind !== "damage") continue;
       let amount = (attributeOf(actor, effect.attribute) + meanRoll(effect.dice)) * (effect.multiplier ?? 1);
       if (effect.bonus) amount += Math.floor(effectiveAttribute(actor, effect.bonus.attribute) / effect.bonus.divisor);
-      // Na mesma ordem do motor: Onda, crítico, Rachadura, o que as condições do alvo somam, armadura (se o golpe não a fura), Muralha.
+      // Na mesma ordem do motor: Onda, crítico, o que as condições do alvo somam, armadura (se o golpe não a fura), Muralha.
       amount += waveBonus(actor, ability, target);
       if (critical) amount *= 2;
-      amount *= punishFactor(actor, target) * resistOf(target, effect.type);
+      amount *= resistOf(target, effect.type);
       amount = Math.max(1, amount + damageTakenOf(target) - (effect.piercing ? 0 : Math.floor(targetOr / 2)));
       amount = Math.max(1, amount - styleReduction(target));
       if (guarded) amount -= Math.min(amount, targetOr + 3.5);

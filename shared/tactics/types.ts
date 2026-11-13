@@ -59,7 +59,16 @@ export type Effect =
    * Empurra o alvo pra longe de quem usou, até `distance` quadrados
    * (negativo puxa). Para na primeira parede ou corpo no caminho.
    */
-  | { kind: "push"; distance: number }
+  | {
+      kind: "push";
+      distance: number;
+      /**
+       * Prensa (`combate` §3.2): empurrado contra o que barra (parede, corpo,
+       * caixote, barranco), o alvo fica Prensado; empurrado sem nada atrás, Caído.
+       * Puxão não prensa.
+       */
+      pin?: boolean;
+    }
   /** A disparada: o alvo ganha, neste turno, o passo inteiro de novo (ver movementOf em ./units.ts). */
   | { kind: "stride" };
 
@@ -127,6 +136,16 @@ export interface Ability {
    */
   engraved?: boolean;
   /**
+   * Golpe de arma (ver `wield` em ./abilities.ts): Desarmado não o usa. Os
+   * verbos do corpo (Agarrar, Empurrar, Derrubar) e a magia não são.
+   */
+  weapon?: boolean;
+  /**
+   * Um verbo do corpo (`combate` §3.2): Agarrar, Empurrar, Derrubar, Desarmar.
+   * Só pra interface e pra IA: o motor lê os efeitos, como em qualquer outra.
+   */
+  verb?: "agarrar" | "empurrar" | "derrubar" | "desarmar";
+  /**
    * Recarga: por quantos turnos de quem a usou ela fica sem poder ser usada
    * de novo. Com 1, não sai em dois turnos seguidos. Sem isto, volta na hora.
    */
@@ -141,6 +160,13 @@ export interface TurnResources {
   bonus: boolean;
   /** Uma por rodada, gasta fora do próprio turno (ataque de oportunidade). */
   reaction: boolean;
+  /**
+   * A cadeia de verbos aberta neste turno (`combate` §3.1, ver CHAIN_MAX em
+   * ./attack.ts): em quem, quantos verbos já saíram, o último e se algum já
+   * feriu. Enquanto ela está aberta, o próximo verbo no mesmo alvo sai pago em
+   * Fôlego no lugar da ação.
+   */
+  chain?: { target: string; verbs: number; last: string; struck: boolean };
 }
 
 /**
@@ -466,7 +492,15 @@ export type Command =
   | { type: "ready"; unitId: string; abilityId: string }
   | { type: "endTurn"; unitId: string };
 
-export type AttackOutcome = "hit" | "miss" | "crit" | "fumble";
+/**
+ * As três faixas (`combate` §2.1): `hit` é o sucesso pleno, `cost` o sucesso
+ * com custo, `miss` a falha. `crit` é o improvável (§5.2), e `fumble` a falha
+ * do 1 natural.
+ */
+export type AttackOutcome = "hit" | "cost" | "miss" | "crit" | "fumble";
+
+/** De onde sai o custo de um sucesso com custo (`combate` §2.2). */
+export type CostKind = "breath" | "wound" | "mark";
 
 /**
  * O que aconteceu, em ordem. O motor nunca anima nada: devolve esta lista
@@ -534,16 +568,20 @@ export type TacticalEvent =
       far?: boolean;
       crowded?: boolean;
       height: -1 | 0 | 1;
-      /** O confronto de estilos: 1 = quem ataca leva vantagem, -1 = desvantagem (ver ./styles.ts). */
+      /** O confronto de estilos: 1 = quem ataca leva vantagem, -1 = desvantagem (ver ./styles.ts). Não soma nada: o triângulo sai do encadeamento. */
       style: -1 | 0 | 1;
-      /** O quanto a escola somou ou tirou, com o grau (só quando somou alguma coisa). */
+      /** O quanto o grau da escola somou (só quando somou alguma coisa). */
       styleToHit?: number;
+      /** O alvo estava Exposto (errou, ou repetiu a combinação diante da Tsvirana). */
+      exposed?: boolean;
+      /** O que a curva de poder e a diferença de nível somaram ou tiraram (`combate` §5.1), quando mexeram. */
+      levelToHit?: number;
     }
   | { type: "blocked"; unit: string; amount: number }
   /**
    * O traço da escola de `unit` pesou no golpe em `target`: `wave` é a Onda
    * do Gryskar (com `hits` golpes seguidos somando no dano) e `crack` a
-   * Rachadura da Tsvirana (o alvo se repetiu e o dano dobrou) — o `damage`
+   * Rachadura da Tsvirana (o alvo se repetiu e ficou Exposto pra ela) — o `damage`
    * vem logo depois. `counter` é o Contragolpe da Ipojy: `target` o atacou e
    * errou, e o `abilityUsed` (de reação) de `unit` contra ele vem logo depois.
    */
@@ -568,6 +606,18 @@ export type TacticalEvent =
   | { type: "fell"; unit: string; steps: number }
   /** `unit` aparou com a lâmina o golpe que pegou: `amount` a menos, pago em Fôlego. */
   | { type: "parried"; unit: string; amount: number }
+  /**
+   * `unit` pagou o custo de um sucesso com custo, ou do improvável (`combate`
+   * §2.2): `amount` de Fôlego, de vida (a ferida própria) ou de mana (a marca).
+   * `first` é o Gryskar que pagou pra agir antes de todos.
+   */
+  | { type: "costPaid"; unit: string; kind: CostKind; amount: number; first?: boolean }
+  /** `unit` esquivou (`combate` §3.2): gastou a reação e o Fôlego, e o golpe de `attacker` não pegou. */
+  | { type: "dodged"; unit: string; attacker: string }
+  /** `unit` estava Caído e se levantou, com metade do passo. */
+  | { type: "stoodUp"; unit: string }
+  /** A cadeia de `unit` seguiu: o verbo saiu pago em `breath` de Fôlego no lugar da ação. `feint` é a troca da Tsvirana. */
+  | { type: "chained"; unit: string; verbs: number; breath: number; feint?: boolean }
   /** `unit`, em guarda, entrou na frente do golpe de `attacker` que ia em `ally`. */
   | { type: "intercepted"; unit: string; ally: string; attacker: string }
   /** `unit` preparou `abilityId` pra quem entrar no alcance (Preparar). */
@@ -632,6 +682,8 @@ export type CommandError =
   | "recharging"
   /** Calado: magia nenhuma sai da boca dele (ver `silenced` em ./statuses.ts). */
   | "silenced"
+  /** Desarmado: golpe de arma nenhum, só os verbos do corpo e a magia (ver `unarmed` em ./statuses.ts). */
+  | "disarmed"
   | "invalid_target"
   | "item_unavailable";
 

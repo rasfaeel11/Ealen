@@ -1,8 +1,9 @@
 # Jogo — Três na Estrada (título provisório)
 
 O autor aprovou tudo em 2026-10-19, e os fatos do mundo estão gravados no repositório da história (`historiav2`,
-em `Documents/historiav2`, nas fichas e referências da §9). O roteiro (`jogo.md`) mora aqui. Fato novo continua indo
-pro autor antes de entrar (§1).
+em `Documents/historiav2`, nas fichas e referências da §9). O `jogo.md` da raiz é a versão do autor, a mesma da
+história, com o combate novo (§4.1); o roteiro cena a cena e o guia de falas, que estavam nele até 2026-11-12, moram
+em `docs/roteiro.md`. Fato novo continua indo pro autor antes de entrar (§1).
 
 > RPG tático pra navegador, de 2 a 4 horas, passado no mundo da série de Karuã, uns 25 anos antes do Livro 1.
 > Quem joga é **Endyru** jovem, o pai de Karuã. No caminho, forma o grupo com **Jarupã** e **Xanduí**, os pais de Exandy.
@@ -11,6 +12,15 @@ pro autor antes de entrar (§1).
 > **A história vem primeiro.** O jogo anterior (Eälen) fez os sistemas antes e ficou com cenário, nomes e falas
 > de placeholder até o fim, e não ficou bom. Aqui o mundo já existe: todo sistema precisa servir a uma cena.
 > Sistema que nenhuma cena pede não entra.
+
+## Decisões do autor (2026-11-05)
+
+- O combate do jogo era parecido demais com D&D: sem graça e pouco criativo. Saiu.
+- O livro e o jogo dividem a mesma Camada 1 (`referencias/combate.md` da história). No jogo decide o dado; na prosa,
+  o autor, preso às mesmas regras. Quem leu o livro e depois jogou precisa sentir que é o mesmo mundo.
+- Resultados em três faixas (sucesso pleno, sucesso com custo, falha) e ações compostas por verbos que criam
+  condições. As escolas viram jeitos de encadear, e o triângulo sai disso, não de um bônus (§4.1). Entrou no motor
+  (ver Feito, tasks 14 a 17).
 
 ## Decisões do autor (2026-10-19)
 
@@ -146,7 +156,9 @@ O motor é o do Eälen (§7). O que muda é o que cada peça É neste mundo.
 | Ordens destraváveis | **Saem.** Cada um tem o que é: Endyru o conceito, os outros a escola de espada | `magia` §3, §5.5 |
 | Estilos Maré / Viés / Baluarte | **Escolas Gryskar / Tsvirana / Ipojy** | `magia` §5.5 |
 | Triângulo incompleto (Baluarte e Maré neutros) | **Triângulo fechado**: Ipojy vence Gryskar, Gryskar vence Tsvirana, Tsvirana vence Ipojy | `magia` §5.5 |
-| Traço de cada estilo | Gryskar = a Onda (pressão no mesmo alvo); Tsvirana = a Rachadura (pune quem repete); Ipojy = contra-ataque em quem a ataca e erra | `ipojy`, `gryskar`, `tsvirana` |
+| Traço de cada estilo | Gryskar = a Onda (pressão no mesmo alvo); Tsvirana = a Rachadura (pune quem repete); Ipojy = contra-ataque em quem a ataca e erra. **Cada escola é um jeito de encadear verbos**, não um bônus contra a outra (§4.1) | `combate` §4 |
+| O combate: acerto ou erro, como D&D | **Três faixas**: sucesso pleno, sucesso com custo, falha. O custo sai de uma lista do mundo | `combate` §2 |
+| Ação = um ataque ou uma habilidade | **Verbos encadeados**: Agarrar → Empurrar → Golpear. Cada verbo custa ação ou Fôlego e cria uma condição que facilita o próximo | `combate` §3 |
 | Grau do estilo (só aparece) | **Proficiência 1 a 7 por escola**, nunca acima do nível de aura; golpe-selo a partir do 4, só por iniciação (o trio não chega lá) | `magia` §5.6 |
 | Fôlego | **Fôlego** pra técnica de espadachim, **Mana** pra quem conjura | `magia` §4, §5.1 |
 | Golpe pesado custa Fôlego | **Mana gasta de uma vez cobra do corpo**: passou do limite num turno, vem a marca | `magia` §4.1, §4.2 |
@@ -166,6 +178,30 @@ O motor é o do Eälen (§7). O que muda é o que cada peça É neste mundo.
 | Fiscais na ponte | **Castelo de pedágio no Ymonhã**: a mesma luta, agora com razão no mundo | §2 |
 | Equipamento | Níveis do cânone: Ferro-cru, Temperado, Gravado, Recitado. Estelar e Dracônico ficam fora do alcance do trio | `magia` §7.4 |
 | Dinheiro | Cobre e prata | — |
+
+### 4.1 O combate: faixas e verbos
+
+A regra completa está em `referencias/combate.md` da história. Ela manda; o motor obedece. Como entrou no motor está
+em `docs/motor.md` (a Camada 1).
+
+- **Toda rolagem cai numa de três faixas.** Sucesso pleno; sucesso com custo; falha. Não existe "errou, nada
+  acontece": a falha piora a posição e dá a vez ao outro (`combate` §2.3).
+- **O custo é do mundo, não um número abstrato.** Fôlego, ferida própria, marca da mana, tempo (a recitação
+  quebra), posição, equipamento, gente em volta, lei (`combate` §2.2). Cada custo vira evento no motor.
+- **A ação é uma cadeia de verbos.** O jogador monta a cadeia (Agarrar → Empurrar contra a parede → Golpear);
+  cada peça é um comando validado por `applyCommand`, com custo e condição próprios (`combate` §3.2, §3.3).
+  Condição é estado da unidade, como o `afflict` já é.
+- **O mapa entra na luta.** Parede, mastro, borda do barco e margem tornam Empurrar em Prensado; altura dá
+  vantagem.
+- **A magia é verbo também.** Atração e repulsão de Endyru: arremessar, desarmar, desviar projétil, puxar-se
+  (`combate` §3.4). Recitada é verbo de duas vezes que quebra; Gravada é condição posta antes da luta.
+- **As escolas mudam o encadeamento** (`combate` §4): Xanduí, na Ipojy, transforma a falha do outro em
+  sucesso pleno dela; Jarupã, no Gryskar, aceita custo para agir antes de todos e o segundo golpe sai fraco;
+  a Tsvirana troca de verbo no meio e pune quem repete a mesma cadeia.
+- **A chance sai de `combate` §5.1.** Altura, prensado, curva de poder, triângulo, diferença de nível. O crítico
+  é o improvável (`combate` §5.2): raro no jogo e no livro na mesma medida.
+- **O teste do autor:** se o livro mostra uma coisa e o jogo daria a ela 0,1% de chance, um dos dois está errado.
+  Na dúvida, a IA do jogo não muda a regra: propõe ao autor, e ele grava na história.
 
 ## 5. A criatura: o Ykuruã
 
@@ -206,8 +242,8 @@ A primeira criatura do bestiário do mundo.
 
 Três atos, 2 a 4 horas, umas 10 a 15 lutas e dois chefes (o castelão do pedágio e o Ykuruã).
 
-O roteiro cena a cena e o guia de falas (a voz de cada um, com exemplos) estão em `jogo.md`. Onde ele detalha
-esta seção, vale o `jogo.md`; as tasks 31 a 46 trazem o jogo até ele.
+O roteiro cena a cena e o guia de falas (a voz de cada um, com exemplos) estão em `docs/roteiro.md` (até
+2026-11-12 era o `jogo.md`). Onde ele detalha esta seção, vale o roteiro; as tasks 31 a 46 trazem o jogo até ele.
 
 ### Abertura (ação): a corrente no rio
 - Endyru desce o Ymonhã no barco de Oryndu. Jarupã e Xanduí estão no mesmo barco, contratados de escolta por
@@ -296,6 +332,19 @@ O motor e a tela já entraram (ver Feito). Nenhum nó é técnica nova do mundo:
 
 | # | Task | O que é |
 |---|---|---|
+
+### P1 — o combate novo, o que falta (2026-11-12)
+O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ainda não tem.
+
+| # | Task | O que é |
+|---|---|---|
+| 97 | **Ver o combate novo na tela** | Ninguém jogou: as três faixas na mira e no registro, o custo, a esquiva, a cadeia ("Cadeia 2", "Troca!"), os quatro verbos na barra (são mais quatro botões: ver se a barra cabe), Caído se levantando. Jogar a abertura e o armazém e corrigir o que sair torto. |
+| 98 | **Os custos que faltam** | Entraram Fôlego, ferida própria e marca. Faltam os outros da `combate` §2.2: tempo (a recitação que quebra como preço), posição (perder a altura, sair Prensado), equipamento (a lâmina lasca, a gravação se gasta), gente em volta (fora da deixa de Oryndu) e lei (conjurar sem licença). Cada um pede uma regra de quando cai: vai pro autor antes. |
+| 99 | **Os verbos da magia** | Atração e repulsão no Círculo desvia projétil e puxa-se até um ponto (`combate` §3.4); nenhum dos dois existe. Desviar é reação contra o tiro; puxar-se é andar forçado até uma parede ou corpo. |
+| 100 | **A margem e a borda do barco** | A `combate` §4.1 diz que borda do barco e margem prensam. Hoje prensa o que barra o passo (parede, corpo, caixote, barranco); a água não barra. Decidir com o autor se empurrar pra dentro d'água é Prensado, Caído ou outra coisa (no Ykuruã, o contrário de tirá-lo da água). |
+| 101 | **Recuar e o voto do Gryskar** | O Gryskar não usa Recuar na primeira vez (`combate` §4.2), mas o motor não tem Recuar: andar é andar. Dizer o que é recuar (sair do alcance de quem está colado?) e pôr o voto. |
+| 102 | **A IA que monta a cadeia** | A IA emenda o próximo verbo quando ele vale a pena, mas não planeja Agarrar → Empurrar → Golpear de propósito nem pesa o Fôlego da cadeia, e não usa a troca da Tsvirana. |
+| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. |
 
 ### P1 — pedidos do autor (2026-10-31)
 Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
@@ -690,6 +739,27 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   ele guarda é fato do mundo, e vai pro autor antes de entrar. O teste dos mapas já confere o que vier (item, chave e porta que existem). A tela não
   foi vista.
 
+- **14, 15, 16 e 17. A Camada 1 do combate** (decidida pelo autor em 2026-11-05, `referencias/combate.md`). Saiu o acerto
+  ou erro: toda rolagem cai em pleno (3 de folga sobre a defesa), com custo (na defesa) ou falha. A falha deixa quem errou
+  Exposto até a vez seguinte; o custo sai do mundo — mais 1 de mana pra quem conjurou (e, passando do limite, a marca e o
+  bicho), 1 de Fôlego pra quem tem, 1d4 da própria ferida pra quem não tem. O 20 natural é o improvável: dobra, cobra se
+  não chegava ao pleno, e não existe pra quem está três níveis abaixo. Quem não é de espada esquiva o golpe que pegaria
+  por pouco (reação e 2 de Fôlego); quem é, apara como antes. Os verbos do corpo, de todo mundo do grupo desde o nível 1:
+  Agarrar (não anda nem recita, e a recitação se perde), Empurrar (contra o que barra, Prensado; no aberto, Caído),
+  Derrubar (Caído: levanta com metade do passo) e, no espadachim, Desarmar com a mão (Desarmado: só verbos e magia). O
+  Empurrão, o Arremesso e a Ombrada também prensam. A cadeia: o verbo que pega abre, e até três no turno, no mesmo alvo,
+  cada um depois do primeiro por 1 de Fôlego no lugar da ação. As escolas como encadeamento: o triângulo não soma mais
+  na rolagem; o Gryskar paga 1 de Fôlego pra abrir a ordem da luta e o segundo golpe da cadeia sai pela metade (a Onda
+  fica); a Tsvirana troca de verbo sem Fôlego, e o verbo trocado não se apara, esquiva nem devolve, e a Rachadura deixa
+  Exposto quem repetiu (não multiplica mais o dano); o Contragolpe da Ipojy sai pleno, sem rolar. A chance ganhou o grau
+  (1 por grau acima do 2, no lugar da vantagem de escola da task 89), a curva de poder (espadachim contra mago, pelo
+  nível do mago: até a Página o espadachim, no Círculo empata) e a diferença de nível de aura ou mago. A decisão de
+  2026-11-04 de que empurrar e agarrar ficavam só com Jarupã e Xanduí caiu com a do autor: a Ombrada e o Segurar o Bote
+  continuam sendo deles, como versões melhores (ação bônus). A IA pesa a condição do empurrão e, numa luta parada diante
+  da Espera, vai perdendo o medo do Contragolpe (o mago sozinho contra a Lança de Ymboripe ficava fugindo pra sempre). Os
+  nomes dos verbos são os da `combate` §3.2; as falas de cada um são provisórias, como as da Disparada. Os números são
+  provisórios (task 103), e a tela não foi vista (task 97). Detalhe em `docs/motor.md`.
+
 ## 9. Onde isto está no cânone
 
 Gravado no repositório da história com a aprovação de 2026-10-19:
@@ -700,6 +770,8 @@ Gravado no repositório da história com a aprovação de 2026-10-19:
 - `alfabeto.md`, `estado.md` e a bíblia (nomes aprovados).
 - A `mesa-dos-contratos`: o balcão onde o contrato de Ybytuguá se registra (nome da companhia, nível, fiança).
 - Em 2026-10-31: `mbyraku`, `jurendy`, `thrykar`, `castelo-da-volta`, os brasões e `referencias/mapa-do-mundo.md`.
+- Em 2026-11-05: `referencias/combate.md`, a Camada 1 do combate, comum ao livro e ao jogo; as fichas das escolas
+  (`ipojy`, `gryskar`, `tsvirana`) apontam pra `combate` §4.
 
 O que o jogo ainda quiser e não estiver lá (nome de gente, criatura nova) vai como proposta, e até a aprovação
 o jogo usa o papel no lugar do nome: o castelão, o mercador, a conselheira, o ferreiro.

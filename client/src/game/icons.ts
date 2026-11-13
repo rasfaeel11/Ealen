@@ -385,6 +385,10 @@ const ABILITY_ICON: Record<string, IconName> = {
   Ajudar: "use",
   Vigiar: "hourglass",
   "Esconder-se": "sneak",
+  // Os verbos do corpo (`combate` §3.2): provisórios, emprestados de outras coisas, como os da árvore (task 96).
+  Agarrar: "grip",
+  Empurrar: "push",
+  Derrubar: "shoulder",
 };
 
 /** O ícone de uma habilidade: o dela pelo nome; sem nome conhecido, o que ela faz. */
