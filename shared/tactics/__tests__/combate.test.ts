@@ -83,11 +83,12 @@ test("a falha não é nada: quem errou fica Exposto, e o golpe contra ele sai ma
   assert.equal(attackEdge(encounter, enemy, blow, hero).toHit, 0);
 });
 
-test("o sucesso com custo cobra do mundo: Fôlego de quem tem, a ferida própria de quem não tem", () => {
-  const costly = (breath: number) =>
+test("o sucesso com custo cobra do mundo: Fôlego de quem tem, a lâmina de quem não tem, e depois a ferida própria", () => {
+  const costly = (breath: number, chipped = false) =>
     seedWhere(
       (seed) => {
         const encounter = duel(["AE"], seed, { breath }, { breath: 0 });
+        if (chipped) findUnit(encounter, "A")!.statuses.push({ id: "chipped", name: "Lâmina lascada", toHit: -1, turnsLeft: Infinity });
         return { encounter, events: strike(encounter) };
       },
       ({ events }) => eventsOf(events, "attackRoll")[0].outcome === "cost",
@@ -99,7 +100,14 @@ test("o sucesso com custo cobra do mundo: Fôlego de quem tem, a ferida própria
     [["A", "breath", 1]],
   );
 
-  const spent = costly(0);
+  const blunt = costly(0);
+  assert.deepEqual(
+    eventsOf(blunt.events, "costPaid").map((event) => [event.kind, event.amount]),
+    [["gear", 1]],
+  );
+  assert.ok(findUnit(blunt.encounter, "A")!.statuses.some((status) => status.id === "chipped"));
+
+  const spent = costly(0, true);
   const [wound] = eventsOf(spent.events, "costPaid");
   assert.equal(wound.kind, "wound");
   assert.ok(wound.amount >= 1 && wound.amount <= 4);

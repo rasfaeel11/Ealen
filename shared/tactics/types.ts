@@ -480,6 +480,14 @@ export interface Encounter {
   /** A cheia desta luta, se ela tem uma (ver Flood). */
   flood?: Flood;
   /**
+   * A luta é na rua de uma cidade que pede licença do conselho pra conjurar:
+   * o custo da magia sai da lei (ver payCost em ./engine.ts), e quem cobra é a
+   * cidade, depois.
+   */
+  law?: boolean;
+  /** Quantas vezes o custo da magia saiu da lei nesta luta. */
+  lawBroken?: number;
+  /**
    * Até onde a vista alcança, em quadrados, quando a chuva fecha o tempo (uma deixa com `rain`): ninguém mira, joga
    * item nem atira além disso. Sem isto, a vista vai até onde a linha de visão deixa.
    */
@@ -523,7 +531,7 @@ export type Command =
 export type AttackOutcome = "hit" | "cost" | "miss" | "crit" | "fumble";
 
 /** De onde sai o custo de um sucesso com custo (`combate` §2.2). */
-export type CostKind = "breath" | "wound" | "mark";
+export type CostKind = "breath" | "wound" | "mark" | "time" | "position" | "gear" | "bystander" | "law";
 
 /**
  * O que aconteceu, em ordem. O motor nunca anima nada: devolve esta lista
@@ -626,6 +634,8 @@ export type TacticalEvent =
    * Empurrado, `unit` bateu no que barrava o passo em `pos` (parede, o destrutível `name` ou o corpo `name`). O
    * `damage` (ou o `immune`) vem logo depois, e o `propDamaged` do destrutível, se foi nele.
    */
+  /** Empurrado do seco pra água, `unit` fincou o pé na beira, em frente a `pos` (a água). O `statusApplied` de Prensado vem logo depois. */
+  | { type: "braced"; unit: string; pos: Pos }
   | { type: "slammed"; unit: string; into: "wall" | "prop" | "unit"; name?: string; pos: Pos }
   /** Tirado do lugar, `unit` desceu `steps` degraus e caiu. O `damage` vem logo depois. */
   | { type: "fell"; unit: string; steps: number }
@@ -636,7 +646,7 @@ export type TacticalEvent =
    * §2.2): `amount` de Fôlego, de vida (a ferida própria) ou de mana (a marca).
    * `first` é o Gryskar que pagou pra agir antes de todos.
    */
-  | { type: "costPaid"; unit: string; kind: CostKind; amount: number; first?: boolean }
+  | { type: "costPaid"; unit: string; kind: CostKind; amount: number; first?: boolean; bystander?: string }
   /** `unit` esquivou (`combate` §3.2): gastou a reação e o Fôlego, e o golpe de `attacker` não pegou. */
   | { type: "dodged"; unit: string; attacker: string }
   /** `unit` estava Caído e se levantou, com metade do passo. */

@@ -597,9 +597,9 @@ function spillValue(encounter: Encounter, actor: Unit, profile: AiProfile, prop:
 function slamOf(encounter: Encounter, origin: Pos, victim: Unit, pushDistance: number): { amount: number; prop?: Prop } | undefined {
   const path = forcedPath(encounter, origin, victim, pushDistance);
   if (!path) return undefined;
-  const amount = path.fall * FALL_PER_STEP + (pushDistance > 0 && path.stop ? path.left * SLAM_PER_TILE : 0);
+  const amount = path.fall * FALL_PER_STEP + (pushDistance > 0 && path.stop && !path.edge ? path.left * SLAM_PER_TILE : 0);
   if (amount <= 0) return undefined;
-  const prop = pushDistance > 0 && path.stop ? encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, path.stop!)) : undefined;
+  const prop = pushDistance > 0 && path.stop && !path.edge ? encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, path.stop!)) : undefined;
   return { amount, ...(prop ? { prop } : {}) };
 }
 

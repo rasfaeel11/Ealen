@@ -164,3 +164,46 @@ como "antes do primeiro golpe", ele casa com o princípio de aura da escola (tud
 custo de entrada (perder não impede, recuar sim).
 
 **Pra mudar**: `holdsGround` e `retreatsFrom` em `shared/tactics/movement.ts`.
+
+## 100. A margem e a borda do barco (2026-11-14)
+
+**O que decidi**
+- **A borda prensa** (`combate` §4.1, ao pé da letra): quem é de terra, empurrado do seco pra água, finca o pé
+  na beira e fica ali. Com um verbo que prensa (Empurrar, Empurrão, Arremesso, Ombrada), sai **Prensado**. Não
+  bate: água não é parede, então não há o dano do choque. A tela diz "finca o pé na beira d'água".
+- Quem **já está na água** vai mais pro fundo, como no aberto (e cai, se o verbo prensa: Caído).
+- **O bicho de rio não para na beira**: a água é dele. Empurrá-lo de volta pra água é o contrário de tirá-lo
+  dela, e é ruim pra quem empurra. Isso não mudou.
+
+**Por quê**: o cânone diz que borda do barco e margem prensam; a única leitura que não precisa de regra de
+afogamento (que o jogo não tem, e que mataria gente com um empurrão) é a de que a beira segura o corpo.
+
+**Pra mudar**: `edge` em `forcedPath` (`shared/tactics/movement.ts`) e `push` em `shared/tactics/engine.ts`.
+
+## 98. Os custos que faltavam (2026-11-14)
+
+**O que decidi**: cada custo da `combate` §2.2 cai numa hora certa, nesta ordem (o primeiro que couber):
+
+1. **Lei** — magia numa luta na rua de cidade que pede licença pra conjurar. Na luta não pesa; a cidade cobra
+   depois. Hoje só o armazém de Ybytuguá é assim (`law` no inimigo do Tiled): o mestre da guilda tira 2 de
+   cobre da paga ("A guarda do conselho passou aqui... A multa é dois." / "Era a rua do conselho."). A
+   história conta em `sem_licenca`.
+2. **Tempo** — a magia recitada que, pagando 1 de mana a mais, passaria do limite: o texto demora a fechar e
+   come a ação do turno em que sai, no lugar do estouro. É o custo de quem respeita o tempo; o estouro do ato 3
+   é deixa de roteiro e continua acontecendo.
+3. **A marca** — a outra magia paga 1 de mana a mais, como antes.
+4. **Posição** — o golpe de perto dado de cima perde a altura (quem bateu desce pro quadrado mais baixo colado
+   nele e no alvo); sem chão mais baixo, quem bateu de costas pro que barra sai Prensado.
+5. **Gente em volta** — o tiro (ou a área) que pega por pouco, com um aliado de quem bateu colado no alvo,
+   raspa nele: 1d4. Fora disto continua a deixa de Oryndu.
+6. **Fôlego** — 1, pra quem tem, como antes.
+7. **Equipamento** — sem Fôlego, o golpe de arma lasca a lâmina: Lâmina lascada, -1 no acerto até o fim da
+   luta, uma vez por luta. A gravação que se gasta já é a regra da gravada (serve uma vez).
+8. **Ferida** — o resto: 1d4 da própria vida, sem cair por ela, como antes.
+
+**Por quê**: cada custo cai onde o mundo o faria cair, sem o jogador ter de escolher a cada golpe (o livro
+escolhe pela prosa; o jogo, pela situação). A ordem põe primeiro o que é da situação (cidade, texto, chão,
+gente) e por último o que é do corpo.
+
+**Pra mudar**: `payCost` em `shared/tactics/engine.ts` (a ordem e as regras), `CHIPPED_TO_HIT`, e o texto da
+multa em `saqueadores_caem` (`client/story/ybytugua.ink`). A fala da multa é minha, na voz do guia de falas.

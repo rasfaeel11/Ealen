@@ -292,7 +292,11 @@ export function startAreaEncounter(
   // Mexer num objeto vale uma vez por luta: o que se mexeu numa luta anterior da área está pronto de novo.
   for (const prop of props) delete prop.used;
   const flood = enemies.find((enemy) => enemy.flood)?.flood;
-  return startEncounter({ grid: map.grid, units, props, surprised, charge, cues, supporters, lasting, opening, seed, ...(flood ? { flood } : {}), ...(clock ? { clock } : {}) });
+  const law = enemies.some((enemy) => enemy.law);
+  return startEncounter({
+    grid: map.grid, units, props, surprised, charge, cues, supporters, lasting, opening, seed,
+    ...(flood ? { flood } : {}), ...(clock ? { clock } : {}), ...(law ? { law } : {}),
+  });
 }
 
 /**

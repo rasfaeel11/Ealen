@@ -3,7 +3,7 @@ import { COST_BAND, attackEdge, attackTotals, canBeImprobable, isShot } from "./
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { HUNGER, healCap, healToll } from "../breath";
 import { CONCEPTS } from "../mana";
-import { distance, hasLineOfSight, samePos, tileAt, type Grid, type Pos } from "./grid";
+import { distance, elevationAt, hasLineOfSight, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { FALL_PER_STEP, findPath, forcedPath } from "./movement";
 import { PROPS, fellProp, propTemplate, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
@@ -118,6 +118,8 @@ export interface EncounterSetup {
   opening?: Opening;
   /** A cheia da luta: de quantas em quantas rodadas a água sobe, e quantas vezes no máximo (ver Flood em ./types.ts). */
   flood?: { every: number; rises: number };
+  /** A luta é na rua de uma cidade que pede licença pra conjurar (ver Encounter.law). */
+  law?: boolean;
   /** O relógio da história, se há um correndo (ver FightClock em ./types.ts). */
   clock?: FightClock;
   seed: number;
@@ -163,6 +165,7 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     rngState: setup.seed >>> 0,
     ...(setup.flood ? { flood: { ...setup.flood, risen: 0 } } : {}),
     ...(setup.clock ? { clock: { ...setup.clock } } : {}),
+    ...(setup.law ? { law: true } : {}),
   };
 
   const rolls = encounter.units.map((unit, index) => ({
@@ -943,6 +946,7 @@ function resolveAbility(
   const countering: Unit[] = [];
   // O custo se paga uma vez por golpe, mesmo numa área: é o corpo de quem bateu.
   let costly = false;
+  let costTarget: Unit | undefined;
   let first: AttackOutcome | undefined;
   for (const aimed of targets) {
     const target = interceptor(encounter, actor, ability, aimed) ?? aimed;
@@ -986,7 +990,10 @@ function resolveAbility(
         continue;
       }
       critical = outcome === "crit";
-      if (outcome === "cost" || rolled.costly) costly = true;
+      if (outcome === "cost" || rolled.costly) {
+        costly = true;
+        costTarget ??= target;
+      }
     }
     first ??= outcome;
 
@@ -998,7 +1005,7 @@ function resolveAbility(
       actor.streak = { target: target.id, hits: actor.streak?.target === target.id ? actor.streak.hits + 1 : 1 };
     }
   }
-  if (costly) payCost(encounter, actor, ability, events);
+  if (costly) payCost(encounter, actor, ability, costTarget, targetPos, events);
 
   for (const prop of affectedProps(encounter, ability, targetPos)) {
     for (const effect of ability.effects) {
@@ -1061,24 +1068,60 @@ function dodges(encounter: Encounter, actor: Unit, ability: Ability, target: Uni
   return !target.statuses.some((status) => status.skipsTurn || status.prone || (status.speed ?? 0) <= -99);
 }
 
+/** Quanto a lâmina lascada tira do acerto, até o fim da luta (o custo de equipamento). */
+export const CHIPPED_TO_HIT = 1;
+
 /**
  * O CUSTO de um sucesso com custo, ou do improvável que não chegava ao pleno
- * (`combate` §2.2). Sai do que faz sentido pra quem bateu: quem conjurou paga
- * mais 1 de mana (a marca, se aquilo passar do limite dele — e o bicho escuta);
- * quem tem Fôlego paga COST_BREATH; quem não tem, a ferida própria (1d4, sem
- * cair por ela).
+ * (`combate` §2.2). Sai do mundo, do que faz sentido pra quem bateu, nesta
+ * ordem (decidido pelo co-autor em 2026-11-14, task 98):
+ *
+ * - LEI: magia numa luta com lei (`Encounter.law`, a rua de uma cidade que
+ *   pede licença pra conjurar). Na luta não pesa; quem cobra é a cidade depois
+ *   (`Encounter.lawBroken`, que a história lê).
+ * - TEMPO: a magia recitada que, pagando mais 1 de mana, passaria do limite.
+ *   O texto demora a fechar e come a ação do turno em que saiu, no lugar do
+ *   estouro. Quem tem a ação, paga com ela; quem não tem, paga a mana.
+ * - A MARCA: a outra magia paga mais 1 de mana (e, passando do limite, a marca,
+ *   e o bicho escuta).
+ * - POSIÇÃO: o golpe de perto dado de cima perde a altura (quem bateu desce
+ *   pro quadrado mais baixo colado nele e no alvo); sem chão mais baixo, o de
+ *   costas pro que barra sai Prensado.
+ * - GENTE EM VOLTA: o tiro ou a área que pega por pouco, com um aliado de quem
+ *   bateu colado no alvo (ou dentro da área), raspa nele: 1d4.
+ * - FÔLEGO: COST_BREATH, pra quem tem.
+ * - EQUIPAMENTO: sem Fôlego, o golpe de arma lasca a lâmina (Lâmina lascada,
+ *   -CHIPPED_TO_HIT no acerto até o fim da luta), uma vez por luta.
+ * - FERIDA: o resto, 1d4 da própria vida, sem cair por ela.
  */
-function payCost(encounter: Encounter, unit: Unit, ability: Ability, events: TacticalEvent[]): void {
+function payCost(encounter: Encounter, unit: Unit, ability: Ability, target: Unit | undefined, aim: Pos, events: TacticalEvent[]): void {
   if (!isAlive(unit)) return;
+  if (ability.mana && encounter.law) {
+    encounter.lawBroken = (encounter.lawBroken ?? 0) + 1;
+    events.push({ type: "costPaid", unit: unit.id, kind: "law", amount: 1 });
+    return;
+  }
+  if (ability.mana && isRecited(ability) && unit.turn.action && wouldBurst(unit, 1)) {
+    unit.turn.action = false;
+    events.push({ type: "costPaid", unit: unit.id, kind: "time", amount: 1 });
+    return;
+  }
   if (ability.mana && (unit.mana ?? 0) >= 1) {
     events.push({ type: "costPaid", unit: unit.id, kind: "mark", amount: 1 });
     spendMana(encounter, unit, 1, events);
     return;
   }
+  if (!ability.mana && target && target.team !== unit.team && payPosition(encounter, unit, ability, target, events)) return;
+  if (!ability.mana && payBystander(encounter, unit, ability, target, aim, events)) return;
   if (unit.maxBreath > 0 && unit.breath >= COST_BREATH) {
     unit.breath -= COST_BREATH;
     events.push({ type: "costPaid", unit: unit.id, kind: "breath", amount: COST_BREATH });
     events.push({ type: "breathSpent", unit: unit.id, amount: COST_BREATH, remaining: unit.breath });
+    return;
+  }
+  if (ability.weapon && !unit.river && !unit.statuses.some((status) => status.id === STATUSES.chipped.id)) {
+    events.push({ type: "costPaid", unit: unit.id, kind: "gear", amount: CHIPPED_TO_HIT });
+    addStatus(unit, STATUSES.chipped, Infinity, events);
     return;
   }
   if (unit.invulnerable) return;
@@ -1087,6 +1130,62 @@ function payCost(encounter: Encounter, unit: Unit, ability: Ability, events: Tac
   unit.currentHp -= wound;
   events.push({ type: "costPaid", unit: unit.id, kind: "wound", amount: wound });
   events.push({ type: "damage", target: unit.id, amount: wound, remainingHp: unit.currentHp });
+}
+
+/** `amount` a mais de mana neste turno passaria `unit` do limite dele? */
+function wouldBurst(unit: Unit, amount: number): boolean {
+  const limit = Math.max(0, (unit.manaLimit ?? 0) + unit.statuses.reduce((sum, status) => sum + (status.manaLimit ?? 0), 0));
+  const spent = unit.manaSpent ?? 0;
+  return spent <= limit && spent + amount > limit;
+}
+
+/** O custo de POSIÇÃO (ver payCost): perder a altura, ou sair Prensado de costas pro que barra. Falso se não coube. */
+function payPosition(encounter: Encounter, unit: Unit, ability: Ability, target: Unit, events: TacticalEvent[]): boolean {
+  if (ability.range > 1 || ability.radius !== undefined || unit.river || distance(unit.pos, target.pos) !== 1) return false;
+  const { grid } = encounter;
+  const height = elevationAt(grid, unit.pos);
+  if (height > elevationAt(grid, target.pos)) {
+    let best: Pos | undefined;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const spot = { x: unit.pos.x + dx, y: unit.pos.y + dy };
+        if ((dx === 0 && dy === 0) || distance(spot, target.pos) !== 1) continue;
+        const tile = tileAt(grid, spot);
+        if (!tile || tile.blocksMove || unitAt(encounter, spot) || elevationAt(grid, spot) >= height) continue;
+        if (!best || elevationAt(grid, spot) > elevationAt(grid, best)) best = spot;
+      }
+    }
+    if (best) {
+      const from = { ...unit.pos };
+      unit.pos = { ...best };
+      events.push({ type: "costPaid", unit: unit.id, kind: "position", amount: 1 });
+      events.push({ type: "pushed", unit: unit.id, from, to: { ...best }, self: true });
+      touchSurface(encounter, unit, events);
+      return true;
+    }
+  }
+  const behind = { x: unit.pos.x - Math.sign(target.pos.x - unit.pos.x), y: unit.pos.y - Math.sign(target.pos.y - unit.pos.y) };
+  const wall = (tileAt(grid, behind)?.blocksMove ?? false) || elevationAt(grid, behind) > height;
+  if (!wall || unit.statuses.some((status) => status.id === STATUSES.prensado.id)) return false;
+  events.push({ type: "costPaid", unit: unit.id, kind: "position", amount: 1 });
+  addStatus(unit, STATUSES.prensado, 1, events);
+  return true;
+}
+
+/** O custo de GENTE EM VOLTA (ver payCost): o tiro ou a área raspa num aliado de quem bateu. Falso se não havia ninguém. */
+function payBystander(encounter: Encounter, unit: Unit, ability: Ability, target: Unit | undefined, aim: Pos, events: TacticalEvent[]): boolean {
+  if (!isShot(ability) && ability.radius === undefined) return false;
+  const center = ability.radius === undefined ? target?.pos : aim;
+  if (!center) return false;
+  const reach = ability.radius === undefined ? 1 : ability.radius + 1;
+  const near = encounter.units.find(
+    (other) => other !== unit && other.team === unit.team && isAlive(other) && !other.invulnerable && distance(other.pos, center) <= reach,
+  );
+  if (!near) return false;
+  const graze = Math.min(rollDie(encounter, 4), near.currentHp);
+  events.push({ type: "costPaid", unit: unit.id, kind: "bystander", amount: graze, bystander: near.id });
+  dealDamage(encounter, near, graze, events);
+  return true;
 }
 
 /**
@@ -1428,7 +1527,8 @@ function push(encounter: Encounter, origin: Pos, target: Unit, pushDistance: num
     if (isAlive(target)) touchSurface(encounter, target, events);
     soak(encounter, target, events);
   }
-  if (pushDistance > 0 && path.stop && isAlive(target)) slam(encounter, target, path.stop, path.left * SLAM_PER_TILE, events);
+  if (pushDistance > 0 && path.stop && !path.edge && isAlive(target)) slam(encounter, target, path.stop, path.left * SLAM_PER_TILE, events);
+  if (path.edge && pushDistance > 0 && isAlive(target)) events.push({ type: "braced", unit: target.id, pos: { ...path.stop! } });
   if (pinned && isAlive(target) && !(pinned.prone && target.statuses.some((status) => status.id === "submerged"))) {
     addStatus(target, pinned, 1, events);
   }

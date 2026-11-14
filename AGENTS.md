@@ -338,8 +338,6 @@ O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ai
 
 | # | Task | O que é |
 |---|---|---|
-| 98 | **Os custos que faltam** | Entraram Fôlego, ferida própria e marca. Faltam os outros da `combate` §2.2: tempo (a recitação que quebra como preço), posição (perder a altura, sair Prensado), equipamento (a lâmina lasca, a gravação se gasta), gente em volta (fora da deixa de Oryndu) e lei (conjurar sem licença). Cada um pede uma regra de quando cai: vai pro autor antes. |
-| 100 | **A margem e a borda do barco** | A `combate` §4.1 diz que borda do barco e margem prensam. Hoje prensa o que barra o passo (parede, corpo, caixote, barranco); a água não barra. Decidir com o autor se empurrar pra dentro d'água é Prensado, Caído ou outra coisa (no Ykuruã, o contrário de tirá-lo da água). |
 | 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. Visto na tela (task 97): na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; com dois guardas e o besteiro em cima, toda recitação dele quebra antes de sair; o Golpe Pesado tira 27 a 36 e derruba guarda e saqueador de uma vez; o Fôlego do espadachim zera pela rodada 4. No `balance:grupo` (100 lutas por luta, a IA dos dois lados): o grupo vence todas as lutas do jogo, em 1 a 4 rodadas, quase sem ninguém cair; a patrulha cai em pouco mais de uma rodada, porque o Golpe Pesado com custo tira 31 e a Espada tem 30. A final foi acertada com o autor em 2026-11-13 (ver Feito, task 80: a IA e a água). E uma pergunta pro autor: o chuço alcança 2, e da Ipojy com espada (alcance 1) nenhum Contragolpe sai contra quem cutuca de longe — os guardas erraram Xanduí rodadas a fio sem levar nada de volta. |
 
 ### P1 — pedidos do autor (2026-10-31)
@@ -873,6 +871,16 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   nela (o custo `area` do relógio, que nenhum mapa usa ainda). Com inimigo que não é passivo a até 8 quadrados, não se
   viaja. Visto no navegador (de Ybytuguá aos baixios). Marcadores próprios (o jogador marcar um ponto) não entraram: nenhuma
   cena pede.
+
+- **98. Os custos que faltavam** (decidido pelo co-autor em 2026-11-14, ver `docs/escolhas.md`). O custo cai no
+  primeiro que couber: lei (magia na rua de cidade que pede licença; só o armazém de Ybytuguá, e o mestre da guilda
+  tira 2 de cobre de multa), tempo (a recitada que passaria do limite come a ação do turno em que sai), a marca,
+  posição (quem bateu de cima perde a altura; de costas pra parede, sai Prensado), gente em volta (o tiro que pega
+  por pouco raspa 1d4 no aliado colado no alvo), Fôlego, equipamento (sem Fôlego, a lâmina lasca: -1 no acerto até
+  o fim da luta) e a ferida. Cada um tem a linha dele no registro e o que sobe em cima de quem paga.
+- **100. A borda prensa** (decidido pelo co-autor em 2026-11-14, ver `docs/escolhas.md`). Quem é de terra, empurrado
+  do seco pra água, finca o pé na beira: Prensado, sem o dano do choque. Quem já está na água vai mais pro fundo; o
+  bicho de rio entra na água sem parar.
 
 ## 9. Onde isto está no cânone
 

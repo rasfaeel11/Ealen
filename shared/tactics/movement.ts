@@ -142,13 +142,20 @@ export interface ForcedPath {
   stop?: Pos;
   /** Quantos degraus ele desceu no caminho. */
   fall: number;
+  /**
+   * Parou na BEIRA D'ÁGUA (`combate` §4.1: a borda do barco e a margem prensam):
+   * quem é de terra, empurrado do seco pra água, finca o pé na beira e fica
+   * ali. Prensa, mas não bate: água não é parede.
+   */
+  edge?: boolean;
 }
 
 /**
  * Por onde vai quem é empurrado (distância positiva, pra longe de `origin`) ou
  * puxado (negativa, pra perto), em linha reta, um quadrado por vez: para no
  * que barra o passo, num corpo ou num chão mais alto que o dele (barranco não
- * se sobe empurrado). Descer degrau conta como queda. O peso (`heft`) tira
+ * se sobe empurrado). Quem é de terra para na beira d'água (`edge`); o bicho
+ * de rio, não. Descer degrau conta como queda. O peso (`heft`) tira
  * quadrados. Só a conta: quem move é push em ./engine.ts, e a IA lê o mesmo.
  */
 export function forcedPath(encounter: Encounter, origin: Pos, target: Unit, pushDistance: number): ForcedPath | undefined {
@@ -166,6 +173,9 @@ export function forcedPath(encounter: Encounter, origin: Pos, target: Unit, push
     const rise = elevationAt(grid, next) - elevationAt(grid, pos);
     if ((tileAt(grid, next)?.blocksMove ?? true) || unitAt(encounter, next) || rise > 0) {
       return { to: pos, left: steps - step, stop: next, fall };
+    }
+    if (!target.river && !tileAt(grid, pos)?.water && tileAt(grid, next)?.water) {
+      return { to: pos, left: steps - step, stop: next, fall, edge: true };
     }
     fall -= Math.min(0, rise);
     pos = next;

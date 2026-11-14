@@ -43,7 +43,9 @@ import { CLASS_INFO } from "../types/characterClass";
  *              história: dá pra FALAR com ele enquanto está de pé, e o Nome
  *              do objeto é o que aparece na caixa; só vale em quem é
  *              `passive`) e `onDefeat` (o trecho que abre quando o grupo
- *              dele é vencido). E `flood` ("3 2"): a luta do grupo dele tem
+ *              dele é vencido). `law` (bool): a luta do grupo dele é na rua de
+ *              uma cidade que pede licença pra conjurar (o custo da magia
+ *              sai da lei). E `flood` ("3 2"): a luta do grupo dele tem
  *              cheia — a água come um anel da margem de 3 em 3 rodadas, até
  *              2 vezes (ver Flood em ../tactics/types.ts). E `facing` (down, left,
  *              right ou up; sem ele, down): pra onde ele olha (ver ./stealth.ts).
@@ -163,6 +165,8 @@ export interface AreaEnemy extends AreaCondition {
   onDefeat?: string;
   /** A luta do grupo dele tem cheia: a água sobe de `every` em `every` rodadas, até `rises` vezes (ver Flood no motor). */
   flood?: { every: number; rises: number };
+  /** A luta do grupo dele é na rua de uma cidade que pede licença pra conjurar (ver Encounter.law no motor). */
+  law?: boolean;
   /** Pra onde ele olha, parado (ver ./stealth.ts). Sem isso, pra baixo. */
   facing?: Heading;
   /** Os lados pra onde ele vira a cabeça, um por vez: o `facing` do mapa primeiro, e os do `look` (ver sentryAt em ./stealth.ts). */
@@ -538,6 +542,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
           dialog: typeof dialog === "string" ? dialog : undefined,
           onDefeat: typeof onDefeat === "string" ? onDefeat : undefined,
           ...floodOf(object.name ?? "", properties.flood),
+          ...(properties.law === true ? { law: true } : {}),
           ...(facing !== undefined ? { facing } : {}),
           ...(turns.length > 0 ? { look: [(facing as Heading | undefined) ?? "down", ...(turns as Heading[])] } : {}),
           ...(route.length > 0 ? { patrol: route.map(([x, y]) => ({ x, y })), home: { x: object.x, y: object.y } } : {}),

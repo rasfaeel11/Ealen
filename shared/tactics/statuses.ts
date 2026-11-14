@@ -125,6 +125,8 @@ export const STATUSES = {
   deflecting: { id: "deflecting", name: "Desviando", deflect: true },
   /** Escondido (Esconder-se, ver ./abilities.ts): de longe ninguém o mira, e o golpe que sai do esconderijo entra mais certo. */
   hidden: { id: "hidden", name: "Escondido", concealed: true, toHit: 2 },
+  /** O custo de equipamento (ver payCost em ./engine.ts): a lâmina lascou num golpe que pegou por pouco. Até o fim da luta. */
+  chipped: { id: "chipped", name: "Lâmina lascada", toHit: -1 },
   /** Quem levou a ajuda de um aliado colado (Ajudar, ver ./abilities.ts): o próximo golpe sai mais certo. */
   aided: { id: "aided", name: "Ajudado", toHit: 2 },
 

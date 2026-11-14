@@ -68,6 +68,7 @@ import {
   type StatusTemplate,
   type Supporter,
   type SurfaceId,
+  type CostKind,
   type TacticalEvent,
   type TeamId,
   type Unit,
@@ -319,6 +320,18 @@ function describeEdge(edge: {
  * Os turnos dos inimigos passam pelo mesmo caminho, com a IA no lugar do
  * clique.
  */
+/** O que sobe em cima de quem paga cada custo. */
+const COST_FLOAT: Record<CostKind, string> = {
+  breath: "Custo",
+  wound: "Custo",
+  mark: "Custo",
+  time: "Demorou",
+  position: "Posição",
+  gear: "Lascou",
+  bystander: "Raspão",
+  law: "Sem licença",
+};
+
 export class CombatController {
   private readonly hud: CombatHud;
   /** As superfícies no chão, como os eventos as foram deixando — não como o motor já as tem no fim da jogada. */
@@ -1460,9 +1473,8 @@ export class CombatController {
           this.floatOver(event.unit, "Primeiro!", TEXT_COLORS.goldBright, -22);
           this.hud.log(`${name} paga ${event.amount} de Fôlego pra agir antes de todos.`);
         } else {
-          const what = event.kind === "breath" ? `${event.amount} de Fôlego` : event.kind === "wound" ? `${event.amount} de vida, a própria ferida` : `${event.amount} de mana a mais`;
-          this.floatOver(event.unit, "Custo", TEXT_COLORS.danger, -22);
-          this.hud.log(`O custo: ${name} paga ${what}.`);
+          this.floatOver(event.unit, COST_FLOAT[event.kind], TEXT_COLORS.danger, -22);
+          this.hud.log(`O custo: ${this.costLine(event, name)}.`);
         }
         await this.wait(80);
         return;
@@ -1641,6 +1653,13 @@ export class CombatController {
         this.hud.log(`${this.unit(event.unit).name} cai do barranco${event.steps > 1 ? `, ${event.steps} degraus` : ""}.`);
         this.floatOver(event.unit, "Caiu!", TEXT_COLORS.danger, -22);
         await this.wait(140);
+        return;
+      }
+
+      case "braced": {
+        this.hud.log(`${this.unit(event.unit).name} finca o pé na beira d'água.`);
+        this.floatOver(event.unit, "Na beira!", TEXT_COLORS.guard, -34);
+        await this.wait(100);
         return;
       }
 
@@ -2028,6 +2047,28 @@ export class CombatController {
   }
 
   /** Texto que sobe da cabeça de alguém. */
+  /** A linha do registro de cada custo (`combate` §2.2, ver payCost no motor). */
+  private costLine(event: Extract<TacticalEvent, { type: "costPaid" }>, name: string): string {
+    switch (event.kind) {
+      case "breath":
+        return `${name} paga ${event.amount} de Fôlego`;
+      case "wound":
+        return `${name} paga ${event.amount} de vida, a própria ferida`;
+      case "mark":
+        return `${name} paga ${event.amount} de mana a mais`;
+      case "time":
+        return `o texto de ${name} demora a fechar, e come a ação do turno`;
+      case "position":
+        return `${name} perde a posição`;
+      case "gear":
+        return `a lâmina de ${name} lasca`;
+      case "bystander":
+        return `o golpe de ${name} raspa em ${this.unit(event.bystander!).name}`;
+      case "law":
+        return `${name} conjura na rua sem licença do conselho`;
+    }
+  }
+
   private floatOver(unitId: string, text: string, color: string, offsetY = 0, size?: number): void {
     const actor = this.actor(unitId);
     if (actor) this.floatAt(actor.top, text, color, offsetY, size);

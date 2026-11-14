@@ -15,6 +15,8 @@ VAR temperadas = false
 VAR receita_ouvida = false
 VAR leu_edital = false
 VAR saqueadores_vencidos = false
+// Quantas vezes Endyru conjurou na rua sem licença do conselho (o custo da lei, `combate` §2.2): o jogo conta.
+VAR sem_licenca = 0
 
 // Um `trigger` no cais: a primeira vez que o barco encosta.
 === chegada_ybytugua ===
@@ -297,7 +299,15 @@ Jarupã: A fome é da cidade inteira.
 Ela sai pela porta sem a espada, com os outros dois apoiados um no outro. Ninguém corre atrás.
 Na guilda, o mestre ouve sem largar a rede. Depois conta cobre em cima da mesa, uma moeda por braçada de corda que voltou.
 Mestre da guilda: Seis. Rio acima corda vale mais. Aqui não vale nada até a cheia baixar.
-~ earn("cobre", 6)
+{sem_licenca > 0:
+    Ele tira duas moedas da pilha e põe de volta na caixa.
+    Mestre da guilda: A guarda do conselho passou aqui. Gente conjurando dentro do armazém, sem licença da Mesa. A multa é dois.
+    Endyru: Era o armazém de vocês.
+    Mestre da guilda: Era a rua do conselho.
+    ~ earn("cobre", 4)
+- else:
+    ~ earn("cobre", 6)
+}
 ~ give_item("item-unguento-de-barqueiro")
 Ele põe do lado das moedas um pote de unguento com a tampa amarrada.
 Mestre da guilda: De barqueiro. É pra talho de corda. Serve pra talho de espada.
