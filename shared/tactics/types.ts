@@ -46,6 +46,8 @@ export type Effect =
       leech?: number;
       /** O tipo do dano (ver DamageType). Sem isto, nenhum: nada resiste nem sofre mais. */
       type?: DamageType;
+      /** Contra bicho de rio (`river`), fura este tanto da Muralha (a receita de Thrykar na lâmina, ver ../equipment.ts). */
+      riverPierce?: number;
     }
   /** Cura: atributo + dados, limitada ao HP que falta. */
   | { kind: "heal"; dice: Dice; attribute?: AttributeRef }
@@ -296,6 +298,8 @@ export interface Cue {
   dismiss?: string;
   /** A água sobe um anel nessa hora (ver Flood), conte ou não pro relógio da cheia da luta. */
   rise?: boolean;
+  /** A chuva aperta nessa hora: até o fim da luta, a vista só alcança este tanto de quadrados (ver Encounter.sight). */
+  rain?: number;
 }
 
 /**
@@ -475,6 +479,11 @@ export interface Encounter {
   stopped?: boolean;
   /** A cheia desta luta, se ela tem uma (ver Flood). */
   flood?: Flood;
+  /**
+   * Até onde a vista alcança, em quadrados, quando a chuva fecha o tempo (uma deixa com `rain`): ninguém mira, joga
+   * item nem atira além disso. Sem isto, a vista vai até onde a linha de visão deixa.
+   */
+  sight?: number;
   /** O relógio da história, se há um correndo (ver FightClock). */
   clock?: FightClock;
   /**
@@ -662,6 +671,8 @@ export type TacticalEvent =
   | { type: "supporterLost"; id: string }
   /** A água subiu: estes quadrados, que eram secos, agora são água (ver Flood). */
   | { type: "waterRose"; tiles: Pos[] }
+  /** A chuva apertou: até o fim da luta, a vista só alcança `range` quadrados. */
+  | { type: "sightCut"; range: number }
   /**
    * O que `unit` pretende fazer na vez dele, pelo que a luta é agora: onde
    * parar (`tile`; o próprio quadrado se não vai andar), que habilidades usar

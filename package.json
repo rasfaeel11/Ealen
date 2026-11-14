@@ -5,12 +5,17 @@
   "description": "Três na Estrada (título provisório) — RPG tático de navegador",
   "workspaces": [
     "client",
-    "shared"
+    "shared",
+    "desktop"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=client",
     "test": "npm run test --workspace=shared && npm run test --workspace=client",
-    "balance:matrix": "npm run balance:matrix --workspace=client --"
+    "balance:matrix": "npm run balance:matrix --workspace=client --",
+    "balance:grupo": "npm run balance:grupo --workspace=client --",
+    "desktop": "npm run build --workspace=client && npm run start --workspace=desktop",
+    "desktop:pack": "npm run build --workspace=client && npm run pack --workspace=desktop",
+    "desktop:dist": "npm run build --workspace=client && npm run dist --workspace=desktop"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

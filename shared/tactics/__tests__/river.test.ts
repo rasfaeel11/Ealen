@@ -6,6 +6,7 @@ import {
   CRACK_TURNS,
   STATUSES,
   activeUnit,
+  applyCommand,
   standProp,
   findUnit,
   gridFromAscii,
@@ -77,7 +78,7 @@ test("na água ele fica Submerso, com a Muralha alta; em seco, fica só com a do
   const wet = stage(["M..w"], (at) => [mage(at("M")), ykurua({ x: 3, y: 0 })]).encounter;
   const swimmer = findUnit(wet, "Y")!;
   assert.deepEqual(statusIds(swimmer), ["submerged"]);
-  assert.equal(styleReduction(swimmer), 2 + 6);
+  assert.equal(styleReduction(swimmer), 2 + STATUSES.submerged.wall!);
 
   const dry = stage(["M...Y"], (at) => [mage(at("M")), ykurua(at("Y"))]).encounter;
   const beached = findUnit(dry, "Y")!;
@@ -120,7 +121,7 @@ test("na água ele se refaz no começo de cada turno dele", () => {
   const events = pass(encounter);
   const regen = eventsOf(events, "statusTriggered");
   assert.deepEqual(regen.map((event) => [event.unit, event.statusId]), [["Y", "submerged"]]);
-  assert.deepEqual(eventsOf(events, "heal")[0], { type: "heal", target: "Y", amount: 6, remainingHp: 56 });
+  assert.deepEqual(eventsOf(events, "heal")[0], { type: "heal", target: "Y", amount: STATUSES.submerged.regen!, remainingHp: 50 + STATUSES.submerged.regen! });
 });
 
 test("puxar funciona aos poucos: ele é pesado, e cada quadrado fora d'água conta", () => {
@@ -317,4 +318,93 @@ test("a marca de sangue e tremor baixa o limite de mana: o que cabia num turno p
   caster.statuses.push({ ...STATUSES.bloodied, turnsLeft: Infinity });
   const burst = eventsOf(run(marked, { type: "ability", unitId: "M", abilityId: MID.id, target: findUnit(marked, "Y")!.pos }), "manaBurst");
   assert.deepEqual(burst.map((event) => [event.spent, event.limit]), [[3, 2]]);
+});
+
+test("a IA tira o bicho de rio da água: puxa pra o seco, e não o empurra pro fundo", () => {
+  // O mago no seco, o bicho na beira da água: o puxão o traz pra fora; o empurrão o mandaria mais pro fundo.
+  const away: Ability = { ...PULL, id: "test.away", name: "Pra longe", effects: [{ kind: "push", distance: 2 }] };
+  const { encounter } = stage(["M.wwww"], (at) => {
+    const caster = mage(at("M"));
+    caster.abilities = caster.abilities.filter((ability) => ability.id !== "test.big");
+    caster.abilities.push(away);
+    return [caster, ykurua({ x: 2, y: 0 })];
+  });
+  assert.equal(activeUnit(encounter)!.id, "M");
+  const plan = planTurn(encounter);
+  assert.equal(plan.action?.ability.id, "test.pull", "o puxão que o põe no seco vale mais que o empurrão");
+});
+
+test("com bicho de rio vivo, quem é do grupo não termina o turno com o pé na água", () => {
+  const { encounter } = stage(["S...wwwwww"], (at) => [
+    makeUnit("S", "party", at("S"), { attributes: { olho: FIRST } }),
+    ykurua({ x: 9, y: 0 }),
+  ]);
+  assert.equal(activeUnit(encounter)!.id, "S");
+  const plan = planTurn(encounter);
+  assert.ok(plan.tile.x <= 3, `parou em ${plan.tile.x}, que é água`);
+});
+
+test("a passarela é chão por cima da água, e o bote do bicho a parte", () => {
+  const { grid } = gridFromAscii(["..ww"]);
+  const plank = standProp(grid, "tabua", "walkway", { x: 2, y: 0 });
+  assert.equal(grid.tiles[2].water, false, "de pé, a tábua é seca");
+  assert.equal(grid.tiles[2].blocksMove, false, "e se anda nela");
+  const { encounter } = startEncounter({
+    grid,
+    units: [makeUnit("S", "party", { x: 2, y: 0 }, { attributes: { olho: 0 } }), ykurua({ x: 3, y: 0 })],
+    props: [plank],
+    seed: 4,
+  });
+  if (activeUnit(encounter)!.id === "S") pass(encounter);
+  assert.equal(activeUnit(encounter)!.id, "Y");
+  const bite = findUnit(encounter, "Y")!.abilities.find((ability) => ability.id === "espadachim.attack")!;
+  const events = run(encounter, { type: "ability", unitId: "Y", abilityId: bite.id, target: { x: 2, y: 0 } });
+  assert.ok(eventsOf(events, "propDestroyed").some((event) => event.prop === "tabua"), "o bote parte a tábua, pegando ou não");
+  assert.equal(encounter.grid.tiles[2].water, true, "e a água volta");
+});
+
+test("a chuva que aperta numa deixa fecha a vista: além dela, ninguém mira", () => {
+  const { grid } = gridFromAscii(["M.......Y"]);
+  const { encounter } = startEncounter({
+    grid,
+    units: [mage({ x: 0, y: 0 }), unitFromCharacter(makeCharacter("Y"), { team: "enemy", pos: { x: 8, y: 0 }, id: "Y" })],
+    cues: [{ id: "chuva", when: { kind: "round", round: 2 }, rain: 4 }],
+    seed: 4,
+  });
+  const pull = findUnit(encounter, "M")!.abilities.find((ability) => ability.id === "test.pull")!;
+  if (activeUnit(encounter)!.id !== "M") pass(encounter);
+  assert.ok(applyCommand(structuredClone(encounter), { type: "ability", unitId: "M", abilityId: pull.id, target: { x: 8, y: 0 } }).ok, "sem chuva, alcança");
+  const seen: string[] = [];
+  while (encounter.round < 2) seen.push(...pass(encounter).map((event) => event.type));
+  assert.equal(encounter.sight, 4);
+  assert.ok(seen.includes("sightCut"));
+  if (activeUnit(encounter)!.id !== "M") pass(encounter);
+  assert.deepEqual(applyCommand(encounter, { type: "ability", unitId: "M", abilityId: pull.id, target: { x: 8, y: 0 } }), { ok: false, reason: "invalid_target" });
+});
+
+test("a lâmina da receita de Thrykar fura 2 da Muralha da água no bicho de rio", () => {
+  const strike = (riverPierce?: number) => {
+    const { encounter } = stage(["S.ww"], (at) => [makeUnit("S", "party", at("S"), { attributes: { olho: FIRST, forca: 40 } }), ykurua({ x: 1, y: 0 })]);
+    const blade: Ability = {
+      id: "test.blade",
+      name: "Lâmina",
+      flavor: "",
+      cost: "action",
+      range: 1,
+      targets: "enemy",
+      effects: [{ kind: "damage", dice: { count: 1, sides: 1 }, attribute: "forca", ...(riverPierce ? { riverPierce } : {}) }],
+    };
+    findUnit(encounter, "S")!.abilities.push(blade);
+    const yk = findUnit(encounter, "Y")!;
+    yk.statuses = yk.statuses.filter((status) => status.id !== "submerged");
+    yk.statuses.push({ ...STATUSES.submerged, turnsLeft: Infinity });
+    yk.pos = { x: 2, y: 0 };
+    findUnit(encounter, "S")!.pos = { x: 1, y: 0 };
+    const events = run(encounter, { type: "ability", unitId: "S", abilityId: blade.id, target: { x: 2, y: 0 } });
+    return eventsOf(events, "damage").filter((event) => event.target === "Y").reduce((sum, event) => sum + event.amount, 0);
+  };
+  const plain = strike();
+  const tempered = strike(2);
+  assert.ok(plain > 0, "o golpe pega nos dois");
+  assert.equal(tempered - plain, 2);
 });

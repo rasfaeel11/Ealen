@@ -6,6 +6,7 @@ import { RACE_INFO } from "../types/race";
 import { STARTING_STASH, castSheet, fights, startingLoadout, type PartyMember } from "../party";
 import { packStory, unpackStory } from "../story/memory";
 import { AREAS } from "../world/areas";
+import { emptyCodex, readCodex, type Codex } from "../codex";
 import { SHORT_RESTS } from "../world/rest";
 
 /**
@@ -47,6 +48,8 @@ export interface GameSave {
   things: string[];
   /** As áreas em que o grupo já pisou, na ordem em que pisou: é aonde a viagem leva (ver ../world/travel.ts). */
   visited: string[];
+  /** O que o jogador já viu: quem enfrentou, com quem falou (ver ../codex.ts). O save de antes começa vazio. */
+  codex: Codex;
   /** O estado da história (flags, trechos lidos, escolhas gastas), como o StoryRunner o entrega. */
   story: string | null;
   /** Quantas pausas curtas ainda cabem antes do próximo acampamento (ver ../world/rest.ts). */
@@ -233,6 +236,7 @@ export function newGame(character: Character): GameSave {
     broken: [],
     things: [],
     visited: [],
+    codex: emptyCodex(),
     story: null,
     shortRests: SHORT_RESTS,
     playTimeMs: 0,
@@ -283,6 +287,7 @@ export function parseSave(raw: unknown): ParsedSave {
       things: readKeys(current.things),
       // O save de antes disto não sabe por onde andou: começa pela área em que está, que entra ao abrir.
       visited: readKeys(current.visited).filter((id) => id in AREAS),
+      codex: readCodex(current.codex),
       story,
       shortRests: Math.min(SHORT_RESTS, readCount(current.shortRests)),
       playTimeMs: readCount(current.playTimeMs),

@@ -181,7 +181,19 @@ Oryndu: Na cheia, barco fica em terra.
 
 === naufragio ===
 Uma barcaça de grãos com o fundo aberto de baixo pra cima, como uma casca. O grão inchou na água e escorre pelas tábuas. Ninguém tirou a carga. Ninguém vai tirar.
+{receita_ouvida && not temperadas && not has_item("item-pregos-de-barco") && in_party("jarupa"): -> pregos}
 -> END
+
+// A receita de Thrykar pede três pregos de barco que afundou com carga paga (cena 1.2 do roteiro).
+= pregos
++ [Tirar três pregos do costado.]
+    Jarupã enfia a ponta da espada entre duas tábuas e arranca três pregos verdes, um por um.
+    Endyru: A carga era paga?
+    Oryndu: Grão do conselho. Pago adiantado.
+    ~ give_item("item-pregos-de-barco")
+    -> END
++ [Deixar o casco como está.]
+    -> END
 
 // Um rochedo na margem: alguém conjurou ali antes do grupo.
 === rochedo ===

@@ -106,7 +106,7 @@ export const STATUSES = {
   bloodied: { id: "bloodied", name: "Sangue e tremor", toHit: -2, manaLimit: -1, focus: -3, untilRest: true },
   // --- O bicho de rio na água e na terra (ver soak em ./engine.ts): quem as põe e tira é o chão. ---
   /** Na água: só a ponta das costas à vista. Rápido, a Muralha alta, e se refaz a cada turno. */
-  submerged: { id: "submerged", name: "Submerso", speed: 2, wall: 6, regen: 6 },
+  submerged: { id: "submerged", name: "Submerso", speed: 2, wall: 10, regen: 8 },
   /** Fora d'água: lento, e sem a Muralha alta da água. O couro ainda não secou: segura o que o Baluarte segura. */
   beached: { id: "beached", name: "Em seco", speed: -3 },
   /** O couro secou ao vento e rachou (ver CRACK_TURNS em ./engine.ts): a Muralha quase não segura, e o golpe entra fundo. */

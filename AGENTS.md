@@ -338,10 +338,9 @@ O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ai
 
 | # | Task | O que é |
 |---|---|---|
-| 97 | **Ver o combate novo na tela** | Jogada a abertura (2026-11-13, no navegador, por script): as faixas na mira e no registro, o custo, a esquiva, Agarrar, Empurrar e Derrubar emendando o Golpe, Caído se levantando, e a barra com os verbos (cabe em duas fileiras). Corrigido: a linha da chance ficava em cima do Passo com duas fileiras e não somava 100 (faltava o improvável); o cartão do Agarrar dizia "movimento -99" (agora "não anda"); o Exposto saía duas vezes no registro; Caído não aparecia no mapa (agora o boneco deita) e as condições do outro lado só se liam no registro (agora no rótulo do mouse); num clone novo o `npm run dev` subia sem a história. Falta: a magia de Endyru (recitar e soltar), o armazém. Visto e vai pra 103: na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; o Fôlego do espadachim zera pela rodada 4. |
 | 98 | **Os custos que faltam** | Entraram Fôlego, ferida própria e marca. Faltam os outros da `combate` §2.2: tempo (a recitação que quebra como preço), posição (perder a altura, sair Prensado), equipamento (a lâmina lasca, a gravação se gasta), gente em volta (fora da deixa de Oryndu) e lei (conjurar sem licença). Cada um pede uma regra de quando cai: vai pro autor antes. |
 | 100 | **A margem e a borda do barco** | A `combate` §4.1 diz que borda do barco e margem prensam. Hoje prensa o que barra o passo (parede, corpo, caixote, barranco); a água não barra. Decidir com o autor se empurrar pra dentro d'água é Prensado, Caído ou outra coisa (no Ykuruã, o contrário de tirá-lo da água). |
-| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. |
+| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. Visto na tela (task 97): na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; com dois guardas e o besteiro em cima, toda recitação dele quebra antes de sair; o Golpe Pesado tira 27 a 36 e derruba guarda e saqueador de uma vez; o Fôlego do espadachim zera pela rodada 4. No `balance:grupo` (100 lutas por luta, a IA dos dois lados): o grupo vence todas as lutas do jogo, em 1 a 4 rodadas, quase sem ninguém cair; a patrulha cai em pouco mais de uma rodada, porque o Golpe Pesado com custo tira 31 e a Espada tem 30. A final foi acertada com o autor em 2026-11-13 (ver Feito, task 80: a IA e a água). E uma pergunta pro autor: o chuço alcança 2, e da Ipojy com espada (alcance 1) nenhum Contragolpe sai contra quem cutuca de longe — os guardas erraram Xanduí rodadas a fio sem levar nada de volta. |
 
 ### P1 — pedidos do autor (2026-10-31)
 Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
@@ -361,24 +360,14 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 ### P2 — corpo
 | # | Task | O que é |
 |---|---|---|
-| 94 | **Ver na tela o que só se testou no motor** | Ninguém abriu no jogo: a árvore desenhada (`R` na ficha) e o desaprender no acampamento, o item jogado num aliado, as ordens, a Disparada e o Ajudar, jogar fora e arrumar a mochila, a opção Árvore dos companheiros. Jogar cada um e corrigir o que sair torto. |
 | 96 | **Ícones e arte das peças novas** | Os ícones da árvore, da Disparada, do Ajudar e das ordens são os provisórios de `icons.ts`, emprestados de outras coisas. Entram com a task 70. |
 | 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
-| 71 | **Relíquias e runas** | Itens que não se gastam: efeito passivo além de atributo (o acessório de hoje só soma atributo), encaixe em equipamento. As armas lendárias da história entram aqui. |
-| 72 | **Coleta e preparo** | Materiais no mapa e no espólio; receitas de consumível. |
-| 73 | **Companheiros como gente** | Afinidade, conversa de acampamento, comentário no meio do diálogo dos outros, missão pessoal, discordar de uma escolha. |
-| 74 | **Reputação** | Como cada facção e cada lugar vê o grupo, e o que isso abre ou fecha (preço, diálogo, saída). |
-| 75 | **Códice** | O que o jogador já viu: bestiário (com o que descobriu de cada criatura — estilo, mania, fraqueza), gente, lugares. |
-| 76 | **Mais apoios** | Hoje só existe Ler a água (Oryndu). Apoio novo é uma linha em `SUPPORTS`, mas faltam os tipos (curar de fora, distrair, avisar). |
-| 77 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
-| 78 | **Terreno que muda** | A água e a cheia já existem. Falta lama, ponte que cai, porta que se fecha no meio da luta; luz e escuro pesando na visão; hora do dia e clima. |
-| 79 | **Tutorial** | Ensinar movimento, ação, bônus, reação, cobertura, flanco, estilo e emboscada dentro do jogo, na ordem em que aparecem. |
-| 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1. O herói já entra com o equipamento de começo da classe. Falta grupo x grupo, por nível (é onde as Técnicas aparecem), com item; os números dos kits e das peças, que são os primeiros a conferir; e os números do Fôlego (quanto cada coisa custa, quanto a guarda devolve). |
+| 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1, e `balance:grupo` o trio em campanha contra cada luta do jogo (ver Feito). A final já foi acertada (ver Feito, a IA e a água). Falta: as lutas de gente, que o grupo ainda vence em uma a três rodadas (o Golpe Pesado, que o autor deixou como está); os números dos kits e das peças; os do Fôlego; e o item, que nenhuma das duas usa. Mexer em número é com o autor (task 103). |
 
 ### P3 — produto
 | # | Task | O que é |
 |---|---|---|
-| 81 | **Empacotar** | Electron, página na Steam, conquistas. O build já usa caminhos relativos. |
+| 81 | **Empacotar, o resto** | O Electron entrou (ver Feito). Faltam a página na Steam e as conquistas (pedem a conta do Steamworks e o que o autor quer premiar), o ícone do app (sai com a arte, task 70), e os builds de Windows e Mac feitos e abertos numa máquina de cada um: aqui só o de Linux foi feito e aberto. |
 | 82 | **Save na nuvem** | Não existe servidor: seria do zero, e o jogo não pode depender dele. |
 | 83 | **Jogo novo com o que se levou** | New Game+. Falta tudo. |
 | 84 | **Tradução e acessibilidade** | Texto fora do código (o do jogo já está em Ink; o da interface não), daltonismo, leitor de tela onde der. |
@@ -774,6 +763,107 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   de verbo, que sai de graça e não se apara. O Ykuruã não monta cadeia: não tem mente (`bestiario` §1). No
   `balance:matrix` as lutas ficaram meio turno mais curtas dos dois lados; o mago sozinho contra Jurendy foi de 66% a 41%
   (os dois do Círculo emendam), o espadachim contra o Ykuruã ficou no ruído (21% a 15%). Os números são da task 103.
+- **97. O combate novo visto na tela** (2026-11-13, no navegador, por script). Jogadas a abertura (pagando e
+  lutando), a recitação de Endyru (declarar num turno, sair no seguinte: Puxão tira do lugar, Empurrão derruba; e quebrar
+  apanhando) e o armazém. Funcionam: as faixas na mira e no registro, o custo, a esquiva, o aparar, Agarrar, Empurrar e
+  Derrubar emendando o Golpe ("emenda o 2º verbo"), Caído se levantando, a barra com os verbos (duas fileiras), o modo
+  automático. Corrigido: a linha da chance ficava em cima do Passo com duas fileiras e não somava 100 (faltava o
+  improvável); o cartão do Agarrar dizia "movimento -99" (agora "não anda"); o Exposto saía duas vezes no registro; Caído
+  não aparecia no mapa (o boneco agora deita, `setDown`); as condições do outro lado e a recitação pendente só se liam
+  no registro (agora no rótulo do mouse: "recitando Empurrão em Guarda do pedágio"); o cartão do dano mostrava só os
+  dados ("1d10 x1.8") e escondia o atributo, e o pesado tirava 30 — agora diz a conta inteira, "(Força + 1d10) x1.8 +
+  Força/2", com o atributo de quem a usa; e num clone novo o `npm run dev` subia sem a história (o `story.json` nascia
+  depois de o Vite listar o `public/`). O servidor de dev deixa `window.__jogo` pra um teste no navegador chegar à cena;
+  o build não leva. O que é número foi pra task 103.
+- **94. O que só se testou no motor, visto na tela** (2026-11-13, no navegador, por script). Funcionam: a árvore desenhada
+  (`R` na ficha: aprender, a linha dourada, o nó que pede o de cima recusado com o motivo) e o desaprender (fora do
+  acampamento, "Só no acampamento"; depois de acampar, `U: refazer a árvore` no rodapé devolve os pontos), os pontos de
+  atributo (`T`), a mochila (usar, passar, jogar fora com um sim antes, `O` arrumar, `Tab` o cinto de cada um), o Ajudar
+  (Ajudado no aliado), a ordem pelo botão do companheiro (no modo automático), a Disparada (pela IA) e a opção Árvore dos
+  companheiros nas Opções. Corrigido: o Unguento ia na mão de quem estava com a vida cheia e se gastava ("Restaura 0
+  HP"): o que só devolve vida agora não pega em quem está inteiro, nem em si, no motor e na tela (o botão apagado diz
+  por quê); "HP" e as "corrupções recentes" do Eälen saíram do texto dos itens ("de vida"); o registro da ordem dizia
+  "Endyru a Jarupã: segurar posição" (agora "Endyru manda Jarupã segurar posição"); e a opção dizia "Eu comando / Por
+  conta própria" enquanto o botão da luta diz "manual / automático" (agora os dois dizem o mesmo).
+- **81. O jogo no desktop** (2026-11-13). O workspace `desktop/` empacota o build do client com Electron: `npm run desktop` abre
+  o jogo numa janela, `npm run desktop:pack` faz o app numa pasta e `npm run desktop:dist` os instaladores (Windows: NSIS e
+  portátil; Linux: AppImage; Mac: dmg). O jogo é servido por um protocolo próprio (`app://jogo/`), sem rede e sem
+  servidor; a janela não navega pra fora, e F11 ou Alt+Enter troca a tela cheia. As fontes (Cinzel e Spectral) agora vão
+  dentro do jogo, também no navegador, e não do Google: sem internet, o título saía em Georgia. Feito e aberto aqui o
+  app de Linux, rodando sozinho: o título com as fontes, o jogo novo, e o save que continua depois de fechar e abrir. O
+  que faltou é o resto da task 81. Detalhe em `docs/motor.md`.
+- **80. O balanço em grupo** (2026-11-13). `npm run balance:grupo` (`client/scripts/balanceParty.ts`) roda o trio, com
+  Oryndu de apoio, contra cada grupo de inimigos dos quatro mapas, no próprio mapa (chão, altura, água, destrutíveis,
+  cheia e as deixas da luta, como o guincho e o estouro do ato 3), pela IA do jogo dos dois lados. O grupo segue a
+  campanha do roteiro: o nível sai do XP das lutas de antes, os pontos se gastam pela ordem automática, Endyru chega
+  ao Círculo depois da primeira ida e os dois ao Corpo depois da ponte. Começa onde a luta começaria (no gatilho perto,
+  ou chegando a 6 quadrados). A final roda com e sem o preparo. Por luta: vitória, rodadas, quantos do trio caem,
+  quantas vezes Endyru cai, e as lutas sem fim; `TRACE=1` mostra cada golpe. O que ela mostrou foi pra task 103.
+- **O que o Feito dizia que não foi visto, visto** (2026-11-13, no navegador, por script). Funcionam na tela: as missões
+  (`J`, `Tab`: a aberta em cima, a falhada e a cumprida embaixo, com o sinal de cada uma), a loja da banca (comprar, o
+  estoque que desce, a fala da vendedora, vender pela metade na outra aba), o Preparar (a barra só acende o que se
+  prepara), o Vigiar, o Esconder-se (apagado à vista, dizendo por quê), o Levantar quem caiu (Xanduí levanta Endyru), a
+  investida com `F` (o outro lado sai Abalado) e o relevo na chance ("de cima +2, por cima da mureta"). Não se viu a
+  emboscada: de onde o script chegou, a patrulha já via o grupo. Corrigido: o Preparar dizia duas vezes no registro
+  ("prepara Golpe Pesado pra quem chegar" e "De vigia"); e, numa investida, o Gryskar do lado que a levou pagava 1 de
+  Fôlego pra abrir a ordem e agia depois de todos do mesmo jeito: agora quem leva a investida não paga (teste novo).
+- **75. O códice** (2026-11-13). A terceira aba do `J` (Diário · Missões · Códice) mostra o que o jogador já viu: quem o
+  grupo enfrentou, com o que a luta mostrou de cada um (nome, escola e grau, aura, arma, os golpes com os nomes do
+  registro, quantas vezes enfrentou e derrubou, onde); com quem falou, e onde; e por onde andou. Nada de texto novo do
+  mundo: o `summary` e o `lore` do bestiário, que o jogo nunca mostrou, ficam de fora, e a fraqueza de cada bicho também
+  (o que ele aguenta é fato dele, e espera o bestiário da história, como na task 62). Vai no save (`codex`, sem versão
+  nova; o save de antes começa vazio). As abas que abrem na primeira página (Missões, Códice) agora enchem a primeira,
+  e não a última. Visto no navegador, depois da luta do pedágio.
+- **80. A final do jeito do roteiro: a IA e a água** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). A IA
+  do grupo só batia: entrava na água atrás do Ykuruã, empurrava o bicho pro fundo com o Arremesso e nunca acendia um
+  círculo. Agora tirar o bicho de rio da água vale mais que um golpe médio (e devolvê-lo custa o mesmo), cada quadrado
+  mais perto do seco vale um pouco, e com bicho de rio vivo ninguém do grupo quer terminar o turno com o pé na água
+  (`riverGain`, `WET_FOOT_VALUE`): o grupo fica no seco, o bicho vem até a beira, e o Puxão o tira. Os três círculos do
+  preparo estavam na faixa baixa da margem, e a cheia (duas subidas pelo relógio, mais a da virada da metade da vida)
+  os apagava antes de o bicho chegar ao alcance; foram pra margem alta, a coluna 10, que a cheia não sobe. Com a IA
+  certa, a água ficou mais forte: Submerso agora tem Muralha +10 (era +6) e cura 8 por turno (era 6). No
+  `balance:grupo`, a final foi de 100% em 4 rodadas, sem ninguém cair, a 95% em 15 rodadas, com Endyru caindo em 11%
+  das lutas; com 12 e 10 seria 63% em 37 rodadas. O simulador começava a final num banco de areia no meio do rio: agora
+  cada luta de história começa no gatilho que a abre. A IA ainda luta às vezes dos bancos de areia em vez de segurar a
+  margem, e quase não acende os círculos; o preparo pesa pouco pra ela (95% contra 94%), mas está ao alcance de quem
+  joga. Testes novos: puxar pro seco vale mais que empurrar pro fundo, e o pé na água se evita.
+- **79. As dicas de primeira vez** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). A abertura continua
+  ensinando pelo que acontece; por cima, uma linha no alto da tela na primeira vez de cada coisa, e nunca mais: a vez
+  do jogador na luta (a barra), o objetivo da luta (o guincho), a primeira mira (as três faixas), a primeira cadeia, a
+  primeira recitação, o voto da Ipojy (no primeiro clique que ele recusa) e a primeira área com quem vigia (`Q` e `F`).
+  Some em 9 segundos ou num clique; Opções, Jogo, Dicas, desliga. O que já se viu fica no dispositivo. Visto no
+  navegador, na luta do pedágio.
+- **78. A passarela e a chuva** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). Na primeira ida, quatro
+  tábuas de passarela saem da margem de lodo pra dentro d'água (só com o contrato e antes do ato 2), e o bote do Ykuruã
+  parte a tábua de quem está em cima, como a cena 1.3 descreve ("partindo a passarela de madeira"): a água volta, e quem
+  estava lá fica com o pé no rio. É um destrutível que é chão (`floor`, `walkway`), com arte nova no pintor. Na luta
+  final, a deixa da virada (a metade da vida do bicho) agora também faz a chuva apertar: até o fim da luta, a vista só
+  alcança 4 quadrados (`rain` na deixa, `Encounter.sight`), e a tela se cobre de chuva. No `balance:grupo` a final não
+  mudou (95%, 15 rodadas): quem luta ali luta de perto. Não entraram, como aprovado: lama (o lodo já custa passo
+  dobrado), ponte que cai (a da clareira é de pedra), porta que fecha, hora do dia. A passarela foi vista no navegador;
+  a chuva, só no motor e nos testes.
+- **71 e 72. A receita de Thrykar** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). A receita deixou de
+  ser só fala: Thrykar diz que a banha e os pregos "quem traz é o freguês" (`receita_ouvida`). A banha de bagre cego sai
+  da guilda dos barqueiros ("Remo no seco não precisa de banha"), os três pregos saem do costado da barcaça de grãos
+  afundada nos baixios ("Grão do conselho. Pago adiantado."), e os dois são itens-chave. Com eles e dois de prata, ele
+  tempera as duas espadas como antes (as trinta marretadas, a conta que para no vinte), e agora a lâmina temperada fura 2
+  da Muralha da água no bicho de rio (`riverPierce` na arma). É uma receita só, de um ferreiro, pra um bicho: não entrou
+  sistema de coleta nem de preparo, e nenhuma relíquia além disso. O texto novo (as três falas de Thrykar, da guilda e
+  da barcaça) é do co-autor, na voz do guia de falas, aprovado com a proposta. O teste do caminho inteiro passa pela
+  guilda, pela barcaça e pela forja; teste novo do furo na Muralha.
+- **73. As noites acampadas** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). Acampar (`Z`) agora abre
+  a conversa da noite, se a história tem uma pra aquele momento (`client/story/noite.ink`), uma vez cada: depois do
+  contrato, Xanduí pede que Endyru leia de novo a parte do pagamento "pra ver se mudou", e os lábios dela mexem junto no
+  fim da frase ("Papel de conselho muda"); na véspera da cheia, Oryndu bate o remo no casco, Endyru refaz a conta da
+  corda, e Xanduí passa a pedra na espada no ritmo do remo. A da floresta é a que já existia (o círculo de giz e o
+  placar). Depois da conversa, o painel de gravar abre como antes. Os comentários dos companheiros no meio da conversa
+  dos outros já estavam onde o roteiro os junta (a Mesa, Thrykar, a conselheira), e não precisou de mais. Não entraram
+  afinidade, missão pessoal nem discordar de escolha: a amizade dos três é a do Livro 1. O texto das duas noites é do
+  co-autor, na voz do guia de falas, aprovado com a proposta. Visto no navegador; teste novo da noite que não se repete.
+- **74, 76 e 77. O que o corpo do jogo não pede** (decidido com o autor em 2026-11-13, `docs/propostas-corpo.md`). Não
+  entram: a reputação (o fecho mostra que o trio não muda nada, e um número prometeria o contrário), mais apoios (um apoio
+  depois de Oryndu tiraria o peso da morte dele, e antes dela o roteiro não põe ninguém junto) e a invocação (atração e
+  repulsão não invoca, e uma criatura aliada seria fato novo de magia e de bestiário).
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão

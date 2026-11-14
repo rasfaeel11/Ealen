@@ -26,7 +26,12 @@ export function liftable(encounter: Encounter, unit: Unit): Unit[] {
 function canTarget(encounter: Encounter, unit: Unit, ability: Ability, pos: Pos): boolean {
   // Quem atira de um chão mais alto alcança um quadrado a mais.
   const above = isShot(ability) && (tileAt(encounter.grid, unit.pos)?.elevation ?? 0) > (tileAt(encounter.grid, pos)?.elevation ?? 0);
-  return distance(unit.pos, pos) <= ability.range + (above ? 1 : 0) && hasLineOfSight(encounter.grid, unit.pos, pos);
+  return distance(unit.pos, pos) <= ability.range + (above ? 1 : 0) && seen(encounter, unit.pos, pos) && hasLineOfSight(encounter.grid, unit.pos, pos);
+}
+
+/** A chuva (Encounter.sight) fecha a vista: além dela, ninguém mira. Sem chuva, sempre. */
+function seen(encounter: Encounter, from: Pos, to: Pos): boolean {
+  return encounter.sight === undefined || distance(from, to) <= encounter.sight;
 }
 
 /** Se `unit` pode mirar o quadrado `pos` com uma habilidade de `targets: "tile"`, de onde está. */
@@ -242,7 +247,8 @@ export function isThrown(item: Pick<ConsumableItem, "data">): boolean {
 /**
  * Em quem `unit` pode usar um item (comando `useItem`): ele mesmo e os aliados
  * de pé a até ITEM_REACH quadrados, à vista. Ele vem primeiro. O item que se
- * joga (`isThrown`) vai só nos inimigos de pé, com o mesmo alcance e a vista.
+ * joga (`isThrown`) vai só nos inimigos de pé, com o mesmo alcance e a vista. O
+ * que só devolve vida (`heal_hp`) não vai em quem está com a vida cheia.
  */
 export function itemTargets(encounter: Encounter, unit: Unit, item?: Pick<ConsumableItem, "data">): Pos[] {
   const thrown = item !== undefined && isThrown(item);
@@ -252,10 +258,14 @@ export function itemTargets(encounter: Encounter, unit: Unit, item?: Pick<Consum
       (thrown ? other.team !== unit.team : other.team === unit.team) &&
       isAlive(other) &&
       distance(unit.pos, other.pos) <= ITEM_REACH &&
+      seen(encounter, unit.pos, other.pos) &&
       hasLineOfSight(encounter.grid, unit.pos, other.pos),
   );
-  const reached = others.map((other) => ({ ...other.pos }));
-  return thrown ? reached : [{ ...unit.pos }, ...reached];
+  // O que só devolve vida não vai em quem está inteiro: gastaria o pote à toa.
+  const heals = item !== undefined && item.data.effect.kind === "heal_hp";
+  const wants = (other: Unit) => !heals || other.currentHp < other.maxHp;
+  const reached = others.filter(wants).map((other) => ({ ...other.pos }));
+  return thrown ? reached : [...(wants(unit) ? [{ ...unit.pos }] : []), ...reached];
 }
 
 /**

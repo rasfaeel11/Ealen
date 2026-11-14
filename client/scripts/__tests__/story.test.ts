@@ -228,10 +228,19 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   const quests = () => runner.quests().map(({ id, state }) => `${id}:${state}`);
   assert.deepEqual(quests(), ["contrato:open"]);
 
-  // O ferreiro tempera as duas espadas com a prata do adiantamento.
-  play("ferreiro", "Pagar dois de prata");
+  // O ferreiro diz a receita; a banha vem da guilda, os pregos da barcaça afundada nos baixios. Com os dois na
+  // mochila, ele tempera as duas espadas com a prata do adiantamento, e a lâmina passa a furar a água do bicho.
+  play("ferreiro", "Perguntar se ele tempera", "Ir embora");
+  assert.equal(runner.flag("receita_ouvida"), true);
+  play("guilda", "Pedir banha de bagre", "Deixar o velho");
+  play("naufragio", "Tirar três pregos");
+  assert.equal(itemCount(host.character, "item-banha-de-bagre"), 1);
+  assert.equal(itemCount(host.character, "item-pregos-de-barco"), 1);
+  play("ferreiro", "Pôr a banha e os pregos");
   assert.equal(runner.flag("temperadas"), true);
   assert.equal(host.character.purse?.prata, 0);
+  assert.equal(itemCount(host.character, "item-banha-de-bagre"), 0, "a banha vai pra lâmina");
+  assert.equal(itemCount(host.character, "item-pregos-de-barco"), 0, "e os pregos pra brasa");
 
   // A luta do armazém é opcional: dá pra deixar a corda com eles e voltar depois. A guilda conta do barulho.
   play("guilda", "Perguntar do barulho", "Deixar o velho");
@@ -293,4 +302,19 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
 test("a luta final dos baixios tem cheia: a água sobe dentro dela", () => {
   const final = maps.baixios.enemies.find((enemy) => enemy.group === "final");
   assert.deepEqual(final?.flood, { every: 3, rises: 2 });
+});
+
+test("as noites acampadas: depois do contrato, uma conversa, e só uma vez", () => {
+  const host = makeHost(5, 3);
+  const runner = new StoryRunner(story, host);
+  // A abertura põe o trio no barco (join_party); o contrato vem da Mesa.
+  let step = runner.start("abertura");
+  while (step.choices.length > 0) step = runner.choose(step.choices.find((choice) => choice.text.startsWith("Pagar"))!.index);
+  runner.setFlag("contrato", true);
+  const said = (steps: { beats: { kind: string; text?: string }[] }) => steps.beats.map((beat) => beat.text ?? "").join(" ");
+  const first = runner.start("noite");
+  assert.match(said(first), /Pra ver se mudou/);
+  assert.deepEqual(first.choices, []);
+  const second = runner.start("noite");
+  assert.equal(said(second).trim(), "", "a mesma noite não se repete");
 });

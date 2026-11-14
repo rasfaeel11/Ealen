@@ -132,7 +132,10 @@ import {
   type TeamId,
   type Trail,
   type WalkBody,
+  noteFight,
+  notePerson,
 } from "@jogo/shared";
+import { showTip } from "../game/tips";
 import { areaMusic, playMusic, sfx } from "../game/audio";
 import { BagPanel } from "../game/BagPanel";
 import { EngravePanel } from "../game/EngravePanel";
@@ -746,6 +749,8 @@ export default class WorldScene extends Phaser.Scene {
     }
     this.syncParty();
     this.occupy();
+    // Gente que vigia (quem tem pra onde olhar e não é passivo): a primeira vez, a dica do agachar e da emboscada.
+    if (this.enemies.some((enemy) => !enemy.passive && enemy.facing !== undefined)) showTip(this, (object) => this.addHud(object), "sneak");
   }
 
   /** Acerta a fila com o grupo: quem a história pôs nele aparece junto do personagem, quem saiu some. */
@@ -1041,7 +1046,9 @@ export default class WorldScene extends Phaser.Scene {
     this.persist();
     this.refreshStatus();
     this.showBanner(hungry.length > 0 ? "Uma noite de barriga vazia." : "Uma noite inteira.");
-    this.openEngrave();
+    // A conversa da noite, se a história tem uma pra este momento (ver client/story/noite.ink). Depois, o gravar.
+    if (this.story.hasKnot("noite")) void this.converse("noite").then(() => this.openEngrave());
+    else this.openEngrave();
   }
 
   /** O descanso de quem conjura: gravar, num objeto ou num círculo, o que na luta vai sair sem o tempo de recitar. */
@@ -1117,6 +1124,8 @@ export default class WorldScene extends Phaser.Scene {
       let step = this.story.start(knot);
       for (;;) {
         steps.push(step);
+        // O códice anota quem falou, e onde.
+        for (const beat of step.beats) if (beat.kind === "line" && beat.speaker) notePerson(this.save.codex, beat.speaker, this.area.id, this.character.name);
         // Um trecho que só mexe em flags (ou decide que não tem nada a dizer) passa sem abrir a caixa.
         if (!box && !isSilent(step)) {
           if (walking) this.hud.setVisible(false);
@@ -1443,6 +1452,9 @@ export default class WorldScene extends Phaser.Scene {
     const unit = findUnit(encounter, character.id)!;
     const company = this.followers.map((follower) => follower.character);
     syncPartyFromEncounter(encounter, [character, ...company], winner !== "enemy");
+    // O códice anota quem estava do outro lado e quem caiu, vencida ou perdida a luta.
+    const fallen = (enemy: AreaEnemy) => (findUnit(encounter, enemy.id)?.currentHp ?? 1) <= 0;
+    noteFight(this.save.codex, this.area.id, fighters.map((enemy) => enemy.creature), fighters.filter(fallen).map((enemy) => enemy.creature));
     // O que a história pediu pra depois: no meio da luta (as deixas) e, antes disso, na conversa que a começou.
     const after = aftermath(this.fightSteps);
     after.travel ??= this.travelAfterFight;
@@ -1957,7 +1969,7 @@ export default class WorldScene extends Phaser.Scene {
   private openJournal(): void {
     this.halt();
     sfx("uiOpen");
-    const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), this.story.quests(), () => this.closePause());
+    const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), this.story.quests(), this.save.codex, this.save.visited, () => this.closePause());
     this.pause = panel;
   }
 

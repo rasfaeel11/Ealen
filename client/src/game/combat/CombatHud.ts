@@ -1,4 +1,5 @@
 import * as Phaser from "phaser";
+import { showTip } from "../tips";
 import { activeUnit, isAlive, styleLabel, type Encounter, type Unit } from "@jogo/shared";
 import { sfx } from "../audio";
 import { RIGHT_COLUMN_LEFT, RIGHT_COLUMN_WIDTH } from "../ClockBar";
@@ -557,6 +558,8 @@ export class CombatHud {
   private deny(why: string): void {
     sfx("deny");
     this.warn(why);
+    // A primeira vez que o voto da Ipojy segura o clique, a dica explica (ver tips.ts).
+    if (why.startsWith("O voto da Ipojy")) showTip(this.scene, this.addHud, "vow");
   }
 
   /** A linha de explicação sobre a barra: o que o clique faria. */

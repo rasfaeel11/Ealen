@@ -59,7 +59,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "A mesma espada reta, temperada na receita do ferreiro de Ybytuguá. O fio entra em couro que antes só riscava.",
     category: "equipment",
     rarity: "uncommon",
-    data: { slot: "weapon", dice: { count: 1, sides: 10 }, range: 1, toHit: 1, classes: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 10 }, range: 1, toHit: 1, classes: ["espadachim"], riverPierce: 2 },
   },
   {
     id: "gear-espada-pesada-temperada",
@@ -67,7 +67,7 @@ export const EQUIPMENT: EquipmentItem[] = [
     description: "A espada pesada, temperada na receita do ferreiro de Ybytuguá. Ainda pesa; agora pesa onde bate.",
     category: "equipment",
     rarity: "uncommon",
-    data: { slot: "weapon", dice: { count: 1, sides: 12 }, range: 1, classes: ["espadachim"] },
+    data: { slot: "weapon", dice: { count: 1, sides: 12 }, range: 1, classes: ["espadachim"], riverPierce: 2 },
   },
   // --- A gente do rio e de Ymboripe ----------------------------------------
   {

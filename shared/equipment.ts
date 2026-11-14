@@ -40,6 +40,8 @@ export interface Arm {
   ammo?: number;
   /** O que ela faz na carne (ver DamageType): a espada corta, a ponta fura, a mão vazia bate. */
   damageType: DamageType;
+  /** Contra bicho de rio, fura este tanto da Muralha da água (a receita de Thrykar). */
+  riverPierce?: number;
 }
 
 const D6: Dice = { count: 1, sides: 6 };
@@ -82,6 +84,7 @@ export function armOf(character: Pick<Character, "characterClass" | "equipment">
     toHit: weapon.toHit ?? 0,
     damageType: weapon.damageType ?? "corte",
     ...(weapon.ammo !== undefined ? { ammo: weapon.ammo } : {}),
+    ...(weapon.riverPierce ? { riverPierce: weapon.riverPierce } : {}),
   };
 }
 

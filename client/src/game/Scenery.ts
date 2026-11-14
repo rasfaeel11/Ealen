@@ -199,8 +199,8 @@ export class Scenery {
         .image((x + 0.5) * tileSize, base, PROPS_KEY, kind)
         .setOrigin(0.5, 1)
         .setScale(scale)
-        // O círculo é riscado no chão: quem pisa fica por cima dele, de qualquer lado.
-        .setDepth(kind === "circle" ? FLOOR_DEPTH + 1 : base),
+        // O círculo é riscado no chão, e a passarela é chão: quem pisa fica por cima dos dois, de qualquer lado.
+        .setDepth(kind === "circle" || kind === "walkway" ? FLOOR_DEPTH + 1 : base),
     );
   }
 

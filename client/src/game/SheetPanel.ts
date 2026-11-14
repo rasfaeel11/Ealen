@@ -148,6 +148,7 @@ export function describeEquipment(item: EquipmentItem, brief = false): string {
       `dano ${data.dice.count}d${data.dice.sides}`,
       data.range === 1 ? (brief ? "de perto" : "corpo a corpo") : `alcance ${data.range}`,
       ...(data.toHit ? [`acerto ${signed(data.toHit)}`] : []),
+      ...(data.riverPierce ? [`fura ${data.riverPierce} da Muralha do bicho de rio`] : []),
       ...(data.classes && !brief ? [`só ${data.classes.map((each) => CLASS_INFO[each].name).join(", ")}`] : []),
     ].join(" · ");
   }
@@ -497,7 +498,7 @@ export class SheetPanel {
   private showAbility(ability: Ability, text: string, tag = ""): void {
     this.detailName.setText(`${ability.name}${tag ? `  ·  ${tag}` : ""}`);
     this.detail.setY(this.detailName.y + this.detailName.height + 4);
-    this.detail.setText(`${ability.flavor}\n\n${describeAbility(ability)}\n\n${text}`);
+    this.detail.setText(`${ability.flavor}\n\n${describeAbility(ability, this.character)}\n\n${text}`);
   }
 
   /** A coluna da direita volta a ser a grade de habilidades. */

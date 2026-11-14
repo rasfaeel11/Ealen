@@ -1,5 +1,7 @@
 import * as Phaser from "phaser";
 import {
+  ATTRIBUTE_NAMES,
+  CLASS_INFO,
   CONCEPTS,
   CHAIN_BREATH,
   COVER_DEFENSE,
@@ -70,8 +72,9 @@ import {
   type TeamId,
   type Unit,
 } from "@jogo/shared";
+import { showTip, type TipId } from "../tips";
 import { sfx } from "../audio";
-import { COLORS, TEXT_COLORS } from "../config";
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { setOption, settings } from "../settings";
 import type { PartyEntry } from "../hud/PartyColumn";
 import { abilityIcon, itemIcon } from "../icons";
@@ -218,7 +221,14 @@ export function describeStatus(status: StatusTemplate): string {
 }
 
 /** O que uma habilidade faz, em uma linha — pra quem vai decidir se usa. */
-export function describeAbility(ability: Ability): string {
+/** O destrutível de pé num quadrado, menos o que é chão (a passarela): esse não esconde quem está em cima. */
+function solidPropAt(encounter: Encounter, pos: Pos): ReturnType<typeof propAt> {
+  const prop = propAt(encounter, pos);
+  return prop && !propTemplate(prop).floor ? prop : undefined;
+}
+
+/** O que a habilidade faz, em números. Com `who`, o atributo da conta do dano sai pelo nome (o principal da classe dele). */
+export function describeAbility(ability: Ability, who?: Pick<Unit, "characterClass">): string {
   const parts: string[] = [ability.cost === "action" ? "Ação" : "Ação bônus"];
 
   if (ability.targets === "self") parts.push("em si");
@@ -233,10 +243,20 @@ export function describeAbility(ability: Ability): string {
 
   for (const effect of ability.effects) {
     if (effect.kind === "damage") {
+      // A conta inteira, como o motor faz (`rollDamage`): (atributo + dados) x multiplicador + bônus. Só os dados
+      // escondiam metade do golpe: o pesado dizia "1d10 x1.8" e tirava 30.
       const dice = `${effect.dice.count}d${effect.dice.sides}`;
-      parts.push(effect.multiplier ? `dano ${dice} x${effect.multiplier}` : `dano ${dice}`);
+      const attribute =
+        effect.attribute === undefined ? undefined : effect.attribute === "primary"
+            ? who ? ATTRIBUTE_NAMES[CLASS_INFO[who.characterClass].primaryAttributes[0]] : "atributo"
+            : ATTRIBUTE_NAMES[effect.attribute];
+      const base = attribute ? `${attribute} + ${dice}` : dice;
+      const scaled = effect.multiplier ? `(${base}) x${effect.multiplier}` : base;
+      const bonus = effect.bonus ? ` + ${ATTRIBUTE_NAMES[effect.bonus.attribute]}/${effect.bonus.divisor}` : "";
+      parts.push(`dano ${scaled}${bonus}`);
       if (effect.type) parts.push(DAMAGE_LABEL[effect.type]);
       if (effect.piercing) parts.push("fura a armadura");
+      if (effect.riverPierce) parts.push(`fura ${effect.riverPierce} da Muralha do bicho de rio`);
       if (effect.leech) parts.push(effect.leech === 1 ? "devolve como vida o que tirar" : `devolve ${Math.round(effect.leech * 100)}% como vida`);
     } else if (effect.kind === "heal") {
       parts.push(`cura ${effect.dice.count}d${effect.dice.sides}, e quem recebe paga 1 de Fôlego a cada ${HEAL_PER_BREATH} (o dobro com fome)`);
@@ -337,6 +357,10 @@ export class CombatController {
   private readonly usedProps = new Set<string>();
   /** Quem a última linha de erro já deu como Exposto: o `statusApplied` que vem atrás não repete. */
   private exposedSaid?: string;
+  /** A chuva na tela, depois que uma deixa a fez apertar (evento `sightCut`). */
+  private rain?: Phaser.GameObjects.Graphics;
+  /** Quem acabou de Preparar: o "De vigia" que vem atrás não repete. */
+  private watchSaid?: string;
   /** Os quadrados clicáveis no modo atual. Não se desenham todos: ver `drawOptions`. */
   private options: Pos[] = [];
   private hover: Pos | null = null;
@@ -411,6 +435,8 @@ export class CombatController {
 
   destroy(): void {
     const { scene } = this.host;
+    this.rain?.destroy();
+    this.rain = undefined;
     scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
     scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     scene.input.keyboard?.off("keydown", this.onKey, this);
@@ -478,6 +504,39 @@ export class CombatController {
     this.selected = null;
     this.aim = null;
     this.refresh();
+    // A primeira vez que o jogador tem a vez: a barra. Numa luta com objetivo, o objetivo primeiro (ver tips.ts).
+    if (!(this.goals.length > 0 && this.tip("goal"))) this.tip("turn");
+  }
+
+  /** A chuva por cima da tela: riscos finos, inclinados, descendo sem parar. Uma vez por luta. */
+  private startRain(): void {
+    if (this.rain) return;
+    const { scene } = this.host;
+    const rain = this.host.addHud(scene.add.graphics().setDepth(9_000));
+    const drops = Array.from({ length: 140 }, () => ({ x: Math.random() * GAME_WIDTH, y: Math.random() * GAME_HEIGHT, speed: 0.6 + Math.random() * 0.5 }));
+    const draw = () => {
+      rain.clear();
+      rain.fillStyle(0x1b2430, 0.18).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      rain.lineStyle(1, 0xaab8c8, 0.45);
+      for (const drop of drops) {
+        drop.y += 14 * drop.speed;
+        drop.x -= 4 * drop.speed;
+        if (drop.y > GAME_HEIGHT) {
+          drop.y -= GAME_HEIGHT;
+          drop.x = Math.random() * GAME_WIDTH;
+        }
+        rain.lineBetween(drop.x, drop.y, drop.x - 4, drop.y + 12);
+      }
+    };
+    draw();
+    const timer = scene.time.addEvent({ delay: 33, loop: true, callback: draw });
+    rain.once(Phaser.GameObjects.Events.DESTROY, () => timer.remove());
+    this.rain = rain;
+  }
+
+  /** A dica de primeira vez `id`, na interface da luta. */
+  private tip(id: TipId): boolean {
+    return showTip(this.host.scene, this.host.addHud, id);
   }
 
   /**
@@ -553,7 +612,8 @@ export class CombatController {
     if (this.busy) return;
     const unit = activeUnit(this.encounter)!;
     const thrown = isThrown(item);
-    if (!thrown && itemTargets(this.encounter, unit).length === 1) {
+    const targets = itemTargets(this.encounter, unit, item);
+    if (!thrown && targets.length === 1 && samePos(targets[0], unit.pos)) {
       void this.issue({ type: "useItem", unitId: unit.id, itemId: item.id });
       return;
     }
@@ -652,6 +712,7 @@ export class CombatController {
     const aiming = this.selected;
     const inRange = this.options.some((option) => samePos(option, this.hover!));
     if (aiming?.attack && aiming.radius === undefined && inRange && !under.invulnerable) {
+      this.tip("bands");
       const odds = attackOdds(this.encounter, unit, aiming, under);
       const cost = Math.round(odds.cost * 100);
       this.hud.setChip(
@@ -663,7 +724,14 @@ export class CombatController {
     }
     const life = under.invulnerable ? "" : `  ${under.currentHp}/${under.maxHp}`;
     // As condições de quem está ali: do outro lado, é o único lugar além do registro em que Agarrado ou Prensado aparecem.
-    const conditions = under.statuses.map((status) => status.name).join(", ");
+    const notes = under.statuses.map((status) => status.name);
+    // O que ele está recitando, e em quem: a recitação não é condição, e até ela sair só o registro a dizia.
+    if (under.reciting) {
+      const spell = under.abilities.find((ability) => ability.id === under.reciting!.abilityId)?.name;
+      const aimed = under.reciting.unit ? this.encounter.units.find((unit) => unit.id === under.reciting!.unit) : undefined;
+      if (spell) notes.unshift(`recitando ${spell}${aimed ? ` em ${aimed.name}` : ""}`);
+    }
+    const conditions = notes.join(", ");
     this.hud.setChip(`${under.name}${life}${conditions ? `  ·  ${conditions}` : ""}`, this.chipAt.x, this.chipAt.y);
   }
 
@@ -851,7 +919,7 @@ export class CombatController {
             icon: abilityIcon(ability),
             tag: "Preparar",
             cost: "action",
-            body: `Deixa ${ability.name} pronta: até a sua próxima vez, sai no primeiro inimigo que entrar no alcance dela, na reação.\n${describeAbility(ability)}`,
+            body: `Deixa ${ability.name} pronta: até a sua próxima vez, sai no primeiro inimigo que entrar no alcance dela, na reação.\n${describeAbility(ability, unit)}`,
             enabled: fits,
             why: readyable(ability) ? why(ability) : "Isso não se prepara: só o que mira um inimigo e não se recita.",
             onClick: () => void this.issue({ type: "ready", unitId: unit.id, abilityId: ability.id }),
@@ -863,7 +931,7 @@ export class CombatController {
           tag: price(ability),
           cost: ability.cost === "action" ? "action" : "bonus",
           wait: cooldownLeft(unit, ability) || undefined,
-          body: `${ability.flavor}\n${describeAbility(ability)}`,
+          body: `${ability.flavor}\n${describeAbility(ability, unit)}`,
           enabled: canPay(ability) && abilityTargets(encounter, unit, ability).length > 0,
           why: ability.unseen && canPay(ability) && abilityTargets(encounter, unit, ability).length === 0 ? "Algum inimigo está vendo: saia da vista dele antes (atrás de parede, pedra alta ou barranco)." : why(ability),
           selected: this.selected?.id === ability.id,
@@ -952,8 +1020,12 @@ export class CombatController {
           cost: "bonus",
           count: slot.quantity,
           body: slot.item.description,
-          enabled: unit.turn.bonus && (!isThrown(slot.item) || itemTargets(encounter, unit, slot.item).length > 0),
-          why: unit.turn.bonus ? `Nenhum inimigo à vista a até ${ITEM_REACH} quadrados.` : "A ação bônus deste turno já foi gasta.",
+          enabled: unit.turn.bonus && itemTargets(encounter, unit, slot.item).length > 0,
+          why: !unit.turn.bonus
+            ? "A ação bônus deste turno já foi gasta."
+            : isThrown(slot.item)
+              ? `Nenhum inimigo à vista a até ${ITEM_REACH} quadrados.`
+              : `Ninguém ferido ao alcance: com a vida cheia, o ${slot.item.name} se gastaria à toa.`,
           selected: this.aim?.kind === "item" && this.aim.itemId === slot.item.id,
           onClick: () => this.chooseItem(slot.item),
         }),
@@ -1071,7 +1143,8 @@ export class CombatController {
         : `Ordem pra ${companion.name}: clique nele pra segurar posição, num aliado pra proteger, num inimigo pra mirar só nele. O botão de novo: avançar.`;
     }
     if (this.aim?.kind === "interact") {
-      const prop = hover ? propAt(encounter, hover) : undefined;
+      // A passarela é chão: quem está em cima é que importa (ver `floor` em shared/tactics/props.ts).
+      const prop = hover ? solidPropAt(encounter, hover) : undefined;
       return prop
         ? `${propTemplate(prop).interact}: ${propTemplate(prop).name}. Custa a ação.`
         : "Clique no objeto em que mexer. Esc ou botão direito volta a andar.";
@@ -1087,12 +1160,12 @@ export class CombatController {
       return "";
     }
 
-    const prop = hover && selected.radius === undefined ? propAt(encounter, hover) : undefined;
+    const prop = hover && selected.radius === undefined ? solidPropAt(encounter, hover) : undefined;
     if (prop) return `${PROPS[prop.kind].name}: ${prop.hp} de vida. Objeto não se esquiva — o golpe sempre pega.`;
 
     const target = hover && selected.radius === undefined ? unitAt(encounter, hover) : undefined;
     if (target?.invulnerable) return `${target.name} não tem vida pra perder: golpe nenhum o fere.`;
-    if (!target || !selected.attack) return `${describeAbility(selected)} — ${selected.flavor}`;
+    if (!target || !selected.attack) return `${describeAbility(selected, unit)} — ${selected.flavor}`;
 
     const odds = attackOdds(encounter, unit, selected, target);
     const plain = Math.round((odds.hit - odds.cost) * 100);
@@ -1260,6 +1333,7 @@ export class CombatController {
 
       case "recitationStarted": {
         // Começou a ler: a magia sai no próximo turno dele, e até lá o texto está à vista de quem quiser quebrá-lo.
+        if (this.unit(event.unit).team === "party") this.tip("recite");
         sfx("uiOpen");
         this.floatOver(event.unit, "Recitando...", TEXT_COLORS.goldBright, -30, 20);
         this.hud.log(`${this.unit(event.unit).name} começa a recitar ${event.name}.`);
@@ -1419,6 +1493,7 @@ export class CombatController {
       }
 
       case "chained": {
+        if (this.unit(event.unit).team === "party") this.tip("chain");
         this.floatOver(event.unit, event.feint ? "Troca!" : `Cadeia ${event.verbs}`, TEXT_COLORS.goldBright, -22);
         const paid = event.breath > 0 ? `${event.breath} de Fôlego` : "sem Fôlego";
         this.hud.log(`${this.unit(event.unit).name} emenda o ${event.verbs}º verbo (${paid}${event.feint ? ", trocando de verbo" : ""}).`);
@@ -1429,6 +1504,7 @@ export class CombatController {
       case "readied": {
         this.floatOver(event.unit, "Pronto", TEXT_COLORS.goldBright, -22);
         this.hud.log(`${this.unit(event.unit).name} prepara ${event.name} pra quem chegar.`);
+        this.watchSaid = event.unit;
         await this.wait(120);
         return;
       }
@@ -1545,7 +1621,7 @@ export class CombatController {
         if (actor) this.ring(actor.pos, COLORS.hp);
         actor?.setHp(event.remainingHp, unit.maxHp);
         this.floatOver(event.target, `+${event.amount}`, TEXT_COLORS.hp);
-        this.hud.log(`${unit.name} recupera ${event.amount} de HP.`);
+        this.hud.log(`${unit.name} recupera ${event.amount} de vida.`);
         this.refreshRoster();
         await this.wait(320);
         return;
@@ -1586,8 +1662,12 @@ export class CombatController {
         sfx("status");
         this.floatOver(event.target, event.name, TEXT_COLORS.guard, -22);
         // A linha do erro já disse "fica Exposto": não se repete.
-        const said = event.statusId === STATUSES.exposto.id && this.exposedSaid === event.target;
+        // Nem o "De vigia" que o Preparar põe: a linha dele já disse o que fica pronto.
+        const said =
+          (event.statusId === STATUSES.exposto.id && this.exposedSaid === event.target) ||
+          (event.statusId === STATUSES.watching.id && this.watchSaid === event.target);
         if (event.statusId === STATUSES.exposto.id) this.exposedSaid = undefined;
+        if (event.statusId === STATUSES.watching.id) this.watchSaid = undefined;
         if (!said) this.hud.log(`${this.unit(event.target).name}: ${event.name}.`);
         this.refreshRoster();
         await this.wait(200);
@@ -1676,7 +1756,7 @@ export class CombatController {
       }
 
       case "ordered":
-        this.hud.log(`${this.unit(event.unit).name} a ${this.unit(event.target).name}: ${orderLabel(event.order, this.encounter)}.`);
+        this.hud.log(`${this.unit(event.unit).name} manda ${this.unit(event.target).name} ${orderLabel(event.order, this.encounter)}.`);
         sfx("uiSelect");
         return;
 
@@ -1710,6 +1790,15 @@ export class CombatController {
         this.floatOver(event.supporter, event.name, TEXT_COLORS.gold, -22, 20);
         if (actor) this.ring(actor.pos, COLORS.gold);
         await this.wait(260);
+        return;
+      }
+
+      case "sightCut": {
+        // A chuva que aperta: riscos caindo por cima de tudo, e a vista curta até o fim da luta (Encounter.sight).
+        sfx("rumble");
+        this.startRain();
+        this.hud.log(`A chuva aperta: além de ${event.range} quadrados, ninguém enxerga ninguém.`);
+        await this.wait(420);
         return;
       }
 

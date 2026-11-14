@@ -35,6 +35,8 @@ export interface Settings {
   companionsAuto: boolean;
   /** Os companheiros gastam sozinhos os pontos da árvore ao subir de nível (ver autoLearn). A protagonista, nunca. */
   skillsAuto: boolean;
+  /** As dicas de primeira vez (ver tips.ts). */
+  tips: boolean;
   /** Milissegundos por letra pra conversa passar sozinha; 0 espera o jogador. */
   autoAdvance: number;
   shake: boolean;
@@ -73,6 +75,7 @@ export const DEFAULT_SETTINGS: Settings = {
   voice: true,
   companionsAuto: false,
   skillsAuto: false,
+  tips: true,
   autoAdvance: 0,
   shake: true,
   minimap: true,

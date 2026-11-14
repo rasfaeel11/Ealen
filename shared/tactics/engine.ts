@@ -175,10 +175,14 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
   // Na investida, quem a deu vem antes de todo mundo, na ordem que rolou entre os seus.
   const charge = setup.surprised ? undefined : setup.charge;
   // O Gryskar aceita o custo pra agir antes de todos (`combate` §4.2): paga Fôlego e abre a ordem, entre os do lado
-  // dele numa investida. Quem foi pego de surpresa não abre nada.
+  // dele numa investida. Quem foi pego de surpresa não abre nada, e quem levou a investida também não: o outro lado
+  // já vem antes de todos, e ele pagaria por nada.
   const first = new Set(
     rolls
-      .filter(({ unit }) => strikesFirst(unit) && isAlive(unit) && unit.team !== setup.surprised && unit.breath >= FIRST_BREATH)
+      .filter(
+        ({ unit }) =>
+          strikesFirst(unit) && isAlive(unit) && unit.team !== setup.surprised && (!charge || unit.team === charge) && unit.breath >= FIRST_BREATH,
+      )
       .map(({ unit }) => unit.id),
   );
   rolls.sort((a, b) => Number(first.has(b.unit.id)) - Number(first.has(a.unit.id)));
@@ -512,6 +516,10 @@ function fireCues(encounter: Encounter, events: TacticalEvent[]): boolean {
       if (unit && isAlive(unit) && (unit.mana ?? 0) > 0) spendMana(encounter, unit, unit.mana!, events, true);
     }
     if (cue.rise) riseWater(encounter, events);
+    if (cue.rain && cue.rain > 0) {
+      encounter.sight = cue.rain;
+      events.push({ type: "sightCut", range: cue.rain });
+    }
     if (cue.dismiss && encounter.supporters.some((supporter) => supporter.id === cue.dismiss)) {
       encounter.supporters = encounter.supporters.filter((supporter) => supporter.id !== cue.dismiss);
       events.push({ type: "supporterLost", id: cue.dismiss });
@@ -998,6 +1006,7 @@ function resolveAbility(
       damageProp(encounter, prop, rollDamage(encounter, actor, effect), events);
     }
   }
+  if (actor.river && dealsDamage(ability)) strikeFloor(encounter, targetPos, events);
 
   if (ability.surface) {
     laySurface(encounter, ability.surface.id, surfaceTiles(encounter, ability, targetPos), ability.surface.rounds, events);
@@ -1252,8 +1261,10 @@ function applyEffect(
       // que um golpe `piercing` não encontra.
       const targetOr = effectiveAttribute(target, "couro");
       amount = Math.max(1, amount + damageTakenOf(target) - (effect.piercing ? 0 : Math.floor(targetOr / 2)));
-      // A Muralha de quem apanha: um tanto fixo a menos, depois da armadura.
-      amount = Math.max(1, amount - styleReduction(target));
+      // A Muralha de quem apanha: um tanto fixo a menos, depois da armadura. A lâmina da receita de Thrykar fura parte
+      // dela no bicho de rio (`riverPierce`).
+      const pierced = target.river ? (effect.riverPierce ?? 0) : 0;
+      amount = Math.max(1, amount - Math.max(0, styleReduction(target) - pierced));
 
       if (target.statuses.some((status) => status.guard)) {
         const blocked = Math.min(amount, targetOr + rollDie(encounter, 6));
@@ -1579,6 +1590,19 @@ function damageProp(encounter: Encounter, prop: Prop, amount: number, events: Ta
 }
 
 /**
+ * O bote do bicho de rio parte o chão posto em cima da água onde ele mordeu (a passarela, `floor`): a tábua some, a
+ * água volta, e quem estava em cima fica com o pé no rio (cena 1.3 do roteiro: "avança como uma onda, partindo a
+ * passarela de madeira"). Erre ou acerte: é o corpo dele que bate na tábua.
+ */
+function strikeFloor(encounter: Encounter, pos: Pos, events: TacticalEvent[]): void {
+  const plank = encounter.props.find((prop) => prop.hp > 0 && propTemplate(prop).floor === true && samePos(prop.pos, pos));
+  if (!plank) return;
+  damageProp(encounter, plank, plank.hp, events);
+  const standing = unitAt(encounter, pos);
+  if (standing) soak(encounter, standing, events);
+}
+
+/**
  * Mexe no objeto em `target`: quem está colado nele gasta a ação e o objeto
  * fica usado. Só isso — o que mexer nele SIGNIFICA é de uma deixa `used`.
  */
@@ -1708,7 +1732,7 @@ function useItem(encounter: Encounter, user: Unit, itemId: string, at: Pos | und
   // Sem alvo, em si; com alvo, num aliado ao alcance do braço, ou no inimigo, se o item se joga (ver itemTargets).
   const unit = at ? unitAt(encounter, at) : user;
   if (slot.item.data.effect.kind === "throw" && !at) return "invalid_target";
-  if (!unit || (at && !itemTargets(encounter, user, slot.item).some((pos) => samePos(pos, at)))) return "invalid_target";
+  if (!unit || !itemTargets(encounter, user, slot.item).some((pos) => samePos(pos, unit.pos))) return "invalid_target";
 
   user.turn.bonus = false;
   const { id, name, data } = slot.item;

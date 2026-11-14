@@ -1210,6 +1210,16 @@ def wooden_prop(kind: str, rng: random.Random) -> Image.Image:
         for x, y in ((3, h - 23), (44, h - 23), (23, h - 44), (23, h - 2)):
             d.rectangle([x - 1, y - 7, x + 1, y], fill=(82, 60, 40, 255), outline=(26, 22, 20, 255))
         return img
+    elif kind == "walkway":
+        # A passarela: tábuas deitadas por cima da água, de um quadrado, com as duas estacas do lado de baixo.
+        deck = planks(48, 40, rng, (112, 86, 58), True, 8)
+        img.paste(deck, (0, h - 44))
+        d = ImageDraw.Draw(img)
+        d.rectangle([0, h - 44, 47, h - 5], outline=(40, 30, 22, 255))
+        for x in (6, 41):
+            d.rectangle([x - 2, h - 8, x + 2, h - 1], fill=(70, 52, 36, 255), outline=(26, 22, 20, 255))
+        d.line([(1, h - 43), (46, h - 43)], fill=(150, 120, 84, 255))
+        return img
     elif kind in ("chest", "chest_open"):
         # A arca de tábua com cinta de ferro. Aberta, a tampa fica de pé atrás e o fundo escuro aparece.
         body = planks(38, 22, rng, (104, 74, 46), False, 6)
@@ -2105,7 +2115,7 @@ def paint_props() -> None:
     rng = random.Random(77)
     frames = {
         kind: wooden_prop(kind, rng)
-        for kind in ("crate", "barrel", "winch", "bell", "circle", "chest", "chest_open", "door", "door_open", "lever", "lever_on", "trap", "sack")
+        for kind in ("crate", "barrel", "winch", "bell", "circle", "walkway", "chest", "chest_open", "door", "door_open", "lever", "lever_on", "trap", "sack")
     }
     atlas, placed = pack(frames)
     atlas.save(OUT / "props.png", optimize=True)

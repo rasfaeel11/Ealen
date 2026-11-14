@@ -1,0 +1,54 @@
+{
+  "name": "@jogo/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Três na Estrada — o jogo empacotado pra desktop (Electron)",
+  "main": "main.cjs",
+  "scripts": {
+    "game": "node scripts/copyGame.mjs",
+    "start": "npm run game && electron .",
+    "pack": "npm run game && electron-builder --dir",
+    "dist": "npm run game && electron-builder"
+  },
+  "build": {
+    "appId": "com.tresnaestrada.jogo",
+    "productName": "Três na Estrada",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "game/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "dir"
+      ],
+      "category": "Game"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.role-playing-games"
+    },
+    "electronVersion": "33.2.1",
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
+    "publish": null,
+    "executableName": "tres-na-estrada"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "author": "Três na Estrada"
+}

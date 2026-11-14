@@ -145,8 +145,8 @@ export function applyImmediateHeal(
   character.currentHp += healed;
   const description =
     effect.kind === "heal_hp"
-      ? `Restaura ${healed} HP.`
-      : `Purifica corrupções recentes${healed > 0 ? ` e restaura ${healed} HP.` : "."}`;
+      ? `Restaura ${healed} de vida.`
+      : `Tira o que atrapalha${healed > 0 ? ` e restaura ${healed} de vida` : ""}.`;
   return { healed, description };
 }
 

@@ -89,10 +89,11 @@ const TABS: { name: string; rows: () => Row[] }[] = [
         "companionsAuto",
         "Companheiros na luta",
         [
-          { value: false, label: "Eu comando" },
-          { value: true, label: "Por conta própria" },
+          // Os mesmos nomes do botão de modo na luta.
+          { value: false, label: "Manual" },
+          { value: true, label: "Automático" },
         ],
-        "Por conta própria, Jarupã e Xanduí jogam a vez deles sozinhos. Endyru é sempre seu. Na luta, G (ou Select) troca.",
+        "Manual, você comanda o grupo inteiro; automático, Jarupã e Xanduí jogam a vez deles sozinhos. Endyru é sempre seu. Na luta, G (ou Select) troca.",
       ),
       option(
         "skillsAuto",
@@ -102,6 +103,15 @@ const TABS: { name: string; rows: () => Row[] }[] = [
           { value: true, label: "Eles escolhem" },
         ],
         "Eles escolhem: ao subir de nível, Jarupã e Xanduí gastam sozinhos os pontos da árvore e os de atributo. A de Endyru é sempre sua.",
+      ),
+      option(
+        "tips",
+        "Dicas",
+        [
+          { value: true, label: "Sim" },
+          { value: false, label: "Não" },
+        ],
+        "Uma linha na primeira vez que cada coisa acontece (a barra da luta, as faixas, a cadeia, a recitação, o objetivo, o olhar dos inimigos), e nunca mais.",
       ),
       option(
         "autoAdvance",

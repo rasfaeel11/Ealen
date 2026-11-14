@@ -98,7 +98,9 @@ import { CLASS_INFO } from "../types/characterClass";
  *              mana de uma vez nessa hora, passando do limite (ver ../mana.ts):
  *              a pressa que o roteiro impõe. `dismiss` (`party:chave`) tira
  *              da luta quem acompanha sem lutar: o apoio dele some. `rise`
- *              (bool) faz a água subir um anel nessa hora
+ *              (bool) faz a água subir um anel nessa hora; `rain` (int) faz a
+ *              chuva apertar, e a vista alcança só esse tanto de quadrados até
+ *              o fim da luta
  *
  *     `chest`, `door`, `lever`, `trap`, `pickup`  ponto; as coisas do mundo
  *              fora de luta (ver ./things.ts). O Nome é o que a tela diz.
@@ -257,6 +259,8 @@ export interface AreaCue extends AreaCondition {
   dismiss?: string;
   /** A água sobe um anel quando ela dispara (ver Flood no motor). */
   rise?: boolean;
+  /** A chuva aperta quando ela dispara: a vista passa a alcançar só este tanto de quadrados (ver `sight` no motor). */
+  rain?: number;
 }
 
 /** Sobre quem cai a condição de uma deixa que não diz: todos os inimigos da luta. */
@@ -616,6 +620,7 @@ export function parseTiledMap(raw: unknown): AreaMap {
           ...(typeof burst === "string" && burst !== "" ? { burst } : {}),
           ...(typeof dismiss === "string" && dismiss !== "" ? { dismiss } : {}),
           ...(properties.rise === true ? { rise: true } : {}),
+          ...(typeof properties.rain === "number" && properties.rain > 0 ? { rain: Math.floor(properties.rain) } : {}),
           ...conditionOf(properties),
         });
       }

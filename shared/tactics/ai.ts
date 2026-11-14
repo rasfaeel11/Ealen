@@ -98,8 +98,22 @@ const HARMFUL_STATUS_VALUE = 2;
 const OBJECTIVE_VALUE = 40;
 /** Que parte do golpe de quem vigia se espera que saia: o inimigo pode não vir. */
 const WATCH_SHARE = 0.5;
-/** Quanto vale cada quadrado que um círculo gravado tira o bicho de rio da água. */
-const CIRCLE_PULL_VALUE = 4;
+/**
+ * Tirar o bicho de rio da água (`bestiario` §1, §5.3 do AGENTS): fora dela ele perde a Muralha da água e a cura de
+ * cada turno, fica lento, e o couro começa a secar. É o "jeito lento" da luta final, e vale mais que um golpe médio.
+ * Devolvê-lo à água vale o mesmo, ao contrário.
+ */
+const RIVER_LANDED_VALUE = 40;
+/**
+ * O que custa a quem é do grupo terminar o turno com o pé na água enquanto um bicho de rio está vivo: lá ele é rápido,
+ * se cura e escolhe onde morder ("Saiam pro junco alto!", cena 1.3 do roteiro). De pé no seco, o grupo espera o bicho
+ * vir até a beira, e é dali que o puxão o tira da água.
+ */
+const WET_FOOT_VALUE = 30;
+/** Cada quadrado que o puxão o deixa mais perto do chão seco, mesmo sem tirá-lo da água. */
+const RIVER_STEP_VALUE = 6;
+/** Até onde se procura chão seco a partir de um quadrado de água. */
+const DRY_SEARCH = 12;
 /** Quanto cada ponto de acerto muda a chance de um golpe pegar, no d20. */
 const TO_HIT_CHANCE = 0.05;
 /** Desempate: entre jogadas iguais, a que anda menos. */
@@ -206,6 +220,8 @@ export function planTurn(encounter: Encounter): AiPlan {
   profile.caution *= 2 - me.currentHp / me.maxHp;
 
   const foes = sim.units.filter((unit) => unit.team !== me.team && isAlive(unit));
+  // Bicho de rio vivo do outro lado: o grupo não quer o pé na água (ver WET_FOOT_VALUE).
+  const riverFoe = me.team === "party" && foes.some((foe) => foe.river && !foe.invulnerable);
   // Quem vem atrás de uma presa (quem gastou mana demais de uma vez, ver `drawnToMana`) só vê ela; e quem
   // recebeu ordem de mirar um inimigo só, enquanto ele estiver de pé.
   const marked = me.order?.kind === "focus" ? (me.order as { unit: string }).unit : undefined;
@@ -296,6 +312,7 @@ export function planTurn(encounter: Encounter): AiPlan {
     }
 
     let score = (action?.value ?? use?.value ?? 0) + (bonus?.value ?? item?.value ?? 0) - STEP_COST * stop.cost;
+    if (riverFoe && tileAt(sim.grid, stop.pos)?.water) score -= WET_FOOT_VALUE;
     if (action && bonus) score -= overkill(sim, me, profile, action, bonus);
     score -= profile.caution * THREAT_DISCOUNT * exposure;
     score -= profile.caution * opportunityDamage(sim, me, origin, me.pos);
@@ -337,7 +354,38 @@ function useValue(encounter: Encounter, unit: Unit, prop: Prop, goals: Prop[]): 
     .filter((other) => other.team !== unit.team && isAlive(other) && distance(other.pos, prop.pos) <= pull.reach)
     .sort((a, b) => Number(b.river === true) - Number(a.river === true) || distance(a.pos, prop.pos) - distance(b.pos, prop.pos));
   if (!target?.river || tileAt(encounter.grid, target.pos)?.water !== true) return 0;
-  return CIRCLE_PULL_VALUE * Math.max(0, Math.min(pull.distance - (target.heft ?? 0), distance(target.pos, prop.pos) - 1));
+  // O mesmo caminho do puxão do círculo no motor (ver interact em ./engine.ts): na direção dele, menos o peso.
+  const path = forcedPath(encounter, prop.pos, target, -pull.distance);
+  return path ? Math.max(0, riverGain(encounter, target, path.to)) : 0;
+}
+
+/** Quantos quadrados até o chão seco mais perto, de `pos` (chão que não barra o passo e não é água). */
+function dryDistance(encounter: Encounter, pos: Pos): number {
+  for (let ring = 0; ring <= DRY_SEARCH; ring++) {
+    for (let dy = -ring; dy <= ring; dy++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+        const tile = tileAt(encounter.grid, { x: pos.x + dx, y: pos.y + dy });
+        if (tile && !tile.water && !tile.blocksMove) return ring;
+      }
+    }
+  }
+  return DRY_SEARCH + 1;
+}
+
+/**
+ * O que rende levar o bicho de rio `victim` até `to` (num puxão, num empurrão ou num círculo gravado): tirá-lo da
+ * água vale muito, devolvê-lo a ela custa o mesmo, e chegá-lo perto do seco vale um pouco por quadrado.
+ * Quem não é bicho de rio, ou não tem vida pra perder, não muda nada.
+ */
+function riverGain(encounter: Encounter, victim: Unit, to: Pos): number {
+  if (!victim.river || victim.invulnerable || samePos(victim.pos, to)) return 0;
+  const wet = (pos: Pos) => tileAt(encounter.grid, pos)?.water === true;
+  const [from, there] = [wet(victim.pos), wet(to)];
+  if (from && !there) return RIVER_LANDED_VALUE;
+  if (!from && there) return -RIVER_LANDED_VALUE;
+  if (from && there) return RIVER_STEP_VALUE * (dryDistance(encounter, victim.pos) - dryDistance(encounter, to));
+  return 0;
 }
 
 /** O tipo de uma habilidade de kit, tirado do id dela ("espadachim.defend" -> "defend"). */
@@ -420,6 +468,11 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
           shove += outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
           // Jogado contra o que barra o passo, ele bate, e de cima do barranco, cai: é dano, e o barril em que bateu quebra (ver push em ./engine.ts).
           const crash = slamOf(encounter, actor.pos, victim, effect.distance);
+          // O bicho de rio levado pra fora da água (ou de volta pra ela): ver riverGain. É dano pra ele, então tira do favor.
+          if (victim.river) {
+            const moved = forcedPath(encounter, actor.pos, victim, effect.distance);
+            if (moved) favor -= outlook.lands * riverGain(encounter, victim, moved.to);
+          }
           // Prensado contra o que barra, Caído sem nada atrás (ver push em ./engine.ts): a condição que facilita o próximo golpe.
           if (effect.pin && effect.distance > 0) favor += outlook.lands * statusFavor(encounter, victim, crash ? "prensado" : "caido", 1, profile);
           if (crash) {

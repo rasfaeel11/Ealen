@@ -84,3 +84,4 @@ INCLUDE ymonha.ink
 INCLUDE ybytugua.ink
 INCLUDE baixios.ink
 INCLUDE floresta.ink
+INCLUDE noite.ink
