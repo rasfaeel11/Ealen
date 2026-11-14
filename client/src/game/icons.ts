@@ -478,6 +478,29 @@ const DRAW: Record<string, (c: Ctx) => void> = {
     c.closePath();
     c.fill();
   },
+  /** Mais ações: três pontos. */
+  more(c) {
+    for (const x of [16, 32, 48]) {
+      c.beginPath();
+      c.arc(x, 32, 6, 0, Math.PI * 2);
+      c.fill();
+    }
+  },
+  /** Voltar: a seta pra esquerda. */
+  back(c) {
+    c.lineWidth = 6;
+    line(c, [50, 32], [16, 32]);
+    line(c, [28, 18], [14, 32], [28, 46]);
+  },
+  /** O pulo: o arco e o pé que chega. */
+  jump(c) {
+    c.lineWidth = 5;
+    c.beginPath();
+    c.moveTo(10, 50);
+    c.quadraticCurveTo(32, -4, 54, 50);
+    c.stroke();
+    line(c, [44, 42], [54, 50], [56, 38]);
+  },
   close(c) {
     c.lineWidth = 7;
     line(c, [14, 14], [50, 50]);

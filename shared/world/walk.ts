@@ -78,3 +78,35 @@ export function jumpTarget(map: AreaMap, pos: PixelPos, dx: number, dy: number, 
   }
   return undefined;
 }
+
+/**
+ * O PULO MIRADO (como num RPG de mesa na tela): o jogador escolhe onde cair, a até
+ * `LEAP_RANGE` pixels, e o corpo vai num arco. Sobe um degrau (o barranco, o cais
+ * de pedra); desce quantos houver. Passa por cima do que não corta a vista (a água
+ * funda, a mureta, o caixote, a vala), mas não atravessa parede nem paredão.
+ */
+export const LEAP_RANGE = 64;
+
+export type LeapCheck = { ok: true } | { ok: false; why: string };
+
+export function leapCheck(map: AreaMap, from: PixelPos, to: PixelPos, body: WalkBody): LeapCheck {
+  const span = Math.hypot(to.x - from.x, to.y - from.y);
+  if (span > LEAP_RANGE) return { ok: false, why: "Longe demais pra pular." };
+  if (span < 4) return { ok: false, why: "Perto demais." };
+  const start = footElevation(map, from, body);
+  if (isBlocked(map, to, body)) return { ok: false, why: "Não dá pra cair ali." };
+  const end = footElevation(map, to, body);
+  if (end > start + 1) return { ok: false, why: "Alto demais pra pular." };
+  // O caminho do arco: nada que corte a vista, e nenhum paredão mais alto que o degrau que se sobe.
+  const top = Math.max(start + 1, end);
+  const steps = Math.ceil(span / 4);
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const tile = { x: Math.floor((from.x + (to.x - from.x) * t) / map.tileSize), y: Math.floor((from.y - 2 + (to.y - from.y) * t) / map.tileSize) };
+    const ground = tileAt(map.grid, tile);
+    if (!ground) return { ok: false, why: "Não dá pra cair ali." };
+    if (ground.blocksMove && ground.blocksSight) return { ok: false, why: "Tem parede no caminho." };
+    if (elevationAt(map.grid, tile) > top) return { ok: false, why: "Alto demais pra pular." };
+  }
+  return { ok: true };
+}

@@ -45,6 +45,9 @@ import {
   currentObjective,
   worldLinks,
   jumpTarget,
+  leapCheck,
+  LEAP_RANGE,
+  type LeapCheck,
   type TravelSpot,
   mend,
   npcInReach,
@@ -172,6 +175,12 @@ const WALK_SPEED = 96;
 /** Quanto dura o pulo de um degrau, e quão alto vai o arco (em pixels do mapa). */
 const JUMP_MS = 280;
 const JUMP_HEIGHT = 7;
+/** A mira do pulo: a cor do ponto em que dá pra cair, e do que não dá. */
+const LEAP_OK_COLOR = 0x8fe08a;
+const LEAP_NO_COLOR = 0xe0566c;
+/** Quantos pixels por segundo o ponto do pulo anda nas setas (ou WASD). */
+const LEAP_CURSOR_SPEED = 110;
+const LEAP_HINT = "Pular: clique onde cair (ou mova com WASD e Espaço)  ·  Esc ou botão direito: desistir";
 /** Esgueirando, anda-se na metade. */
 const SNEAK_FACTOR = 0.5;
 /** Quem segue anda mais rápido que quem vai na frente: é o que o deixa alcançar depois de ficar pra trás. */
@@ -428,6 +437,7 @@ export default class WorldScene extends Phaser.Scene {
     }) as MoveKeys;
     keyboard.on("keydown", this.onKey, this);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, this.onAimPointer, this);
+    this.input.on(Phaser.Input.Events.POINTER_MOVE, this.onLeapPointerMove, this);
     // O botão direito cancela a mira no combate; o menu do navegador só atrapalharia.
     this.input.mouse?.disableContextMenu();
 
@@ -455,6 +465,10 @@ export default class WorldScene extends Phaser.Scene {
     if (!this.pause) this.save.playTimeMs += Math.min(delta, MAX_FRAME_MS);
     if (!this.combat) this.hud.tick(delta, this.minimapDots());
     if (this.leaving || this.combat || this.talking || this.pause || this.aiming) return;
+    if (this.leapAim) {
+      this.steerLeap(delta);
+      return;
+    }
     if (this.peoplePending) this.occupy();
 
     // Um gatilho dispara com o personagem parado também: é assim que a cena de chegada de uma área abre.
@@ -895,39 +909,212 @@ export default class WorldScene extends Phaser.Scene {
   /** No meio do pulo. */
   private leaping = false;
 
+  /** A mira do pulo, enquanto o jogador escolhe onde cair. */
+  private leapAim?: { marks: Phaser.GameObjects.Graphics; target: PixelPos; check: LeapCheck; since: number };
+
   /**
-   * PULAR (fora de luta): sobe o degrau à frente, um só, num arco curto. Andando,
-   * o pé não sobe barranco nem patamar (ver walk em shared/world/walk.ts); na luta,
-   * subir custa passo (CLIMB_COST) e o chão alto dá +2 a quem bate de cima.
+   * PULAR (fora de luta), como num RPG tático: Espaço abre a mira, com o alcance
+   * desenhado no chão e o arco até o ponto; o clique (ou Espaço de novo) pula. Sobe
+   * um degrau, desce quantos houver e passa por cima da água funda e da mureta,
+   * nunca pela parede (ver leapCheck em shared/world/walk.ts). Na luta, subir
+   * custa passo (CLIMB_COST) e o chão alto dá +2 a quem bate de cima.
    */
   private jump(): void {
-    if (this.leaping) return;
-    const target = jumpTarget(this.map, this.pos, this.heading.dx, this.heading.dy, BODY);
-    if (!target) return;
-    this.leaping = true;
-    this.canJump = false;
+    if (this.leaping || this.leapAim) return;
+    this.startLeapAim();
+  }
+
+  private startLeapAim(): void {
+    this.halt();
+    sfx("uiOpen");
+    // O ponto começa no degrau à frente, se houver; senão, dois quadrados pra onde ele olha.
+    const step = jumpTarget(this.map, this.pos, this.heading.dx, this.heading.dy, BODY);
+    const length = Math.hypot(this.heading.dx, this.heading.dy) || 1;
+    const ahead = { x: this.pos.x + (this.heading.dx / length) * 32, y: this.pos.y + (this.heading.dy / length) * 32 };
+    const target = step ?? ahead;
+    const marks = this.addWorld(this.add.graphics().setDepth(AIM_DEPTH + 0.5));
+    this.leapAim = { marks, target, check: leapCheck(this.map, this.pos, target, BODY), since: this.time.now };
+    this.drawLeap();
+  }
+
+  private stopLeapAim(): void {
+    this.leapAim?.marks.destroy();
+    this.leapAim = undefined;
     this.refreshHint();
-    const from = { ...this.pos };
-    sfx("step");
-    this.tweens.addCounter({
-      from: 0,
-      to: 1,
-      duration: JUMP_MS,
-      ease: "Sine.easeInOut",
-      onUpdate: (tween) => {
-        const t = tween.getValue() ?? 1;
-        const lift = Math.sin(t * Math.PI) * JUMP_HEIGHT;
-        this.player.place({ x: from.x + (target.x - from.x) * t, y: from.y + (target.y - from.y) * t - lift });
-      },
-      onComplete: () => {
-        this.pos = target;
-        this.player.place(this.pos);
-        this.leaping = false;
-        sfx("step");
-        this.moveFollowers(0);
-        this.refreshHint();
-      },
+  }
+
+  /** Leva o ponto do pulo até `point`, sem passar do alcance (o que passa fica na borda). */
+  private aimLeapAt(point: PixelPos): void {
+    const aim = this.leapAim;
+    if (!aim) return;
+    const dx = point.x - this.pos.x;
+    const dy = point.y - this.pos.y;
+    const span = Math.hypot(dx, dy);
+    const k = span > LEAP_RANGE ? LEAP_RANGE / span : 1;
+    aim.target = { x: this.pos.x + dx * k, y: this.pos.y + dy * k };
+    aim.check = leapCheck(this.map, this.pos, aim.target, BODY);
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) this.player.faceToward(aim.target);
+    this.drawLeap();
+  }
+
+  /** A mira, a cada quadro: as setas (ou WASD) andam com o ponto. */
+  private steerLeap(delta: number): void {
+    const aim = this.leapAim!;
+    const dx = Number(this.keys.right.isDown || this.keys.d.isDown) - Number(this.keys.left.isDown || this.keys.a.isDown);
+    const dy = Number(this.keys.down.isDown || this.keys.s.isDown) - Number(this.keys.up.isDown || this.keys.w.isDown);
+    if (dx === 0 && dy === 0) return;
+    const step = (LEAP_CURSOR_SPEED * Math.min(delta, MAX_FRAME_MS)) / 1000 / Math.hypot(dx, dy);
+    this.aimLeapAt({ x: aim.target.x + dx * step, y: aim.target.y + dy * step });
+  }
+
+  /** A altura do arco, pela distância: o pulo comprido vai mais alto. */
+  private leapHeight(span: number): number {
+    return 6 + span * 0.22;
+  }
+
+  /** O alcance no chão, o arco pontilhado até o ponto e a marca de onde cai (verde dá, vermelho não). */
+  private drawLeap(): void {
+    const aim = this.leapAim;
+    if (!aim) return;
+    const { marks, target, check } = aim;
+    const from = this.pos;
+    const color = check.ok ? LEAP_OK_COLOR : LEAP_NO_COLOR;
+    marks.clear();
+    // O alcance: um círculo fino no chão em volta dos pés.
+    marks.lineStyle(1, 0xffffff, 0.35).strokeCircle(from.x, from.y - 2, LEAP_RANGE);
+    marks.fillStyle(0xffffff, 0.04).fillCircle(from.x, from.y - 2, LEAP_RANGE);
+    // O arco: pontinhos de onde ele sai até onde cai, subindo no meio.
+    const span = Math.hypot(target.x - from.x, target.y - from.y);
+    const height = this.leapHeight(span);
+    const dots = Math.max(6, Math.round(span / 5));
+    for (let i = 1; i < dots; i++) {
+      const t = i / dots;
+      const x = from.x + (target.x - from.x) * t;
+      const y = from.y - 8 + (target.y - from.y) * t - Math.sin(t * Math.PI) * height;
+      marks.fillStyle(color, 0.9).fillCircle(x, y, 1);
+    }
+    // Onde cai: um anel no chão e um X se não dá.
+    marks.lineStyle(1.5, color, 1).strokeEllipse(target.x, target.y - 1, 14, 6);
+    marks.fillStyle(color, 0.25).fillEllipse(target.x, target.y - 1, 14, 6);
+    if (!check.ok) {
+      marks.lineStyle(1.5, color, 1);
+      marks.lineBetween(target.x - 3, target.y - 4, target.x + 3, target.y + 2);
+      marks.lineBetween(target.x + 3, target.y - 4, target.x - 3, target.y + 2);
+    }
+    this.hud.setPrompts([{ key: "", label: check.ok ? LEAP_HINT : `${check.why}\n${LEAP_HINT}` }]);
+  }
+
+  private onLeapKey(event: KeyboardEvent): void {
+    switch (event.code) {
+      case "Escape":
+      case "Backspace":
+        sfx("uiCancel");
+        this.stopLeapAim();
+        return;
+      case "Enter":
+      case "NumpadEnter":
+      case "Space":
+        this.confirmLeap();
+        return;
+    }
+  }
+
+  private onLeapPointerMove(pointer: Phaser.Input.Pointer): void {
+    if (!this.leapAim) return;
+    this.aimLeapAt(this.cameras.main.getWorldPoint(pointer.x, pointer.y));
+  }
+
+  private onLeapPointer(pointer: Phaser.Input.Pointer): void {
+    const aim = this.leapAim;
+    if (!aim || aim.since === this.time.now) return;
+    if (pointer.rightButtonDown()) {
+      this.onLeapKey({ code: "Escape" } as KeyboardEvent);
+      return;
+    }
+    this.aimLeapAt(this.cameras.main.getWorldPoint(pointer.x, pointer.y));
+    this.confirmLeap();
+  }
+
+  private confirmLeap(): void {
+    const aim = this.leapAim;
+    if (!aim) return;
+    if (!aim.check.ok) {
+      sfx("deny");
+      this.showBanner(aim.check.why);
+      return;
+    }
+    const target = aim.target;
+    this.stopLeapAim();
+    this.leap(this.player, this.pos, target, () => {
+      this.pos = target;
+      this.leaping = false;
+      this.trail = [{ ...target }];
+      this.refreshHint();
+      this.checkTraps();
     });
+    this.leaping = true;
+    this.heading = { dx: target.x - this.pos.x, dy: target.y - this.pos.y };
+    // Quem vem atrás pula também, um depois do outro, até perto de onde ele caiu.
+    this.followers.forEach((follower, index) => {
+      const back = Math.hypot(this.heading.dx, this.heading.dy) || 1;
+      const gap = FOLLOW_GAP * (index + 1);
+      let landing = { x: target.x - (this.heading.dx / back) * gap, y: target.y - (this.heading.dy / back) * gap };
+      if (isBlocked(this.map, landing, BODY)) landing = { ...target };
+      this.time.delayedCall(140 * (index + 1), () => {
+        this.leap(follower.actor, follower.pos, landing, () => {
+          follower.pos = landing;
+        });
+      });
+    });
+  }
+
+  /** O pulo de um boneco: agacha, sobe num arco com a sombra no chão, cai amassando, com poeira. */
+  private leap(actor: MapActor, from: PixelPos, to: PixelPos, done: () => void): void {
+    const span = Math.hypot(to.x - from.x, to.y - from.y);
+    const height = this.leapHeight(span);
+    actor.faceToward(to);
+    actor.setWalking(false);
+    actor.squash(0.22, 90);
+    sfx("jump");
+    this.time.delayedCall(80, () => {
+      this.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: Math.max(JUMP_MS, 220 + span * 4),
+        ease: "Sine.easeInOut",
+        onUpdate: (tween) => {
+          const t = tween.getValue() ?? 1;
+          actor.place({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
+          actor.setLift(Math.sin(t * Math.PI) * height);
+        },
+        onComplete: () => {
+          actor.setLift(0);
+          actor.place(to);
+          actor.squash(0.25, 180);
+          sfx("land");
+          this.landingDust(to);
+          done();
+        },
+      });
+    });
+  }
+
+  /** A poeira dos pés de quem cai do pulo. */
+  private landingDust(at: PixelPos): void {
+    for (let i = 0; i < 6; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const puff = this.addWorld(this.add.circle(at.x, at.y - 1, 1.5 + Math.random(), 0xb8a88a, 0.7).setDepth(at.y + 1));
+      this.tweens.add({
+        targets: puff,
+        x: at.x + side * (5 + Math.random() * 6),
+        y: at.y - 1 - Math.random() * 3,
+        scale: { from: 0.6, to: 1.6 },
+        alpha: { from: 0.7, to: 0 },
+        duration: 420,
+        ease: "Cubic.easeOut",
+        onComplete: () => puff.destroy(),
+      });
+    }
   }
 
   /** O objetivo de agora e o ponto dele no minimapa (o lugar, ou a saída que leva até lá). */
@@ -982,15 +1169,20 @@ export default class WorldScene extends Phaser.Scene {
     if (this.canJump) prompts.push({ key: "Espaço", label: "Pular", onClick: () => this.jump() });
     this.hud.setPrompts(prompts);
 
-    const abilities = this.fieldAbilities().map(
-      (ability, index): FieldButton => ({
+    // As habilidades só aparecem na barra quando servem: com inimigo por perto (abrem a luta) ou, a cura, com alguém ferido.
+    // As teclas 1, 2, 3... continuam valendo sempre.
+    const near = 12 * this.map.tileSize;
+    const threat = this.enemies.some((enemy) => !enemy.passive && Math.hypot(enemy.x - this.pos.x, enemy.y - this.pos.y) < near);
+    const hurt = this.company().some((member) => member.currentHp < member.maxHp);
+    const abilities = this.fieldAbilities().flatMap((ability, index): FieldButton[] =>
+      !(fieldUse(ability) === "mend" ? hurt : threat) ? [] : [{
         icon: abilityIcon(ability),
         label: ability.name,
         hotkey: `${index + 1}`,
         meta: fieldUse(ability) === "mend" ? "Fora de luta: cura, pela ficha" : "Fora de luta: abre a luta",
         body: ability.flavor,
         onClick: () => this.useFieldAbility(index),
-      }),
+      }],
     );
     const menu = (icon: FieldButton["icon"], label: string, hotkey: string, onClick: () => void, extra: Partial<FieldButton> = {}): FieldButton => ({
       icon,
@@ -1002,6 +1194,9 @@ export default class WorldScene extends Phaser.Scene {
       ...extra,
     });
     this.hud.setButtons(abilities, [
+      menu("jump", "Pular", "Espaço", () => this.jump(), {
+        body: "Escolha onde cair, a até quatro passos: sobe um degrau, desce quantos houver, passa por cima da água e da mureta.",
+      }),
       menu("sneak", this.sneaking ? "Levantar" : "Esgueirar", keyLabel("sneak"), () => this.toggleSneak(), {
         selected: this.sneaking,
         body: "Agachado o grupo anda devagar, e o olhar de quem vigia fica pintado no chão.",
@@ -1651,6 +1846,10 @@ export default class WorldScene extends Phaser.Scene {
       this.onAimKey(event);
       return;
     }
+    if (this.leapAim) {
+      this.onLeapKey(event);
+      return;
+    }
     if (this.pause || this.combat || this.leaving || this.talking) return;
     if (event.code === "Escape") this.openPause();
     else if (event.code === "Space") this.jump();
@@ -1898,6 +2097,10 @@ export default class WorldScene extends Phaser.Scene {
 
   /** Clicar num alvo aceso dá o golpe nele; o botão direito desiste. */
   private onAimPointer(pointer: Phaser.Input.Pointer): void {
+    if (this.leapAim) {
+      this.onLeapPointer(pointer);
+      return;
+    }
     const aiming = this.aiming;
     if (!aiming || aiming.since === this.time.now) return;
     if (pointer.rightButtonDown()) {
