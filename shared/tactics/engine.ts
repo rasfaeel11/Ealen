@@ -3,12 +3,12 @@ import { COST_BAND, attackEdge, attackTotals, canBeImprobable, isShot } from "./
 import { applyImmediateHeal, consumeInventoryCharge, findInventorySlot } from "../inventoryEffects";
 import { HUNGER, healCap, healToll } from "../breath";
 import { CONCEPTS } from "../mana";
-import { distance, hasLineOfSight, samePos, tileAt, type Grid, type Pos } from "./grid";
+import { distance, elevationAt, hasLineOfSight, samePos, tileAt, type Grid, type Pos } from "./grid";
 import { FALL_PER_STEP, findPath, forcedPath } from "./movement";
 import { PROPS, fellProp, propTemplate, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
 import { STATUSES, isHarmful, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
-import { PARRY_BREATH, PARRY_MIN, SPENT_DAMAGE, STYLES, counters, feints, isSworn, punishesRepeat, parries, strikesFirst, styleReduction, waveBonus } from "./styles";
+import { SPENT_DAMAGE, STYLES, auraShove, counters, feints, isSworn, punishesRepeat, parries, strikesFirst, styleReduction, waveBonus } from "./styles";
 import {
   SURFACES,
   enterCost,
@@ -858,9 +858,6 @@ function useAbility(
 
 // --- Recitação --------------------------------------------------------------
 
-/** O teste de quem apanha recitando: d20 + Saber contra isto mais metade do golpe. Provisório, como os kits. */
-const RECITE_FOCUS = 10;
-
 /**
  * Solta a magia que `unit` vinha recitando, no começo do turno dele: pagando
  * agora o que ela custa (é aqui que a mana pesa no limite do turno) e saindo
@@ -941,8 +938,11 @@ function resolveAbility(
 
   // Quem é da Ipojy e foi atacado em vão devolve o golpe — depois que este acabar de acontecer.
   const countering: Unit[] = [];
+  // Quem aparou este golpe: o Contragolpe dela sai na mesma reação (ver PARRY_DEFENSE em ./attack.ts).
+  const parried = new Set<string>();
   // O custo se paga uma vez por golpe, mesmo numa área: é o corpo de quem bateu.
   let costly = false;
+  let costTarget: Unit | undefined;
   let first: AttackOutcome | undefined;
   for (const aimed of targets) {
     const target = interceptor(encounter, actor, ability, aimed) ?? aimed;
@@ -965,10 +965,12 @@ function resolveAbility(
     let critical = false;
     let outcome: AttackOutcome = "hit";
     if (ability.attack && !strike.sure) {
-      const rolled = rollAttack(encounter, actor, target, ability, targetPos, events);
+      const rolled = rollAttack(encounter, actor, target, ability, targetPos, events, strike.feint);
       outcome = rolled.outcome;
-      if (outcome === "cost" && !strike.feint && dodges(encounter, actor, ability, target)) {
-        // ESQUIVAR (`combate` §3.2): o golpe que pegaria por pouco não pega, e quem bateu não errou — não fica Exposto.
+      if (rolled.parried) parried.add(target.id);
+      if ((outcome === "cost" || outcome === "hit") && !strike.feint && dodges(encounter, actor, ability, target)) {
+        // ESQUIVAR (`combate` §3.2: "reação, fôlego; anula o golpe"): o golpe que pegaria não pega, e quem bateu não
+        // errou — não fica Exposto. O improvável não se esquiva.
         target.turn.reaction = false;
         target.breath -= DODGE_BREATH;
         events.push({ type: "breathSpent", unit: target.id, amount: DODGE_BREATH, remaining: target.breath });
@@ -986,7 +988,10 @@ function resolveAbility(
         continue;
       }
       critical = outcome === "crit";
-      if (outcome === "cost" || rolled.costly) costly = true;
+      if (outcome === "cost" || rolled.costly) {
+        costly = true;
+        costTarget ??= target;
+      }
     }
     first ??= outcome;
 
@@ -998,7 +1003,7 @@ function resolveAbility(
       actor.streak = { target: target.id, hits: actor.streak?.target === target.id ? actor.streak.hits + 1 : 1 };
     }
   }
-  if (costly) payCost(encounter, actor, ability, events);
+  if (costly) payCost(encounter, actor, ability, costTarget, targetPos, events);
 
   for (const prop of affectedProps(encounter, ability, targetPos)) {
     for (const effect of ability.effects) {
@@ -1017,7 +1022,7 @@ function resolveAbility(
   // O golpe que sai do esconderijo o descobre.
   if (isBlow(ability) && actor.statuses.some((status) => status.concealed)) reveal(actor, events);
 
-  for (const defender of countering) counterStrike(encounter, defender, actor, events);
+  for (const defender of countering) counterStrike(encounter, defender, actor, events, parried.has(defender.id));
   return first;
 }
 
@@ -1045,40 +1050,72 @@ function deflecting(encounter: Encounter, target: Unit): Unit | undefined {
 }
 
 /** O Fôlego que Esquivar custa. */
-export const DODGE_BREATH = 2;
+export const DODGE_BREATH = 3;
 /** O Fôlego que o sucesso com custo cobra, quando o custo sai do Fôlego. */
 export const COST_BREATH = 1;
 
 /**
- * ESQUIVAR (`combate` §3.2): `target` sai da frente do golpe que pegaria por
- * pouco (o sucesso com custo de quem bate), gastando a reação e DODGE_BREATH.
+ * ESQUIVAR (`combate` §3.2: "reação, fôlego; anula o golpe"): `target` sai da
+ * frente do golpe que pegaria (pleno ou com custo; o improvável, não), gastando
+ * a reação e DODGE_BREATH. O bicho de rio não esquiva.
  * Quem é de escola de espada apara em vez de esquivar; área não se esquiva; e
  * quem está no chão, preso ou perdendo a vez não sai de lugar nenhum.
  */
 function dodges(encounter: Encounter, actor: Unit, ability: Ability, target: Unit): boolean {
   if (actor.team === target.team || ability.radius !== undefined || !target.turn.reaction || target.breath < DODGE_BREATH) return false;
-  if (parries(target) || !isAlive(target)) return false;
+  // O bicho de rio não sai da frente: quase cego, bebe o golpe no couro (`bestiario` §1).
+  if (parries(target) || !isAlive(target) || target.river) return false;
   return !target.statuses.some((status) => status.skipsTurn || status.prone || (status.speed ?? 0) <= -99);
 }
 
+/** Quanto a lâmina lascada tira do acerto, até o fim da luta (o custo de equipamento). */
+export const CHIPPED_TO_HIT = 1;
+
 /**
  * O CUSTO de um sucesso com custo, ou do improvável que não chegava ao pleno
- * (`combate` §2.2). Sai do que faz sentido pra quem bateu: quem conjurou paga
- * mais 1 de mana (a marca, se aquilo passar do limite dele — e o bicho escuta);
- * quem tem Fôlego paga COST_BREATH; quem não tem, a ferida própria (1d4, sem
- * cair por ela).
+ * (`combate` §2.2). Sai do mundo, do que faz sentido pra quem bateu, nesta
+ * ordem (decidido pelo co-autor em 2026-11-14, task 98). A lei (conjurar sem
+ * licença) não entra: no tempo da estrada não havia edital (`jarupa`, cap-02).
+ * A outra metade dela, bater primeiro, já é o voto da Ipojy. A ordem:
+ *
+ * - TEMPO: a magia recitada que, pagando mais 1 de mana, passaria do limite.
+ *   O texto demora a fechar e come a ação do turno em que saiu, no lugar do
+ *   estouro. Quem tem a ação, paga com ela; quem não tem, paga a mana.
+ * - A MARCA: a outra magia paga mais 1 de mana (e, passando do limite, a marca,
+ *   e o bicho escuta).
+ * - POSIÇÃO: o golpe de perto dado de cima perde a altura (quem bateu desce
+ *   pro quadrado mais baixo colado nele e no alvo); sem chão mais baixo, o de
+ *   costas pro que barra sai Prensado.
+ * - GENTE EM VOLTA: o tiro ou a área que pega por pouco, com um aliado de quem
+ *   bateu colado no alvo (ou dentro da área), raspa nele: 1d4.
+ * - FÔLEGO: COST_BREATH, pra quem tem.
+ * - EQUIPAMENTO: sem Fôlego, o golpe de arma lasca a lâmina (Lâmina lascada,
+ *   -CHIPPED_TO_HIT no acerto até o fim da luta), uma vez por luta.
+ * - FERIDA: o resto, 1d4 da própria vida, sem cair por ela.
  */
-function payCost(encounter: Encounter, unit: Unit, ability: Ability, events: TacticalEvent[]): void {
+function payCost(encounter: Encounter, unit: Unit, ability: Ability, target: Unit | undefined, aim: Pos, events: TacticalEvent[]): void {
   if (!isAlive(unit)) return;
+  if (ability.mana && isRecited(ability) && unit.turn.action && wouldBurst(unit, 1)) {
+    unit.turn.action = false;
+    events.push({ type: "costPaid", unit: unit.id, kind: "time", amount: 1 });
+    return;
+  }
   if (ability.mana && (unit.mana ?? 0) >= 1) {
     events.push({ type: "costPaid", unit: unit.id, kind: "mark", amount: 1 });
     spendMana(encounter, unit, 1, events);
     return;
   }
+  if (!ability.mana && target && target.team !== unit.team && payPosition(encounter, unit, ability, target, events)) return;
+  if (!ability.mana && payBystander(encounter, unit, ability, target, aim, events)) return;
   if (unit.maxBreath > 0 && unit.breath >= COST_BREATH) {
     unit.breath -= COST_BREATH;
     events.push({ type: "costPaid", unit: unit.id, kind: "breath", amount: COST_BREATH });
     events.push({ type: "breathSpent", unit: unit.id, amount: COST_BREATH, remaining: unit.breath });
+    return;
+  }
+  if (ability.weapon && !unit.river && !unit.statuses.some((status) => status.id === STATUSES.chipped.id)) {
+    events.push({ type: "costPaid", unit: unit.id, kind: "gear", amount: CHIPPED_TO_HIT });
+    addStatus(unit, STATUSES.chipped, Infinity, events);
     return;
   }
   if (unit.invulnerable) return;
@@ -1087,6 +1124,62 @@ function payCost(encounter: Encounter, unit: Unit, ability: Ability, events: Tac
   unit.currentHp -= wound;
   events.push({ type: "costPaid", unit: unit.id, kind: "wound", amount: wound });
   events.push({ type: "damage", target: unit.id, amount: wound, remainingHp: unit.currentHp });
+}
+
+/** `amount` a mais de mana neste turno passaria `unit` do limite dele? */
+function wouldBurst(unit: Unit, amount: number): boolean {
+  const limit = Math.max(0, (unit.manaLimit ?? 0) + unit.statuses.reduce((sum, status) => sum + (status.manaLimit ?? 0), 0));
+  const spent = unit.manaSpent ?? 0;
+  return spent <= limit && spent + amount > limit;
+}
+
+/** O custo de POSIÇÃO (ver payCost): perder a altura, ou sair Prensado de costas pro que barra. Falso se não coube. */
+function payPosition(encounter: Encounter, unit: Unit, ability: Ability, target: Unit, events: TacticalEvent[]): boolean {
+  if (ability.range > 1 || ability.radius !== undefined || unit.river || distance(unit.pos, target.pos) !== 1) return false;
+  const { grid } = encounter;
+  const height = elevationAt(grid, unit.pos);
+  if (height > elevationAt(grid, target.pos)) {
+    let best: Pos | undefined;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const spot = { x: unit.pos.x + dx, y: unit.pos.y + dy };
+        if ((dx === 0 && dy === 0) || distance(spot, target.pos) !== 1) continue;
+        const tile = tileAt(grid, spot);
+        if (!tile || tile.blocksMove || unitAt(encounter, spot) || elevationAt(grid, spot) >= height) continue;
+        if (!best || elevationAt(grid, spot) > elevationAt(grid, best)) best = spot;
+      }
+    }
+    if (best) {
+      const from = { ...unit.pos };
+      unit.pos = { ...best };
+      events.push({ type: "costPaid", unit: unit.id, kind: "position", amount: 1 });
+      events.push({ type: "pushed", unit: unit.id, from, to: { ...best }, self: true });
+      touchSurface(encounter, unit, events);
+      return true;
+    }
+  }
+  const behind = { x: unit.pos.x - Math.sign(target.pos.x - unit.pos.x), y: unit.pos.y - Math.sign(target.pos.y - unit.pos.y) };
+  const wall = (tileAt(grid, behind)?.blocksMove ?? false) || elevationAt(grid, behind) > height;
+  if (!wall || unit.statuses.some((status) => status.id === STATUSES.prensado.id)) return false;
+  events.push({ type: "costPaid", unit: unit.id, kind: "position", amount: 1 });
+  addStatus(unit, STATUSES.prensado, 1, events);
+  return true;
+}
+
+/** O custo de GENTE EM VOLTA (ver payCost): o tiro ou a área raspa num aliado de quem bateu. Falso se não havia ninguém. */
+function payBystander(encounter: Encounter, unit: Unit, ability: Ability, target: Unit | undefined, aim: Pos, events: TacticalEvent[]): boolean {
+  if (!isShot(ability) && ability.radius === undefined) return false;
+  const center = ability.radius === undefined ? target?.pos : aim;
+  if (!center) return false;
+  const reach = ability.radius === undefined ? 1 : ability.radius + 1;
+  const near = encounter.units.find(
+    (other) => other !== unit && other.team === unit.team && isAlive(other) && !other.invulnerable && distance(other.pos, center) <= reach,
+  );
+  if (!near) return false;
+  const graze = Math.min(rollDie(encounter, 4), near.currentHp);
+  events.push({ type: "costPaid", unit: unit.id, kind: "bystander", amount: graze, bystander: near.id });
+  dealDamage(encounter, near, graze, events);
+  return true;
 }
 
 /**
@@ -1143,14 +1236,20 @@ function ready(encounter: Encounter, unit: Unit, abilityId: string, events: Tact
  * pago como um ataque de oportunidade. Sem reação, sem golpe pronto ou longe
  * demais, nada acontece.
  */
-function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, events: TacticalEvent[]): void {
-  if (!isAlive(defender) || !isAlive(attacker) || !defender.turn.reaction) return;
-  const ability = defender.abilities.find(
-    (candidate) =>
-      candidate.opportunity &&
-      readiness(defender, candidate, true) === "ready" &&
-      abilityTargets(encounter, defender, candidate).some((pos) => samePos(pos, attacker.pos)),
-  );
+function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, events: TacticalEvent[], parried = false): void {
+  if (!isAlive(defender) || !isAlive(attacker) || (!defender.turn.reaction && !parried)) return;
+  // Quem aparou já gastou a reação nisso: o Contragolpe sai junto (`combate` §4.1).
+  if (parried) defender.turn.reaction = true;
+  const reaching = () =>
+    defender.abilities.find(
+      (candidate) =>
+        candidate.opportunity &&
+        readiness(defender, candidate, true) === "ready" &&
+        abilityTargets(encounter, defender, candidate).some((pos) => samePos(pos, attacker.pos)),
+    );
+  // Quem cutuca de fora do alcance dela (o chuço, de 2) e erra abre a guarda: ela entra um passo e devolve
+  // (task 103, decidido pelo co-autor). Sem isso, a arma comprida desfazia o triângulo.
+  const ability = reaching() ?? (closeIn(encounter, defender, attacker, events) ? reaching() : undefined);
   if (!ability) return;
 
   defender.turn.reaction = false;
@@ -1159,6 +1258,34 @@ function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, eve
   charge(encounter, defender, ability, false, events);
   // A falha do outro vira o acerto dela (`combate` §4.1): o Contragolpe sai como sucesso pleno, sem rolar.
   resolveAbility(encounter, defender, ability, attacker.pos, [attacker], true, events, { sure: true });
+}
+
+/**
+ * O passo do Contragolpe (ver counterStrike): `defender` entra um quadrado na
+ * direção de `attacker`, pro quadrado livre colado nele, sem ataque de
+ * oportunidade (é a reação dela, dentro da guarda aberta do outro). Preso,
+ * caído, agarrado ou com o passo travado, não entra. Verdadeiro se entrou.
+ */
+function closeIn(encounter: Encounter, defender: Unit, attacker: Unit, events: TacticalEvent[]): boolean {
+  if (distance(defender.pos, attacker.pos) !== 2 || movementOf(defender) <= 0) return false;
+  if (defender.statuses.some((status) => status.prone || status.skipsTurn || (status.speed ?? 0) <= -99)) return false;
+  const { grid } = encounter;
+  let best: Pos | undefined;
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      const spot = { x: defender.pos.x + dx, y: defender.pos.y + dy };
+      if ((dx === 0 && dy === 0) || distance(spot, attacker.pos) !== 1) continue;
+      const tile = tileAt(grid, spot);
+      if (!tile || tile.blocksMove || unitAt(encounter, spot) || elevationAt(grid, spot) > elevationAt(grid, defender.pos)) continue;
+      if (!best || (dx === 0 || dy === 0)) best = spot;
+    }
+  }
+  if (!best) return false;
+  const from = { ...defender.pos };
+  defender.pos = { ...best };
+  events.push({ type: "moved", unit: defender.id, from, path: [{ ...best }] });
+  touchSurface(encounter, defender, events);
+  return isAlive(defender);
 }
 
 /**
@@ -1177,8 +1304,14 @@ function rollAttack(
   ability: Ability,
   aim: Pos,
   events: TacticalEvent[],
-): { outcome: AttackOutcome; costly: boolean } {
-  const edge = attackEdge(encounter, actor, ability, target, aim);
+  feint = false,
+): { outcome: AttackOutcome; costly: boolean; parried: boolean } {
+  const edge = attackEdge(encounter, actor, ability, target, aim, feint);
+  if (edge.parry) {
+    // A lâmina no caminho: gasta a reação de quem apara, antes de o golpe chegar.
+    target.turn.reaction = false;
+    events.push({ type: "parried", unit: target.id, attacker: actor.id });
+  }
   const { bonus, defense } = attackTotals(actor, ability, target, edge);
   const natural = rollDie(encounter, 20);
   const total = natural + bonus;
@@ -1211,7 +1344,7 @@ function rollAttack(
   });
 
   if (guaranteed) removeStatuses(actor, (status) => status.guaranteedCrit === true, events);
-  return { outcome, costly };
+  return { outcome, costly, parried: edge.parry };
 }
 
 function attributeOf(actor: Unit, ref: AttributeRef | undefined): number {
@@ -1270,14 +1403,6 @@ function applyEffect(
         const blocked = Math.min(amount, targetOr + rollDie(encounter, 6));
         amount -= blocked;
         events.push({ type: "blocked", unit: target.id, amount: blocked });
-      } else if (!strike.feint && canParry(actor, ability, target, amount)) {
-        // APARAR: a lâmina no caminho da outra, pago com a reação e com Fôlego.
-        const parried = Math.min(amount - 1, rollDie(encounter, 4) + (target.grade ?? 0));
-        target.turn.reaction = false;
-        target.breath -= PARRY_BREATH;
-        events.push({ type: "breathSpent", unit: target.id, amount: PARRY_BREATH, remaining: target.breath });
-        events.push({ type: "parried", unit: target.id, amount: parried });
-        amount -= parried;
       }
       if (amount <= 0) return;
       const taken = Math.min(amount, target.currentHp);
@@ -1335,7 +1460,7 @@ function applyEffect(
       return;
     }
     case "push":
-      push(encounter, actor.pos, target, effect.distance, events, effect.pin);
+      push(encounter, actor.pos, target, effect.distance + (effect.distance > 0 ? auraShove(actor, ability) : 0), events, effect.pin);
       return;
     case "stride": {
       const amount = movementOf(target);
@@ -1345,17 +1470,6 @@ function applyEffect(
       return;
     }
   }
-}
-
-/**
- * Se `target` apara o golpe de arma de perto que `actor` acabou de acertar:
- * ele é de escola de espada e luta de perto (`parries`), tem a reação e o
- * Fôlego, e o golpe tira ao menos PARRY_MIN. Magia, tiro e área não se aparam.
- */
-function canParry(actor: Unit, ability: Ability, target: Unit, amount: number): boolean {
-  if (actor.team === target.team || ability.mana || ability.radius !== undefined || ability.range > 2) return false;
-  if (!target.turn.reaction || target.breath < PARRY_BREATH || amount < PARRY_MIN || !parries(target)) return false;
-  return !target.statuses.some((status) => status.skipsTurn);
 }
 
 /** Devolve até `amount` de vida a `unit`, se alguma cura pega nele (ver `noHeal`) e se falta alguma. */
@@ -1369,22 +1483,15 @@ function restore(unit: Unit, amount: number, events: TacticalEvent[]): void {
 
 /**
  * Tira `amount` de vida de `target`. Quem cai perde as condições (e o que
- * recitava). Quem apanha recitando e fica de pé testa se o texto aguenta: d20
- * + Saber contra RECITE_FOCUS mais metade do golpe; falhando, ele se perde.
+ * recitava). Quem apanha recitando perde o texto (`combate` §3.3: "Apanhar
+ * quebra, e o texto recomeça do começo"), e o do Desviar, segurado na boca, também.
  */
 function dealDamage(encounter: Encounter, target: Unit, amount: number, events: TacticalEvent[]): void {
   target.currentHp = Math.max(0, target.currentHp - amount);
   events.push({ type: "damage", target: target.id, amount, remainingHp: target.currentHp });
   if (target.currentHp > 0) {
-    const focus = target.statuses.reduce((sum, status) => sum + (status.focus ?? 0), 0);
-    if (target.reciting && rollDie(encounter, 20) + effectiveAttribute(target, "saber") + focus < RECITE_FOCUS + Math.floor(amount / 2)) {
-      breakRecitation(target, "hit", events);
-    }
-    // O texto do Desviar, segurado na boca, quebra do mesmo jeito.
-    const holds = target.statuses.some((status) => status.deflect);
-    if (holds && rollDie(encounter, 20) + effectiveAttribute(target, "saber") + focus < RECITE_FOCUS + Math.floor(amount / 2)) {
-      removeStatuses(target, (status) => status.deflect === true, events);
-    }
+    if (target.reciting) breakRecitation(target, "hit", events);
+    if (target.statuses.some((status) => status.deflect)) removeStatuses(target, (status) => status.deflect === true, events);
     return;
   }
 
@@ -1428,7 +1535,8 @@ function push(encounter: Encounter, origin: Pos, target: Unit, pushDistance: num
     if (isAlive(target)) touchSurface(encounter, target, events);
     soak(encounter, target, events);
   }
-  if (pushDistance > 0 && path.stop && isAlive(target)) slam(encounter, target, path.stop, path.left * SLAM_PER_TILE, events);
+  if (pushDistance > 0 && path.stop && !path.edge && isAlive(target)) slam(encounter, target, path.stop, path.left * SLAM_PER_TILE, events);
+  if (path.edge && pushDistance > 0 && isAlive(target)) events.push({ type: "braced", unit: target.id, pos: { ...path.stop! } });
   if (pinned && isAlive(target) && !(pinned.prone && target.statuses.some((status) => status.id === "submerged"))) {
     addStatus(target, pinned, 1, events);
   }

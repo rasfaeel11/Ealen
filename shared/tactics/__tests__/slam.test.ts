@@ -98,3 +98,51 @@ test("puxado, o alvo não bate em nada", () => {
     assert.equal(eventsOf(events, "slammed").length, 0);
   }
 });
+
+// --- A borda prensa (task 100, `combate` §4.1) ---------------------------------------------------------------------
+
+test("empurrado do seco pra água, quem é de terra finca o pé na beira: Prensado, sem bater", () => {
+  for (const events of landed(["AE.ww"], "teste.empurrao", { x: 1, y: 0 })) {
+    const pushed = eventsOf(events, "pushed")[0];
+    assert.deepEqual(pushed?.to, { x: 2, y: 0 });
+    assert.equal(eventsOf(events, "braced")[0]?.unit, "E");
+    assert.equal(eventsOf(events, "slammed").length, 0);
+  }
+});
+
+test("quem já está na água vai mais pro fundo, como no aberto", () => {
+  let pushedOnce = false;
+  for (let seed = 1; seed <= 16; seed++) {
+    const encounter = shove(["AEwww"], seed);
+    encounter.grid.tiles[1] = { ...encounter.grid.tiles[2] };
+    const events = run(encounter, { type: "ability", unitId: "A", abilityId: "teste.empurrao", target: { x: 1, y: 0 } });
+    assert.equal(eventsOf(events, "braced").length, 0);
+    if (eventsOf(events, "pushed").length) {
+      pushedOnce = true;
+      assert.ok(eventsOf(events, "pushed")[0].to.x > 1);
+    }
+  }
+  assert.ok(pushedOnce);
+});
+
+// --- A aura nos verbos (`combate` §3.5) ---------------------------------------------------------------------------
+
+test("do Corpo pra cima, o empurrão do corpo vai um quadrado mais longe; no Fio, não", () => {
+  const reach = (aura: number) => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const { grid, markers } = gridFromAscii(["AE...."]);
+      const units = [
+        makeUnit("A", "party", markers.A[0], { attributes: { olho: FIRST, forca: 60 } }),
+        makeUnit("E", "enemy", markers.E[0], { currentHp: 500, maxHp: 500, breath: 0 }),
+      ];
+      units[0].aura = aura;
+      const encounter = startEncounter({ grid, units, seed }).encounter;
+      const events = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.empurrar", target: { x: 1, y: 0 } });
+      const [pushed] = eventsOf(events, "pushed");
+      if (pushed) return pushed.to.x - pushed.from.x;
+    }
+    throw new Error("nenhum empurrão pegou");
+  };
+  assert.equal(reach(2), 1);
+  assert.equal(reach(3), 2);
+});

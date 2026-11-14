@@ -318,3 +318,19 @@ test("as noites acampadas: depois do contrato, uma conversa, e só uma vez", () 
   const second = runner.start("noite");
   assert.equal(said(second).trim(), "", "a mesma noite não se repete");
 });
+
+test("toda fala no formato `Nome: texto` é de alguém de verdade: narração com dois-pontos não vira personagem", () => {
+  const compiled = compileStory();
+  const speakers = new Set<string>();
+  const pattern = /"\^([\p{L}][\p{L}\p{M}' -]{0,29}): /gu;
+  for (let match = pattern.exec(compiled); match; match = pattern.exec(compiled)) speakers.add(match[1]);
+  // "check" é a marca do teste de atributo (`# check:`), não fala.
+  speakers.delete("check");
+  const people = new Set([
+    "Endyru", "Oryndu", "Xanduí", "Jarupã", "Jurendy", "Mbyraku", "Thrykar",
+    "Sargento do pedágio", "Mercador", "Guarda do portão", "Conselheira", "Escrivão da Mesa", "Mestre da guilda",
+    "Saqueador", "Saqueadora", "Vendedora do cais", "Mulher da família", "Contratada",
+  ]);
+  const strangers = [...speakers].filter((speaker) => !people.has(speaker));
+  assert.deepEqual(strangers, [], `falas de quem não é ninguém (narração com dois-pontos?): ${strangers.join(", ")}`);
+});

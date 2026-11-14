@@ -3,15 +3,15 @@ import { attackOdds } from "./attack";
 import { healCap, healToll } from "../breath";
 import { FALL_PER_STEP, forcedPath, reachableTiles } from "./movement";
 import { PROPS, propTemplate, type Prop, type PropTemplate } from "./props";
-import { SLAM_PER_TILE, cueEnding } from "./engine";
+import { DODGE_BREATH, SLAM_PER_TILE, cueEnding } from "./engine";
 import { STATUSES, isHarmful, type StatusId, type StatusTemplate } from "./statuses";
-import { PARRY_BREATH, SPENT_DAMAGE, counters, feints, parries, strikesFirst, styleReduction, waveBonus } from "./styles";
+import { SPENT_DAMAGE, auraShove, counters, feints, parries, strikesFirst, styleReduction, waveBonus } from "./styles";
 import { SURFACES, enterCost, spreadTiles, surfaceHarm, surfaceTiles, type SurfaceTemplate } from "./surfaces";
 import { abilityTargets, affectedProps, affectedUnits, canAimAt, interactTargets, isBlow, isThrown, itemTargets, liftable, vowAllows, vowForbids } from "./targeting";
 import type { Attributes } from "../types/attributes";
 import type { ConsumableItem } from "../types/inventory";
 import type { Ability, AiProfile, AttributeRef, Command, Encounter, Unit } from "./types";
-import { CHAIN_MAX, activeUnit, chainStep, chainable, damageTakenOf, resistOf, effectiveAttribute, isAlive, movementOf, primaryAttribute, readiness, unitAt } from "./units";
+import { CHAIN_BREATH, CHAIN_MAX, activeUnit, chainStep, chainable, damageTakenOf, resistOf, effectiveAttribute, isAlive, movementOf, primaryAttribute, readiness, unitAt } from "./units";
 
 /**
  * A IA de inimigo, por utilidade.
@@ -315,6 +315,11 @@ export function planTurn(encounter: Encounter): AiPlan {
     if (riverFoe && tileAt(sim.grid, stop.pos)?.water) score -= WET_FOOT_VALUE;
     if (action && bonus) score -= overkill(sim, me, profile, action, bonus);
     score -= profile.caution * THREAT_DISCOUNT * exposure;
+    // Quem esquiva guarda o Fôlego do Esquivar (DODGE_BREATH): gastar abaixo dele é ficar sem como sair da frente.
+    if (canDodge(me) && me.breath >= DODGE_BREATH) {
+      const spent = (action?.ability.breath ?? 0) + (bonus?.ability.breath ?? 0) + (action && !me.turn.action ? CHAIN_BREATH : 0);
+      if (me.breath - spent < DODGE_BREATH) score -= profile.caution * DODGE_RESERVE * exposure;
+    }
     score -= profile.caution * opportunityDamage(sim, me, origin, me.pos);
     // Dano certo, na mesma moeda do que se causa: o do caminho, e o de amanhecer o próximo turno ali.
     score -= stop.hazard + Math.min(surfaceHarm(sim, me.pos), me.currentHp);
@@ -467,10 +472,12 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
           if (victim.statuses.some((status) => status.immovable)) break;
           shove += outlook.lands * PUSH_VALUE * Math.abs(effect.distance);
           // Jogado contra o que barra o passo, ele bate, e de cima do barranco, cai: é dano, e o barril em que bateu quebra (ver push em ./engine.ts).
-          const crash = slamOf(encounter, actor.pos, victim, effect.distance);
+          // O alcance que a aura dá ao empurrão do corpo (ver auraShove em ./styles.ts).
+          const reach = effect.distance + (effect.distance > 0 ? auraShove(actor, ability) : 0);
+          const crash = slamOf(encounter, actor.pos, victim, reach);
           // O bicho de rio levado pra fora da água (ou de volta pra ela): ver riverGain. É dano pra ele, então tira do favor.
           if (victim.river) {
-            const moved = forcedPath(encounter, actor.pos, victim, effect.distance);
+            const moved = forcedPath(encounter, actor.pos, victim, reach);
             if (moved) favor -= outlook.lands * riverGain(encounter, victim, moved.to);
           }
           // Prensado contra o que barra, Caído sem nada atrás (ver push em ./engine.ts): a condição que facilita o próximo golpe.
@@ -500,8 +507,10 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
       // Com a luta parada (ninguém abriu, e a Espera só se guarda), o cuidado vai cedendo: alguém tem de bater primeiro.
       if (feint) {
         // O verbo trocado da Tsvirana não se apara (nem se devolve): o que a lâmina do outro tiraria entra inteiro.
-        if (parries(victim) && victim.turn.reaction && victim.breath >= PARRY_BREATH && outlook.damage > 0) value += profile.aggression * outlook.lands * (2.5 + (victim.grade ?? 0));
+        if (parries(victim) && victim.turn.reaction && outlook.damage > 0) value += profile.aggression * outlook.lands * (2.5 + (victim.grade ?? 0));
       } else if (actor.team === "party" && ability.attack) value -= profile.caution * patience(encounter) * (1 - outlook.lands) * counterDamage(encounter, victim, actor);
+      // Luta parada de todo (ninguém abriu, e o cuidado já cedeu): alguém tem de bater primeiro, mesmo que o golpe renda pouco.
+      if (ability.attack && !encounter.opened && patience(encounter) === 0) value += STALL_BREAK;
     }
   }
   if (ability.surface) {
@@ -532,7 +541,7 @@ function chainValue(encounter: Encounter, me: Unit, profile: AiProfile, opener: 
   for (const effect of opener.effects) {
     if (effect.kind === "status") left.push(STATUSES[effect.statusId]);
     if (effect.kind === "push" && !victim.statuses.some((status) => status.immovable)) {
-      const path = forcedPath(encounter, me.pos, victim, effect.distance);
+      const path = forcedPath(encounter, me.pos, victim, effect.distance + (effect.distance > 0 ? auraShove(me, opener) : 0));
       if (path) pos = path.to;
       if (effect.pin && effect.distance > 0) left.push(path?.stop ? STATUSES.prensado : STATUSES.caido);
     }
@@ -597,11 +606,31 @@ function spillValue(encounter: Encounter, actor: Unit, profile: AiProfile, prop:
 function slamOf(encounter: Encounter, origin: Pos, victim: Unit, pushDistance: number): { amount: number; prop?: Prop } | undefined {
   const path = forcedPath(encounter, origin, victim, pushDistance);
   if (!path) return undefined;
-  const amount = path.fall * FALL_PER_STEP + (pushDistance > 0 && path.stop ? path.left * SLAM_PER_TILE : 0);
+  const amount = path.fall * FALL_PER_STEP + (pushDistance > 0 && path.stop && !path.edge ? path.left * SLAM_PER_TILE : 0);
   if (amount <= 0) return undefined;
-  const prop = pushDistance > 0 && path.stop ? encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, path.stop!)) : undefined;
+  const prop = pushDistance > 0 && path.stop && !path.edge ? encounter.props.find((candidate) => candidate.hp > 0 && samePos(candidate.pos, path.stop!)) : undefined;
   return { amount, ...(prop ? { prop } : {}) };
 }
+
+/** Quanto do golpe que pode vir vale o Fôlego guardado pro Esquivar (ver canDodge). */
+const DODGE_RESERVE = 0.5;
+
+/** O que sobra do acerto, na conta, contra quem ainda pode esquivar: o golpe gasta o Esquivar dele. */
+const DODGED_SHARE = 0.4;
+
+/** `unit` esquiva o próximo golpe que pegar? (o espelho de dodges em ./engine.ts) */
+function dodgeReady(unit: Unit): boolean {
+  if (!canDodge(unit) || !unit.turn.reaction || unit.breath < DODGE_BREATH || !isAlive(unit)) return false;
+  return !unit.statuses.some((status) => status.skipsTurn || status.prone || (status.speed ?? 0) <= -99);
+}
+
+/** `unit` esquiva (ver dodges em ./engine.ts): não é de escola de espada, nem bicho de rio, e tem Fôlego. */
+function canDodge(unit: Unit): boolean {
+  return unit.maxBreath > 0 && !unit.river && !parries(unit);
+}
+
+/** O que vale abrir uma luta parada de todo (ver patience): o bastante pra bater, mesmo com golpe fraco. */
+const STALL_BREAK = 3;
 
 /** Em quantas rodadas sem ninguém abrir a luta o cuidado com o Contragolpe some de todo. */
 const STALL_ROUNDS = 4;
@@ -615,7 +644,8 @@ function patience(encounter: Encounter): number {
 function counterDamage(encounter: Encounter, defender: Unit, attacker: Unit): number {
   if (!counters(defender) || !defender.turn.reaction) return 0;
   const ability = defender.abilities.find((candidate) => candidate.opportunity && readiness(defender, candidate, true) === "ready");
-  if (!ability || distance(defender.pos, attacker.pos) > ability.range) return 0;
+  // Ela entra um passo pra devolver em quem a cutuca de 2 (ver closeIn em ./engine.ts).
+  if (!ability || distance(defender.pos, attacker.pos) > Math.max(ability.range, 2)) return 0;
   if (!hasLineOfSight(encounter.grid, defender.pos, attacker.pos)) return 0;
   return Math.min(forecast(encounter, defender, ability, attacker).damage, attacker.currentHp);
 }
@@ -840,7 +870,11 @@ function attributeOf(actor: Unit, ref: AttributeRef | undefined): number {
  * lá mudar, esta muda junto.
  */
 function forecast(encounter: Encounter, actor: Unit, ability: Ability, target: Unit, aim?: Pos): Forecast {
-  const { hit, crit } = attackOdds(encounter, actor, ability, target, aim);
+  const odds = attackOdds(encounter, actor, ability, target, aim);
+  const { crit } = odds;
+  // Quem ainda pode esquivar sai da frente do golpe que pegaria (só o improvável não se esquiva). Bater nele ainda
+  // vale alguma coisa: gasta a reação e o Fôlego dele, e o próximo pega.
+  const hit = ability.attack && ability.radius === undefined && actor.team !== target.team && dodgeReady(target) ? odds.hit * DODGED_SHARE : odds.hit;
 
   const guarded = isGuarding(target);
   const targetOr = effectiveAttribute(target, "couro");

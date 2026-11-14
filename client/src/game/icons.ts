@@ -323,6 +323,161 @@ const DRAW: Record<string, (c: Ctx) => void> = {
     });
     line(c, ...star);
   },
+  // --- As peças novas (task 96): cada uma com o seu sinal, no lugar do emprestado. ---
+  dash(c) {
+    // A Disparada: duas setas cheias, uma atrás da outra.
+    shape(c, [6, 16], [26, 32], [6, 48], [14, 32]);
+    shape(c, [24, 12], [52, 32], [24, 52], [34, 32]);
+    c.fillRect(48, 14, 6, 36);
+  },
+  help(c) {
+    // O Ajudar: a mão aberta, de palma pra cima, e o sinal de mais sobre ela.
+    c.fillRect(27, 4, 10, 26);
+    c.fillRect(19, 12, 26, 10);
+    c.beginPath();
+    c.moveTo(4, 40);
+    c.quadraticCurveTo(10, 36, 18, 42);
+    c.lineTo(40, 42);
+    c.quadraticCurveTo(46, 42, 46, 46);
+    c.lineTo(30, 47);
+    c.lineTo(54, 40);
+    c.quadraticCurveTo(62, 40, 58, 46);
+    c.lineTo(36, 58);
+    c.lineTo(4, 58);
+    c.closePath();
+    c.fill();
+  },
+  deflect(c) {
+    // O Desviar: a seta que vem, encontra a força, e passa ao lado.
+    c.lineWidth = 5;
+    c.beginPath();
+    c.moveTo(4, 32);
+    c.lineTo(24, 32);
+    c.quadraticCurveTo(38, 32, 46, 14);
+    c.stroke();
+    shape(c, [40, 12], [52, 6], [50, 20]);
+    c.lineWidth = 3;
+    c.beginPath();
+    c.arc(40, 40, 16, Math.PI * 0.9, Math.PI * 1.6);
+    c.stroke();
+    c.beginPath();
+    c.arc(40, 40, 22, Math.PI * 0.9, Math.PI * 1.6);
+    c.stroke();
+  },
+  anchor(c) {
+    // O Puxar-se: o corpo vai até a parede, puxado pela própria força.
+    c.fillRect(52, 6, 8, 52);
+    disc(c, 14, 22, 7);
+    shape(c, [8, 30], [20, 30], [22, 50], [6, 50]);
+    c.lineWidth = 4;
+    arrow(c, [26, 36], [48, 36], 10);
+  },
+  watch(c) {
+    // O Vigiar: o olho aberto, de pupila fina.
+    c.beginPath();
+    c.moveTo(4, 32);
+    c.quadraticCurveTo(32, 6, 60, 32);
+    c.quadraticCurveTo(32, 58, 4, 32);
+    c.closePath();
+    c.stroke();
+    disc(c, 32, 32, 11);
+    c.save();
+    c.globalCompositeOperation = "destination-out";
+    c.fillRect(30, 22, 4, 20);
+    c.restore();
+  },
+  trip(c) {
+    // O Derrubar: o pé que entra por baixo e o corpo que vai.
+    disc(c, 40, 14, 7);
+    c.lineWidth = 6;
+    line(c, [38, 22], [26, 40]);
+    line(c, [26, 40], [12, 36]);
+    line(c, [26, 40], [36, 54]);
+    c.lineWidth = 4;
+    arrow(c, [54, 58], [44, 48], 7);
+    c.fillRect(4, 58, 56, 3);
+  },
+  grab(c) {
+    // O Agarrar: o punho fechado em cima do pulso do outro.
+    c.lineWidth = 8;
+    line(c, [4, 36], [60, 36]);
+    shape(c, [18, 18], [42, 18], [48, 26], [48, 48], [40, 54], [20, 54], [14, 46], [14, 24]);
+    c.save();
+    c.globalCompositeOperation = "destination-out";
+    c.lineWidth = 2.5;
+    line(c, [24, 20], [24, 34]);
+    line(c, [32, 20], [32, 34]);
+    line(c, [40, 20], [40, 34]);
+    c.restore();
+  },
+  shove(c) {
+    // O Empurrar: a palma aberta e o tranco pra frente.
+    shape(c, [8, 18], [24, 18], [26, 50], [8, 50]);
+    c.fillRect(24, 22, 8, 5);
+    c.fillRect(24, 30, 9, 5);
+    c.fillRect(24, 38, 8, 5);
+    c.lineWidth = 5;
+    arrow(c, [36, 32], [60, 32], 10);
+  },
+  ready(c) {
+    // O Preparar: a lâmina de pé, e a ampulheta pequena ao lado.
+    c.fillRect(16, 8, 7, 36);
+    shape(c, [16, 8], [19.5, 2], [23, 8]);
+    c.fillRect(8, 44, 23, 4);
+    c.fillRect(17, 48, 5, 10);
+    c.fillRect(36, 20, 22, 4);
+    c.fillRect(36, 54, 22, 4);
+    shape(c, [39, 24], [55, 24], [48, 39], [55, 54], [39, 54], [46, 39]);
+  },
+  lift(c) {
+    // O Levantar: a mão que puxa quem está no chão.
+    c.fillRect(4, 54, 56, 4);
+    disc(c, 16, 44, 6);
+    shape(c, [22, 46], [38, 40], [40, 48], [22, 52]);
+    c.lineWidth = 6;
+    line(c, [38, 42], [48, 22]);
+    arrow(c, [52, 30], [52, 6], 8);
+  },
+  order_advance(c) {
+    // Avançar: duas divisas pra frente.
+    c.lineWidth = 7;
+    line(c, [12, 34], [32, 18], [52, 34]);
+    line(c, [12, 52], [32, 36], [52, 52]);
+  },
+  order_hold(c) {
+    // Segurar posição: a estaca cravada no chão.
+    c.fillRect(28, 6, 8, 44);
+    shape(c, [28, 50], [36, 50], [32, 58]);
+    c.fillRect(8, 56, 48, 4);
+    shape(c, [36, 8], [56, 14], [36, 22]);
+  },
+  order_guard(c) {
+    // Proteger: o escudo na frente de alguém.
+    disc(c, 46, 16, 7);
+    shape(c, [38, 26], [54, 26], [56, 56], [36, 56]);
+    shape(c, [8, 12], [30, 12], [30, 34], [19, 54], [8, 34]);
+  },
+  order_focus(c) {
+    // Mirar: a mira em cima de um só.
+    c.lineWidth = 4;
+    ring(c, 32, 32, 20);
+    ring(c, 32, 32, 9);
+    line(c, [32, 2], [32, 16]);
+    line(c, [32, 48], [32, 62]);
+    line(c, [2, 32], [16, 32]);
+    line(c, [48, 32], [62, 32]);
+  },
+  heart(c) {
+    // A vida (o corpo, nos nós da árvore).
+    c.beginPath();
+    c.moveTo(32, 56);
+    c.bezierCurveTo(4, 36, 4, 10, 20, 10);
+    c.bezierCurveTo(28, 10, 32, 18, 32, 20);
+    c.bezierCurveTo(32, 18, 36, 10, 44, 10);
+    c.bezierCurveTo(60, 10, 60, 36, 32, 56);
+    c.closePath();
+    c.fill();
+  },
   close(c) {
     c.lineWidth = 7;
     line(c, [14, 14], [50, 50]);
@@ -379,19 +534,18 @@ const ABILITY_ICON: Record<string, IconName> = {
   "Golpe Pesado": "heavy",
   Desarmar: "disarm",
   Arremesso: "throw",
-  // Os outros dois verbos do Círculo: provisórios, emprestados (task 96).
-  Desviar: "shield",
-  "Puxar-se": "pull",
+  Desviar: "deflect",
+  "Puxar-se": "anchor",
   Ombrada: "shoulder",
   "Segurar o Bote": "grip",
-  Disparada: "move",
-  Ajudar: "use",
-  Vigiar: "hourglass",
+  Disparada: "dash",
+  Ajudar: "help",
+  Vigiar: "watch",
   "Esconder-se": "sneak",
-  // Os verbos do corpo (`combate` §3.2): provisórios, emprestados de outras coisas, como os da árvore (task 96).
-  Agarrar: "grip",
-  Empurrar: "push",
-  Derrubar: "shoulder",
+  // Os verbos do corpo (`combate` §3.2).
+  Agarrar: "grab",
+  Empurrar: "shove",
+  Derrubar: "trip",
 };
 
 /** O ícone de uma habilidade: o dela pelo nome; sem nome conhecido, o que ela faz. */

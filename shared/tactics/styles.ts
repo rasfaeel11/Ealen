@@ -162,10 +162,6 @@ export function feints(unit: Pick<Unit, "style">): boolean {
 }
 
 /** VOTO: quem luta na escola `style` jurou nunca dar o primeiro golpe? Vale pra unidade e pra ficha do elenco. */
-/** Quanto Fôlego custa aparar um golpe com a lâmina (ver PARRY_MIN e parry em ./engine.ts). */
-export const PARRY_BREATH = 2;
-/** Golpe que tira menos que isto não se apara: não vale gastar a reação. */
-export const PARRY_MIN = 4;
 
 /**
  * Quem apara: quem é de uma escola de espada (o triângulo, não o Baluarte de
@@ -175,6 +171,20 @@ export function parries(unit: Pick<Unit, "style" | "abilities" | "characterClass
   if (unit.style === undefined || unit.style === "baluarte") return false;
   const weapon = unit.abilities.find((ability) => ability.id === `${unit.characterClass}.attack`);
   return weapon !== undefined && weapon.range <= 2;
+}
+
+/** O nível de aura a partir do qual o empurrão do corpo vai mais longe (ver auraShove): o Corpo. */
+export const AURA_SHOVE_FROM = 3;
+
+/**
+ * A AURA NOS VERBOS (`combate` §3.5: "Empurrar de Corpo derruba quem a força do
+ * braço não derrubaria"): o nível de aura não dá verbo novo, muda o alcance dos
+ * que existem. Do Corpo pra cima, o empurrão do corpo (Empurrar, a Ombrada) leva
+ * um quadrado a mais, o que também vence um quadrado do peso de quem é empurrado.
+ */
+export function auraShove(unit: Pick<Unit, "aura">, ability: Pick<Ability, "verb" | "id">): number {
+  const bodily = ability.verb === "empurrar" || ability.id === "gift.shoulder";
+  return bodily && (unit.aura ?? 0) >= AURA_SHOVE_FROM ? 1 : 0;
 }
 
 export function isSworn(style: StyleId | undefined): boolean {

@@ -46,7 +46,8 @@ function stage(
 
 const styled = (unit: Unit, style: StyleId, grade = 3): Unit => Object.assign(unit, { style, grade });
 /** Aguenta qualquer coisa: as contas de dano não podem acabar com a luta. */
-const TOUGH = { currentHp: 9000, maxHp: 9000 };
+/** Aguenta tudo, e sem Fôlego não esquiva: o golpe que pega, pega. */
+const TOUGH = { currentHp: 9000, maxHp: 9000, breath: 0 };
 const pass = (encounter: Encounter) => run(encounter, { type: "endTurn", unitId: activeUnit(encounter)!.id });
 
 /** O dano que `command` causa em `encounter`, e o que causaria se `change` fosse feito antes — com os MESMOS dados. */

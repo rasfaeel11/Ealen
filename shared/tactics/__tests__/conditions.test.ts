@@ -28,7 +28,7 @@ const SPELL: Ability = { id: "test.spell", name: "Verso", flavor: "", cost: "act
 
 function strike(resist?: Partial<Record<"corte", number>>): number {
   const { encounter } = setup(["AE"], (at) => {
-    const enemy = makeUnit("E", "enemy", at("E"), { attributes: { couro: 0 } });
+    const enemy = makeUnit("E", "enemy", at("E"), { attributes: { couro: 0 }, breath: 0 });
     if (resist) enemy.resist = resist;
     return [makeUnit("A", "party", at("A"), { attributes: { olho: FIRST }, kit: [CUT] }), enemy];
   });

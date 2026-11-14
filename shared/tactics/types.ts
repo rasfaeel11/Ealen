@@ -523,7 +523,7 @@ export type Command =
 export type AttackOutcome = "hit" | "cost" | "miss" | "crit" | "fumble";
 
 /** De onde sai o custo de um sucesso com custo (`combate` §2.2). */
-export type CostKind = "breath" | "wound" | "mark";
+export type CostKind = "breath" | "wound" | "mark" | "time" | "position" | "gear" | "bystander";
 
 /**
  * O que aconteceu, em ordem. O motor nunca anima nada: devolve esta lista
@@ -626,17 +626,19 @@ export type TacticalEvent =
    * Empurrado, `unit` bateu no que barrava o passo em `pos` (parede, o destrutível `name` ou o corpo `name`). O
    * `damage` (ou o `immune`) vem logo depois, e o `propDamaged` do destrutível, se foi nele.
    */
+  /** Empurrado do seco pra água, `unit` fincou o pé na beira, em frente a `pos` (a água). O `statusApplied` de Prensado vem logo depois. */
+  | { type: "braced"; unit: string; pos: Pos }
   | { type: "slammed"; unit: string; into: "wall" | "prop" | "unit"; name?: string; pos: Pos }
   /** Tirado do lugar, `unit` desceu `steps` degraus e caiu. O `damage` vem logo depois. */
   | { type: "fell"; unit: string; steps: number }
-  /** `unit` aparou com a lâmina o golpe que pegou: `amount` a menos, pago em Fôlego. */
-  | { type: "parried"; unit: string; amount: number }
+  /** `unit` pôs a lâmina no caminho do golpe de `attacker` (Aparar, ver PARRY_DEFENSE em ./attack.ts): gastou a reação, e o golpe precisa de mais pra passar. O `attackRoll` vem logo depois. */
+  | { type: "parried"; unit: string; attacker: string }
   /**
    * `unit` pagou o custo de um sucesso com custo, ou do improvável (`combate`
    * §2.2): `amount` de Fôlego, de vida (a ferida própria) ou de mana (a marca).
    * `first` é o Gryskar que pagou pra agir antes de todos.
    */
-  | { type: "costPaid"; unit: string; kind: CostKind; amount: number; first?: boolean }
+  | { type: "costPaid"; unit: string; kind: CostKind; amount: number; first?: boolean; bystander?: string }
   /** `unit` esquivou (`combate` §3.2): gastou a reação e o Fôlego, e o golpe de `attacker` não pegou. */
   | { type: "dodged"; unit: string; attacker: string }
   /** `unit` estava Caído e se levantou, com metade do passo. */

@@ -226,7 +226,7 @@ O jogador explora Ybytuguá antes de descer aos baixios:
   - Antes de chamar o Ykuruã, o jogador (como Endyru) tem tempo de preparar o terreno: **gravar círculos de atração na margem seca** (para puxar o bicho passo a passo para fora d'água), posicionar barris de óleo/estacas que Jarupã trouxe e combinar o sinal com Oryndu na barcaça.
   - Oryndu olha o céu escuro de chuva e avisa mais uma vez:
     - **Oryndu:** *"O bicho vai vir devagar, Endyru. Puxa um palmo, deixa a moça segurar o bote, puxa outro palmo. Se você despejar tudo de uma vez para puxar inteiro, ele não sobe na pedra — ele vira para o lado onde a mana gritou. E no lado da água estou eu."*
-    - **Endyru:** *"Eu sei a medida, Oryndu. Eu faço essa conta desde os quatorze anos."*
+    - **Endyru:** *"Eu sei a medida, Oryndu. Eu faço essa conta desde a primeira aula de fundamentos."*
 
 #### Cena 3.2 — A Caçada ao Ykuruã e a Pressa de Endyru (Luta Final)
 - **Fase 1 da Luta:**

@@ -114,7 +114,7 @@ Oryndu: Eu seguro a margem com o barco. Vocês puxam. Devagar.
     Oryndu olha o céu escuro de chuva e combina o sinal: duas batidas de remo no casco, ele afasta o barco; três, ele chega.
     ~ preparo = true
     Oryndu: O bicho vai vir devagar, Endyru. Puxa um palmo, deixa a moça segurar o bote, puxa outro palmo. Se você despejar tudo de uma vez pra puxar inteiro, ele não sobe na pedra. Ele vira pro lado onde a palavra grande bateu. E no lado da água estou eu.
-    Endyru: Eu sei a medida, Oryndu. Eu faço essa conta desde os quatorze anos.
+    Endyru: Eu sei a medida, Oryndu. Eu faço essa conta desde a primeira aula de fundamentos.
     -> preparo_escolhas
 * [Ainda não. Descansar antes.]
     Oryndu: A cheia espera um pouco. Pouco.
@@ -139,7 +139,7 @@ Jarupã está com o braço aberto até o cotovelo, segurando a espada com a outr
 {prova:
     A lua da carta é amanhã.
 }
-Endyru conta: com Verso pequeno, um palmo por vez, são mais três fôlegos. Três fôlegos ele não tem.
+Endyru conta. Com Verso pequeno, um palmo por vez, são mais três fôlegos. Três fôlegos ele não tem.
 Ele larga a medida. Abre o livro na página inteira e grita o verbo de uma vez, tudo, pra arrancar o bicho da água num puxão só.
 O sangue desce do nariz na hora. As duas mãos começam a tremer.
 O puxão arranca metade do Ykuruã do lodo. E o estouro bate na água inteira, como um sino tocado debaixo do rio.

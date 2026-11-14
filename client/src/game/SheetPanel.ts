@@ -640,6 +640,7 @@ export class SheetPanel {
     if (passive.speed) return "move";
     if (passive.breath) return "wave";
     if (passive.mana) return "book";
+    if (passive.maxHp) return "heart";
     return "armor";
   }
 

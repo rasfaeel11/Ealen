@@ -338,9 +338,6 @@ O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ai
 
 | # | Task | O que é |
 |---|---|---|
-| 98 | **Os custos que faltam** | Entraram Fôlego, ferida própria e marca. Faltam os outros da `combate` §2.2: tempo (a recitação que quebra como preço), posição (perder a altura, sair Prensado), equipamento (a lâmina lasca, a gravação se gasta), gente em volta (fora da deixa de Oryndu) e lei (conjurar sem licença). Cada um pede uma regra de quando cai: vai pro autor antes. |
-| 100 | **A margem e a borda do barco** | A `combate` §4.1 diz que borda do barco e margem prensam. Hoje prensa o que barra o passo (parede, corpo, caixote, barranco); a água não barra. Decidir com o autor se empurrar pra dentro d'água é Prensado, Caído ou outra coisa (no Ykuruã, o contrário de tirá-lo da água). |
-| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. Visto na tela (task 97): na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; com dois guardas e o besteiro em cima, toda recitação dele quebra antes de sair; o Golpe Pesado tira 27 a 36 e derruba guarda e saqueador de uma vez; o Fôlego do espadachim zera pela rodada 4. No `balance:grupo` (100 lutas por luta, a IA dos dois lados): o grupo vence todas as lutas do jogo, em 1 a 4 rodadas, quase sem ninguém cair; a patrulha cai em pouco mais de uma rodada, porque o Golpe Pesado com custo tira 31 e a Espada tem 30. A final foi acertada com o autor em 2026-11-13 (ver Feito, task 80: a IA e a água). E uma pergunta pro autor: o chuço alcança 2, e da Ipojy com espada (alcance 1) nenhum Contragolpe sai contra quem cutuca de longe — os guardas erraram Xanduí rodadas a fio sem levar nada de volta. |
 
 ### P1 — pedidos do autor (2026-10-31)
 Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
@@ -360,9 +357,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 ### P2 — corpo
 | # | Task | O que é |
 |---|---|---|
-| 96 | **Ícones e arte das peças novas** | Os ícones da árvore, da Disparada, do Ajudar e das ordens são os provisórios de `icons.ts`, emprestados de outras coisas. Entram com a task 70. |
-| 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
-| 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1, e `balance:grupo` o trio em campanha contra cada luta do jogo (ver Feito). A final já foi acertada (ver Feito, a IA e a água). Falta: as lutas de gente, que o grupo ainda vence em uma a três rodadas (o Golpe Pesado, que o autor deixou como está); os números dos kits e das peças; os do Fôlego; e o item, que nenhuma das duas usa. Mexer em número é com o autor (task 103). |
+| 70 | **Arte final, o que só se desenha ou grava** | O que se faz em código entrou (ver Feito). Faltam as folhas de animação de ataque, dano e morte de cada boneco (hoje o boneco anda e respira; o golpe, o dano e a queda são feitos por cima da pose de pé), os ícones finais (os de `icons.ts` são desenhados em canvas) e a trilha e os efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). Pede quem desenha e quem grava. |
 
 ### P3 — produto
 | # | Task | O que é |
@@ -540,7 +535,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   o chão do mapa (só a cópia); nenhum mapa com cheia tem caixote.
 - **39. O preparo na margem.** Antes da luta final, `a_cheia` oferece riscar os círculos na margem seca (`preparo`):
   Endyru mede a corda duas vezes, Jarupã rola dois barris de óleo e crava as estacas, o sinal do remo se combina, e vêm as
-  falas de Oryndu ("Puxa um palmo, deixa a moça segurar o bote...") e de Endyru ("desde os quatorze anos"). Dá pra ir
+  falas de Oryndu ("Puxa um palmo, deixa a moça segurar o bote...") e de Endyru ("desde a primeira aula de fundamentos"). Dá pra ir
   sem. O círculo gravado ganhou lugar no mapa: é um objeto (`circle` em `PROPS`) que se acende encostado nele, puxa o
   inimigo mais perto (o bicho de rio primeiro) três quadrados na direção dele, menos o peso, e não gasta mana nem chama o
   bicho. A água que sobe apaga o círculo que alcança (`washes`). Os destrutíveis passaram a aceitar `if`/`unless` e a
@@ -873,6 +868,45 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   nela (o custo `area` do relógio, que nenhum mapa usa ainda). Com inimigo que não é passivo a até 8 quadrados, não se
   viaja. Visto no navegador (de Ybytuguá aos baixios). Marcadores próprios (o jogador marcar um ponto) não entraram: nenhuma
   cena pede.
+
+- **98. Os custos que faltavam** (decidido pelo co-autor em 2026-11-14, ver `docs/escolhas.md`). O custo cai no
+  primeiro que couber: tempo (a recitada que passaria do limite come a ação do turno em que sai), a marca,
+  posição (quem bateu de cima perde a altura; de costas pra parede, sai Prensado), gente em volta (o tiro que pega
+  por pouco raspa 1d4 no aliado colado no alvo), Fôlego, equipamento (sem Fôlego, a lâmina lasca: -1 no acerto até
+  o fim da luta) e a ferida. Cada um tem a linha dele no registro e o que sobe em cima de quem paga.
+- **100. A borda prensa** (decidido pelo co-autor em 2026-11-14, ver `docs/escolhas.md`). Quem é de terra, empurrado
+  do seco pra água, finca o pé na beira: Prensado, sem o dano do choque. Quem já está na água vai mais pro fundo; o
+  bicho de rio entra na água sem parar.
+
+- **103 e 80. Os números e as lutas de gente** (decidido pelo co-autor em 2026-11-14, ver `docs/escolhas.md`). A
+  Camada 1 fica com os números dela (a cadeia a 2 de Fôlego foi testada e saiu: alongava a final sem mexer nas lutas
+  de gente) e o Golpe Pesado também. A gente das lutas subiu de vida (quase o dobro) e de atributos, ao par do trio
+  no mesmo nível. A Ipojy errada por quem cutuca de 2 quadrados entra um passo e devolve, e a IA do grupo abre a luta
+  parada depois de 4 rodadas. O `balance:grupo` conta os itens e dá a paga do armazém. No fim: lutas de gente de 98 a
+  100% em 2 a 4 rodadas, a ponte 98% em 5 (Endyru cai em 23%), a final 90% em 17.
+
+- **A conferência com a história** (2026-11-14, `docs/escolhas.md`). A lei saiu dos custos (no tempo da estrada não
+  havia edital de licença, `jarupa` cap-02), com a multa do armazém. Apanhar recitando quebra sempre (`combate`
+  §3.3), sem o teste de Saber. A "legítima defesa" de Xanduí é do juiz de Ybytuguá (`xandui`). O que diverge e é
+  do autor decidir ficou listado lá, com as fichas da §9 que não estão no repositório da história.
+- **As quatro divergências com a história, resolvidas** (2026-11-14, a pedido do autor, `docs/escolhas.md`). Endyru
+  tem uns 15 anos no jogo, e a fala do preparo virou "desde a primeira aula de fundamentos". Aparar é a lâmina no
+  caminho (+2 na defesa, só a reação), e na Ipojy o Contragolpe sai na mesma reação. Esquivar anula o golpe que
+  pegaria, pleno ou com custo, por 3 de Fôlego; o Ykuruã não esquiva. Do Corpo pra cima, Empurrar e a Ombrada levam um
+  quadrado a mais. O Ykuruã não resiste mais à pancada, e subiu pra 140 de vida e Força 13. A final ficou em 90%, 15
+  rodadas.
+- **96. Os ícones das peças novas** (2026-11-14). Cada peça tem o seu sinal desenhado em `icons.ts`, no lugar do
+  emprestado: a Disparada (duas setas), o Ajudar (a mão aberta com o mais), o Desviar (a seta que passa ao lado), o
+  Puxar-se (o corpo indo até a parede), o Vigiar (o olho aberto), Agarrar (o punho no pulso), Empurrar (a palma e o
+  tranco), Derrubar (o pé por baixo), o Preparar (a lâmina e a ampulheta), o Levantar quem caiu, as quatro ordens
+  (avançar, segurar, proteger, mirar) e o coração dos nós de vida da árvore. Vistos no navegador.
+
+- **70. Os golpes, o dano e a queda na tela** (2026-11-14, a parte que se faz em código). O golpe se prepara (o corpo
+  recua um palmo antes do bote; a reação não tem tempo) e deixa o rastro do tipo do dano: o corte, um arco; a
+  estocada e o virote, uma risca; a pancada, um anel; a atração e repulsão, as linhas da força correndo pra fora no
+  empurrão e pra dentro no puxão. O dano solta gotas pro lado contrário a quem bateu, sangue de gente e lodo do bicho
+  de rio, na medida do golpe. Quem cai tomba pro lado contrário ao último golpe, com poeira (na água, afunda como
+  antes). A beira que prensa respinga, e a lâmina que lasca solta faísca. Vistos no navegador.
 
 ## 9. Onde isto está no cânone
 

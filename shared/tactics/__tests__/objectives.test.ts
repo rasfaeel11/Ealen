@@ -133,7 +133,7 @@ test("a deixa `used` de vários objetos espera todos", () => {
 
 test("quem não tem vida não perde nenhuma: o golpe vira `immune`, e condição e empurrão pegam", () => {
   const ghost = (at: (marker: string) => Pos) => {
-    const enemy = makeUnit("E", "enemy", at("E"));
+    const enemy = makeUnit("E", "enemy", at("E"), { breath: 0 });
     enemy.invulnerable = true;
     // Força alto: só um 1 natural erra.
     return [makeUnit("A", "party", at("A"), { kit: [TEST_KIT.empurrao], attributes: { olho: FIRST, forca: 60, couro: 60 } }), enemy];

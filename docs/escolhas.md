@@ -164,3 +164,125 @@ como "antes do primeiro golpe", ele casa com o princípio de aura da escola (tud
 custo de entrada (perder não impede, recuar sim).
 
 **Pra mudar**: `holdsGround` e `retreatsFrom` em `shared/tactics/movement.ts`.
+
+## 100. A margem e a borda do barco (2026-11-14)
+
+**O que decidi**
+- **A borda prensa** (`combate` §4.1, ao pé da letra): quem é de terra, empurrado do seco pra água, finca o pé
+  na beira e fica ali. Com um verbo que prensa (Empurrar, Empurrão, Arremesso, Ombrada), sai **Prensado**. Não
+  bate: água não é parede, então não há o dano do choque. A tela diz "finca o pé na beira d'água".
+- Quem **já está na água** vai mais pro fundo, como no aberto (e cai, se o verbo prensa: Caído).
+- **O bicho de rio não para na beira**: a água é dele. Empurrá-lo de volta pra água é o contrário de tirá-lo
+  dela, e é ruim pra quem empurra. Isso não mudou.
+
+**Por quê**: o cânone diz que borda do barco e margem prensam; a única leitura que não precisa de regra de
+afogamento (que o jogo não tem, e que mataria gente com um empurrão) é a de que a beira segura o corpo.
+
+**Pra mudar**: `edge` em `forcedPath` (`shared/tactics/movement.ts`) e `push` em `shared/tactics/engine.ts`.
+
+## 98. Os custos que faltavam (2026-11-14)
+
+**O que decidi**: cada custo da `combate` §2.2 cai numa hora certa, nesta ordem (o primeiro que couber):
+
+1. ~~**Lei**~~ — **saiu na conferência com a história** (2026-11-14): a licença de conjuro é de Itamoguá, e no
+   tempo da estrada não havia edital (`jarupa`, cap-02: "Na estrada não tinha."). A multa do armazém saiu junto.
+2. **Tempo** — a magia recitada que, pagando 1 de mana a mais, passaria do limite: o texto demora a fechar e
+   come a ação do turno em que sai, no lugar do estouro. É o custo de quem respeita o tempo; o estouro do ato 3
+   é deixa de roteiro e continua acontecendo.
+3. **A marca** — a outra magia paga 1 de mana a mais, como antes.
+4. **Posição** — o golpe de perto dado de cima perde a altura (quem bateu desce pro quadrado mais baixo colado
+   nele e no alvo); sem chão mais baixo, quem bateu de costas pro que barra sai Prensado.
+5. **Gente em volta** — o tiro (ou a área) que pega por pouco, com um aliado de quem bateu colado no alvo,
+   raspa nele: 1d4. Fora disto continua a deixa de Oryndu.
+6. **Fôlego** — 1, pra quem tem, como antes.
+7. **Equipamento** — sem Fôlego, o golpe de arma lasca a lâmina: Lâmina lascada, -1 no acerto até o fim da
+   luta, uma vez por luta. A gravação que se gasta já é a regra da gravada (serve uma vez).
+8. **Ferida** — o resto: 1d4 da própria vida, sem cair por ela, como antes.
+
+**Por quê**: cada custo cai onde o mundo o faria cair, sem o jogador ter de escolher a cada golpe (o livro
+escolhe pela prosa; o jogo, pela situação). A ordem põe primeiro o que é da situação (cidade, texto, chão,
+gente) e por último o que é do corpo.
+
+**Pra mudar**: `payCost` em `shared/tactics/engine.ts` (a ordem e as regras), `CHIPPED_TO_HIT`, e o texto da
+multa em `saqueadores_caem` (`client/story/ybytugua.ink`). A fala da multa é minha, na voz do guia de falas.
+
+## 103 e 80. Os números da Camada 1 e as lutas de gente (2026-11-14)
+
+**O que decidi**
+- **A Camada 1 fica como está**: a folga do pleno (3), o custo de Fôlego (1), a ferida (1d4), a esquiva (2), a
+  cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Testei a
+  cadeia a 2 de Fôlego: as lutas de gente quase não mudam e a final passa de 15 pra 20 rodadas. Voltei pra 1.
+- **O Golpe Pesado fica**, como você quis. Quem mudou foi o outro lado: a gente das lutas tinha atributos abaixo
+  dos do trio no mesmo nível (Força 5 a 7 contra 8 a 10) e vida pra um Golpe Pesado só. Agora:
+  | Quem | Vida (era) | Atributos que subiram |
+  |---|---|---|
+  | Guarda do pedágio | 40 (22) | Força 7, Olho 6, Couro 6, Vigor 6 |
+  | Besteiro | 30 (16) | — |
+  | Saqueador | 36 (22) | Força 8, Olho 5, Couro 5 |
+  | Saqueadora | 30 (18) | Força 6, Olho 7, Couro 5 |
+  | Espada de Ymboripe | 64 (30) | Força 9, Olho 6, Couro 7 |
+  | Lança de Ymboripe | 60 (28) | Força 8, Olho 7, Couro 7 |
+  | Aventureiro contratado | 58 (28) | Força 8, Olho 7, Couro 6 |
+  | Recitador | 34 (22) | Fator 9, Saber 9 |
+  | Mbyraku | 110 (60) | Força 10, Olho 8, Couro 8 |
+  | Jurendy | 56 (30) | Fator 11, Saber 11, Couro 5 |
+- **A pergunta do chuço**: a Ipojy que leva o erro de quem cutuca de 2 quadrados dá um passo pra dentro (sem
+  ataque de oportunidade, na reação) e devolve. Sem isso, o chuço do Gryskar desfazia o triângulo (a Ipojy vence o
+  Gryskar).
+- **A luta parada**: depois de 4 rodadas sem ninguém abrir, a IA do grupo bate mesmo com golpe fraco. Sem isso, um
+  espadachim sem escola e a Lança da Ipojy em guarda se olhavam pra sempre.
+- **O item no simulador**: o `balance:grupo` agora conta os itens usados e dá a paga do armazém (o unguento e os
+  dois potes de óleo).
+
+**O que deu** (`balance:grupo`, 40 lutas por luta): pedágio 100% em 2,5 rodadas (acaba no guincho); armazém 100% em
+4,2, Endyru cai em 15%; patrulha, vau e batedores 98 a 100% em 2,6 a 2,8; portão 100% em 2,1 (gente de nível 1
+contra o grupo no 3); ponte 98% em 5 rodadas, Endyru cai em 23%; final 90% em 17 rodadas.
+
+**Pra mudar**: os números estão em `shared/data/bestiary.ts`; o passo do Contragolpe é `closeIn` e a luta parada é
+`STALL_BREAK` (`shared/tactics/engine.ts`, `ai.ts`).
+
+## Conferência com a história (2026-11-14)
+
+Li o `historia-nova` (o repositório que está no GitHub, último commit de 2026-11-05) e confrontei com o jogo.
+
+**Corrigido no jogo**
+- **A lei como custo saiu**: a licença de conjuro é de Itamoguá (`licenca-de-conjuro`), e Jarupã, no cap-02,
+  descobre o edital: "Na estrada não tinha." A multa do armazém e a peça `law` do motor saíram.
+- **Apanhar quebra a recitação, sempre** (`combate` §3.3: "Apanhar quebra, e o texto recomeça do começo"). O jogo
+  dava um teste de d20 + Saber pra segurar o texto. Agora todo golpe que tira vida quebra, e o do Desviar também.
+  No `balance:grupo`: a ponte foi de 98% a 90%, a final de 90% a 93%; o resto quase não mudou.
+- **"Legítima defesa... um juiz em Ybytuguá"** (`xandui`). O jogo dizia Kuatiarape. A "quebra de contrato", que o
+  roteiro do autor põe num juiz de Kuatiarape, ficou.
+
+**Divergências que ficam pra você decidir**
+- **Fichas que o `AGENTS.md` diz gravadas e não estão no repositório**: `mbyraku`, `jurendy`, `thrykar`,
+  `castelo-da-volta`, os brasões em `ymboripe` e `xerumbetyba` e `referencias/mapa-do-mundo.md` (§9, "em
+  2026-10-31"). Nem o histórico tem esses nomes. Talvez estejam só na sua cópia local (`Documents/historiav2`) sem
+  push. No `alfabeto.md`, Jurendy aparece só como exemplo e como nome alternativo de Karuã.
+- ~~**A idade de Endyru**~~ — resolvido (ver abaixo).
+- ~~**Aparar, Esquivar, a aura nos verbos e a resistência do Ykuruã**~~ — resolvidos (ver abaixo).
+
+## As quatro divergências, resolvidas (2026-11-14, a pedido do autor)
+
+- **A idade de Endyru**: no jogo ele tem uns 15 anos (cap-11). A fala do preparo virou "Eu faço essa conta desde a
+  primeira aula de fundamentos": a aula que a `magia` §2.8 nomeia, e o mesmo "fundamentos" da escola que ele vai
+  procurar no fim. No roteiro também.
+- **Aparar** (`combate` §3.2: "reação; Exposto, no outro, se ele falhar"): a lâmina no caminho do golpe de perto.
+  O golpe precisa de 2 a mais pra passar; custa só a reação, sem Fôlego. Se o outro falha, fica Exposto (como toda
+  falha), e na Ipojy o Contragolpe sai na mesma reação — o "Aparar e, se o outro falha, o contragolpe" da `ipojy`.
+  Saiu o "tira 1d4 + grau" do golpe que pegou.
+- **Esquivar** (`combate` §3.2: "reação, fôlego; anula o golpe"): anula o golpe que pegaria, pleno ou com custo; o
+  improvável não se esquiva. O custo subiu de 2 pra 3 de Fôlego (com 2, Endyru quase não caía e a final ia a 20
+  rodadas). O Ykuruã não esquiva: quase cego, bebe o golpe no couro (`bestiario` §1). A IA sabe que quem ainda pode
+  esquivar sai da frente, e guarda Fôlego pro próprio Esquivar.
+- **A aura nos verbos** (`combate` §3.5): do Corpo pra cima, Empurrar e a Ombrada levam um quadrado a mais, o que
+  também vence um quadrado do peso de quem é empurrado. Jarupã e Xanduí chegam ao Corpo na ponte, então a final é
+  onde isso pesa: o empurrão de Corpo tira o Ykuruã da água mais rápido.
+- **O Ykuruã não resiste mais à pancada**: o bestiário não diz. Pra a final não virar passeio (sem a resistência e
+  com o empurrão de Corpo, caiu pra 8 rodadas, 100%), o bicho subiu de 90 pra 140 de vida e de Força 9 pra 13.
+
+**O que deu** (`balance:grupo`, 40 lutas): pedágio, armazém, patrulha, vau, batedores e portão de 98 a 100% em 2 a
+4 rodadas; a ponte 95% em 4,5 (Endyru cai em 15%); a final 90% em 15 rodadas (Endyru cai em 13 a 15%).
+
+**Pra mudar**: `PARRY_DEFENSE` em `shared/tactics/attack.ts`; `DODGE_BREATH` e `dodges` em `shared/tactics/engine.ts`;
+`AURA_SHOVE_FROM` e `auraShove` em `shared/tactics/styles.ts`; a ficha do Ykuruã em `shared/data/bestiary.ts`.
