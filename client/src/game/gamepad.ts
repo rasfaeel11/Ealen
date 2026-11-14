@@ -94,6 +94,8 @@ function buttonsNow(): [number, Press][] {
       [BUTTON.x, bound("ambush")],
       [BUTTON.y, bound("bag")],
       [BUTTON.rb, bound("sneak")],
+      // O pulo (Espaço) no LB.
+      [BUTTON.lb, fixed("Space")],
       [BUTTON.lt, bound("rest")],
       [BUTTON.rt, bound("sheet")],
       [BUTTON.select, bound("map")],

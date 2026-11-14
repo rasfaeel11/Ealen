@@ -62,6 +62,7 @@ export const SCENES = {
   title: "Title",
   saves: "Saves",
   world: "World",
+  intro: "Intro",
 } as const;
 
 /** Chave do registry do Phaser onde vive a partida aberta (uma GameSession). */

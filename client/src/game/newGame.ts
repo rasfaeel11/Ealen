@@ -14,5 +14,6 @@ export function beginNewGame(scene: Phaser.Scene): void {
   session.commit();
   scene.registry.remove(REGISTRY_NEW_GAME_SLOT);
   scene.registry.set(REGISTRY_SESSION, session);
-  scene.scene.start(SCENES.world);
+  // Antes da primeira cena, o mundo em seis frases (ver IntroScene).
+  scene.scene.start(SCENES.intro);
 }

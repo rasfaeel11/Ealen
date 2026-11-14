@@ -9,6 +9,7 @@ import BootScene from "./scenes/BootScene";
 import TitleScene from "./scenes/TitleScene";
 import SaveSlotsScene from "./scenes/SaveSlotsScene";
 import WorldScene from "./scenes/WorldScene";
+import IntroScene from "./scenes/IntroScene";
 import { watchGamepad } from "./game/gamepad";
 import { watchWindowShape } from "./game/viewport";
 
@@ -45,7 +46,7 @@ void waitForFonts().then(() => {
     },
     // O som do jogo é sintetizado em `game/audio.ts`, com o contexto de áudio dele: o do Phaser não é usado.
     audio: { noAudio: true },
-    scene: [BootScene, TitleScene, SaveSlotsScene, WorldScene],
+    scene: [BootScene, TitleScene, SaveSlotsScene, IntroScene, WorldScene],
   });
   // Só no servidor de desenvolvimento: deixa um teste no navegador chegar à cena e mexer nela. O build não leva.
   if (import.meta.env.DEV) (window as unknown as { __jogo?: Phaser.Game }).__jogo = game;
