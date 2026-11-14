@@ -71,7 +71,7 @@ Xanduí: Então conta você. Eu não começo.
     Xanduí põe a mão no punho da espada e não tira a espada.
     Xanduí: Eu não começo.
     Jarupã: Eu sei. Deixa que eu abro.
-    Oryndu olha o guincho no cais: um tambor de madeira com a corrente enrolada e uma trava de ferro em cima.
+    Oryndu olha o guincho no cais. Um tambor de madeira com a corrente enrolada e uma trava de ferro em cima.
     Oryndu: Solta aquela trava e a corrente desce sozinha. Com a mão, rapaz. Sem Verso.
     ~ start_fight("pedagio")
     -> END

@@ -139,7 +139,7 @@ Jarupã está com o braço aberto até o cotovelo, segurando a espada com a outr
 {prova:
     A lua da carta é amanhã.
 }
-Endyru conta: com Verso pequeno, um palmo por vez, são mais três fôlegos. Três fôlegos ele não tem.
+Endyru conta. Com Verso pequeno, um palmo por vez, são mais três fôlegos. Três fôlegos ele não tem.
 Ele larga a medida. Abre o livro na página inteira e grita o verbo de uma vez, tudo, pra arrancar o bicho da água num puxão só.
 O sangue desce do nariz na hora. As duas mãos começam a tremer.
 O puxão arranca metade do Ykuruã do lodo. E o estouro bate na água inteira, como um sino tocado debaixo do rio.
