@@ -895,6 +895,14 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   pegaria, pleno ou com custo, por 3 de Fôlego; o Ykuruã não esquiva. Do Corpo pra cima, Empurrar e a Ombrada levam um
   quadrado a mais. O Ykuruã não resiste mais à pancada, e subiu pra 140 de vida e Força 13. A final ficou em 90%, 15
   rodadas.
+- **O terreno, o objetivo e a abertura** (pedidos do autor em 2026-11-14). Fora de luta, o chão mais alto barra o
+  passo: sobe-se um degrau pulando (Espaço, ou LB no controle; a dica "[Espaço] Pular" aparece de cara pro degrau) e
+  desce-se andando. Na luta continua igual: subir custa 1 de passo por degrau, e de cima se bate com +2. O objetivo de
+  agora (`shared/story/objectives.ts`, dez passos do pedágio ao relatório, pelas variáveis da história) fica numa
+  caixa embaixo do minimapa e no alto da aba Missões do `J`, que abre nela; no minimapa, um anel dourado pulsa no
+  lugar do objetivo, ou na saída que leva até ele. O jogo novo abre com o mundo em seis frases (`IntroScene`: Espaço
+  adianta, Esc pula), e a conversa do barco ficou com a metade das falas. A escolha que leva à luta do pedágio
+  agora diz "(luta)". Os companheiros não nascem mais em cima de Endyru depois de uma viagem. Vistos no navegador.
 - **96. Os ícones das peças novas** (2026-11-14). Cada peça tem o seu sinal desenhado em `icons.ts`, no lugar do
   emprestado: a Disparada (duas setas), o Ajudar (a mão aberta com o mais), o Desviar (a seta que passa ao lado), o
   Puxar-se (o corpo indo até a parede), o Vigiar (o olho aberto), Agarrar (o punho no pulso), Empurrar (a palma e o

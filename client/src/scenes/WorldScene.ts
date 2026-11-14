@@ -41,7 +41,10 @@ import {
   markDefeated,
   markVisited,
   travelSpots,
+  travelRoute,
+  currentObjective,
   worldLinks,
+  jumpTarget,
   type TravelSpot,
   mend,
   npcInReach,
@@ -166,6 +169,9 @@ import { STORY_KEY, mapKey } from "../game/worldAssets";
 const ZOOM = 3;
 /** Pixels do mapa por segundo (6 quadrados de 16px). */
 const WALK_SPEED = 96;
+/** Quanto dura o pulo de um degrau, e quão alto vai o arco (em pixels do mapa). */
+const JUMP_MS = 280;
+const JUMP_HEIGHT = 7;
 /** Esgueirando, anda-se na metade. */
 const SNEAK_FACTOR = 0.5;
 /** Quem segue anda mais rápido que quem vai na frente: é o que o deixa alcançar depois de ficar pra trás. */
@@ -460,6 +466,8 @@ export default class WorldScene extends Phaser.Scene {
 
     this.moveSentries(delta);
     if (this.lookout(delta)) return;
+    // No meio do pulo, o corpo está no ar: as teclas esperam ele chegar.
+    if (this.leaping) return;
 
     const dx = Number(this.keys.right.isDown || this.keys.d.isDown) - Number(this.keys.left.isDown || this.keys.a.isDown);
     const dy = Number(this.keys.down.isDown || this.keys.s.isDown) - Number(this.keys.up.isDown || this.keys.w.isDown);
@@ -487,6 +495,13 @@ export default class WorldScene extends Phaser.Scene {
 
     const facing: Facing = dx !== 0 ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
     this.player.face(facing);
+    this.heading = { dx, dy };
+    // De cara pra um degrau: a dica do pulo aparece (e some quando ele sai dali).
+    const canJump = jumpTarget(this.map, this.pos, dx, dy, BODY) !== undefined;
+    if (canJump !== this.canJump) {
+      this.canJump = canJump;
+      this.refreshHint();
+    }
     this.player.setWalking(true);
     this.moveFollowers(delta);
 
@@ -763,7 +778,8 @@ export default class WorldScene extends Phaser.Scene {
     });
     for (const character of present) {
       if (this.followers.some((follower) => follower.character === character)) continue;
-      const pos = { ...this.pos };
+      // Um tico atrás do personagem: no mesmo ponto, quem chega por último é desenhado por cima e o esconde.
+      const pos = { x: this.pos.x, y: this.pos.y - 1 - this.followers.length };
       const spriteKey = ownSpriteKey(this, character.name, classSpriteKey(character.characterClass));
       this.followers.push({ character, pos, actor: this.addActor(spriteKey, pos) });
     }
@@ -872,8 +888,75 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   /** Os pontos do minimapa: o grupo em ouro e a gente da área. Inimigo não aparece: quem vê é o olho, não o mapa. */
-  private minimapDots(): { x: number; y: number; color: number; radius?: number }[] {
+  /** Pra onde o protagonista olha (o último passo): é pra lá que ele pula. */
+  private heading = { dx: 0, dy: 1 };
+  /** De cara pra um degrau que se sobe pulando (ver jumpTarget em shared/world/walk.ts). */
+  private canJump = false;
+  /** No meio do pulo. */
+  private leaping = false;
+
+  /**
+   * PULAR (fora de luta): sobe o degrau à frente, um só, num arco curto. Andando,
+   * o pé não sobe barranco nem patamar (ver walk em shared/world/walk.ts); na luta,
+   * subir custa passo (CLIMB_COST) e o chão alto dá +2 a quem bate de cima.
+   */
+  private jump(): void {
+    if (this.leaping) return;
+    const target = jumpTarget(this.map, this.pos, this.heading.dx, this.heading.dy, BODY);
+    if (!target) return;
+    this.leaping = true;
+    this.canJump = false;
+    this.refreshHint();
+    const from = { ...this.pos };
+    sfx("step");
+    this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: JUMP_MS,
+      ease: "Sine.easeInOut",
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 1;
+        const lift = Math.sin(t * Math.PI) * JUMP_HEIGHT;
+        this.player.place({ x: from.x + (target.x - from.x) * t, y: from.y + (target.y - from.y) * t - lift });
+      },
+      onComplete: () => {
+        this.pos = target;
+        this.player.place(this.pos);
+        this.leaping = false;
+        sfx("step");
+        this.moveFollowers(0);
+        this.refreshHint();
+      },
+    });
+  }
+
+  /** O objetivo de agora e o ponto dele no minimapa (o lugar, ou a saída que leva até lá). */
+  private objectiveMark(): { text: string; mark?: PixelPos } {
+    const objective = currentObjective(this.flag);
+    const key = `${objective.id}@${this.area.id}`;
+    if (this.objectiveCache?.key === key) return this.objectiveCache.value;
+    let mark: PixelPos | undefined;
+    if (objective.area === this.area.id) {
+      mark = { x: (objective.tile.x + 0.5) * this.map.tileSize, y: (objective.tile.y + 0.5) * this.map.tileSize };
+    } else {
+      this.mapsCache ??= this.allMaps();
+      const route = travelRoute(this.mapsCache, this.area.id, objective.area, (exit) => isActive(exit, this.flag));
+      const exit = route?.[0];
+      if (exit) mark = { x: exit.x + exit.width / 2, y: exit.y + exit.height / 2 };
+    }
+    const value = { text: objective.text, ...(mark ? { mark } : {}) };
+    this.objectiveCache = { key, value };
+    return value;
+  }
+
+  private objectiveCache?: { key: string; value: { text: string; mark?: PixelPos } };
+  private mapsCache?: Record<string, AreaMap>;
+
+  private minimapDots(): { x: number; y: number; color: number; radius?: number; ring?: boolean }[] {
+    const goal = this.objectiveMark();
+    this.hud.setObjective(goal.text);
     return [
+      ...(goal.mark ? [{ ...goal.mark, color: COLORS.goldBright, radius: 4, ring: true }] : []),
       ...[...this.npcActors.values()].map((actor) => ({ ...actor.pos, color: 0xcfc6b8, radius: 1.5 })),
       ...this.followers.map((follower) => ({ x: follower.pos.x, y: follower.pos.y, color: COLORS.gold, radius: 1.5 })),
       { x: this.pos.x, y: this.pos.y, color: COLORS.goldBright, radius: 2.5 },
@@ -896,6 +979,7 @@ export default class WorldScene extends Phaser.Scene {
       if (thing) prompts.push({ key: keyLabel("interact"), label: `${THING_VERBS[thing.kind]} ${thing.name}`, onClick: () => this.interact() });
     }
     if (prey !== undefined) prompts.push({ key: keyLabel("ambush"), label: this.hidden(prey) ? "Emboscar" : "Investida", onClick: () => this.ambush() });
+    if (this.canJump) prompts.push({ key: "Espaço", label: "Pular", onClick: () => this.jump() });
     this.hud.setPrompts(prompts);
 
     const abilities = this.fieldAbilities().map(
@@ -1569,6 +1653,7 @@ export default class WorldScene extends Phaser.Scene {
     }
     if (this.pause || this.combat || this.leaving || this.talking) return;
     if (event.code === "Escape") this.openPause();
+    else if (event.code === "Space") this.jump();
     else if (isAction(event, "interact")) this.interact();
     else if (isAction(event, "ambush")) this.ambush();
     else if (isAction(event, "sneak")) this.toggleSneak();
@@ -1969,7 +2054,7 @@ export default class WorldScene extends Phaser.Scene {
   private openJournal(): void {
     this.halt();
     sfx("uiOpen");
-    const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), this.story.quests(), this.save.codex, this.save.visited, () => this.closePause());
+    const panel = new JournalPanel(this, (object) => this.addHud(object), this.story.journal(), this.story.quests(), this.save.codex, this.save.visited, () => this.closePause(), currentObjective(this.flag).text);
     this.pause = panel;
   }
 

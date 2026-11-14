@@ -77,7 +77,13 @@ function codexLines(codex: Codex, visited: readonly string[]): Line[] {
 /** As abas: o diário de pistas, o registro de missões e o códice. A página abre onde fica o mais novo de cada uma. */
 const TABS: { name: string; empty: string; lines: (panel: JournalPanel) => Line[]; openAt: "first" | "last" }[] = [
   { name: "Diário", empty: "Nada anotado ainda.", lines: (panel) => journalLines(panel.entries), openAt: "last" },
-  { name: "Missões", empty: "Nada pra fazer ainda.", lines: (panel) => questLines(panel.quests), openAt: "first" },
+  {
+    name: "Missões",
+    empty: "Nada pra fazer ainda.",
+    // O objetivo de agora em cima de tudo (ver currentObjective em shared/story/objectives.ts), depois as missões.
+    lines: (panel) => [...(panel.objective ? [{ text: `Agora\n${panel.objective}`, color: TEXT_COLORS.goldBright }] : []), ...questLines(panel.quests)],
+    openAt: "first",
+  },
   { name: "Códice", empty: "Nada visto ainda.", lines: (panel) => codexLines(panel.codex, panel.visited), openAt: "first" },
 ];
 
@@ -110,6 +116,7 @@ export class JournalPanel {
     readonly codex: Codex,
     readonly visited: readonly string[],
     private readonly onClose: () => void,
+    readonly objective = "",
   ) {
     this.objects.push(addHud(addModalDim(scene)), addHud(addPanel(scene, X, Y, WIDTH, HEIGHT)));
     const heading = addHeading(scene, GAME_WIDTH / 2, Y + 46, "DIÁRIO", WIDTH - 120, 28);
@@ -132,7 +139,8 @@ export class JournalPanel {
     this.objects.push(this.footer);
 
     this.openedAt = scene.time.now;
-    this.showTab(0);
+    // Abre nas missões: o objetivo de agora fica no alto dela.
+    this.showTab(1);
     scene.input.keyboard?.on("keydown", this.onKey, this);
   }
 

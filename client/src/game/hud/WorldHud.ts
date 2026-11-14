@@ -88,6 +88,12 @@ export class WorldHud {
   private readonly mapDots: Phaser.GameObjects.Graphics;
   private readonly mapScale: number;
   private readonly mapOrigin: PixelPos;
+  /** O objetivo de agora, embaixo do minimapa (ver currentObjective em shared/story/objectives.ts). */
+  private readonly goalFrame: Phaser.GameObjects.Graphics;
+  private readonly goalTitle: Phaser.GameObjects.Text;
+  private readonly goalText: Phaser.GameObjects.Text;
+  private readonly goalTop: number;
+  private goal = "";
   private sinceDots = 0;
   private buttonsKey = "";
   private shown = true;
@@ -160,6 +166,19 @@ export class WorldHud {
     };
     this.mapImage = add(scene.add.image(this.mapOrigin.x, this.mapOrigin.y, key).setOrigin(0).setScale(this.mapScale));
     this.mapDots = add(scene.add.graphics());
+
+    this.goalTop = top + MAP_HEIGHT + 16;
+    this.goalFrame = add(scene.add.graphics());
+    this.goalTitle = add(
+      addBodyText(scene, RIGHT_COLUMN_LEFT + 12, this.goalTop + 8, "OBJETIVO", { fontSize: "12px", color: TEXT_COLORS.gold }),
+    );
+    this.goalText = add(
+      addBodyText(scene, RIGHT_COLUMN_LEFT + 12, this.goalTop + 26, "", {
+        fontSize: "14px",
+        color: TEXT_COLORS.ink,
+        wordWrap: { width: RIGHT_COLUMN_WIDTH - 24 },
+      }),
+    );
     this.applySettings();
   }
 
@@ -263,16 +282,34 @@ export class WorldHud {
     this.promptZone.setInteractive({ useHandCursor: prompts[0]?.onClick !== undefined });
   }
 
-  /** Redesenha os pontos do minimapa, de tempos em tempos. `dots` em pixels do mapa. */
-  tick(delta: number, dots: { x: number; y: number; color: number; radius?: number }[]): void {
+  /** O objetivo de agora, numa caixa embaixo do minimapa. Vazio, a caixa some. */
+  setObjective(text: string): void {
+    if (text === this.goal) return;
+    this.goal = text;
+    this.goalText.setText(text);
+    this.goalFrame.clear();
+    if (text !== "") drawPanel(this.goalFrame, RIGHT_COLUMN_LEFT, this.goalTop, RIGHT_COLUMN_WIDTH, this.goalText.height + 36, true);
+    this.setVisible(this.shown);
+  }
+
+  /** Redesenha os pontos do minimapa, de tempos em tempos. `dots` em pixels do mapa; `ring` desenha um anel (o objetivo). */
+  tick(delta: number, dots: { x: number; y: number; color: number; radius?: number; ring?: boolean }[]): void {
     this.sinceDots += delta;
     if (this.sinceDots < MINIMAP_MS) return;
     this.sinceDots = 0;
     const per = this.mapScale / this.map.tileSize;
     this.mapDots.clear();
     for (const dot of dots) {
+      const at = { x: this.mapOrigin.x + dot.x * per, y: this.mapOrigin.y + dot.y * per };
+      if (dot.ring) {
+        // O objetivo pulsa: o anel cresce e encolhe com o tempo.
+        const pulse = 1 + 0.35 * Math.sin(this.scene.time.now / 260);
+        this.mapDots.lineStyle(2, dot.color, 1);
+        this.mapDots.strokeCircle(at.x, at.y, (dot.radius ?? 4) * pulse);
+        continue;
+      }
       this.mapDots.fillStyle(dot.color, 1);
-      this.mapDots.fillCircle(this.mapOrigin.x + dot.x * per, this.mapOrigin.y + dot.y * per, dot.radius ?? 2);
+      this.mapDots.fillCircle(at.x, at.y, dot.radius ?? 2);
     }
   }
 
@@ -282,6 +319,10 @@ export class WorldHud {
     for (const object of [this.mapFrame, this.mapImage, this.mapDots]) {
       (object as unknown as Phaser.GameObjects.Components.Visible).setVisible(visible && settings().minimap);
     }
+    const goal = visible && this.goal !== "";
+    this.goalFrame.setVisible(goal);
+    this.goalTitle.setVisible(goal);
+    this.goalText.setVisible(goal);
     this.barFrame.setVisible(!this.barOn);
     this.showBar();
     this.prompt.setVisible(visible && this.prompt.text !== "");

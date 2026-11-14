@@ -12,6 +12,9 @@ import {
   parseTiledMap,
   clockThreshold,
   partyCondition,
+  currentObjective,
+  OBJECTIVE_STEPS,
+  tileAt,
   type Character,
   type DialogueStep,
   type StoryHost,
@@ -333,4 +336,31 @@ test("toda fala no formato `Nome: texto` é de alguém de verdade: narração co
   ]);
   const strangers = [...speakers].filter((speaker) => !people.has(speaker));
   assert.deepEqual(strangers, [], `falas de quem não é ninguém (narração com dois-pontos?): ${strangers.join(", ")}`);
+});
+
+test("o objetivo de agora: cada passo aponta um lugar que se pisa numa área que existe, e anda com a história", () => {
+  for (const step of OBJECTIVE_STEPS) {
+    const map = maps[step.area];
+    assert.ok(map, `${step.id}: a área ${step.area} não existe`);
+    const tile = tileAt(map.grid, step.tile);
+    assert.ok(tile, `${step.id}: o ponto está fora do mapa`);
+  }
+  const flags = new Set<string>();
+  const now = () => currentObjective((name) => flags.has(name)).id;
+  assert.equal(now(), "pedagio");
+  const order: [string, string][] = [
+    ["pedagio_resolvido", "descer"],
+    ["chegou", "quadro"],
+    ["leu_edital", "conselheira"],
+    ["contrato", "primeira"],
+    ["ato2", "margem"],
+    ["circulo", "ponte"],
+    ["castelao_vencido", "chamado"],
+    ["ato3", "cheia"],
+    ["ykurua_morto", "relatorio"],
+  ];
+  for (const [flag, expected] of order) {
+    flags.add(flag);
+    assert.equal(now(), expected, `depois de ${flag}`);
+  }
 });

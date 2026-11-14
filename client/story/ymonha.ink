@@ -14,24 +14,17 @@ VAR castelao_vencido = false
 ~ join_party("oryndu")
 ~ join_party("jarupa")
 ~ join_party("xandui")
-O barco de Oryndu desce o Ymonhã carregado de sacos de sal. Atrás dos sacos, onde a margem não o vê, vai sentado o mercador. Na proa, a escolta: ele amola uma espada pesada; ela confere as correias da bainha. Na popa, um estudante conta nove moedas de cobre pela terceira vez.
-Oryndu bate o cabo do remo no casco. Uma batida seca. Espera. Escuta.
-Endyru: Furou?
-Oryndu: Estou medindo o fundo. A cheia subiu três dedos antes da lua certa.
+O barco de Oryndu desce o Ymonhã carregado de sal. Na proa, a escolta de um mercador; na popa, um estudante que conta nove moedas de cobre.
+Oryndu bate o cabo do remo no casco. Espera. Escuta.
 Xanduí: O que tanto você escreve aí, estudante?
-Endyru: A medida da linha entre dois corpos. Quanto um puxa o outro, a quantos passos, e com que...
+Endyru: A medida da linha entre dois corpos.
 Jarupã: Ah. Empurrar coisa.
-Um sino de ferro bate na margem.
-Uma corrente sobe da água na frente do barco, pingando lodo, de uma margem à outra.
-Um virote crava no costado, a um palmo da mão de Endyru.
-Oryndu: Segura.
-O barco bate na corrente e para. Na margem norte, o Castelo da Volta: pedra embaixo, madeira em cima. No cais, um guincho com a corrente enrolada, dois guardas de chuço, um besteiro na sombra do muro e um sargento com uma tábua de preços.
+Uma corrente sobe da água na frente do barco, de uma margem à outra. Um virote crava no costado, a um palmo da mão de Endyru.
+O barco para. Na margem norte, o Castelo da Volta. No cais, o guincho da corrente, dois guardas de chuço, um besteiro e um sargento com uma tábua de preços.
 Sargento do pedágio: Pedágio. Dois de prata pelo barco. Três de cobre por cabeça.
-De trás dos sacos, sem se levantar:
 Mercador: Era um de prata na lua passada.
-Sargento do pedágio: Na lua passada não tinha cheia. Rio cheio é rio perigoso. Perigo se paga.
-Jarupã: Escuta o Jarupã, que eu já passei por três pedágios desses só neste inverno. Guarda de corrente só sabe contar até cinco.
-Xanduí: Então conta você. Eu não começo.
+Sargento do pedágio: Na lua passada não tinha cheia.
+Xanduí: Eu não começo.
 -> escolhas
 
 = escolhas
@@ -66,7 +59,7 @@ Xanduí: Então conta você. Eu não começo.
     Oryndu: É a cheia.
     Ele não solta até Endyru fechar o livro.
     -> escolhas
-* [Deixar que Jarupã discuta.]
+* [Deixar que Jarupã resolva do jeito dele. (luta)]
     Jarupã: Deixa comigo.
     Xanduí põe a mão no punho da espada e não tira a espada.
     Xanduí: Eu não começo.
