@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PARRY_BREATH, abilityTargets, activeUnit, applyCommand, findUnit, type Encounter, type TacticalEvent, type Unit } from "../index";
+import { PARRY_DEFENSE, abilityTargets, activeUnit, applyCommand, findUnit, type Encounter, type TacticalEvent, type Unit } from "../index";
 import { FIRST, eventsOf, makeUnit, run, setup } from "./helpers";
 
 /**
@@ -139,16 +139,27 @@ function struck(parryBreath = 10): { events: TacticalEvent[]; hero: Unit } {
   throw new Error("nenhuma semente acertou");
 }
 
-test("quem é de escola apara o golpe de perto que pegou: tira dano, gasta a reação e Fôlego", () => {
-  const { events, hero } = struck();
+test("quem é de escola apara o golpe de perto (`combate` §3.2): a lâmina no caminho, a reação gasta, sem Fôlego", () => {
+  const { events, hero } = struck(0);
   const [parried] = eventsOf(events, "parried");
-  assert.ok(parried && parried.amount > 0);
+  assert.deepEqual(parried, { type: "parried", unit: "A", attacker: "E" });
   assert.equal(hero.turn.reaction, false);
-  assert.ok(eventsOf(events, "breathSpent").some((event) => event.unit === "A" && event.amount === PARRY_BREATH));
+  assert.ok(!eventsOf(events, "breathSpent").some((event) => event.unit === "A"));
+  // O golpe precisou de PARRY_DEFENSE a mais pra passar.
+  const [roll] = eventsOf(events, "attackRoll");
+  assert.equal(roll.defense, 10 + hero.attributes.couro + PARRY_DEFENSE + (hero.defense ?? 0));
 });
 
-test("sem Fôlego não se apara", () => {
-  const { events } = struck(0);
+test("sem a reação não se apara", () => {
+  const { encounter } = setup(["EA"], (at) => [
+    makeUnit("E", "enemy", at("E"), { attributes: { olho: FIRST } }),
+    schooled(makeUnit("A", "party", at("A"), { currentHp: 200, maxHp: 200 })),
+  ]);
+  const hero = findUnit(encounter, "A")!;
+  hero.turn.reaction = false;
+  passTo(encounter, "E");
+  hero.turn.reaction = false;
+  const events = run(encounter, { type: "ability", unitId: "E", abilityId: "espadachim.attack", target: hero.pos });
   assert.equal(eventsOf(events, "parried").length, 0);
 });
 

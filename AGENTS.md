@@ -535,7 +535,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   o chão do mapa (só a cópia); nenhum mapa com cheia tem caixote.
 - **39. O preparo na margem.** Antes da luta final, `a_cheia` oferece riscar os círculos na margem seca (`preparo`):
   Endyru mede a corda duas vezes, Jarupã rola dois barris de óleo e crava as estacas, o sinal do remo se combina, e vêm as
-  falas de Oryndu ("Puxa um palmo, deixa a moça segurar o bote...") e de Endyru ("desde os quatorze anos"). Dá pra ir
+  falas de Oryndu ("Puxa um palmo, deixa a moça segurar o bote...") e de Endyru ("desde a primeira aula de fundamentos"). Dá pra ir
   sem. O círculo gravado ganhou lugar no mapa: é um objeto (`circle` em `PROPS`) que se acende encostado nele, puxa o
   inimigo mais perto (o bicho de rio primeiro) três quadrados na direção dele, menos o peso, e não gasta mana nem chama o
   bicho. A água que sobe apaga o círculo que alcança (`washes`). Os destrutíveis passaram a aceitar `if`/`unless` e a
@@ -889,6 +889,12 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   havia edital de licença, `jarupa` cap-02), com a multa do armazém. Apanhar recitando quebra sempre (`combate`
   §3.3), sem o teste de Saber. A "legítima defesa" de Xanduí é do juiz de Ybytuguá (`xandui`). O que diverge e é
   do autor decidir ficou listado lá, com as fichas da §9 que não estão no repositório da história.
+- **As quatro divergências com a história, resolvidas** (2026-11-14, a pedido do autor, `docs/escolhas.md`). Endyru
+  tem uns 15 anos no jogo, e a fala do preparo virou "desde a primeira aula de fundamentos". Aparar é a lâmina no
+  caminho (+2 na defesa, só a reação), e na Ipojy o Contragolpe sai na mesma reação. Esquivar anula o golpe que
+  pegaria, pleno ou com custo, por 3 de Fôlego; o Ykuruã não esquiva. Do Corpo pra cima, Empurrar e a Ombrada levam um
+  quadrado a mais. O Ykuruã não resiste mais à pancada, e subiu pra 140 de vida e Força 13. A final ficou em 90%, 15
+  rodadas.
 - **96. Os ícones das peças novas** (2026-11-14). Cada peça tem o seu sinal desenhado em `icons.ts`, no lugar do
   emprestado: a Disparada (duas setas), o Ajudar (a mão aberta com o mais), o Desviar (a seta que passa ao lado), o
   Puxar-se (o corpo indo até a parede), o Vigiar (o olho aberto), Agarrar (o punho no pulso), Empurrar (a palma e o

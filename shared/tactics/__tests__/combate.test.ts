@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   COST_BAND,
+  DODGE_BREATH,
   CHAIN_MAX,
   CURVE_TO_HIT,
   activeUnit,
@@ -29,7 +30,8 @@ import { FIRST, eventsOf, makeUnit, run, setup } from "./helpers";
 const styled = (unit: Unit, style: StyleId, grade = 2): Unit => Object.assign(unit, { style, grade });
 /** Bate sempre (menos no 1 natural): a rolagem sobra pro pleno. */
 const STRONG = { forca: 60, olho: FIRST };
-const TOUGH = { currentHp: 900, maxHp: 900 };
+/** Aguenta tudo, e sem Fôlego não esquiva: o golpe que pega, pega. */
+const TOUGH = { currentHp: 900, maxHp: 900, breath: 0 };
 const pass = (encounter: Encounter) => run(encounter, { type: "endTurn", unitId: activeUnit(encounter)!.id });
 
 /** A primeira semente de 1 a 200 em que `scene` satisfaz `check`. */
@@ -305,18 +307,18 @@ test("a curva de poder e a diferença de nível mexem na chance; três níveis a
   assert.equal(canBeImprobable(mage, sword), true);
 });
 
-test("Esquivar: quem não é de escola de espada sai da frente do golpe que pegaria por pouco", () => {
+test("Esquivar (`combate` §3.2: \"reação, fôlego; anula o golpe\"): quem não é de escola de espada sai da frente do golpe que pegaria", () => {
   const { encounter, events } = seedWhere(
     (seed) => {
       const encounter = duel(["AE"], seed, {}, { breath: 4 });
       return { encounter, events: strike(encounter) };
     },
-    ({ events }) => eventsOf(events, "attackRoll")[0].outcome === "cost",
+    ({ events }) => eventsOf(events, "attackRoll")[0].outcome === "hit",
   );
   assert.deepEqual(eventsOf(events, "dodged"), [{ type: "dodged", unit: "E", attacker: "A" }]);
   assert.deepEqual(eventsOf(events, "damage"), []);
   const enemy = findUnit(encounter, "E")!;
-  assert.equal(enemy.breath, 2);
+  assert.equal(enemy.breath, 4 - DODGE_BREATH);
   assert.equal(enemy.turn.reaction, false);
   // Não errou: quem bateu não fica Exposto.
   assert.ok(!findUnit(encounter, "A")!.statuses.some((status) => status.id === "exposto"));

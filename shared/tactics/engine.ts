@@ -8,7 +8,7 @@ import { FALL_PER_STEP, findPath, forcedPath } from "./movement";
 import { PROPS, fellProp, propTemplate, type Prop, type PropTemplate } from "./props";
 import { rollDice, rollDie } from "./rng";
 import { STATUSES, isHarmful, type ActiveStatus, type StatusId, type StatusTemplate } from "./statuses";
-import { PARRY_BREATH, PARRY_MIN, SPENT_DAMAGE, STYLES, counters, feints, isSworn, punishesRepeat, parries, strikesFirst, styleReduction, waveBonus } from "./styles";
+import { SPENT_DAMAGE, STYLES, auraShove, counters, feints, isSworn, punishesRepeat, parries, strikesFirst, styleReduction, waveBonus } from "./styles";
 import {
   SURFACES,
   enterCost,
@@ -938,6 +938,8 @@ function resolveAbility(
 
   // Quem é da Ipojy e foi atacado em vão devolve o golpe — depois que este acabar de acontecer.
   const countering: Unit[] = [];
+  // Quem aparou este golpe: o Contragolpe dela sai na mesma reação (ver PARRY_DEFENSE em ./attack.ts).
+  const parried = new Set<string>();
   // O custo se paga uma vez por golpe, mesmo numa área: é o corpo de quem bateu.
   let costly = false;
   let costTarget: Unit | undefined;
@@ -963,10 +965,12 @@ function resolveAbility(
     let critical = false;
     let outcome: AttackOutcome = "hit";
     if (ability.attack && !strike.sure) {
-      const rolled = rollAttack(encounter, actor, target, ability, targetPos, events);
+      const rolled = rollAttack(encounter, actor, target, ability, targetPos, events, strike.feint);
       outcome = rolled.outcome;
-      if (outcome === "cost" && !strike.feint && dodges(encounter, actor, ability, target)) {
-        // ESQUIVAR (`combate` §3.2): o golpe que pegaria por pouco não pega, e quem bateu não errou — não fica Exposto.
+      if (rolled.parried) parried.add(target.id);
+      if ((outcome === "cost" || outcome === "hit") && !strike.feint && dodges(encounter, actor, ability, target)) {
+        // ESQUIVAR (`combate` §3.2: "reação, fôlego; anula o golpe"): o golpe que pegaria não pega, e quem bateu não
+        // errou — não fica Exposto. O improvável não se esquiva.
         target.turn.reaction = false;
         target.breath -= DODGE_BREATH;
         events.push({ type: "breathSpent", unit: target.id, amount: DODGE_BREATH, remaining: target.breath });
@@ -1018,7 +1022,7 @@ function resolveAbility(
   // O golpe que sai do esconderijo o descobre.
   if (isBlow(ability) && actor.statuses.some((status) => status.concealed)) reveal(actor, events);
 
-  for (const defender of countering) counterStrike(encounter, defender, actor, events);
+  for (const defender of countering) counterStrike(encounter, defender, actor, events, parried.has(defender.id));
   return first;
 }
 
@@ -1046,19 +1050,21 @@ function deflecting(encounter: Encounter, target: Unit): Unit | undefined {
 }
 
 /** O Fôlego que Esquivar custa. */
-export const DODGE_BREATH = 2;
+export const DODGE_BREATH = 3;
 /** O Fôlego que o sucesso com custo cobra, quando o custo sai do Fôlego. */
 export const COST_BREATH = 1;
 
 /**
- * ESQUIVAR (`combate` §3.2): `target` sai da frente do golpe que pegaria por
- * pouco (o sucesso com custo de quem bate), gastando a reação e DODGE_BREATH.
+ * ESQUIVAR (`combate` §3.2: "reação, fôlego; anula o golpe"): `target` sai da
+ * frente do golpe que pegaria (pleno ou com custo; o improvável, não), gastando
+ * a reação e DODGE_BREATH. O bicho de rio não esquiva.
  * Quem é de escola de espada apara em vez de esquivar; área não se esquiva; e
  * quem está no chão, preso ou perdendo a vez não sai de lugar nenhum.
  */
 function dodges(encounter: Encounter, actor: Unit, ability: Ability, target: Unit): boolean {
   if (actor.team === target.team || ability.radius !== undefined || !target.turn.reaction || target.breath < DODGE_BREATH) return false;
-  if (parries(target) || !isAlive(target)) return false;
+  // O bicho de rio não sai da frente: quase cego, bebe o golpe no couro (`bestiario` §1).
+  if (parries(target) || !isAlive(target) || target.river) return false;
   return !target.statuses.some((status) => status.skipsTurn || status.prone || (status.speed ?? 0) <= -99);
 }
 
@@ -1230,8 +1236,10 @@ function ready(encounter: Encounter, unit: Unit, abilityId: string, events: Tact
  * pago como um ataque de oportunidade. Sem reação, sem golpe pronto ou longe
  * demais, nada acontece.
  */
-function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, events: TacticalEvent[]): void {
-  if (!isAlive(defender) || !isAlive(attacker) || !defender.turn.reaction) return;
+function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, events: TacticalEvent[], parried = false): void {
+  if (!isAlive(defender) || !isAlive(attacker) || (!defender.turn.reaction && !parried)) return;
+  // Quem aparou já gastou a reação nisso: o Contragolpe sai junto (`combate` §4.1).
+  if (parried) defender.turn.reaction = true;
   const reaching = () =>
     defender.abilities.find(
       (candidate) =>
@@ -1296,8 +1304,14 @@ function rollAttack(
   ability: Ability,
   aim: Pos,
   events: TacticalEvent[],
-): { outcome: AttackOutcome; costly: boolean } {
-  const edge = attackEdge(encounter, actor, ability, target, aim);
+  feint = false,
+): { outcome: AttackOutcome; costly: boolean; parried: boolean } {
+  const edge = attackEdge(encounter, actor, ability, target, aim, feint);
+  if (edge.parry) {
+    // A lâmina no caminho: gasta a reação de quem apara, antes de o golpe chegar.
+    target.turn.reaction = false;
+    events.push({ type: "parried", unit: target.id, attacker: actor.id });
+  }
   const { bonus, defense } = attackTotals(actor, ability, target, edge);
   const natural = rollDie(encounter, 20);
   const total = natural + bonus;
@@ -1330,7 +1344,7 @@ function rollAttack(
   });
 
   if (guaranteed) removeStatuses(actor, (status) => status.guaranteedCrit === true, events);
-  return { outcome, costly };
+  return { outcome, costly, parried: edge.parry };
 }
 
 function attributeOf(actor: Unit, ref: AttributeRef | undefined): number {
@@ -1389,14 +1403,6 @@ function applyEffect(
         const blocked = Math.min(amount, targetOr + rollDie(encounter, 6));
         amount -= blocked;
         events.push({ type: "blocked", unit: target.id, amount: blocked });
-      } else if (!strike.feint && canParry(actor, ability, target, amount)) {
-        // APARAR: a lâmina no caminho da outra, pago com a reação e com Fôlego.
-        const parried = Math.min(amount - 1, rollDie(encounter, 4) + (target.grade ?? 0));
-        target.turn.reaction = false;
-        target.breath -= PARRY_BREATH;
-        events.push({ type: "breathSpent", unit: target.id, amount: PARRY_BREATH, remaining: target.breath });
-        events.push({ type: "parried", unit: target.id, amount: parried });
-        amount -= parried;
       }
       if (amount <= 0) return;
       const taken = Math.min(amount, target.currentHp);
@@ -1454,7 +1460,7 @@ function applyEffect(
       return;
     }
     case "push":
-      push(encounter, actor.pos, target, effect.distance, events, effect.pin);
+      push(encounter, actor.pos, target, effect.distance + (effect.distance > 0 ? auraShove(actor, ability) : 0), events, effect.pin);
       return;
     case "stride": {
       const amount = movementOf(target);
@@ -1464,17 +1470,6 @@ function applyEffect(
       return;
     }
   }
-}
-
-/**
- * Se `target` apara o golpe de arma de perto que `actor` acabou de acertar:
- * ele é de escola de espada e luta de perto (`parries`), tem a reação e o
- * Fôlego, e o golpe tira ao menos PARRY_MIN. Magia, tiro e área não se aparam.
- */
-function canParry(actor: Unit, ability: Ability, target: Unit, amount: number): boolean {
-  if (actor.team === target.team || ability.mana || ability.radius !== undefined || ability.range > 2) return false;
-  if (!target.turn.reaction || target.breath < PARRY_BREATH || amount < PARRY_MIN || !parries(target)) return false;
-  return !target.statuses.some((status) => status.skipsTurn);
 }
 
 /** Devolve até `amount` de vida a `unit`, se alguma cura pega nele (ver `noHeal`) e se falta alguma. */

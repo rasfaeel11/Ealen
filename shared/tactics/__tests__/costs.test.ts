@@ -9,11 +9,11 @@ import {
   type Ability,
   type Encounter,
   type EncounterSetup,
-  type Magic,
   type Pos,
   type TacticalEvent,
   type Unit,
 } from "../index";
+import type { Magic } from "../../mana";
 import { FIRST, eventsOf, makeCharacter, makeUnit, run } from "./helpers";
 
 /**

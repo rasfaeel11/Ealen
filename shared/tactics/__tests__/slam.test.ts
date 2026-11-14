@@ -124,3 +124,25 @@ test("quem já está na água vai mais pro fundo, como no aberto", () => {
   }
   assert.ok(pushedOnce);
 });
+
+// --- A aura nos verbos (`combate` §3.5) ---------------------------------------------------------------------------
+
+test("do Corpo pra cima, o empurrão do corpo vai um quadrado mais longe; no Fio, não", () => {
+  const reach = (aura: number) => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const { grid, markers } = gridFromAscii(["AE...."]);
+      const units = [
+        makeUnit("A", "party", markers.A[0], { attributes: { olho: FIRST, forca: 60 } }),
+        makeUnit("E", "enemy", markers.E[0], { currentHp: 500, maxHp: 500, breath: 0 }),
+      ];
+      units[0].aura = aura;
+      const encounter = startEncounter({ grid, units, seed }).encounter;
+      const events = run(encounter, { type: "ability", unitId: "A", abilityId: "espadachim.empurrar", target: { x: 1, y: 0 } });
+      const [pushed] = eventsOf(events, "pushed");
+      if (pushed) return pushed.to.x - pushed.from.x;
+    }
+    throw new Error("nenhum empurrão pegou");
+  };
+  assert.equal(reach(2), 1);
+  assert.equal(reach(3), 2);
+});

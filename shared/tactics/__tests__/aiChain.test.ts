@@ -5,7 +5,7 @@ import { FIRST, eventsOf, makeUnit, setup } from "./helpers";
 
 /** A IA que monta a cadeia (task 102): emenda no mesmo alvo, pesa o Fôlego, e o que abre vale o que deixa emendar. */
 
-const TOUGH = { currentHp: 9000, maxHp: 9000 };
+const TOUGH = { currentHp: 9000, maxHp: 9000, breath: 0 };
 
 /** Joga o turno inteiro de quem está nele, com a IA, e devolve os eventos. */
 function aiTurn(encounter: Encounter): TacticalEvent[] {

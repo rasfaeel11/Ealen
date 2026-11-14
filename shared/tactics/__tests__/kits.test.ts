@@ -209,7 +209,7 @@ test("Trincado soma em cada golpe recebido, e Ancorado tira — e não sai do lu
       ["AE.."],
       (at) => [
         makeUnit("A", "party", at("A"), { kit: [TEST_KIT.empurrao], attributes: { olho: FIRST } }),
-        makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300 }),
+        makeUnit("E", "enemy", at("E"), { currentHp: 300, maxHp: 300, breath: 0 }),
       ],
       seed,
     );
@@ -237,7 +237,7 @@ test("o golpe que fura não encontra a armadura, e o corte sem rolagem não rola
       ["A...E"],
       (at) => [
         makeUnit("A", "party", at("A"), { kit: [TEST_KIT.tiro, TEST_KIT.furo], attributes: { olho: FIRST } }),
-        makeUnit("E", "enemy", at("E"), { currentHp: 900, maxHp: 900, attributes: { couro: 8 } }),
+        makeUnit("E", "enemy", at("E"), { currentHp: 900, maxHp: 900, attributes: { couro: 8 }, breath: 0 }),
       ],
       seed,
     );

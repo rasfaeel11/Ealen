@@ -1548,9 +1548,9 @@ export class CombatController {
       case "parried": {
         const actor = this.actor(event.unit);
         sfx("block");
-        this.floatOver(event.unit, `Aparou ${event.amount}`, TEXT_COLORS.guard, -22);
+        this.floatOver(event.unit, "Apara", TEXT_COLORS.guard, -22);
         if (actor) this.spark(this.center(actor), COLORS.goldBright, 9);
-        this.hud.log(`${this.unit(event.unit).name} apara com a lâmina: ${event.amount} a menos.`);
+        this.hud.log(`${this.unit(event.unit).name} põe a lâmina no caminho de ${this.unit(event.attacker).name}.`);
         await this.wait(100);
         return;
       }

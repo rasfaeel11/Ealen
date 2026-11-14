@@ -1,5 +1,5 @@
 import { distance, tileAt, tilesBetween, type Pos } from "./grid";
-import { gradeToHit, punishesRepeat, styleMatchup } from "./styles";
+import { gradeToHit, parries, punishesRepeat, styleMatchup } from "./styles";
 import type { Ability, Encounter, Unit } from "./types";
 import { defenseBonus, effectiveAttribute, isAlive, primaryAttribute } from "./units";
 
@@ -89,6 +89,8 @@ export interface AttackEdge {
   far: boolean;
   /** Tiro com um inimigo colado em quem atira. */
   crowded: boolean;
+  /** O alvo apara (ver PARRY_DEFENSE): a lâmina dele está no caminho deste golpe. */
+  parry: boolean;
   /** O que tudo isso soma na rolagem de ataque. */
   toHit: number;
   /** O que tudo isso soma na defesa do alvo. */
@@ -148,6 +150,23 @@ function gapToHit(actor: Unit, target: Unit): number {
   return Math.sign(gap) * Math.min(LEVEL_GAP_MAX, Math.abs(gap)) * LEVEL_TO_HIT;
 }
 
+/**
+ * APARAR (`combate` §3.2: "reação; Exposto, no outro, se ele falhar"): quem é
+ * de escola de espada põe a lâmina no caminho do golpe de perto que vem nele,
+ * e o golpe precisa de PARRY_DEFENSE a mais pra passar. Custa a reação, sem
+ * Fôlego. Se o outro falha, fica Exposto (como toda falha), e na Ipojy o
+ * Contragolpe sai na mesma reação. Magia, tiro, área e o verbo trocado da
+ * Tsvirana não se aparam; caído, ou perdendo a vez, ninguém apara.
+ */
+export const PARRY_DEFENSE = 2;
+
+/** `target` apara este golpe de `actor`? (ver PARRY_DEFENSE) */
+export function parryReady(actor: Unit, ability: Ability, target: Unit, feint = false): boolean {
+  if (feint || actor.team === target.team || ability.mana || ability.radius !== undefined || ability.range > 2 || !ability.attack) return false;
+  if (!target.turn.reaction || !parries(target) || !isAlive(target)) return false;
+  return !target.statuses.some((status) => status.skipsTurn || status.prone || (status.speed ?? 0) <= -99);
+}
+
 /** A vantagem (ou desvantagem) de posição de `actor` usando `ability` em `target`, mirada em `aim`. */
 export function attackEdge(
   encounter: Encounter,
@@ -155,6 +174,7 @@ export function attackEdge(
   ability: Ability,
   target: Unit,
   aim: Pos = target.pos,
+  feint = false,
 ): AttackEdge {
   const area = ability.radius !== undefined;
   const rise = (tileAt(encounter.grid, actor.pos)?.elevation ?? 0) - (tileAt(encounter.grid, target.pos)?.elevation ?? 0);
@@ -169,6 +189,7 @@ export function attackEdge(
   const shot = isShot(ability);
   const far = shot && distance(actor.pos, aim) > Math.ceil(ability.range / 2);
   const crowded = shot && encounter.units.some((other) => other.team !== actor.team && isAlive(other) && distance(other.pos, actor.pos) === 1);
+  const parry = !area && parryReady(actor, ability, target, feint);
 
   return {
     cover,
@@ -180,6 +201,7 @@ export function attackEdge(
     levelToHit,
     far,
     crowded,
+    parry,
     toHit:
       (flanked ? FLANK_TO_HIT : 0) +
       height * HEIGHT_TO_HIT +
@@ -188,7 +210,7 @@ export function attackEdge(
       levelToHit -
       (far ? LONG_SHOT_TO_HIT : 0) -
       (crowded ? POINT_BLANK_TO_HIT : 0),
-    defense: cover ? COVER_DEFENSE : 0,
+    defense: (cover ? COVER_DEFENSE : 0) + (parry ? PARRY_DEFENSE : 0),
   };
 }
 

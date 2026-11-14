@@ -259,15 +259,30 @@ Li o `historia-nova` (o repositório que está no GitHub, último commit de 2026
   `castelo-da-volta`, os brasões em `ymboripe` e `xerumbetyba` e `referencias/mapa-do-mundo.md` (§9, "em
   2026-10-31"). Nem o histórico tem esses nomes. Talvez estejam só na sua cópia local (`Documents/historiav2`) sem
   push. No `alfabeto.md`, Jurendy aparece só como exemplo e como nome alternativo de Karuã.
-- **A idade de Endyru**: o cap-11 diz que ele nasceu "uns quarenta anos antes" do Livro 1; o jogo é uns 25 anos
-  antes. Então no jogo ele tem uns 15 anos (e chega ao Círculo aí, mais velho que Karuã aos 13, como precisa). A
-  fala do preparo, "Eu faço essa conta desde os quatorze anos", fica estranha nessa idade. Ela vem do roteiro;
-  não mexi.
-- **Aparar**: na `combate` §3.2, Aparar é a reação que deixa o outro Exposto se ele falhar. No jogo, a falha já
-  deixa Exposto sempre, e Aparar tira 1d4 + grau do golpe que pegou. Não mexi: é a peça que segura as lutas de
-  espada.
-- **Esquivar**: na `combate` §3.2, anula o golpe. No jogo, só anula o que pegaria por pouco (o sucesso com custo).
-- **A aura nos verbos** (§3.5: "Empurrar de Corpo derruba quem a força do braço não derrubaria"): o jogo não faz
-  a aura mexer nos verbos do corpo.
-- **O Ykuruã resiste à pancada** (metade do dano de impacto, decidido pelo co-autor em 2026-11-04): o bestiário
-  não diz isso. Fica no jogo até você dizer.
+- ~~**A idade de Endyru**~~ — resolvido (ver abaixo).
+- ~~**Aparar, Esquivar, a aura nos verbos e a resistência do Ykuruã**~~ — resolvidos (ver abaixo).
+
+## As quatro divergências, resolvidas (2026-11-14, a pedido do autor)
+
+- **A idade de Endyru**: no jogo ele tem uns 15 anos (cap-11). A fala do preparo virou "Eu faço essa conta desde a
+  primeira aula de fundamentos": a aula que a `magia` §2.8 nomeia, e o mesmo "fundamentos" da escola que ele vai
+  procurar no fim. No roteiro também.
+- **Aparar** (`combate` §3.2: "reação; Exposto, no outro, se ele falhar"): a lâmina no caminho do golpe de perto.
+  O golpe precisa de 2 a mais pra passar; custa só a reação, sem Fôlego. Se o outro falha, fica Exposto (como toda
+  falha), e na Ipojy o Contragolpe sai na mesma reação — o "Aparar e, se o outro falha, o contragolpe" da `ipojy`.
+  Saiu o "tira 1d4 + grau" do golpe que pegou.
+- **Esquivar** (`combate` §3.2: "reação, fôlego; anula o golpe"): anula o golpe que pegaria, pleno ou com custo; o
+  improvável não se esquiva. O custo subiu de 2 pra 3 de Fôlego (com 2, Endyru quase não caía e a final ia a 20
+  rodadas). O Ykuruã não esquiva: quase cego, bebe o golpe no couro (`bestiario` §1). A IA sabe que quem ainda pode
+  esquivar sai da frente, e guarda Fôlego pro próprio Esquivar.
+- **A aura nos verbos** (`combate` §3.5): do Corpo pra cima, Empurrar e a Ombrada levam um quadrado a mais, o que
+  também vence um quadrado do peso de quem é empurrado. Jarupã e Xanduí chegam ao Corpo na ponte, então a final é
+  onde isso pesa: o empurrão de Corpo tira o Ykuruã da água mais rápido.
+- **O Ykuruã não resiste mais à pancada**: o bestiário não diz. Pra a final não virar passeio (sem a resistência e
+  com o empurrão de Corpo, caiu pra 8 rodadas, 100%), o bicho subiu de 90 pra 140 de vida e de Força 9 pra 13.
+
+**O que deu** (`balance:grupo`, 40 lutas): pedágio, armazém, patrulha, vau, batedores e portão de 98 a 100% em 2 a
+4 rodadas; a ponte 95% em 4,5 (Endyru cai em 15%); a final 90% em 15 rodadas (Endyru cai em 13 a 15%).
+
+**Pra mudar**: `PARRY_DEFENSE` em `shared/tactics/attack.ts`; `DODGE_BREATH` e `dodges` em `shared/tactics/engine.ts`;
+`AURA_SHOVE_FROM` e `auraShove` em `shared/tactics/styles.ts`; a ficha do Ykuruã em `shared/data/bestiary.ts`.

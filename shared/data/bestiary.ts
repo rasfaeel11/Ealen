@@ -34,9 +34,8 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     glyph: "≈",
     summary: "Bicho de rio, anfíbio, do tamanho de um barco de carga. Na língua dos portos, o Bebe-Cheia.",
     lore: "Couro grosso como casca de árvore velha, coberto de lodo e conchas; boca larga, olhos pequenos, quase cego. Dorme enterrado no lodo dos baixios a maior parte do ano e acorda com a cheia. Sente mana gasta de uma vez e vem até onde ela bateu.",
-    // Couro como casca de árvore velha: a pancada não entra. A boca larga, cheia de concha, abre talho; a investida
-    // de um bicho do tamanho de um barco de carga abala quem está na frente.
-    resist: { impacto: 0.5 },
+    // A boca larga, cheia de concha, abre talho; a investida de um bicho do tamanho de um barco de carga abala quem
+    // está na frente. Resistência a tipo de dano, nenhuma: o bestiário não diz (o couro já é a Muralha da água).
     riders: { attack: { statusId: "bleeding", turns: 2 }, heavy_attack: { statusId: "shaken", turns: 1 } },
     // Animal: vai pra cima, sem medo e sem pensar.
     ai: { aggression: 1.3, caution: 0.4 },
@@ -48,9 +47,9 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
       characterClass: "espadachim",
       level: 5,
       xp: 0,
-      attributes: { forca: 9, fator: 1, vigor: 12, olho: 3, couro: 8, labia: 1, saber: 1 },
-      currentHp: 90,
-      maxHp: 90,
+      attributes: { forca: 13, fator: 1, vigor: 12, olho: 3, couro: 8, labia: 1, saber: 1 },
+      currentHp: 140,
+      maxHp: 140,
       arts: {
         attack: "Bocada",
         heavy_attack: "Investida",
@@ -67,7 +66,6 @@ export const BESTIARY: Record<string, BestiaryEntry> = {
     invulnerable: true,
     style: { id: "baluarte", grade: 1 },
     // O mesmo bicho, a mesma boca (ver encounter-ykurua).
-    resist: { impacto: 0.5 },
     riders: { attack: { statusId: "bleeding", turns: 2 }, heavy_attack: { statusId: "shaken", turns: 1 } },
     glyph: "≈",
     summary: "O Ykuruã, acordado pela cheia. Na água, nada que se faça a ele pega.",

@@ -114,7 +114,7 @@ Oryndu: Eu seguro a margem com o barco. Vocês puxam. Devagar.
     Oryndu olha o céu escuro de chuva e combina o sinal: duas batidas de remo no casco, ele afasta o barco; três, ele chega.
     ~ preparo = true
     Oryndu: O bicho vai vir devagar, Endyru. Puxa um palmo, deixa a moça segurar o bote, puxa outro palmo. Se você despejar tudo de uma vez pra puxar inteiro, ele não sobe na pedra. Ele vira pro lado onde a palavra grande bateu. E no lado da água estou eu.
-    Endyru: Eu sei a medida, Oryndu. Eu faço essa conta desde os quatorze anos.
+    Endyru: Eu sei a medida, Oryndu. Eu faço essa conta desde a primeira aula de fundamentos.
     -> preparo_escolhas
 * [Ainda não. Descansar antes.]
     Oryndu: A cheia espera um pouco. Pouco.

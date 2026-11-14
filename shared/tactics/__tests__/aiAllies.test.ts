@@ -85,7 +85,8 @@ function strikeValue(team: "party" | "enemy", sworn: boolean): number {
     makeUnit("E", team === "party" ? "enemy" : "party", at("E")),
   ]);
   encounter.opened = true;
-  if (sworn) Object.assign(findUnit(encounter, "E")!, { style: "ipojy", grade: 2 });
+  // As duas são de escola (as duas aparam); só a Ipojy devolve.
+  Object.assign(findUnit(encounter, "E")!, { style: sworn ? "ipojy" : "gryskar", grade: 2 });
   const plan = planTurn(encounter);
   return plan.action?.value ?? 0;
 }

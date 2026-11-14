@@ -631,8 +631,8 @@ export type TacticalEvent =
   | { type: "slammed"; unit: string; into: "wall" | "prop" | "unit"; name?: string; pos: Pos }
   /** Tirado do lugar, `unit` desceu `steps` degraus e caiu. O `damage` vem logo depois. */
   | { type: "fell"; unit: string; steps: number }
-  /** `unit` aparou com a lâmina o golpe que pegou: `amount` a menos, pago em Fôlego. */
-  | { type: "parried"; unit: string; amount: number }
+  /** `unit` pôs a lâmina no caminho do golpe de `attacker` (Aparar, ver PARRY_DEFENSE em ./attack.ts): gastou a reação, e o golpe precisa de mais pra passar. O `attackRoll` vem logo depois. */
+  | { type: "parried"; unit: string; attacker: string }
   /**
    * `unit` pagou o custo de um sucesso com custo, ou do improvável (`combate`
    * §2.2): `amount` de Fôlego, de vida (a ferida própria) ou de mana (a marca).

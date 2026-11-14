@@ -133,6 +133,8 @@ test("apanhar recitando quebra o texto (`combate` §3.3), por menor que seja o g
   caster.currentHp = caster.maxHp = 9000;
   run(encounter, { type: "ability", unitId: "M", abilityId: SHOVE.id, target: findUnit(encounter, "E")!.pos });
   pass(encounter);
+  // Sem Fôlego, ele não esquiva: o golpe pega.
+  caster.breath = 0;
 
   const hit = run(encounter, { type: "ability", unitId: "E", abilityId: "espadachim.attack", target: caster.pos });
   const [damage] = eventsOf(hit, "damage");
