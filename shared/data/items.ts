@@ -46,6 +46,25 @@ export const ITEMS: ConsumableItem[] = [
   },
 
   // Os itens-chave: o que a história dá e pede de volta. Não se usam, não se passam, não se jogam fora.
+  // A banha e os pregos da receita de Thrykar (cena 1.2 do roteiro): o grupo os traz, e ele tempera as duas espadas.
+  {
+    id: "item-banha-de-bagre",
+    name: "Banha de Bagre Cego",
+    description: "Um pote de barro com banha amarela de bagre, que cheira a rio parado. A guilda guardava pra engraxar remo.",
+    category: "consumable",
+    rarity: "common",
+    key: true,
+    data: { effect: { kind: "none" }, usesRemaining: 1, maxUses: 1 },
+  },
+  {
+    id: "item-pregos-de-barco",
+    name: "Pregos de Barco Afundado",
+    description: "Três pregos verdes de ferrugem, tirados do costado da barcaça de grãos que afundou nos baixios com a carga paga.",
+    category: "consumable",
+    rarity: "common",
+    key: true,
+    data: { effect: { kind: "none" }, usesRemaining: 1, maxUses: 1 },
+  },
   {
     id: "item-estaca-de-ymboripe",
     name: "Estaca dos Baixios",

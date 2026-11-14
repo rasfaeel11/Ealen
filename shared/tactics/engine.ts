@@ -1261,8 +1261,10 @@ function applyEffect(
       // que um golpe `piercing` não encontra.
       const targetOr = effectiveAttribute(target, "couro");
       amount = Math.max(1, amount + damageTakenOf(target) - (effect.piercing ? 0 : Math.floor(targetOr / 2)));
-      // A Muralha de quem apanha: um tanto fixo a menos, depois da armadura.
-      amount = Math.max(1, amount - styleReduction(target));
+      // A Muralha de quem apanha: um tanto fixo a menos, depois da armadura. A lâmina da receita de Thrykar fura parte
+      // dela no bicho de rio (`riverPierce`).
+      const pierced = target.river ? (effect.riverPierce ?? 0) : 0;
+      amount = Math.max(1, amount - Math.max(0, styleReduction(target) - pierced));
 
       if (target.statuses.some((status) => status.guard)) {
         const blocked = Math.min(amount, targetOr + rollDie(encounter, 6));

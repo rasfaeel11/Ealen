@@ -46,6 +46,8 @@ export type Effect =
       leech?: number;
       /** O tipo do dano (ver DamageType). Sem isto, nenhum: nada resiste nem sofre mais. */
       type?: DamageType;
+      /** Contra bicho de rio (`river`), fura este tanto da Muralha (a receita de Thrykar na lâmina, ver ../equipment.ts). */
+      riverPierce?: number;
     }
   /** Cura: atributo + dados, limitada ao HP que falta. */
   | { kind: "heal"; dice: Dice; attribute?: AttributeRef }

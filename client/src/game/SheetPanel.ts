@@ -148,6 +148,7 @@ export function describeEquipment(item: EquipmentItem, brief = false): string {
       `dano ${data.dice.count}d${data.dice.sides}`,
       data.range === 1 ? (brief ? "de perto" : "corpo a corpo") : `alcance ${data.range}`,
       ...(data.toHit ? [`acerto ${signed(data.toHit)}`] : []),
+      ...(data.riverPierce ? [`fura ${data.riverPierce} da Muralha do bicho de rio`] : []),
       ...(data.classes && !brief ? [`só ${data.classes.map((each) => CLASS_INFO[each].name).join(", ")}`] : []),
     ].join(" · ");
   }

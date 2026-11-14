@@ -362,8 +362,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 |---|---|---|
 | 96 | **Ícones e arte das peças novas** | Os ícones da árvore, da Disparada, do Ajudar e das ordens são os provisórios de `icons.ts`, emprestados de outras coisas. Entram com a task 70. |
 | 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
-| 71 | **Relíquias e runas** | Itens que não se gastam: efeito passivo além de atributo (o acessório de hoje só soma atributo), encaixe em equipamento. As armas lendárias da história entram aqui. |
-| 72 | **Coleta e preparo** | Materiais no mapa e no espólio; receitas de consumível. |
 | 73 | **Companheiros como gente** | Afinidade, conversa de acampamento, comentário no meio do diálogo dos outros, missão pessoal, discordar de uma escolha. |
 | 74 | **Reputação** | Como cada facção e cada lugar vê o grupo, e o que isso abre ou fecha (preço, diálogo, saída). |
 | 76 | **Mais apoios** | Hoje só existe Ler a água (Oryndu). Apoio novo é uma linha em `SUPPORTS`, mas faltam os tipos (curar de fora, distrair, avisar). |
@@ -848,6 +846,15 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   mudou (95%, 15 rodadas): quem luta ali luta de perto. Não entraram, como aprovado: lama (o lodo já custa passo
   dobrado), ponte que cai (a da clareira é de pedra), porta que fecha, hora do dia. A passarela foi vista no navegador;
   a chuva, só no motor e nos testes.
+- **71 e 72. A receita de Thrykar** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). A receita deixou de
+  ser só fala: Thrykar diz que a banha e os pregos "quem traz é o freguês" (`receita_ouvida`). A banha de bagre cego sai
+  da guilda dos barqueiros ("Remo no seco não precisa de banha"), os três pregos saem do costado da barcaça de grãos
+  afundada nos baixios ("Grão do conselho. Pago adiantado."), e os dois são itens-chave. Com eles e dois de prata, ele
+  tempera as duas espadas como antes (as trinta marretadas, a conta que para no vinte), e agora a lâmina temperada fura 2
+  da Muralha da água no bicho de rio (`riverPierce` na arma). É uma receita só, de um ferreiro, pra um bicho: não entrou
+  sistema de coleta nem de preparo, e nenhuma relíquia além disso. O texto novo (as três falas de Thrykar, da guilda e
+  da barcaça) é do co-autor, na voz do guia de falas, aprovado com a proposta. O teste do caminho inteiro passa pela
+  guilda, pela barcaça e pela forja; teste novo do furo na Muralha.
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão

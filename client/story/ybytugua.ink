@@ -11,6 +11,8 @@ VAR contrato = false
 VAR prova = false
 VAR ato3 = false
 VAR temperadas = false
+// Thrykar disse a receita (a banha e os pregos que o freguês traz).
+VAR receita_ouvida = false
 VAR leu_edital = false
 VAR saqueadores_vencidos = false
 
@@ -235,6 +237,13 @@ Um velho remenda uma rede no chão da guilda, com a rede inteira em cima das per
     ~ quest("armazem", "O armazém da guilda", "Arrancaram a tranca do armazém de corda e óleo, colado na guilda, de madrugada. Ninguém da guilda vai lá.")
     Ele aponta com o queixo os barqueiros sentados na porta, olhando o rio.
     -> perguntas
+* {receita_ouvida && not temperadas && not has_item("item-banha-de-bagre")} [Pedir banha de bagre pra receita do ferreiro.]
+    Mestre da guilda: Banha de bagre é de engraxar remo. O demônio quer pra quê?
+    Jarupã: Pra sogra morrer.
+    O velho olha Jarupã um tempo, depois aponta um pote de barro no canto, debaixo dos remos amarrados.
+    Mestre da guilda: Leva. Remo no seco não precisa de banha.
+    ~ give_item("item-banha-de-bagre")
+    -> perguntas
 * {ato2} [Contar que ele acordou bravo, cedo demais.]
     O velho para a rede no meio do nó.
     Mestre da guilda: Os barqueiros que sobem até a floresta das bacias ouvem leitura na margem, de noite. Leitura alta. Gente que não é do rio.
@@ -315,10 +324,14 @@ Thrykar: Placa na porta. Leu?
     Thrykar: Tempero. Banha de bagre cego. Três pregos de barco que afundou com carga paga. Trinta marretadas, cantando pra sogra morrer.
     Jarupã: Sogra de quem?
     Thrykar: Não importa de quem. Importa que morra. Dois de prata pelas duas.
+    Thrykar: A banha e o prego, quem traz é o freguês. Bagre cego a guilda tem, que engraxa remo com ele. Barco afundado tem nos baixios, que é pra onde vocês vão.
+    ~ receita_ouvida = true
     -> conversa
-* {money("prata") >= 2 && in_party("jarupa") && in_party("xandui")} [Pagar dois de prata pelas duas espadas.]
+* {money("prata") >= 2 && in_party("jarupa") && in_party("xandui") && has_item("item-banha-de-bagre") && has_item("item-pregos-de-barco")} [Pôr a banha e os pregos na bigorna, e dois de prata.]
     ~ pay("prata", 2)
-    O demônio unta as duas lâminas com uma banha amarela que cheira a rio parado e põe três pregos verdes de ferrugem na brasa.
+    ~ take_item("item-banha-de-bagre")
+    ~ take_item("item-pregos-de-barco")
+    O demônio cheira o pote, unta as duas lâminas com a banha amarela que cheira a rio parado e põe os três pregos verdes de ferrugem na brasa.
     Thrykar: Banha de bagre cego.
     Bate.
     Thrykar: Três pregos de barco que afundou com carga paga.

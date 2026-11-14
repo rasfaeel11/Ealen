@@ -228,10 +228,19 @@ test("o caminho inteiro: do pedágio ao fim, cada ato abre o seguinte, e a bolsa
   const quests = () => runner.quests().map(({ id, state }) => `${id}:${state}`);
   assert.deepEqual(quests(), ["contrato:open"]);
 
-  // O ferreiro tempera as duas espadas com a prata do adiantamento.
-  play("ferreiro", "Pagar dois de prata");
+  // O ferreiro diz a receita; a banha vem da guilda, os pregos da barcaça afundada nos baixios. Com os dois na
+  // mochila, ele tempera as duas espadas com a prata do adiantamento, e a lâmina passa a furar a água do bicho.
+  play("ferreiro", "Perguntar se ele tempera", "Ir embora");
+  assert.equal(runner.flag("receita_ouvida"), true);
+  play("guilda", "Pedir banha de bagre", "Deixar o velho");
+  play("naufragio", "Tirar três pregos");
+  assert.equal(itemCount(host.character, "item-banha-de-bagre"), 1);
+  assert.equal(itemCount(host.character, "item-pregos-de-barco"), 1);
+  play("ferreiro", "Pôr a banha e os pregos");
   assert.equal(runner.flag("temperadas"), true);
   assert.equal(host.character.purse?.prata, 0);
+  assert.equal(itemCount(host.character, "item-banha-de-bagre"), 0, "a banha vai pra lâmina");
+  assert.equal(itemCount(host.character, "item-pregos-de-barco"), 0, "e os pregos pra brasa");
 
   // A luta do armazém é opcional: dá pra deixar a corda com eles e voltar depois. A guilda conta do barulho.
   play("guilda", "Perguntar do barulho", "Deixar o velho");

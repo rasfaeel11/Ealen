@@ -256,6 +256,7 @@ export function describeAbility(ability: Ability, who?: Pick<Unit, "characterCla
       parts.push(`dano ${scaled}${bonus}`);
       if (effect.type) parts.push(DAMAGE_LABEL[effect.type]);
       if (effect.piercing) parts.push("fura a armadura");
+      if (effect.riverPierce) parts.push(`fura ${effect.riverPierce} da Muralha do bicho de rio`);
       if (effect.leech) parts.push(effect.leech === 1 ? "devolve como vida o que tirar" : `devolve ${Math.round(effect.leech * 100)}% como vida`);
     } else if (effect.kind === "heal") {
       parts.push(`cura ${effect.dice.count}d${effect.dice.sides}, e quem recebe paga 1 de Fôlego a cada ${HEAL_PER_BREATH} (o dobro com fome)`);

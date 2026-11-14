@@ -60,7 +60,17 @@ export const EQUIPMENT_SLOTS: EquipmentSlot[] = ["weapon", "armor", "accessory"]
  * - o ACESSÓRIO soma atributos — na luta e nos testes da história.
  */
 export type EquipmentData =
-  | { slot: "weapon"; dice: Dice; range: number; toHit?: number; classes?: CharacterClass[]; ammo?: number; damageType?: DamageType }
+  | {
+      slot: "weapon";
+      dice: Dice;
+      range: number;
+      toHit?: number;
+      classes?: CharacterClass[];
+      ammo?: number;
+      damageType?: DamageType;
+      /** Contra bicho de rio, o golpe dela fura este tanto da Muralha da água (a receita de Thrykar, ver `riverPierce` no dano). */
+      riverPierce?: number;
+    }
   | { slot: "armor"; defense: number; speed?: number }
   | { slot: "accessory"; attributes: Partial<Attributes> };
 

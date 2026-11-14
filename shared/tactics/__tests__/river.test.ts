@@ -381,3 +381,30 @@ test("a chuva que aperta numa deixa fecha a vista: além dela, ninguém mira", (
   if (activeUnit(encounter)!.id !== "M") pass(encounter);
   assert.deepEqual(applyCommand(encounter, { type: "ability", unitId: "M", abilityId: pull.id, target: { x: 8, y: 0 } }), { ok: false, reason: "invalid_target" });
 });
+
+test("a lâmina da receita de Thrykar fura 2 da Muralha da água no bicho de rio", () => {
+  const strike = (riverPierce?: number) => {
+    const { encounter } = stage(["S.ww"], (at) => [makeUnit("S", "party", at("S"), { attributes: { olho: FIRST, forca: 40 } }), ykurua({ x: 1, y: 0 })]);
+    const blade: Ability = {
+      id: "test.blade",
+      name: "Lâmina",
+      flavor: "",
+      cost: "action",
+      range: 1,
+      targets: "enemy",
+      effects: [{ kind: "damage", dice: { count: 1, sides: 1 }, attribute: "forca", ...(riverPierce ? { riverPierce } : {}) }],
+    };
+    findUnit(encounter, "S")!.abilities.push(blade);
+    const yk = findUnit(encounter, "Y")!;
+    yk.statuses = yk.statuses.filter((status) => status.id !== "submerged");
+    yk.statuses.push({ ...STATUSES.submerged, turnsLeft: Infinity });
+    yk.pos = { x: 2, y: 0 };
+    findUnit(encounter, "S")!.pos = { x: 1, y: 0 };
+    const events = run(encounter, { type: "ability", unitId: "S", abilityId: blade.id, target: { x: 2, y: 0 } });
+    return eventsOf(events, "damage").filter((event) => event.target === "Y").reduce((sum, event) => sum + event.amount, 0);
+  };
+  const plain = strike();
+  const tempered = strike(2);
+  assert.ok(plain > 0, "o golpe pega nos dois");
+  assert.equal(tempered - plain, 2);
+});
