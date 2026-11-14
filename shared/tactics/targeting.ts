@@ -26,7 +26,12 @@ export function liftable(encounter: Encounter, unit: Unit): Unit[] {
 function canTarget(encounter: Encounter, unit: Unit, ability: Ability, pos: Pos): boolean {
   // Quem atira de um chão mais alto alcança um quadrado a mais.
   const above = isShot(ability) && (tileAt(encounter.grid, unit.pos)?.elevation ?? 0) > (tileAt(encounter.grid, pos)?.elevation ?? 0);
-  return distance(unit.pos, pos) <= ability.range + (above ? 1 : 0) && hasLineOfSight(encounter.grid, unit.pos, pos);
+  return distance(unit.pos, pos) <= ability.range + (above ? 1 : 0) && seen(encounter, unit.pos, pos) && hasLineOfSight(encounter.grid, unit.pos, pos);
+}
+
+/** A chuva (Encounter.sight) fecha a vista: além dela, ninguém mira. Sem chuva, sempre. */
+function seen(encounter: Encounter, from: Pos, to: Pos): boolean {
+  return encounter.sight === undefined || distance(from, to) <= encounter.sight;
 }
 
 /** Se `unit` pode mirar o quadrado `pos` com uma habilidade de `targets: "tile"`, de onde está. */
@@ -253,6 +258,7 @@ export function itemTargets(encounter: Encounter, unit: Unit, item?: Pick<Consum
       (thrown ? other.team !== unit.team : other.team === unit.team) &&
       isAlive(other) &&
       distance(unit.pos, other.pos) <= ITEM_REACH &&
+      seen(encounter, unit.pos, other.pos) &&
       hasLineOfSight(encounter.grid, unit.pos, other.pos),
   );
   // O que só devolve vida não vai em quem está inteiro: gastaria o pote à toa.

@@ -43,6 +43,12 @@ export interface PropTemplate {
   pull?: { distance: number; reach: number };
   /** A água que sobe (ver Flood em ./types.ts) o apaga quando chega ao lado dele: ele some, e o chão dele alaga. */
   washes?: boolean;
+  /**
+   * É CHÃO, não obstáculo: a passarela de tábua por cima da água. Não barra o passo; enquanto está de pé, o quadrado
+   * é seco e se anda nele com o passo de chão. Golpe de gente não o mira (vem com `unbreakable`); quem o parte é o
+   * bote do bicho de rio em quem está em cima (ver strikeFloor em ./engine.ts). Quebrado, a água volta.
+   */
+  floor?: boolean;
 }
 
 export const PROPS = {
@@ -59,6 +65,7 @@ export const PROPS = {
     washes: true,
   },
   barrel: { id: "barrel", name: "Barril de óleo", hp: 4, spill: { surface: "fire", rounds: 2, radius: 1 } },
+  walkway: { id: "walkway", name: "Passarela", hp: 1, unbreakable: true, floor: true },
 } satisfies Record<string, PropTemplate>;
 
 export type PropId = keyof typeof PROPS;
@@ -84,6 +91,11 @@ export function standProp(grid: Grid, id: string, kind: PropId, pos: Pos): Prop 
   const template: PropTemplate = PROPS[kind];
   const index = tileIndex(grid, pos);
   const under = grid.tiles[index];
+  if (template.floor) {
+    // Tábua por cima da água: seco, e com o passo de chão. O resto do quadrado fica como era.
+    grid.tiles[index] = { ...under, water: false, moveCost: 1 };
+    return { id, kind, pos: { ...pos }, hp: template.hp, under };
+  }
   grid.tiles[index] = {
     ...under,
     blocksMove: true,

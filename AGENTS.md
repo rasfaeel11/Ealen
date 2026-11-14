@@ -368,7 +368,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 | 74 | **Reputação** | Como cada facção e cada lugar vê o grupo, e o que isso abre ou fecha (preço, diálogo, saída). |
 | 76 | **Mais apoios** | Hoje só existe Ler a água (Oryndu). Apoio novo é uma linha em `SUPPORTS`, mas faltam os tipos (curar de fora, distrair, avisar). |
 | 77 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
-| 78 | **Terreno que muda** | A água e a cheia já existem. Falta lama, ponte que cai, porta que se fecha no meio da luta; luz e escuro pesando na visão; hora do dia e clima. |
 | 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1, e `balance:grupo` o trio em campanha contra cada luta do jogo (ver Feito). A final já foi acertada (ver Feito, a IA e a água). Falta: as lutas de gente, que o grupo ainda vence em uma a três rodadas (o Golpe Pesado, que o autor deixou como está); os números dos kits e das peças; os do Fôlego; e o item, que nenhuma das duas usa. Mexer em número é com o autor (task 103). |
 
 ### P3 — produto
@@ -840,6 +839,15 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   primeira recitação, o voto da Ipojy (no primeiro clique que ele recusa) e a primeira área com quem vigia (`Q` e `F`).
   Some em 9 segundos ou num clique; Opções, Jogo, Dicas, desliga. O que já se viu fica no dispositivo. Visto no
   navegador, na luta do pedágio.
+- **78. A passarela e a chuva** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). Na primeira ida, quatro
+  tábuas de passarela saem da margem de lodo pra dentro d'água (só com o contrato e antes do ato 2), e o bote do Ykuruã
+  parte a tábua de quem está em cima, como a cena 1.3 descreve ("partindo a passarela de madeira"): a água volta, e quem
+  estava lá fica com o pé no rio. É um destrutível que é chão (`floor`, `walkway`), com arte nova no pintor. Na luta
+  final, a deixa da virada (a metade da vida do bicho) agora também faz a chuva apertar: até o fim da luta, a vista só
+  alcança 4 quadrados (`rain` na deixa, `Encounter.sight`), e a tela se cobre de chuva. No `balance:grupo` a final não
+  mudou (95%, 15 rodadas): quem luta ali luta de perto. Não entraram, como aprovado: lama (o lodo já custa passo
+  dobrado), ponte que cai (a da clareira é de pedra), porta que fecha, hora do dia. A passarela foi vista no navegador;
+  a chuva, só no motor e nos testes.
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão

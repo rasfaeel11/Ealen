@@ -6,6 +6,7 @@ import {
   CRACK_TURNS,
   STATUSES,
   activeUnit,
+  applyCommand,
   standProp,
   findUnit,
   gridFromAscii,
@@ -341,4 +342,42 @@ test("com bicho de rio vivo, quem é do grupo não termina o turno com o pé na 
   assert.equal(activeUnit(encounter)!.id, "S");
   const plan = planTurn(encounter);
   assert.ok(plan.tile.x <= 3, `parou em ${plan.tile.x}, que é água`);
+});
+
+test("a passarela é chão por cima da água, e o bote do bicho a parte", () => {
+  const { grid } = gridFromAscii(["..ww"]);
+  const plank = standProp(grid, "tabua", "walkway", { x: 2, y: 0 });
+  assert.equal(grid.tiles[2].water, false, "de pé, a tábua é seca");
+  assert.equal(grid.tiles[2].blocksMove, false, "e se anda nela");
+  const { encounter } = startEncounter({
+    grid,
+    units: [makeUnit("S", "party", { x: 2, y: 0 }, { attributes: { olho: 0 } }), ykurua({ x: 3, y: 0 })],
+    props: [plank],
+    seed: 4,
+  });
+  if (activeUnit(encounter)!.id === "S") pass(encounter);
+  assert.equal(activeUnit(encounter)!.id, "Y");
+  const bite = findUnit(encounter, "Y")!.abilities.find((ability) => ability.id === "espadachim.attack")!;
+  const events = run(encounter, { type: "ability", unitId: "Y", abilityId: bite.id, target: { x: 2, y: 0 } });
+  assert.ok(eventsOf(events, "propDestroyed").some((event) => event.prop === "tabua"), "o bote parte a tábua, pegando ou não");
+  assert.equal(encounter.grid.tiles[2].water, true, "e a água volta");
+});
+
+test("a chuva que aperta numa deixa fecha a vista: além dela, ninguém mira", () => {
+  const { grid } = gridFromAscii(["M.......Y"]);
+  const { encounter } = startEncounter({
+    grid,
+    units: [mage({ x: 0, y: 0 }), unitFromCharacter(makeCharacter("Y"), { team: "enemy", pos: { x: 8, y: 0 }, id: "Y" })],
+    cues: [{ id: "chuva", when: { kind: "round", round: 2 }, rain: 4 }],
+    seed: 4,
+  });
+  const pull = findUnit(encounter, "M")!.abilities.find((ability) => ability.id === "test.pull")!;
+  if (activeUnit(encounter)!.id !== "M") pass(encounter);
+  assert.ok(applyCommand(structuredClone(encounter), { type: "ability", unitId: "M", abilityId: pull.id, target: { x: 8, y: 0 } }).ok, "sem chuva, alcança");
+  const seen: string[] = [];
+  while (encounter.round < 2) seen.push(...pass(encounter).map((event) => event.type));
+  assert.equal(encounter.sight, 4);
+  assert.ok(seen.includes("sightCut"));
+  if (activeUnit(encounter)!.id !== "M") pass(encounter);
+  assert.deepEqual(applyCommand(encounter, { type: "ability", unitId: "M", abilityId: pull.id, target: { x: 8, y: 0 } }), { ok: false, reason: "invalid_target" });
 });

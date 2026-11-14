@@ -516,6 +516,10 @@ function fireCues(encounter: Encounter, events: TacticalEvent[]): boolean {
       if (unit && isAlive(unit) && (unit.mana ?? 0) > 0) spendMana(encounter, unit, unit.mana!, events, true);
     }
     if (cue.rise) riseWater(encounter, events);
+    if (cue.rain && cue.rain > 0) {
+      encounter.sight = cue.rain;
+      events.push({ type: "sightCut", range: cue.rain });
+    }
     if (cue.dismiss && encounter.supporters.some((supporter) => supporter.id === cue.dismiss)) {
       encounter.supporters = encounter.supporters.filter((supporter) => supporter.id !== cue.dismiss);
       events.push({ type: "supporterLost", id: cue.dismiss });
@@ -1002,6 +1006,7 @@ function resolveAbility(
       damageProp(encounter, prop, rollDamage(encounter, actor, effect), events);
     }
   }
+  if (actor.river && dealsDamage(ability)) strikeFloor(encounter, targetPos, events);
 
   if (ability.surface) {
     laySurface(encounter, ability.surface.id, surfaceTiles(encounter, ability, targetPos), ability.surface.rounds, events);
@@ -1580,6 +1585,19 @@ function damageProp(encounter: Encounter, prop: Prop, amount: number, events: Ta
   if (spill) {
     laySurface(encounter, spill.surface, spreadTiles(encounter.grid, prop.pos, spill.radius), spill.rounds, events);
   }
+}
+
+/**
+ * O bote do bicho de rio parte o chão posto em cima da água onde ele mordeu (a passarela, `floor`): a tábua some, a
+ * água volta, e quem estava em cima fica com o pé no rio (cena 1.3 do roteiro: "avança como uma onda, partindo a
+ * passarela de madeira"). Erre ou acerte: é o corpo dele que bate na tábua.
+ */
+function strikeFloor(encounter: Encounter, pos: Pos, events: TacticalEvent[]): void {
+  const plank = encounter.props.find((prop) => prop.hp > 0 && propTemplate(prop).floor === true && samePos(prop.pos, pos));
+  if (!plank) return;
+  damageProp(encounter, plank, plank.hp, events);
+  const standing = unitAt(encounter, pos);
+  if (standing) soak(encounter, standing, events);
 }
 
 /**

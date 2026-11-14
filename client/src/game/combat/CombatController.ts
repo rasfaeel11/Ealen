@@ -74,7 +74,7 @@ import {
 } from "@jogo/shared";
 import { showTip, type TipId } from "../tips";
 import { sfx } from "../audio";
-import { COLORS, TEXT_COLORS } from "../config";
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { setOption, settings } from "../settings";
 import type { PartyEntry } from "../hud/PartyColumn";
 import { abilityIcon, itemIcon } from "../icons";
@@ -221,6 +221,12 @@ export function describeStatus(status: StatusTemplate): string {
 }
 
 /** O que uma habilidade faz, em uma linha — pra quem vai decidir se usa. */
+/** O destrutível de pé num quadrado, menos o que é chão (a passarela): esse não esconde quem está em cima. */
+function solidPropAt(encounter: Encounter, pos: Pos): ReturnType<typeof propAt> {
+  const prop = propAt(encounter, pos);
+  return prop && !propTemplate(prop).floor ? prop : undefined;
+}
+
 /** O que a habilidade faz, em números. Com `who`, o atributo da conta do dano sai pelo nome (o principal da classe dele). */
 export function describeAbility(ability: Ability, who?: Pick<Unit, "characterClass">): string {
   const parts: string[] = [ability.cost === "action" ? "Ação" : "Ação bônus"];
@@ -350,6 +356,8 @@ export class CombatController {
   private readonly usedProps = new Set<string>();
   /** Quem a última linha de erro já deu como Exposto: o `statusApplied` que vem atrás não repete. */
   private exposedSaid?: string;
+  /** A chuva na tela, depois que uma deixa a fez apertar (evento `sightCut`). */
+  private rain?: Phaser.GameObjects.Graphics;
   /** Quem acabou de Preparar: o "De vigia" que vem atrás não repete. */
   private watchSaid?: string;
   /** Os quadrados clicáveis no modo atual. Não se desenham todos: ver `drawOptions`. */
@@ -426,6 +434,8 @@ export class CombatController {
 
   destroy(): void {
     const { scene } = this.host;
+    this.rain?.destroy();
+    this.rain = undefined;
     scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
     scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     scene.input.keyboard?.off("keydown", this.onKey, this);
@@ -495,6 +505,32 @@ export class CombatController {
     this.refresh();
     // A primeira vez que o jogador tem a vez: a barra. Numa luta com objetivo, o objetivo primeiro (ver tips.ts).
     if (!(this.goals.length > 0 && this.tip("goal"))) this.tip("turn");
+  }
+
+  /** A chuva por cima da tela: riscos finos, inclinados, descendo sem parar. Uma vez por luta. */
+  private startRain(): void {
+    if (this.rain) return;
+    const { scene } = this.host;
+    const rain = this.host.addHud(scene.add.graphics().setDepth(9_000));
+    const drops = Array.from({ length: 140 }, () => ({ x: Math.random() * GAME_WIDTH, y: Math.random() * GAME_HEIGHT, speed: 0.6 + Math.random() * 0.5 }));
+    const draw = () => {
+      rain.clear();
+      rain.fillStyle(0x1b2430, 0.18).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      rain.lineStyle(1, 0xaab8c8, 0.45);
+      for (const drop of drops) {
+        drop.y += 14 * drop.speed;
+        drop.x -= 4 * drop.speed;
+        if (drop.y > GAME_HEIGHT) {
+          drop.y -= GAME_HEIGHT;
+          drop.x = Math.random() * GAME_WIDTH;
+        }
+        rain.lineBetween(drop.x, drop.y, drop.x - 4, drop.y + 12);
+      }
+    };
+    draw();
+    const timer = scene.time.addEvent({ delay: 33, loop: true, callback: draw });
+    rain.once(Phaser.GameObjects.Events.DESTROY, () => timer.remove());
+    this.rain = rain;
   }
 
   /** A dica de primeira vez `id`, na interface da luta. */
@@ -1106,7 +1142,8 @@ export class CombatController {
         : `Ordem pra ${companion.name}: clique nele pra segurar posição, num aliado pra proteger, num inimigo pra mirar só nele. O botão de novo: avançar.`;
     }
     if (this.aim?.kind === "interact") {
-      const prop = hover ? propAt(encounter, hover) : undefined;
+      // A passarela é chão: quem está em cima é que importa (ver `floor` em shared/tactics/props.ts).
+      const prop = hover ? solidPropAt(encounter, hover) : undefined;
       return prop
         ? `${propTemplate(prop).interact}: ${propTemplate(prop).name}. Custa a ação.`
         : "Clique no objeto em que mexer. Esc ou botão direito volta a andar.";
@@ -1122,7 +1159,7 @@ export class CombatController {
       return "";
     }
 
-    const prop = hover && selected.radius === undefined ? propAt(encounter, hover) : undefined;
+    const prop = hover && selected.radius === undefined ? solidPropAt(encounter, hover) : undefined;
     if (prop) return `${PROPS[prop.kind].name}: ${prop.hp} de vida. Objeto não se esquiva — o golpe sempre pega.`;
 
     const target = hover && selected.radius === undefined ? unitAt(encounter, hover) : undefined;
@@ -1752,6 +1789,15 @@ export class CombatController {
         this.floatOver(event.supporter, event.name, TEXT_COLORS.gold, -22, 20);
         if (actor) this.ring(actor.pos, COLORS.gold);
         await this.wait(260);
+        return;
+      }
+
+      case "sightCut": {
+        // A chuva que aperta: riscos caindo por cima de tudo, e a vista curta até o fim da luta (Encounter.sight).
+        sfx("rumble");
+        this.startRain();
+        this.hud.log(`A chuva aperta: além de ${event.range} quadrados, ninguém enxerga ninguém.`);
+        await this.wait(420);
         return;
       }
 
