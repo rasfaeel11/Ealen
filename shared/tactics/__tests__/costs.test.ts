@@ -18,7 +18,7 @@ import { FIRST, eventsOf, makeCharacter, makeUnit, run } from "./helpers";
 
 /**
  * Os custos que faltavam da `combate` §2.2 (task 98, decidido pelo co-autor em
- * 2026-11-14): tempo, posição, gente em volta, equipamento e lei. Cada um tem a
+ * 2026-11-14): tempo, posição, gente em volta e equipamento. Cada um tem a
  * hora dele de cair (ver payCost em ../engine.ts).
  */
 
@@ -115,16 +115,4 @@ test("tempo: a recitada que passaria do limite pelo custo come a ação do turno
   const caster = findUnit(encounter, "M")!;
   assert.equal(activeUnit(encounter)!.id, "M");
   assert.equal(caster.turn.action, false);
-});
-
-test("lei: na rua da cidade, o custo da magia sai da lei, e a luta conta", () => {
-  const { encounter, events } = costly((seed) => {
-    const encounter = stage(["M..E"], (at) => [mage(at("M")), makeUnit("E", "enemy", at("E"), { ...TOUGH, kit: [] })], seed, { law: true });
-    run(encounter, { type: "ability", unitId: "M", abilityId: BOLT.id, target: { x: 3, y: 0 } });
-    pass(encounter);
-    return { encounter, events: pass(encounter) };
-  });
-  assert.deepEqual(kinds(events), ["law"]);
-  assert.equal(encounter.lawBroken, 1);
-  assert.equal(findUnit(encounter, "M")!.turn.action, true);
 });

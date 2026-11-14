@@ -870,8 +870,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   cena pede.
 
 - **98. Os custos que faltavam** (decidido pelo co-autor em 2026-11-14, ver `docs/escolhas.md`). O custo cai no
-  primeiro que couber: lei (magia na rua de cidade que pede licença; só o armazém de Ybytuguá, e o mestre da guilda
-  tira 2 de cobre de multa), tempo (a recitada que passaria do limite come a ação do turno em que sai), a marca,
+  primeiro que couber: tempo (a recitada que passaria do limite come a ação do turno em que sai), a marca,
   posição (quem bateu de cima perde a altura; de costas pra parede, sai Prensado), gente em volta (o tiro que pega
   por pouco raspa 1d4 no aliado colado no alvo), Fôlego, equipamento (sem Fôlego, a lâmina lasca: -1 no acerto até
   o fim da luta) e a ferida. Cada um tem a linha dele no registro e o que sobe em cima de quem paga.
@@ -886,6 +885,10 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   parada depois de 4 rodadas. O `balance:grupo` conta os itens e dá a paga do armazém. No fim: lutas de gente de 98 a
   100% em 2 a 4 rodadas, a ponte 98% em 5 (Endyru cai em 23%), a final 90% em 17.
 
+- **A conferência com a história** (2026-11-14, `docs/escolhas.md`). A lei saiu dos custos (no tempo da estrada não
+  havia edital de licença, `jarupa` cap-02), com a multa do armazém. Apanhar recitando quebra sempre (`combate`
+  §3.3), sem o teste de Saber. A "legítima defesa" de Xanduí é do juiz de Ybytuguá (`xandui`). O que diverge e é
+  do autor decidir ficou listado lá, com as fichas da §9 que não estão no repositório da história.
 - **96. Os ícones das peças novas** (2026-11-14). Cada peça tem o seu sinal desenhado em `icons.ts`, no lugar do
   emprestado: a Disparada (duas setas), o Ajudar (a mão aberta com o mais), o Desviar (a seta que passa ao lado), o
   Puxar-se (o corpo indo até a parede), o Vigiar (o olho aberto), Agarrar (o punho no pulso), Empurrar (a palma e o

@@ -184,10 +184,8 @@ afogamento (que o jogo não tem, e que mataria gente com um empurrão) é a de q
 
 **O que decidi**: cada custo da `combate` §2.2 cai numa hora certa, nesta ordem (o primeiro que couber):
 
-1. **Lei** — magia numa luta na rua de cidade que pede licença pra conjurar. Na luta não pesa; a cidade cobra
-   depois. Hoje só o armazém de Ybytuguá é assim (`law` no inimigo do Tiled): o mestre da guilda tira 2 de
-   cobre da paga ("A guarda do conselho passou aqui... A multa é dois." / "Era a rua do conselho."). A
-   história conta em `sem_licenca`.
+1. ~~**Lei**~~ — **saiu na conferência com a história** (2026-11-14): a licença de conjuro é de Itamoguá, e no
+   tempo da estrada não havia edital (`jarupa`, cap-02: "Na estrada não tinha."). A multa do armazém saiu junto.
 2. **Tempo** — a magia recitada que, pagando 1 de mana a mais, passaria do limite: o texto demora a fechar e
    come a ação do turno em que sai, no lugar do estouro. É o custo de quem respeita o tempo; o estouro do ato 3
    é deixa de roteiro e continua acontecendo.
@@ -242,3 +240,34 @@ contra o grupo no 3); ponte 98% em 5 rodadas, Endyru cai em 23%; final 90% em 17
 
 **Pra mudar**: os números estão em `shared/data/bestiary.ts`; o passo do Contragolpe é `closeIn` e a luta parada é
 `STALL_BREAK` (`shared/tactics/engine.ts`, `ai.ts`).
+
+## Conferência com a história (2026-11-14)
+
+Li o `historia-nova` (o repositório que está no GitHub, último commit de 2026-11-05) e confrontei com o jogo.
+
+**Corrigido no jogo**
+- **A lei como custo saiu**: a licença de conjuro é de Itamoguá (`licenca-de-conjuro`), e Jarupã, no cap-02,
+  descobre o edital: "Na estrada não tinha." A multa do armazém e a peça `law` do motor saíram.
+- **Apanhar quebra a recitação, sempre** (`combate` §3.3: "Apanhar quebra, e o texto recomeça do começo"). O jogo
+  dava um teste de d20 + Saber pra segurar o texto. Agora todo golpe que tira vida quebra, e o do Desviar também.
+  No `balance:grupo`: a ponte foi de 98% a 90%, a final de 90% a 93%; o resto quase não mudou.
+- **"Legítima defesa... um juiz em Ybytuguá"** (`xandui`). O jogo dizia Kuatiarape. A "quebra de contrato", que o
+  roteiro do autor põe num juiz de Kuatiarape, ficou.
+
+**Divergências que ficam pra você decidir**
+- **Fichas que o `AGENTS.md` diz gravadas e não estão no repositório**: `mbyraku`, `jurendy`, `thrykar`,
+  `castelo-da-volta`, os brasões em `ymboripe` e `xerumbetyba` e `referencias/mapa-do-mundo.md` (§9, "em
+  2026-10-31"). Nem o histórico tem esses nomes. Talvez estejam só na sua cópia local (`Documents/historiav2`) sem
+  push. No `alfabeto.md`, Jurendy aparece só como exemplo e como nome alternativo de Karuã.
+- **A idade de Endyru**: o cap-11 diz que ele nasceu "uns quarenta anos antes" do Livro 1; o jogo é uns 25 anos
+  antes. Então no jogo ele tem uns 15 anos (e chega ao Círculo aí, mais velho que Karuã aos 13, como precisa). A
+  fala do preparo, "Eu faço essa conta desde os quatorze anos", fica estranha nessa idade. Ela vem do roteiro;
+  não mexi.
+- **Aparar**: na `combate` §3.2, Aparar é a reação que deixa o outro Exposto se ele falhar. No jogo, a falha já
+  deixa Exposto sempre, e Aparar tira 1d4 + grau do golpe que pegou. Não mexi: é a peça que segura as lutas de
+  espada.
+- **Esquivar**: na `combate` §3.2, anula o golpe. No jogo, só anula o que pegaria por pouco (o sucesso com custo).
+- **A aura nos verbos** (§3.5: "Empurrar de Corpo derruba quem a força do braço não derrubaria"): o jogo não faz
+  a aura mexer nos verbos do corpo.
+- **O Ykuruã resiste à pancada** (metade do dano de impacto, decidido pelo co-autor em 2026-11-04): o bestiário
+  não diz isso. Fica no jogo até você dizer.

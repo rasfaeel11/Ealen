@@ -1554,10 +1554,6 @@ export default class WorldScene extends Phaser.Scene {
     this.refreshStatus();
     this.refreshHint();
 
-    // O custo que saiu da lei (conjurar na rua sem licença): quem cobra é a cidade, na fala de depois.
-    if (encounter.lawBroken && this.story.flag("sem_licenca") !== undefined) {
-      this.story.setFlag("sem_licenca", Number(this.story.flag("sem_licenca") ?? 0) + encounter.lawBroken);
-    }
     // O que a história tem a dizer sobre a queda do grupo (se ele caiu), e depois o que ela tinha deixado marcado.
     const knot = winner === "party" ? fighters.find((enemy) => enemy.onDefeat !== undefined)?.onDefeat : undefined;
     if (knot !== undefined) await this.converse(knot);

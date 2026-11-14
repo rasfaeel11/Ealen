@@ -16,7 +16,7 @@ export interface Attributes {
   couro: number;
   /** Lábia: convencer, negociar, mentir — os testes de conversa. */
   labia: number;
-  /** Saber: o que se estudou — os testes de leitura e de conhecimento, e segurar a recitação quando se apanha. */
+  /** Saber: o que se estudou — os testes de leitura e de conhecimento. */
   saber: number;
 }
 

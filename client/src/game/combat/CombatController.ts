@@ -336,7 +336,6 @@ const COST_FLOAT: Record<CostKind, string> = {
   position: "Posição",
   gear: "Lascou",
   bystander: "Raspão",
-  law: "Sem licença",
 };
 
 export class CombatController {
@@ -2199,8 +2198,6 @@ export class CombatController {
         return `a lâmina de ${name} lasca`;
       case "bystander":
         return `o golpe de ${name} raspa em ${this.unit(event.bystander!).name}`;
-      case "law":
-        return `${name} conjura na rua sem licença do conselho`;
     }
   }
 

@@ -118,8 +118,6 @@ export interface EncounterSetup {
   opening?: Opening;
   /** A cheia da luta: de quantas em quantas rodadas a água sobe, e quantas vezes no máximo (ver Flood em ./types.ts). */
   flood?: { every: number; rises: number };
-  /** A luta é na rua de uma cidade que pede licença pra conjurar (ver Encounter.law). */
-  law?: boolean;
   /** O relógio da história, se há um correndo (ver FightClock em ./types.ts). */
   clock?: FightClock;
   seed: number;
@@ -165,7 +163,6 @@ export function startEncounter(setup: EncounterSetup): { encounter: Encounter; e
     rngState: setup.seed >>> 0,
     ...(setup.flood ? { flood: { ...setup.flood, risen: 0 } } : {}),
     ...(setup.clock ? { clock: { ...setup.clock } } : {}),
-    ...(setup.law ? { law: true } : {}),
   };
 
   const rolls = encounter.units.map((unit, index) => ({
@@ -861,9 +858,6 @@ function useAbility(
 
 // --- Recitação --------------------------------------------------------------
 
-/** O teste de quem apanha recitando: d20 + Saber contra isto mais metade do golpe. Provisório, como os kits. */
-const RECITE_FOCUS = 10;
-
 /**
  * Solta a magia que `unit` vinha recitando, no começo do turno dele: pagando
  * agora o que ela custa (é aqui que a mana pesa no limite do turno) e saindo
@@ -1074,11 +1068,10 @@ export const CHIPPED_TO_HIT = 1;
 /**
  * O CUSTO de um sucesso com custo, ou do improvável que não chegava ao pleno
  * (`combate` §2.2). Sai do mundo, do que faz sentido pra quem bateu, nesta
- * ordem (decidido pelo co-autor em 2026-11-14, task 98):
+ * ordem (decidido pelo co-autor em 2026-11-14, task 98). A lei (conjurar sem
+ * licença) não entra: no tempo da estrada não havia edital (`jarupa`, cap-02).
+ * A outra metade dela, bater primeiro, já é o voto da Ipojy. A ordem:
  *
- * - LEI: magia numa luta com lei (`Encounter.law`, a rua de uma cidade que
- *   pede licença pra conjurar). Na luta não pesa; quem cobra é a cidade depois
- *   (`Encounter.lawBroken`, que a história lê).
  * - TEMPO: a magia recitada que, pagando mais 1 de mana, passaria do limite.
  *   O texto demora a fechar e come a ação do turno em que saiu, no lugar do
  *   estouro. Quem tem a ação, paga com ela; quem não tem, paga a mana.
@@ -1096,11 +1089,6 @@ export const CHIPPED_TO_HIT = 1;
  */
 function payCost(encounter: Encounter, unit: Unit, ability: Ability, target: Unit | undefined, aim: Pos, events: TacticalEvent[]): void {
   if (!isAlive(unit)) return;
-  if (ability.mana && encounter.law) {
-    encounter.lawBroken = (encounter.lawBroken ?? 0) + 1;
-    events.push({ type: "costPaid", unit: unit.id, kind: "law", amount: 1 });
-    return;
-  }
   if (ability.mana && isRecited(ability) && unit.turn.action && wouldBurst(unit, 1)) {
     unit.turn.action = false;
     events.push({ type: "costPaid", unit: unit.id, kind: "time", amount: 1 });
@@ -1500,22 +1488,15 @@ function restore(unit: Unit, amount: number, events: TacticalEvent[]): void {
 
 /**
  * Tira `amount` de vida de `target`. Quem cai perde as condições (e o que
- * recitava). Quem apanha recitando e fica de pé testa se o texto aguenta: d20
- * + Saber contra RECITE_FOCUS mais metade do golpe; falhando, ele se perde.
+ * recitava). Quem apanha recitando perde o texto (`combate` §3.3: "Apanhar
+ * quebra, e o texto recomeça do começo"), e o do Desviar, segurado na boca, também.
  */
 function dealDamage(encounter: Encounter, target: Unit, amount: number, events: TacticalEvent[]): void {
   target.currentHp = Math.max(0, target.currentHp - amount);
   events.push({ type: "damage", target: target.id, amount, remainingHp: target.currentHp });
   if (target.currentHp > 0) {
-    const focus = target.statuses.reduce((sum, status) => sum + (status.focus ?? 0), 0);
-    if (target.reciting && rollDie(encounter, 20) + effectiveAttribute(target, "saber") + focus < RECITE_FOCUS + Math.floor(amount / 2)) {
-      breakRecitation(target, "hit", events);
-    }
-    // O texto do Desviar, segurado na boca, quebra do mesmo jeito.
-    const holds = target.statuses.some((status) => status.deflect);
-    if (holds && rollDie(encounter, 20) + effectiveAttribute(target, "saber") + focus < RECITE_FOCUS + Math.floor(amount / 2)) {
-      removeStatuses(target, (status) => status.deflect === true, events);
-    }
+    if (target.reciting) breakRecitation(target, "hit", events);
+    if (target.statuses.some((status) => status.deflect)) removeStatuses(target, (status) => status.deflect === true, events);
     return;
   }
 

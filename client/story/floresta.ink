@@ -65,7 +65,7 @@ Jurendy: Então você trabalha pra nós também. Só que mais devagar.
 ~ quest_done("acordou")
 Jurendy está no pé do barranco, com o livro aberto na lama, as duas mãos pra cima.
 Jurendy: Rendição. Eu me rendo. Isso tem nome no tratado.
-Xanduí: Legítima defesa. Também tem nome. Eu ouvi um juiz dizer, em Kuatiarape, com essas mesmas palavras.
+Xanduí: Legítima defesa. Também tem nome. Eu ouvi um juiz dizer, em Ybytuguá, com essas mesmas palavras.
 Jarupã: Um dos dois.
 Xanduí: Mas a palavra era essa.
 Quando Jarupã se vira pra amarrar o castelão, Jurendy já está subindo a trilha, sem o livro, sem olhar pra trás. Ninguém corre atrás dele.

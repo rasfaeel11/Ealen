@@ -480,14 +480,6 @@ export interface Encounter {
   /** A cheia desta luta, se ela tem uma (ver Flood). */
   flood?: Flood;
   /**
-   * A luta é na rua de uma cidade que pede licença do conselho pra conjurar:
-   * o custo da magia sai da lei (ver payCost em ./engine.ts), e quem cobra é a
-   * cidade, depois.
-   */
-  law?: boolean;
-  /** Quantas vezes o custo da magia saiu da lei nesta luta. */
-  lawBroken?: number;
-  /**
    * Até onde a vista alcança, em quadrados, quando a chuva fecha o tempo (uma deixa com `rain`): ninguém mira, joga
    * item nem atira além disso. Sem isto, a vista vai até onde a linha de visão deixa.
    */
@@ -531,7 +523,7 @@ export type Command =
 export type AttackOutcome = "hit" | "cost" | "miss" | "crit" | "fumble";
 
 /** De onde sai o custo de um sucesso com custo (`combate` §2.2). */
-export type CostKind = "breath" | "wound" | "mark" | "time" | "position" | "gear" | "bystander" | "law";
+export type CostKind = "breath" | "wound" | "mark" | "time" | "position" | "gear" | "bystander";
 
 /**
  * O que aconteceu, em ordem. O motor nunca anima nada: devolve esta lista
