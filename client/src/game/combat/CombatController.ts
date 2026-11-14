@@ -78,7 +78,7 @@ import { sfx } from "../audio";
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXT_COLORS } from "../config";
 import { setOption, settings } from "../settings";
 import type { PartyEntry } from "../hud/PartyColumn";
-import { abilityIcon, itemIcon } from "../icons";
+import { abilityIcon, itemIcon, type IconName } from "../icons";
 import type { MapActor } from "../MapActor";
 import { standingFrame } from "../mapSprites";
 import { portraitRef, type FaceRef } from "../ui";
@@ -164,11 +164,11 @@ function orderLabel(order: AiOrder | undefined, encounter: Encounter): string {
 }
 
 /** O ícone da ordem, no botão do companheiro. */
-function orderIcon(order: AiOrder | undefined): "shield" | "grip" | "sword" | "move" {
-  if (order?.kind === "hold") return "shield";
-  if (order?.kind === "guard") return "grip";
-  if (order?.kind === "focus") return "sword";
-  return "move";
+function orderIcon(order: AiOrder | undefined): IconName {
+  if (order?.kind === "hold") return "order_hold";
+  if (order?.kind === "guard") return "order_guard";
+  if (order?.kind === "focus") return "order_focus";
+  return "order_advance";
 }
 
 /** O tipo de um dano, como a linha da habilidade o diz. */
@@ -956,7 +956,7 @@ export class CombatController {
         ? [
             {
               label: this.aim?.kind === "ready" ? "Preparar: escolha o quê" : "Preparar",
-              icon: "hourglass",
+              icon: "ready",
               tag: "Ação",
               cost: "action",
               body: "Gasta a ação deixando uma habilidade pronta: até a sua próxima vez, ela sai no primeiro inimigo que entrar no alcance dela, na reação. Clique e escolha qual. O que se recita não se prepara.",
@@ -986,7 +986,7 @@ export class CombatController {
         ? [
             {
               label: "Levantar quem caiu",
-              icon: "use",
+              icon: "lift",
               tag: "Ação",
               cost: "action",
               body: `Põe de pé quem está caído ao lado, com ${Math.round(LIFT_SHARE * 100)}% da vida.`,

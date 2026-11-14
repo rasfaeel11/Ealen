@@ -357,7 +357,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 ### P2 — corpo
 | # | Task | O que é |
 |---|---|---|
-| 96 | **Ícones e arte das peças novas** | Os ícones da árvore, da Disparada, do Ajudar e das ordens são os provisórios de `icons.ts`, emprestados de outras coisas. Entram com a task 70. |
 | 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
 
 ### P3 — produto
@@ -886,6 +885,12 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   no mesmo nível. A Ipojy errada por quem cutuca de 2 quadrados entra um passo e devolve, e a IA do grupo abre a luta
   parada depois de 4 rodadas. O `balance:grupo` conta os itens e dá a paga do armazém. No fim: lutas de gente de 98 a
   100% em 2 a 4 rodadas, a ponte 98% em 5 (Endyru cai em 23%), a final 90% em 17.
+
+- **96. Os ícones das peças novas** (2026-11-14). Cada peça tem o seu sinal desenhado em `icons.ts`, no lugar do
+  emprestado: a Disparada (duas setas), o Ajudar (a mão aberta com o mais), o Desviar (a seta que passa ao lado), o
+  Puxar-se (o corpo indo até a parede), o Vigiar (o olho aberto), Agarrar (o punho no pulso), Empurrar (a palma e o
+  tranco), Derrubar (o pé por baixo), o Preparar (a lâmina e a ampulheta), o Levantar quem caiu, as quatro ordens
+  (avançar, segurar, proteger, mirar) e o coração dos nós de vida da árvore. Vistos no navegador.
 
 ## 9. Onde isto está no cânone
 
