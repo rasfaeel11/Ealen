@@ -37,6 +37,8 @@ import {
   inBounds,
   isOver,
   isActive,
+  findItem,
+  giveItem,
   joinParty,
   parseTiledMap,
   pixelOfTile,
@@ -73,12 +75,16 @@ function mapOf(area: string): AreaMap {
 type Step =
   // `start`: o gatilho onde a luta começa, quando é a história que a abre (a conversa no gatilho chama start_fight).
   | { kind: "fight"; area: string; group: string; label: string; flags?: string[]; start?: string }
+  // O que a história põe na mochila de Endyru entre uma luta e outra.
+  | { kind: "give"; items: string[] }
   | { kind: "mage"; level: number }
   | { kind: "aura"; level: number };
 
 const CAMPAIGN: Step[] = [
   { kind: "fight", area: "ymonha", group: "pedagio", label: "pedágio (abertura)" },
   { kind: "fight", area: "ybytugua", group: "armazem", label: "armazém" },
+  // A paga do armazém: o unguento do mestre da guilda e os dois potes de óleo.
+  { kind: "give", items: ["item-unguento-de-barqueiro", "item-pote-de-oleo", "item-pote-de-oleo"] },
   { kind: "fight", area: "baixios", group: "primeira", label: "primeira ida (não se vence)", start: "trigger-6" },
   { kind: "mage", level: 4 },
   { kind: "fight", area: "floresta", group: "patrulha", label: "patrulha" },
@@ -140,9 +146,10 @@ interface Tally {
   fallen: number;
   heroDown: number;
   endless: number;
+  items: number;
 }
 
-function runFight(step: Extract<Step, { kind: "fight" }>, seed: number): { won: boolean; rounds: number; fallen: number; heroDown: boolean; endless: boolean } {
+function runFight(step: Extract<Step, { kind: "fight" }>, seed: number): { won: boolean; rounds: number; fallen: number; heroDown: boolean; endless: boolean; items: number } {
   const map = mapOf(step.area);
   const flags = new Set(step.flags ?? []);
   const flag = (name: string) => flags.has(name);
@@ -176,9 +183,11 @@ function runFight(step: Extract<Step, { kind: "fight" }>, seed: number): { won: 
     fightCues(local, cues, enemies, party.map((fighter) => fighter.character.id)),
     onlookers,
   );
+  let items = 0;
   for (let i = 0; i < MAX_COMMANDS && !isOver(encounter); i++) {
     const command = chooseCommand(encounter);
     const applied = applyCommand(encounter, command);
+    if (applied.ok) items += applied.events.filter((event) => event.type === "itemUsed").length;
     if (process.env.TRACE && applied.ok) for (const event of applied.events) if ((process.env.TRACE_ALL ? [event.type] : ["damage", "attackRoll", "unitDefeated", "moved", "battleEnded", "cueFired"]).includes(event.type)) console.log("   ", JSON.stringify(event).slice(0, 160));
     if (!applied.ok) throw new Error(`a IA pediu o impossível em ${step.label}: ${JSON.stringify(command)}`);
   }
@@ -190,6 +199,7 @@ function runFight(step: Extract<Step, { kind: "fight" }>, seed: number): { won: 
     heroDown: trio.some((unit) => unit.id === "hero" && unit.currentHp <= 0),
     // Parada por uma deixa sem vencedor (a primeira ida, que Oryndu encerra) não é luta sem fim.
     endless: !isOver(encounter),
+    items,
   };
 }
 
@@ -209,12 +219,16 @@ function advance(step: Extract<Step, { kind: "fight" }>): void {
 const describe = (character: Character) =>
   `${character.name} nv ${character.level}${character.mageLevel ? ` (mago ${character.mageLevel})` : ""}${character.aura ? ` (aura ${character.aura})` : ""}`;
 
-console.log(`${N} lutas por linha, seeds 1 a ${N}. Vitória do grupo / rodadas em média / do trio caídos em média / Endyru caído.\n`);
-console.log(["luta".padEnd(30), "grupo".padEnd(42), "vence".padEnd(8), "rodadas".padEnd(9), "caídos".padEnd(8), "Endyru cai"].join(""));
+console.log(`${N} lutas por linha, seeds 1 a ${N}. Vitória do grupo / rodadas em média / do trio caídos em média / Endyru caído / itens usados em média.\n`);
+console.log(["luta".padEnd(30), "grupo".padEnd(42), "vence".padEnd(8), "rodadas".padEnd(9), "caídos".padEnd(8), "Endyru cai".padEnd(12), "itens"].join(""));
 let endlessTotal = 0;
 for (const step of CAMPAIGN) {
   if (step.kind === "mage") {
     hero.mageLevel = step.level;
+    continue;
+  }
+  if (step.kind === "give") {
+    for (const id of step.items) giveItem(hero, findItem(id)!);
     continue;
   }
   if (step.kind === "aura") {
@@ -222,7 +236,7 @@ for (const step of CAMPAIGN) {
     continue;
   }
   if (!filterArg || step.label.includes(filterArg) || step.group.includes(filterArg)) {
-    const tally: Tally = { wins: 0, rounds: 0, fallen: 0, heroDown: 0, endless: 0 };
+    const tally: Tally = { wins: 0, rounds: 0, fallen: 0, heroDown: 0, endless: 0, items: 0 };
     for (let seed = 1; seed <= N; seed++) {
       const result = runFight(step, seed);
       tally.wins += result.won ? 1 : 0;
@@ -230,6 +244,7 @@ for (const step of CAMPAIGN) {
       tally.fallen += result.fallen;
       tally.heroDown += result.heroDown ? 1 : 0;
       tally.endless += result.endless ? 1 : 0;
+      tally.items += result.items;
     }
     endlessTotal += tally.endless;
     const who = fighters().map((character) => character.level).join("/");
@@ -240,7 +255,8 @@ for (const step of CAMPAIGN) {
         `${Math.round((tally.wins / N) * 100)}%${tally.endless ? ` !${tally.endless}` : ""}`.padEnd(8),
         (tally.rounds / N).toFixed(1).padEnd(9),
         (tally.fallen / N).toFixed(1).padEnd(8),
-        `${Math.round((tally.heroDown / N) * 100)}%`,
+        `${Math.round((tally.heroDown / N) * 100)}%`.padEnd(12),
+        (tally.items / N).toFixed(1),
       ].join(""),
     );
   }

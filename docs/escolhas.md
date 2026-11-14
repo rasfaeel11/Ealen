@@ -207,3 +207,38 @@ gente) e por último o que é do corpo.
 
 **Pra mudar**: `payCost` em `shared/tactics/engine.ts` (a ordem e as regras), `CHIPPED_TO_HIT`, e o texto da
 multa em `saqueadores_caem` (`client/story/ybytugua.ink`). A fala da multa é minha, na voz do guia de falas.
+
+## 103 e 80. Os números da Camada 1 e as lutas de gente (2026-11-14)
+
+**O que decidi**
+- **A Camada 1 fica como está**: a folga do pleno (3), o custo de Fôlego (1), a ferida (1d4), a esquiva (2), a
+  cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Testei a
+  cadeia a 2 de Fôlego: as lutas de gente quase não mudam e a final passa de 15 pra 20 rodadas. Voltei pra 1.
+- **O Golpe Pesado fica**, como você quis. Quem mudou foi o outro lado: a gente das lutas tinha atributos abaixo
+  dos do trio no mesmo nível (Força 5 a 7 contra 8 a 10) e vida pra um Golpe Pesado só. Agora:
+  | Quem | Vida (era) | Atributos que subiram |
+  |---|---|---|
+  | Guarda do pedágio | 40 (22) | Força 7, Olho 6, Couro 6, Vigor 6 |
+  | Besteiro | 30 (16) | — |
+  | Saqueador | 36 (22) | Força 8, Olho 5, Couro 5 |
+  | Saqueadora | 30 (18) | Força 6, Olho 7, Couro 5 |
+  | Espada de Ymboripe | 64 (30) | Força 9, Olho 6, Couro 7 |
+  | Lança de Ymboripe | 60 (28) | Força 8, Olho 7, Couro 7 |
+  | Aventureiro contratado | 58 (28) | Força 8, Olho 7, Couro 6 |
+  | Recitador | 34 (22) | Fator 9, Saber 9 |
+  | Mbyraku | 110 (60) | Força 10, Olho 8, Couro 8 |
+  | Jurendy | 56 (30) | Fator 11, Saber 11, Couro 5 |
+- **A pergunta do chuço**: a Ipojy que leva o erro de quem cutuca de 2 quadrados dá um passo pra dentro (sem
+  ataque de oportunidade, na reação) e devolve. Sem isso, o chuço do Gryskar desfazia o triângulo (a Ipojy vence o
+  Gryskar).
+- **A luta parada**: depois de 4 rodadas sem ninguém abrir, a IA do grupo bate mesmo com golpe fraco. Sem isso, um
+  espadachim sem escola e a Lança da Ipojy em guarda se olhavam pra sempre.
+- **O item no simulador**: o `balance:grupo` agora conta os itens usados e dá a paga do armazém (o unguento e os
+  dois potes de óleo).
+
+**O que deu** (`balance:grupo`, 40 lutas por luta): pedágio 100% em 2,5 rodadas (acaba no guincho); armazém 100% em
+4,2, Endyru cai em 15%; patrulha, vau e batedores 98 a 100% em 2,6 a 2,8; portão 100% em 2,1 (gente de nível 1
+contra o grupo no 3); ponte 98% em 5 rodadas, Endyru cai em 23%; final 90% em 17 rodadas.
+
+**Pra mudar**: os números estão em `shared/data/bestiary.ts`; o passo do Contragolpe é `closeIn` e a luta parada é
+`STALL_BREAK` (`shared/tactics/engine.ts`, `ai.ts`).

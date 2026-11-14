@@ -1244,12 +1244,16 @@ function ready(encounter: Encounter, unit: Unit, abilityId: string, events: Tact
  */
 function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, events: TacticalEvent[]): void {
   if (!isAlive(defender) || !isAlive(attacker) || !defender.turn.reaction) return;
-  const ability = defender.abilities.find(
-    (candidate) =>
-      candidate.opportunity &&
-      readiness(defender, candidate, true) === "ready" &&
-      abilityTargets(encounter, defender, candidate).some((pos) => samePos(pos, attacker.pos)),
-  );
+  const reaching = () =>
+    defender.abilities.find(
+      (candidate) =>
+        candidate.opportunity &&
+        readiness(defender, candidate, true) === "ready" &&
+        abilityTargets(encounter, defender, candidate).some((pos) => samePos(pos, attacker.pos)),
+    );
+  // Quem cutuca de fora do alcance dela (o chuço, de 2) e erra abre a guarda: ela entra um passo e devolve
+  // (task 103, decidido pelo co-autor). Sem isso, a arma comprida desfazia o triângulo.
+  const ability = reaching() ?? (closeIn(encounter, defender, attacker, events) ? reaching() : undefined);
   if (!ability) return;
 
   defender.turn.reaction = false;
@@ -1258,6 +1262,34 @@ function counterStrike(encounter: Encounter, defender: Unit, attacker: Unit, eve
   charge(encounter, defender, ability, false, events);
   // A falha do outro vira o acerto dela (`combate` §4.1): o Contragolpe sai como sucesso pleno, sem rolar.
   resolveAbility(encounter, defender, ability, attacker.pos, [attacker], true, events, { sure: true });
+}
+
+/**
+ * O passo do Contragolpe (ver counterStrike): `defender` entra um quadrado na
+ * direção de `attacker`, pro quadrado livre colado nele, sem ataque de
+ * oportunidade (é a reação dela, dentro da guarda aberta do outro). Preso,
+ * caído, agarrado ou com o passo travado, não entra. Verdadeiro se entrou.
+ */
+function closeIn(encounter: Encounter, defender: Unit, attacker: Unit, events: TacticalEvent[]): boolean {
+  if (distance(defender.pos, attacker.pos) !== 2 || movementOf(defender) <= 0) return false;
+  if (defender.statuses.some((status) => status.prone || status.skipsTurn || (status.speed ?? 0) <= -99)) return false;
+  const { grid } = encounter;
+  let best: Pos | undefined;
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      const spot = { x: defender.pos.x + dx, y: defender.pos.y + dy };
+      if ((dx === 0 && dy === 0) || distance(spot, attacker.pos) !== 1) continue;
+      const tile = tileAt(grid, spot);
+      if (!tile || tile.blocksMove || unitAt(encounter, spot) || elevationAt(grid, spot) > elevationAt(grid, defender.pos)) continue;
+      if (!best || (dx === 0 || dy === 0)) best = spot;
+    }
+  }
+  if (!best) return false;
+  const from = { ...defender.pos };
+  defender.pos = { ...best };
+  events.push({ type: "moved", unit: defender.id, from, path: [{ ...best }] });
+  touchSurface(encounter, defender, events);
+  return isAlive(defender);
 }
 
 /**

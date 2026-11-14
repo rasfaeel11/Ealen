@@ -502,6 +502,8 @@ function abilityValue(encounter: Encounter, actor: Unit, profile: AiProfile, abi
         // O verbo trocado da Tsvirana não se apara (nem se devolve): o que a lâmina do outro tiraria entra inteiro.
         if (parries(victim) && victim.turn.reaction && victim.breath >= PARRY_BREATH && outlook.damage > 0) value += profile.aggression * outlook.lands * (2.5 + (victim.grade ?? 0));
       } else if (actor.team === "party" && ability.attack) value -= profile.caution * patience(encounter) * (1 - outlook.lands) * counterDamage(encounter, victim, actor);
+      // Luta parada de todo (ninguém abriu, e o cuidado já cedeu): alguém tem de bater primeiro, mesmo que o golpe renda pouco.
+      if (ability.attack && !encounter.opened && patience(encounter) === 0) value += STALL_BREAK;
     }
   }
   if (ability.surface) {
@@ -603,6 +605,9 @@ function slamOf(encounter: Encounter, origin: Pos, victim: Unit, pushDistance: n
   return { amount, ...(prop ? { prop } : {}) };
 }
 
+/** O que vale abrir uma luta parada de todo (ver patience): o bastante pra bater, mesmo com golpe fraco. */
+const STALL_BREAK = 3;
+
 /** Em quantas rodadas sem ninguém abrir a luta o cuidado com o Contragolpe some de todo. */
 const STALL_ROUNDS = 4;
 
@@ -615,7 +620,8 @@ function patience(encounter: Encounter): number {
 function counterDamage(encounter: Encounter, defender: Unit, attacker: Unit): number {
   if (!counters(defender) || !defender.turn.reaction) return 0;
   const ability = defender.abilities.find((candidate) => candidate.opportunity && readiness(defender, candidate, true) === "ready");
-  if (!ability || distance(defender.pos, attacker.pos) > ability.range) return 0;
+  // Ela entra um passo pra devolver em quem a cutuca de 2 (ver closeIn em ./engine.ts).
+  if (!ability || distance(defender.pos, attacker.pos) > Math.max(ability.range, 2)) return 0;
   if (!hasLineOfSight(encounter.grid, defender.pos, attacker.pos)) return 0;
   return Math.min(forecast(encounter, defender, ability, attacker).damage, attacker.currentHp);
 }

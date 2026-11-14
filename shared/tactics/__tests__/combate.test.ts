@@ -274,6 +274,20 @@ test("Ipojy: o Contragolpe sai como sucesso pleno, sem rolar", () => {
   assert.ok(eventsOf(events, "damage").some((event) => event.target === "A"));
 });
 
+test("Ipojy: quem cutuca de fora do alcance dela e erra leva o passo pra dentro e o Contragolpe", () => {
+  const { encounter, events } = seedWhere(
+    (seed) => {
+      const encounter = duel(["A.E"], seed, { equipment: { weapon: "gear-chuco" } }, { attributes: { couro: 200 } });
+      styled(findUnit(encounter, "E")!, "ipojy");
+      return { encounter, events: strike(encounter) };
+    },
+    ({ events }) => eventsOf(events, "styleTrait").some((event) => event.trait === "counter"),
+  );
+  assert.deepEqual(eventsOf(events, "moved").map((event) => event.unit), ["E"]);
+  assert.deepEqual(findUnit(encounter, "E")!.pos, { x: 1, y: 0 });
+  assert.ok(eventsOf(events, "damage").some((event) => event.target === "A"));
+});
+
 test("a curva de poder e a diferença de nível mexem na chance; três níveis abaixo, o improvável não entra", () => {
   const encounter = duel(["AE"], 1);
   const sword = Object.assign(findUnit(encounter, "A")!, { aura: 2 });

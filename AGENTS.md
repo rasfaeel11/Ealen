@@ -338,7 +338,6 @@ O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ai
 
 | # | Task | O que é |
 |---|---|---|
-| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. Visto na tela (task 97): na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; com dois guardas e o besteiro em cima, toda recitação dele quebra antes de sair; o Golpe Pesado tira 27 a 36 e derruba guarda e saqueador de uma vez; o Fôlego do espadachim zera pela rodada 4. No `balance:grupo` (100 lutas por luta, a IA dos dois lados): o grupo vence todas as lutas do jogo, em 1 a 4 rodadas, quase sem ninguém cair; a patrulha cai em pouco mais de uma rodada, porque o Golpe Pesado com custo tira 31 e a Espada tem 30. A final foi acertada com o autor em 2026-11-13 (ver Feito, task 80: a IA e a água). E uma pergunta pro autor: o chuço alcança 2, e da Ipojy com espada (alcance 1) nenhum Contragolpe sai contra quem cutuca de longe — os guardas erraram Xanduí rodadas a fio sem levar nada de volta. |
 
 ### P1 — pedidos do autor (2026-10-31)
 Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
@@ -360,7 +359,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 |---|---|---|
 | 96 | **Ícones e arte das peças novas** | Os ícones da árvore, da Disparada, do Ajudar e das ordens são os provisórios de `icons.ts`, emprestados de outras coisas. Entram com a task 70. |
 | 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
-| 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1, e `balance:grupo` o trio em campanha contra cada luta do jogo (ver Feito). A final já foi acertada (ver Feito, a IA e a água). Falta: as lutas de gente, que o grupo ainda vence em uma a três rodadas (o Golpe Pesado, que o autor deixou como está); os números dos kits e das peças; os do Fôlego; e o item, que nenhuma das duas usa. Mexer em número é com o autor (task 103). |
 
 ### P3 — produto
 | # | Task | O que é |
@@ -881,6 +879,13 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 - **100. A borda prensa** (decidido pelo co-autor em 2026-11-14, ver `docs/escolhas.md`). Quem é de terra, empurrado
   do seco pra água, finca o pé na beira: Prensado, sem o dano do choque. Quem já está na água vai mais pro fundo; o
   bicho de rio entra na água sem parar.
+
+- **103 e 80. Os números e as lutas de gente** (decidido pelo co-autor em 2026-11-14, ver `docs/escolhas.md`). A
+  Camada 1 fica com os números dela (a cadeia a 2 de Fôlego foi testada e saiu: alongava a final sem mexer nas lutas
+  de gente) e o Golpe Pesado também. A gente das lutas subiu de vida (quase o dobro) e de atributos, ao par do trio
+  no mesmo nível. A Ipojy errada por quem cutuca de 2 quadrados entra um passo e devolve, e a IA do grupo abre a luta
+  parada depois de 4 rodadas. O `balance:grupo` conta os itens e dá a paga do armazém. No fim: lutas de gente de 98 a
+  100% em 2 a 4 rodadas, a ponte 98% em 5 (Endyru cai em 23%), a final 90% em 17.
 
 ## 9. Onde isto está no cânone
 
