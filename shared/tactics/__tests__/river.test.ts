@@ -77,7 +77,7 @@ test("na água ele fica Submerso, com a Muralha alta; em seco, fica só com a do
   const wet = stage(["M..w"], (at) => [mage(at("M")), ykurua({ x: 3, y: 0 })]).encounter;
   const swimmer = findUnit(wet, "Y")!;
   assert.deepEqual(statusIds(swimmer), ["submerged"]);
-  assert.equal(styleReduction(swimmer), 2 + 6);
+  assert.equal(styleReduction(swimmer), 2 + STATUSES.submerged.wall!);
 
   const dry = stage(["M...Y"], (at) => [mage(at("M")), ykurua(at("Y"))]).encounter;
   const beached = findUnit(dry, "Y")!;
@@ -120,7 +120,7 @@ test("na água ele se refaz no começo de cada turno dele", () => {
   const events = pass(encounter);
   const regen = eventsOf(events, "statusTriggered");
   assert.deepEqual(regen.map((event) => [event.unit, event.statusId]), [["Y", "submerged"]]);
-  assert.deepEqual(eventsOf(events, "heal")[0], { type: "heal", target: "Y", amount: 6, remainingHp: 56 });
+  assert.deepEqual(eventsOf(events, "heal")[0], { type: "heal", target: "Y", amount: STATUSES.submerged.regen!, remainingHp: 50 + STATUSES.submerged.regen! });
 });
 
 test("puxar funciona aos poucos: ele é pesado, e cada quadrado fora d'água conta", () => {
@@ -317,4 +317,28 @@ test("a marca de sangue e tremor baixa o limite de mana: o que cabia num turno p
   caster.statuses.push({ ...STATUSES.bloodied, turnsLeft: Infinity });
   const burst = eventsOf(run(marked, { type: "ability", unitId: "M", abilityId: MID.id, target: findUnit(marked, "Y")!.pos }), "manaBurst");
   assert.deepEqual(burst.map((event) => [event.spent, event.limit]), [[3, 2]]);
+});
+
+test("a IA tira o bicho de rio da água: puxa pra o seco, e não o empurra pro fundo", () => {
+  // O mago no seco, o bicho na beira da água: o puxão o traz pra fora; o empurrão o mandaria mais pro fundo.
+  const away: Ability = { ...PULL, id: "test.away", name: "Pra longe", effects: [{ kind: "push", distance: 2 }] };
+  const { encounter } = stage(["M.wwww"], (at) => {
+    const caster = mage(at("M"));
+    caster.abilities = caster.abilities.filter((ability) => ability.id !== "test.big");
+    caster.abilities.push(away);
+    return [caster, ykurua({ x: 2, y: 0 })];
+  });
+  assert.equal(activeUnit(encounter)!.id, "M");
+  const plan = planTurn(encounter);
+  assert.equal(plan.action?.ability.id, "test.pull", "o puxão que o põe no seco vale mais que o empurrão");
+});
+
+test("com bicho de rio vivo, quem é do grupo não termina o turno com o pé na água", () => {
+  const { encounter } = stage(["S...wwwwww"], (at) => [
+    makeUnit("S", "party", at("S"), { attributes: { olho: FIRST } }),
+    ykurua({ x: 9, y: 0 }),
+  ]);
+  assert.equal(activeUnit(encounter)!.id, "S");
+  const plan = planTurn(encounter);
+  assert.ok(plan.tile.x <= 3, `parou em ${plan.tile.x}, que é água`);
 });

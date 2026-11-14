@@ -71,14 +71,15 @@ function mapOf(area: string): AreaMap {
 
 /** Um passo da campanha: uma luta, ou o que a história muda no grupo entre uma e outra. */
 type Step =
-  | { kind: "fight"; area: string; group: string; label: string; flags?: string[] }
+  // `start`: o gatilho onde a luta começa, quando é a história que a abre (a conversa no gatilho chama start_fight).
+  | { kind: "fight"; area: string; group: string; label: string; flags?: string[]; start?: string }
   | { kind: "mage"; level: number }
   | { kind: "aura"; level: number };
 
 const CAMPAIGN: Step[] = [
   { kind: "fight", area: "ymonha", group: "pedagio", label: "pedágio (abertura)" },
   { kind: "fight", area: "ybytugua", group: "armazem", label: "armazém" },
-  { kind: "fight", area: "baixios", group: "primeira", label: "primeira ida (não se vence)" },
+  { kind: "fight", area: "baixios", group: "primeira", label: "primeira ida (não se vence)", start: "trigger-6" },
   { kind: "mage", level: 4 },
   { kind: "fight", area: "floresta", group: "patrulha", label: "patrulha" },
   { kind: "fight", area: "floresta", group: "vau", label: "vau" },
@@ -86,8 +87,8 @@ const CAMPAIGN: Step[] = [
   { kind: "fight", area: "ymonha", group: "portao", label: "portão (por terra)" },
   { kind: "fight", area: "floresta", group: "ponte", label: "ponte (Jurendy e Mbyraku)" },
   { kind: "aura", level: 3 },
-  { kind: "fight", area: "baixios", group: "final", label: "final, com preparo", flags: ["preparo"] },
-  { kind: "fight", area: "baixios", group: "final", label: "final, sem preparo" },
+  { kind: "fight", area: "baixios", group: "final", label: "final, com preparo", flags: ["preparo"], start: "trigger-7" },
+  { kind: "fight", area: "baixios", group: "final", label: "final, sem preparo", start: "trigger-7" },
 ];
 
 // O grupo da campanha.
@@ -101,7 +102,7 @@ const clone = <T>(value: T): T => structuredClone(value);
 const cheb = (a: Pos, b: Pos) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
 /** Onde o grupo está quando a luta começa (ver o comentário do topo). */
-function arrival(map: AreaMap, enemyTiles: Pos[]): Pos {
+function arrival(map: AreaMap, enemyTiles: Pos[], startTrigger?: string): Pos {
   const walkable = (tile: Pos) => inBounds(map.grid, tile) && !tileAt(map.grid, tile)!.blocksMove;
   const free = (tile: Pos) => walkable(tile) && !enemyTiles.some((enemy) => enemy.x === tile.x && enemy.y === tile.y);
   const near = (from: Pos) => Math.min(...enemyTiles.map((enemy) => cheb(from, enemy)));
@@ -109,7 +110,7 @@ function arrival(map: AreaMap, enemyTiles: Pos[]): Pos {
 
   const trigger = map.triggers
     .map((t) => ({ t, tile: tileOfPixel(map, { x: t.x + t.width / 2, y: t.y + t.height / 2 }) }))
-    .filter(({ tile }) => cheb(tile, center) <= TRIGGER_REACH)
+    .filter(({ t, tile }) => (startTrigger ? t.id === startTrigger || (t as { name?: string }).name === startTrigger : cheb(tile, center) <= TRIGGER_REACH))
     .sort((a, b) => cheb(a.tile, center) - cheb(b.tile, center))[0];
   const spawn = Object.values(map.spawns).map((pixel) => tileOfPixel(map, pixel)).sort((a, b) => cheb(a, center) - cheb(b, center))[0];
   const from = trigger?.tile ?? spawn;
@@ -154,7 +155,7 @@ function runFight(step: Extract<Step, { kind: "fight" }>, seed: number): { won: 
   // Cópias: a campanha não muda com o que acontece numa luta.
   const me = clone(hero);
   const mates = companions().map(clone);
-  const start = arrival(local, enemyTiles);
+  const start = arrival(local, enemyTiles, step.start);
   const placed = placeParty(
     local,
     me,
@@ -178,7 +179,7 @@ function runFight(step: Extract<Step, { kind: "fight" }>, seed: number): { won: 
   for (let i = 0; i < MAX_COMMANDS && !isOver(encounter); i++) {
     const command = chooseCommand(encounter);
     const applied = applyCommand(encounter, command);
-    if (process.env.TRACE && applied.ok) for (const event of applied.events) if (["damage", "attackRoll", "unitDefeated", "moved", "battleEnded", "cueFired"].includes(event.type)) console.log("   ", JSON.stringify(event).slice(0, 160));
+    if (process.env.TRACE && applied.ok) for (const event of applied.events) if ((process.env.TRACE_ALL ? [event.type] : ["damage", "attackRoll", "unitDefeated", "moved", "battleEnded", "cueFired"]).includes(event.type)) console.log("   ", JSON.stringify(event).slice(0, 160));
     if (!applied.ok) throw new Error(`a IA pediu o impossível em ${step.label}: ${JSON.stringify(command)}`);
   }
   const trio = encounter.units.filter((unit) => unit.team === "party");

@@ -370,7 +370,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 | 77 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
 | 78 | **Terreno que muda** | A água e a cheia já existem. Falta lama, ponte que cai, porta que se fecha no meio da luta; luz e escuro pesando na visão; hora do dia e clima. |
 | 79 | **Tutorial** | Ensinar movimento, ação, bônus, reação, cobertura, flanco, estilo e emboscada dentro do jogo, na ordem em que aparecem. |
-| 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1, e `balance:grupo` o trio em campanha contra cada luta do jogo (ver Feito). Falta: os números dos kits e das peças, que são os primeiros a conferir; os números do Fôlego (quanto cada coisa custa, quanto a guarda devolve); e o item, que nenhuma das duas usa. Mexer em número é com o autor (task 103). |
+| 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1, e `balance:grupo` o trio em campanha contra cada luta do jogo (ver Feito). A final já foi acertada (ver Feito, a IA e a água). Falta: as lutas de gente, que o grupo ainda vence em uma a três rodadas (o Golpe Pesado, que o autor deixou como está); os números dos kits e das peças; os do Fôlego; e o item, que nenhuma das duas usa. Mexer em número é com o autor (task 103). |
 
 ### P3 — produto
 | # | Task | O que é |
@@ -822,6 +822,19 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   (o que ele aguenta é fato dele, e espera o bestiário da história, como na task 62). Vai no save (`codex`, sem versão
   nova; o save de antes começa vazio). As abas que abrem na primeira página (Missões, Códice) agora enchem a primeira,
   e não a última. Visto no navegador, depois da luta do pedágio.
+- **80. A final do jeito do roteiro: a IA e a água** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). A IA
+  do grupo só batia: entrava na água atrás do Ykuruã, empurrava o bicho pro fundo com o Arremesso e nunca acendia um
+  círculo. Agora tirar o bicho de rio da água vale mais que um golpe médio (e devolvê-lo custa o mesmo), cada quadrado
+  mais perto do seco vale um pouco, e com bicho de rio vivo ninguém do grupo quer terminar o turno com o pé na água
+  (`riverGain`, `WET_FOOT_VALUE`): o grupo fica no seco, o bicho vem até a beira, e o Puxão o tira. Os três círculos do
+  preparo estavam na faixa baixa da margem, e a cheia (duas subidas pelo relógio, mais a da virada da metade da vida)
+  os apagava antes de o bicho chegar ao alcance; foram pra margem alta, a coluna 10, que a cheia não sobe. Com a IA
+  certa, a água ficou mais forte: Submerso agora tem Muralha +10 (era +6) e cura 8 por turno (era 6). No
+  `balance:grupo`, a final foi de 100% em 4 rodadas, sem ninguém cair, a 95% em 15 rodadas, com Endyru caindo em 11%
+  das lutas; com 12 e 10 seria 63% em 37 rodadas. O simulador começava a final num banco de areia no meio do rio: agora
+  cada luta de história começa no gatilho que a abre. A IA ainda luta às vezes dos bancos de areia em vez de segurar a
+  margem, e quase não acende os círculos; o preparo pesa pouco pra ela (95% contra 94%), mas está ao alcance de quem
+  joga. Testes novos: puxar pro seco vale mais que empurrar pro fundo, e o pé na água se evita.
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão
