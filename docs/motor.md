@@ -250,6 +250,10 @@ O peso dos golpes é todo do client, tirado dos eventos: no `damage` o alvo pisc
 - **Mirar**: quatro cantos em volta de cada alvo válido (`drawBrackets`), sem tapar quem está nele; sob o cursor, a mancha do que o golpe pega (`drawArea`: preenchimento leve e contorno só por fora, um quadrado ou a área inteira) e uma linha tracejada de quem bate até lá (`drawReach`). Habilidade que mira "qualquer quadrado" não marca alvo nenhum: só a área sob o cursor.
 - Marca nova no chão entra em `marks.ts` e segue a regra: quadrado em que nada acontece não aparece.
 
+### Dicas de primeira vez (`client/src/game/tips.ts`)
+
+`showTip(scene, addHud, id)` mostra uma linha no alto da tela na primeira vez que a coisa acontece, e nunca mais: o que já se viu fica no dispositivo (`jogo:dicas`), e a opção Dicas (Jogo) desliga todas. São texto de interface, não fala de ninguém (`TIPS`): a vez do jogador na luta (`turn`), o objetivo da luta (`goal`, no lugar da `turn` quando há), a primeira mira de golpe (`bands`), a primeira cadeia do grupo (`chain`), a primeira recitação do grupo (`recite`), o primeiro clique que o voto da Ipojy recusa (`vow`, em `CombatHud.deny`) e a primeira área com quem vigia (`sneak`, em `WorldScene.syncPresence`). Uma de cada vez; some em 9 segundos ou num clique.
+
 ### Som (`client/src/game/audio.ts`)
 
 Todo o som é SINTETIZADO na hora, com Web Audio: não há arquivo de áudio nenhum. É provisório como os sprites gerados — dá ao jogo trilha e efeitos até existir áudio de verdade — e, como eles, fica atrás de uma porta só: quem chama diz `sfx("hit")` e `playMusic("battle")`, e trocar por áudio gravado é mexer neste arquivo.

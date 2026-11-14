@@ -105,6 +105,15 @@ const TABS: { name: string; rows: () => Row[] }[] = [
         "Eles escolhem: ao subir de nível, Jarupã e Xanduí gastam sozinhos os pontos da árvore e os de atributo. A de Endyru é sempre sua.",
       ),
       option(
+        "tips",
+        "Dicas",
+        [
+          { value: true, label: "Sim" },
+          { value: false, label: "Não" },
+        ],
+        "Uma linha na primeira vez que cada coisa acontece (a barra da luta, as faixas, a cadeia, a recitação, o objetivo, o olhar dos inimigos), e nunca mais.",
+      ),
+      option(
         "autoAdvance",
         "Conversa passa sozinha",
         [

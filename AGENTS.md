@@ -369,7 +369,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 | 76 | **Mais apoios** | Hoje só existe Ler a água (Oryndu). Apoio novo é uma linha em `SUPPORTS`, mas faltam os tipos (curar de fora, distrair, avisar). |
 | 77 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
 | 78 | **Terreno que muda** | A água e a cheia já existem. Falta lama, ponte que cai, porta que se fecha no meio da luta; luz e escuro pesando na visão; hora do dia e clima. |
-| 79 | **Tutorial** | Ensinar movimento, ação, bônus, reação, cobertura, flanco, estilo e emboscada dentro do jogo, na ordem em que aparecem. |
 | 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1, e `balance:grupo` o trio em campanha contra cada luta do jogo (ver Feito). A final já foi acertada (ver Feito, a IA e a água). Falta: as lutas de gente, que o grupo ainda vence em uma a três rodadas (o Golpe Pesado, que o autor deixou como está); os números dos kits e das peças; os do Fôlego; e o item, que nenhuma das duas usa. Mexer em número é com o autor (task 103). |
 
 ### P3 — produto
@@ -835,6 +834,12 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   cada luta de história começa no gatilho que a abre. A IA ainda luta às vezes dos bancos de areia em vez de segurar a
   margem, e quase não acende os círculos; o preparo pesa pouco pra ela (95% contra 94%), mas está ao alcance de quem
   joga. Testes novos: puxar pro seco vale mais que empurrar pro fundo, e o pé na água se evita.
+- **79. As dicas de primeira vez** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). A abertura continua
+  ensinando pelo que acontece; por cima, uma linha no alto da tela na primeira vez de cada coisa, e nunca mais: a vez
+  do jogador na luta (a barra), o objetivo da luta (o guincho), a primeira mira (as três faixas), a primeira cadeia, a
+  primeira recitação, o voto da Ipojy (no primeiro clique que ele recusa) e a primeira área com quem vigia (`Q` e `F`).
+  Some em 9 segundos ou num clique; Opções, Jogo, Dicas, desliga. O que já se viu fica no dispositivo. Visto no
+  navegador, na luta do pedágio.
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão

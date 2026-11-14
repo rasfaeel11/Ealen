@@ -72,6 +72,7 @@ import {
   type TeamId,
   type Unit,
 } from "@jogo/shared";
+import { showTip, type TipId } from "../tips";
 import { sfx } from "../audio";
 import { COLORS, TEXT_COLORS } from "../config";
 import { setOption, settings } from "../settings";
@@ -492,6 +493,13 @@ export class CombatController {
     this.selected = null;
     this.aim = null;
     this.refresh();
+    // A primeira vez que o jogador tem a vez: a barra. Numa luta com objetivo, o objetivo primeiro (ver tips.ts).
+    if (!(this.goals.length > 0 && this.tip("goal"))) this.tip("turn");
+  }
+
+  /** A dica de primeira vez `id`, na interface da luta. */
+  private tip(id: TipId): boolean {
+    return showTip(this.host.scene, this.host.addHud, id);
   }
 
   /**
@@ -667,6 +675,7 @@ export class CombatController {
     const aiming = this.selected;
     const inRange = this.options.some((option) => samePos(option, this.hover!));
     if (aiming?.attack && aiming.radius === undefined && inRange && !under.invulnerable) {
+      this.tip("bands");
       const odds = attackOdds(this.encounter, unit, aiming, under);
       const cost = Math.round(odds.cost * 100);
       this.hud.setChip(
@@ -1286,6 +1295,7 @@ export class CombatController {
 
       case "recitationStarted": {
         // Começou a ler: a magia sai no próximo turno dele, e até lá o texto está à vista de quem quiser quebrá-lo.
+        if (this.unit(event.unit).team === "party") this.tip("recite");
         sfx("uiOpen");
         this.floatOver(event.unit, "Recitando...", TEXT_COLORS.goldBright, -30, 20);
         this.hud.log(`${this.unit(event.unit).name} começa a recitar ${event.name}.`);
@@ -1445,6 +1455,7 @@ export class CombatController {
       }
 
       case "chained": {
+        if (this.unit(event.unit).team === "party") this.tip("chain");
         this.floatOver(event.unit, event.feint ? "Troca!" : `Cadeia ${event.verbs}`, TEXT_COLORS.goldBright, -22);
         const paid = event.breath > 0 ? `${event.breath} de Fôlego` : "sem Fôlego";
         this.hud.log(`${this.unit(event.unit).name} emenda o ${event.verbs}º verbo (${paid}${event.feint ? ", trocando de verbo" : ""}).`);

@@ -135,6 +135,7 @@ import {
   noteFight,
   notePerson,
 } from "@jogo/shared";
+import { showTip } from "../game/tips";
 import { areaMusic, playMusic, sfx } from "../game/audio";
 import { BagPanel } from "../game/BagPanel";
 import { EngravePanel } from "../game/EngravePanel";
@@ -748,6 +749,8 @@ export default class WorldScene extends Phaser.Scene {
     }
     this.syncParty();
     this.occupy();
+    // Gente que vigia (quem tem pra onde olhar e não é passivo): a primeira vez, a dica do agachar e da emboscada.
+    if (this.enemies.some((enemy) => !enemy.passive && enemy.facing !== undefined)) showTip(this, (object) => this.addHud(object), "sneak");
   }
 
   /** Acerta a fila com o grupo: quem a história pôs nele aparece junto do personagem, quem saiu some. */
