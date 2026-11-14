@@ -357,7 +357,7 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 ### P2 — corpo
 | # | Task | O que é |
 |---|---|---|
-| 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
+| 70 | **Arte final, o que só se desenha ou grava** | O que se faz em código entrou (ver Feito). Faltam as folhas de animação de ataque, dano e morte de cada boneco (hoje o boneco anda e respira; o golpe, o dano e a queda são feitos por cima da pose de pé), os ícones finais (os de `icons.ts` são desenhados em canvas) e a trilha e os efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). Pede quem desenha e quem grava. |
 
 ### P3 — produto
 | # | Task | O que é |
@@ -891,6 +891,13 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   Puxar-se (o corpo indo até a parede), o Vigiar (o olho aberto), Agarrar (o punho no pulso), Empurrar (a palma e o
   tranco), Derrubar (o pé por baixo), o Preparar (a lâmina e a ampulheta), o Levantar quem caiu, as quatro ordens
   (avançar, segurar, proteger, mirar) e o coração dos nós de vida da árvore. Vistos no navegador.
+
+- **70. Os golpes, o dano e a queda na tela** (2026-11-14, a parte que se faz em código). O golpe se prepara (o corpo
+  recua um palmo antes do bote; a reação não tem tempo) e deixa o rastro do tipo do dano: o corte, um arco; a
+  estocada e o virote, uma risca; a pancada, um anel; a atração e repulsão, as linhas da força correndo pra fora no
+  empurrão e pra dentro no puxão. O dano solta gotas pro lado contrário a quem bateu, sangue de gente e lodo do bicho
+  de rio, na medida do golpe. Quem cai tomba pro lado contrário ao último golpe, com poeira (na água, afunda como
+  antes). A beira que prensa respinga, e a lâmina que lasca solta faísca. Vistos no navegador.
 
 ## 9. Onde isto está no cânone
 

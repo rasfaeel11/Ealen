@@ -148,6 +148,13 @@ const SURFACE_COLOR: Record<SurfaceId, number> = { fire: 0xe8792b, frost: 0x9fd8
 const FLOOD_COLOR = 0x4f6f6a;
 /** A água que a mana gasta de uma vez sacode, do mago até o bicho que a sente. */
 const COLOR_WATER = 0x9fd8e8;
+/** O sangue de gente e o lodo que sai do bicho de rio (ver droplets). */
+const COLOR_BLOOD = 0x8a1c1c;
+const COLOR_SILT = 0x5d5a3a;
+/** A poeira de quem cai em seco. */
+const COLOR_DUST = 0xb8a88a;
+/** As linhas da força de atração e repulsão. */
+const COLOR_FORCE = 0xbfd8ff;
 /** A marca de atração e repulsão é sangue pelo nariz: quem a carrega pinga. */
 const NOSEBLEED: string = CONCEPTS.atracao_repulsao.mark;
 
@@ -1330,9 +1337,17 @@ export class CombatController {
           return;
         }
         // Um bote curto na direção do alvo, e de volta. A reação (o Contragolpe) é mais larga e mais rápida.
-        sfx("swing");
+        // Antes do bote, o corpo se prepara: recua um palmo (a reação não tem tempo pra isso).
         actor.faceToward(target);
-        const reach = Math.min(1, (event.reaction ? 10 : 6) / Math.hypot(target.x - home.x, target.y - home.y));
+        const span = Math.hypot(target.x - home.x, target.y - home.y);
+        if (!event.reaction) {
+          const back = { x: home.x - ((target.x - home.x) / span) * 2.5, y: home.y - ((target.y - home.y) / span) * 2.5 };
+          await this.glide(actor, back, 70, false);
+        }
+        sfx("swing");
+        const ability = unit.abilities.find((candidate) => candidate.id === event.abilityId);
+        this.trail(ability, this.center(actor), { x: target.x, y: target.y - this.host.map.tileSize * 0.4 });
+        const reach = Math.min(1, (event.reaction ? 10 : 6) / span);
         const lunge = { x: home.x + (target.x - home.x) * reach, y: home.y + (target.y - home.y) * reach };
         await this.glide(actor, lunge, event.reaction ? 50 : 70, false);
         await this.glide(actor, home, 90, false);
@@ -1474,6 +1489,8 @@ export class CombatController {
           this.hud.log(`${name} paga ${event.amount} de Fôlego pra agir antes de todos.`);
         } else {
           this.floatOver(event.unit, COST_FLOAT[event.kind], TEXT_COLORS.danger, -22);
+          const payer = this.actor(event.unit);
+          if (payer && event.kind === "gear") this.spark(this.center(payer), COLORS.goldBright, 8);
           this.hud.log(`O custo: ${this.costLine(event, name)}.`);
         }
         await this.wait(80);
@@ -1607,7 +1624,11 @@ export class CombatController {
         this.hud.log(`${unit.name} sofre ${event.amount} de dano.`);
         this.refreshRoster();
 
-        if (actor) this.spark(this.center(actor), critical ? COLORS.goldBright : 0xffffff, 6 + 8 * weight + (critical ? 4 : 0));
+        if (actor) {
+          this.spark(this.center(actor), critical ? COLORS.goldBright : 0xffffff, 6 + 8 * weight + (critical ? 4 : 0));
+          // O que sai do corpo: sangue de gente, lodo do bicho de rio. Pouco, e na medida do golpe.
+          this.droplets(this.center(actor), unit.river ? COLOR_SILT : COLOR_BLOOD, 2 + Math.round(6 * weight), this.blow.actor);
+        }
         this.shake(heavy ? 200 : 120, 0.002 + 0.01 * weight + (critical ? 0.004 : 0));
         await this.hitStop(heavy ? HEAVY_HIT_STOP_MS : HIT_STOP_MS);
         await this.recoil(event.target, this.blow.actor, 2 + 5 * weight);
@@ -1657,6 +1678,11 @@ export class CombatController {
       }
 
       case "braced": {
+        const braced = this.actor(event.unit);
+        if (braced) {
+          this.ring(this.tileCenter(event.pos), COLOR_WATER);
+          this.dust(this.tileCenter(event.pos), COLOR_WATER);
+        }
         this.hud.log(`${this.unit(event.unit).name} finca o pé na beira d'água.`);
         this.floatOver(event.unit, "Na beira!", TEXT_COLORS.guard, -34);
         await this.wait(100);
@@ -1864,12 +1890,20 @@ export class CombatController {
         return;
       }
 
-      case "death":
+      case "death": {
         this.forgetForeseen(event.unit);
         sfx("death");
         this.hud.log(`${this.unit(event.unit).name} cai.`);
-        await this.actor(event.unit)?.collapse(420);
+        const actor = this.actor(event.unit);
+        if (!actor) return;
+        // Tomba pro lado contrário a quem deu o último golpe, e o chão levanta poeira (a água, onde ela está).
+        const killer = this.blow.actor === undefined ? undefined : this.actor(this.blow.actor);
+        const side = killer && killer !== actor ? Math.sign(actor.pos.x - killer.pos.x) || 1 : 1;
+        const wet = this.unit(event.unit).statuses.some((status) => status.id === STATUSES.submerged.id);
+        this.dust(actor.pos, wet ? COLOR_WATER : COLOR_DUST);
+        await actor.collapse(520, wet ? 0 : side);
         return;
+      }
 
       case "cue":
         // A história fala no meio da luta: a interface do combate sai da frente da caixa.
@@ -1986,6 +2020,108 @@ export class CombatController {
     });
   }
 
+  /**
+   * O rastro do golpe, pelo tipo do dano dele: o corte é um arco, a estocada uma
+   * risca reta que vai e volta, a pancada um anel no ponto em que chega, e a
+   * atração e repulsão as linhas da força correndo de quem lê até o alvo (pra
+   * fora no empurrão, pra dentro no puxão). O que não fere não deixa rastro.
+   */
+  private trail(ability: Ability | undefined, from: PixelPos, to: PixelPos): void {
+    if (!ability) return;
+    const damage = ability.effects.find((effect) => effect.kind === "damage");
+    const push = ability.effects.find((effect) => effect.kind === "push");
+    const kind = ability.mana ? "atracao_repulsao" : damage?.kind === "damage" ? damage.type : undefined;
+    if (!kind && !push) return;
+    const { scene } = this.host;
+    const fx = this.host.addWorld(scene.add.graphics().setDepth(FX_DEPTH));
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    const fade = (duration: number) =>
+      scene.tweens.add({ targets: fx, alpha: { from: 1, to: 0 }, duration, ease: "Cubic.easeIn", onComplete: () => fx.destroy() });
+
+    if (kind === "atracao_repulsao" || (!kind && push)) {
+      // As linhas da força: três arcos que correm pela reta, pra fora (empurrão) ou pra dentro (puxão).
+      const inward = push?.kind === "push" && push.distance < 0;
+      const steps = 4;
+      for (let i = 0; i < steps; i++) {
+        const t = inward ? 1 - i / (steps - 1) : i / (steps - 1);
+        const at = { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
+        scene.time.delayedCall(i * 40, () => {
+          const arc = this.host.addWorld(scene.add.graphics().setDepth(FX_DEPTH).setPosition(at.x, at.y).setRotation(angle + (inward ? Math.PI : 0)));
+          arc.lineStyle(1.5, COLOR_FORCE, 1);
+          arc.beginPath();
+          arc.arc(0, 0, 5, -0.9, 0.9);
+          arc.strokePath();
+          scene.tweens.add({ targets: arc, scale: { from: 0.6, to: 1.6 }, alpha: { from: 1, to: 0 }, duration: 260, onComplete: () => arc.destroy() });
+        });
+      }
+      fx.destroy();
+      return;
+    }
+    if (kind === "corte") {
+      // O arco do corte, atravessado na frente de quem leva.
+      fx.lineStyle(2, 0xffffff, 0.95);
+      fx.beginPath();
+      fx.arc(to.x, to.y, 9, angle + Math.PI - 1.1, angle + Math.PI + 1.1);
+      fx.strokePath();
+      fx.lineStyle(1, COLORS.goldBright, 0.8);
+      fx.beginPath();
+      fx.arc(to.x, to.y, 11, angle + Math.PI - 0.9, angle + Math.PI + 0.9);
+      fx.strokePath();
+      fade(220);
+      return;
+    }
+    if (kind === "perfuracao") {
+      // A risca da estocada (e do virote), de perto de quem bate até o alvo.
+      const start = { x: from.x + Math.cos(angle) * 6, y: from.y + Math.sin(angle) * 6 };
+      fx.lineStyle(1.5, 0xffffff, 1).lineBetween(start.x, start.y, to.x, to.y);
+      fade(160);
+      return;
+    }
+    // A pancada: um anel duro onde chega.
+    fx.lineStyle(2, 0xffffff, 0.9);
+    fx.strokeCircle(to.x, to.y, 5);
+    scene.tweens.add({ targets: fx, alpha: { from: 1, to: 0 }, duration: 200, onComplete: () => fx.destroy() });
+  }
+
+  /** Gotas que saltam do ponto do golpe, pro lado contrário a quem bateu, e caem. */
+  private droplets(at: PixelPos, color: number, count: number, attackerId: string | undefined): void {
+    const { scene } = this.host;
+    const attacker = attackerId === undefined ? undefined : this.actor(attackerId);
+    const away = attacker ? Math.atan2(at.y - this.center(attacker).y, at.x - this.center(attacker).x) : -Math.PI / 2;
+    for (let i = 0; i < count; i++) {
+      const angle = away + (Math.random() - 0.5) * 1.6;
+      const speed = 6 + Math.random() * 8;
+      const drop = this.host.addWorld(scene.add.rectangle(at.x, at.y, 1.5, 1.5, color).setDepth(FX_DEPTH));
+      scene.tweens.add({
+        targets: drop,
+        x: at.x + Math.cos(angle) * speed,
+        y: { value: at.y + Math.sin(angle) * speed + 8, ease: "Quad.easeIn" },
+        alpha: { from: 1, to: 0 },
+        duration: 360 + Math.random() * 160,
+        onComplete: () => drop.destroy(),
+      });
+    }
+  }
+
+  /** A poeira (ou a água) que sobe dos pés de quem cai. */
+  private dust(at: PixelPos, color: number): void {
+    const { scene } = this.host;
+    for (let i = 0; i < 7; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const puff = this.host.addWorld(scene.add.circle(at.x, at.y - 1, 2 + Math.random() * 1.5, color, 0.7).setDepth(FX_DEPTH));
+      scene.tweens.add({
+        targets: puff,
+        x: at.x + side * (6 + Math.random() * 10),
+        y: at.y - 2 - Math.random() * 5,
+        scale: { from: 0.6, to: 1.8 },
+        alpha: { from: 0.7, to: 0 },
+        duration: 520 + Math.random() * 200,
+        ease: "Cubic.easeOut",
+        onComplete: () => puff.destroy(),
+      });
+    }
+  }
+
   /** Anel que se abre no chão, aos pés de alguém (cura, condição, item). */
   private ring(at: PixelPos, color: number): void {
     const { scene } = this.host;
@@ -2046,7 +2182,6 @@ export class CombatController {
     await this.wait(steps * gap + 200);
   }
 
-  /** Texto que sobe da cabeça de alguém. */
   /** A linha do registro de cada custo (`combate` §2.2, ver payCost no motor). */
   private costLine(event: Extract<TacticalEvent, { type: "costPaid" }>, name: string): string {
     switch (event.kind) {
@@ -2069,6 +2204,7 @@ export class CombatController {
     }
   }
 
+  /** Texto que sobe da cabeça de alguém. */
   private floatOver(unitId: string, text: string, color: string, offsetY = 0, size?: number): void {
     const actor = this.actor(unitId);
     if (actor) this.floatAt(actor.top, text, color, offsetY, size);

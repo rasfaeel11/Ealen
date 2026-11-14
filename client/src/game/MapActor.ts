@@ -326,8 +326,12 @@ export class MapActor {
     this.scene.time.delayedCall(duration, () => this.sprite.clearTint());
   }
 
-  /** Cai: clareia, achata contra o chão e some. */
-  collapse(duration: number): Promise<void> {
+  /**
+   * Cai. Com `side` (1 pra direita, -1 pra esquerda), tomba pro lado, girando
+   * nos pés, e se apaga; sem ele (0, o bicho na água), clareia, achata contra o
+   * chão e some, como quem afunda.
+   */
+  collapse(duration: number, side = 0): Promise<void> {
     this.fallen = true;
     this.walking = false;
     this.settling?.remove();
@@ -337,9 +341,29 @@ export class MapActor {
     this.hideHp();
     this.setTurn(false);
     this.setBleeding(false);
-    this.sprite.setTintFill(0xffffff);
     this.scene.tweens.killTweensOf(this.ripple);
     this.scene.tweens.add({ targets: [this.shadow, this.ripple], alpha: 0, duration });
+    if (side !== 0) {
+      this.downTween?.stop();
+      this.sprite.setTint(0xd8c8c8);
+      return new Promise((resolve) => {
+        this.scene.tweens.add({
+          targets: this.sprite,
+          angle: 84 * side,
+          duration: duration * 0.45,
+          ease: "Quad.easeIn",
+          onComplete: () =>
+            this.scene.tweens.add({
+              targets: this.sprite,
+              alpha: 0,
+              delay: duration * 0.25,
+              duration: duration * 0.3,
+              onComplete: () => resolve(),
+            }),
+        });
+      });
+    }
+    this.sprite.setTintFill(0xffffff);
     return new Promise((resolve) => {
       this.scene.tweens.add({
         targets: this.sprite,
