@@ -303,3 +303,18 @@ test("a luta final dos baixios tem cheia: a água sobe dentro dela", () => {
   const final = maps.baixios.enemies.find((enemy) => enemy.group === "final");
   assert.deepEqual(final?.flood, { every: 3, rises: 2 });
 });
+
+test("as noites acampadas: depois do contrato, uma conversa, e só uma vez", () => {
+  const host = makeHost(5, 3);
+  const runner = new StoryRunner(story, host);
+  // A abertura põe o trio no barco (join_party); o contrato vem da Mesa.
+  let step = runner.start("abertura");
+  while (step.choices.length > 0) step = runner.choose(step.choices.find((choice) => choice.text.startsWith("Pagar"))!.index);
+  runner.setFlag("contrato", true);
+  const said = (steps: { beats: { kind: string; text?: string }[] }) => steps.beats.map((beat) => beat.text ?? "").join(" ");
+  const first = runner.start("noite");
+  assert.match(said(first), /Pra ver se mudou/);
+  assert.deepEqual(first.choices, []);
+  const second = runner.start("noite");
+  assert.equal(said(second).trim(), "", "a mesma noite não se repete");
+});

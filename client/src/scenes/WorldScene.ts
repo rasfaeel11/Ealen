@@ -1046,7 +1046,9 @@ export default class WorldScene extends Phaser.Scene {
     this.persist();
     this.refreshStatus();
     this.showBanner(hungry.length > 0 ? "Uma noite de barriga vazia." : "Uma noite inteira.");
-    this.openEngrave();
+    // A conversa da noite, se a história tem uma pra este momento (ver client/story/noite.ink). Depois, o gravar.
+    if (this.story.hasKnot("noite")) void this.converse("noite").then(() => this.openEngrave());
+    else this.openEngrave();
   }
 
   /** O descanso de quem conjura: gravar, num objeto ou num círculo, o que na luta vai sair sem o tempo de recitar. */

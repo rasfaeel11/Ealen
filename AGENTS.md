@@ -340,7 +340,7 @@ O motor das tasks 14 a 17 entrou (ver Feito). Isto é o que a Camada 1 pede e ai
 |---|---|---|
 | 98 | **Os custos que faltam** | Entraram Fôlego, ferida própria e marca. Faltam os outros da `combate` §2.2: tempo (a recitação que quebra como preço), posição (perder a altura, sair Prensado), equipamento (a lâmina lasca, a gravação se gasta), gente em volta (fora da deixa de Oryndu) e lei (conjurar sem licença). Cada um pede uma regra de quando cai: vai pro autor antes. |
 | 100 | **A margem e a borda do barco** | A `combate` §4.1 diz que borda do barco e margem prensam. Hoje prensa o que barra o passo (parede, corpo, caixote, barranco); a água não barra. Decidir com o autor se empurrar pra dentro d'água é Prensado, Caído ou outra coisa (no Ykuruã, o contrário de tirá-lo da água). |
-| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. Visto na tela (task 97): na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; com dois guardas e o besteiro em cima, toda recitação dele quebra antes de sair; o Golpe Pesado tira 27 a 36 e derruba guarda e saqueador de uma vez; o Fôlego do espadachim zera pela rodada 4. No `balance:grupo` (100 lutas por luta, a IA dos dois lados): o grupo vence todas as lutas do jogo, em 1 a 4 rodadas, quase sem ninguém cair; a patrulha cai em pouco mais de uma rodada, porque o Golpe Pesado com custo tira 31 e a Espada tem 30. E a luta final não pede o que o cânone pede (`bestiario`, §5.3 aqui): as espadas comem o Ykuruã de 82 a 0 com ele dentro d'água, em umas 4 rodadas, sem ninguém o puxar, e o preparo na margem não muda nada (com e sem, o mesmo número). E uma pergunta pro autor: o chuço alcança 2, e da Ipojy com espada (alcance 1) nenhum Contragolpe sai contra quem cutuca de longe — os guardas erraram Xanduí rodadas a fio sem levar nada de volta. |
+| 103 | **Os números da Camada 1** | Provisórios: a folga do pleno (`COST_BAND` 3), o custo (1 de Fôlego, 1d4 de ferida), a esquiva (2 de Fôlego), a cadeia (3 verbos, 1 de Fôlego cada), a curva de poder (2) e a diferença de nível (1 por nível, até 3). Conferir no `balance:matrix` e no teste do autor (§4.1): o que o livro mostra não pode ter 0,1% no jogo. Entra com a 80. Visto na tela (task 97): na abertura os guardas pagam pra agir antes, emendam até quatro golpes (a Onda) e Endyru cai na rodada 1 ou 2; com dois guardas e o besteiro em cima, toda recitação dele quebra antes de sair; o Golpe Pesado tira 27 a 36 e derruba guarda e saqueador de uma vez; o Fôlego do espadachim zera pela rodada 4. No `balance:grupo` (100 lutas por luta, a IA dos dois lados): o grupo vence todas as lutas do jogo, em 1 a 4 rodadas, quase sem ninguém cair; a patrulha cai em pouco mais de uma rodada, porque o Golpe Pesado com custo tira 31 e a Espada tem 30. A final foi acertada com o autor em 2026-11-13 (ver Feito, task 80: a IA e a água). E uma pergunta pro autor: o chuço alcança 2, e da Ipojy com espada (alcance 1) nenhum Contragolpe sai contra quem cutuca de longe — os guardas erraram Xanduí rodadas a fio sem levar nada de volta. |
 
 ### P1 — pedidos do autor (2026-10-31)
 Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro autor antes de entrar (§1).
@@ -362,10 +362,6 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
 |---|---|---|
 | 96 | **Ícones e arte das peças novas** | Os ícones da árvore, da Disparada, do Ajudar e das ordens são os provisórios de `icons.ts`, emprestados de outras coisas. Entram com a task 70. |
 | 70 | **Arte final** | Retratos, folhas de 48x48, splash e o mapa do mundo saem de `art/gerar_arte.py` (`docs/arte.md`). O cenário sai de `art/pintar_cenario.py`. Faltam animações próprias de ataque, dano e morte, efeitos e ícones (32x32). Trilha e efeitos sonoros gravados, no lugar dos sintetizados (a troca é em `audio.ts`). |
-| 73 | **Companheiros como gente** | Afinidade, conversa de acampamento, comentário no meio do diálogo dos outros, missão pessoal, discordar de uma escolha. |
-| 74 | **Reputação** | Como cada facção e cada lugar vê o grupo, e o que isso abre ou fecha (preço, diálogo, saída). |
-| 76 | **Mais apoios** | Hoje só existe Ler a água (Oryndu). Apoio novo é uma linha em `SUPPORTS`, mas faltam os tipos (curar de fora, distrair, avisar). |
-| 77 | **Invocação e criatura aliada** | Unidade que entra no meio da luta e sai com ela. |
 | 80 | **Balanceamento** | `balance:matrix` roda classe x criatura sozinha no nível 1, e `balance:grupo` o trio em campanha contra cada luta do jogo (ver Feito). A final já foi acertada (ver Feito, a IA e a água). Falta: as lutas de gente, que o grupo ainda vence em uma a três rodadas (o Golpe Pesado, que o autor deixou como está); os números dos kits e das peças; os do Fôlego; e o item, que nenhuma das duas usa. Mexer em número é com o autor (task 103). |
 
 ### P3 — produto
@@ -855,6 +851,19 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   sistema de coleta nem de preparo, e nenhuma relíquia além disso. O texto novo (as três falas de Thrykar, da guilda e
   da barcaça) é do co-autor, na voz do guia de falas, aprovado com a proposta. O teste do caminho inteiro passa pela
   guilda, pela barcaça e pela forja; teste novo do furo na Muralha.
+- **73. As noites acampadas** (aprovado pelo autor em 2026-11-13, `docs/propostas-corpo.md`). Acampar (`Z`) agora abre
+  a conversa da noite, se a história tem uma pra aquele momento (`client/story/noite.ink`), uma vez cada: depois do
+  contrato, Xanduí pede que Endyru leia de novo a parte do pagamento "pra ver se mudou", e os lábios dela mexem junto no
+  fim da frase ("Papel de conselho muda"); na véspera da cheia, Oryndu bate o remo no casco, Endyru refaz a conta da
+  corda, e Xanduí passa a pedra na espada no ritmo do remo. A da floresta é a que já existia (o círculo de giz e o
+  placar). Depois da conversa, o painel de gravar abre como antes. Os comentários dos companheiros no meio da conversa
+  dos outros já estavam onde o roteiro os junta (a Mesa, Thrykar, a conselheira), e não precisou de mais. Não entraram
+  afinidade, missão pessoal nem discordar de escolha: a amizade dos três é a do Livro 1. O texto das duas noites é do
+  co-autor, na voz do guia de falas, aprovado com a proposta. Visto no navegador; teste novo da noite que não se repete.
+- **74, 76 e 77. O que o corpo do jogo não pede** (decidido com o autor em 2026-11-13, `docs/propostas-corpo.md`). Não
+  entram: a reputação (o fecho mostra que o trio não muda nada, e um número prometeria o contrário), mais apoios (um apoio
+  depois de Oryndu tiraria o peso da morte dele, e antes dela o roteiro não põe ninguém junto) e a invocação (atração e
+  repulsão não invoca, e uma criatura aliada seria fato novo de magia e de bestiário).
 - **66. O grafo das áreas e a viagem.** `shared/world/travel.ts`: o mundo é o grafo que as saídas ABERTAS dos mapas formam
   (`worldLinks`; a estrada que a história fecha não liga nada), e a viagem vai de saída em saída até uma área já pisada,
   passando só por áreas já pisadas (`travelRoute`, `travelSpots`). O save guarda as áreas pisadas (`visited`, sem versão
