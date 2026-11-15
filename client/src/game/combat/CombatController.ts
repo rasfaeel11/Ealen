@@ -82,6 +82,7 @@ import { abilityIcon, itemIcon, type IconName } from "../icons";
 import type { MapActor } from "../MapActor";
 import { standingFrame } from "../mapSprites";
 import { portraitRef, type FaceRef } from "../ui";
+import { CombatFx, type CastCircle } from "./fx";
 import { CombatHud, type ActionButton, type AddHud } from "./CombatHud";
 import { drawArea, drawBrackets, drawReach, drawStop, drawTrail } from "./marks";
 
@@ -123,6 +124,13 @@ function statusChips(unit: Unit): NonNullable<PartyEntry["statuses"]> {
   });
 }
 
+/** Os botões que, nesta montagem da barra, vão pra página de "Mais ações" (ver refresh). */
+const SECONDARY = new Set<ActionButton>();
+function secondary(isSecondary: boolean, button: ActionButton): ActionButton {
+  if (isSecondary) SECONDARY.add(button);
+  return button;
+}
+
 /** Entre o chão e tudo que fica de pé: as marcas no chão passam por baixo de árvores e personagens. */
 const OVERLAY_DEPTH = 0;
 /** Faíscas e anéis ficam por cima de quem está de pé, abaixo das barras de vida. */
@@ -154,7 +162,9 @@ const COLOR_SILT = 0x5d5a3a;
 /** A poeira de quem cai em seco. */
 const COLOR_DUST = 0xb8a88a;
 /** As linhas da força de atração e repulsão. */
-const COLOR_FORCE = 0xbfd8ff;
+const COLOR_FORCE = 0x8fc0ff;
+/** A luz da Cura. */
+const COLOR_HEAL = 0x8fe08a;
 /** A marca de atração e repulsão é sangue pelo nariz: quem a carrega pinga. */
 const NOSEBLEED: string = CONCEPTS.atracao_repulsao.mark;
 
@@ -353,6 +363,12 @@ export class CombatController {
   private blow: { actor?: string; target?: string; outcome?: AttackOutcome } = {};
   /** Verdadeiro enquanto eventos estão sendo reproduzidos ou um inimigo joga: a entrada fica surda. */
   private busy = true;
+  /** Os efeitos que se veem (ver ./fx.ts). */
+  private readonly fx: CombatFx;
+  /** A barra mostra os verbos de todo mundo (Disparada, Ajudar, Agarrar...) em vez das habilidades de quem age. */
+  private moreOpen = false;
+  /** O círculo aos pés de quem está recitando, até a magia sair ou quebrar. */
+  private readonly circles = new Map<string, CastCircle>();
   /** A habilidade escolhida; null = modo de movimento. */
   private selected: Ability | null = null;
   /** Mirando outra coisa que não uma habilidade: um objeto pra mexer (`interact`) ou o alvo de um apoio (`support`). */
@@ -394,6 +410,7 @@ export class CombatController {
   ) {
     const { scene } = host;
     this.hud = new CombatHud(scene, host.addHud, host.logTop, (unit) => this.faceOf(unit));
+    this.fx = new CombatFx(scene, host.addWorld);
     this.hud.onHoverUnit = (unit) => this.markUnit(unit);
     this.drawMode();
     this.ground = host.addWorld(scene.add.graphics().setDepth(OVERLAY_DEPTH - 1));
@@ -456,6 +473,8 @@ export class CombatController {
     const { scene } = this.host;
     this.rain?.destroy();
     this.rain = undefined;
+    for (const circle of this.circles.values()) circle.destroy();
+    this.circles.clear();
     scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
     scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
     scene.input.keyboard?.off("keydown", this.onKey, this);
@@ -484,6 +503,8 @@ export class CombatController {
     if (this.busy) return;
 
     const result = applyCommand(this.encounter, command);
+    // Um verbo da página de "Mais ações" usado: a barra volta pras habilidades (pra emendar a cadeia).
+    if (result.ok && command.type === "ability") this.moreOpen = false;
     if (!result.ok) {
       sfx("deny");
       this.hud.warn(ERROR_TEXT[result.reason]);
@@ -602,6 +623,18 @@ export class CombatController {
     sfx(ability ? "uiSelect" : "uiCancel");
     this.selected = ability;
     this.aim = null;
+    this.refresh();
+  }
+
+  /** Troca a barra entre as habilidades de quem age e os verbos de todo mundo. */
+  private toggleMore(open: boolean): void {
+    if (this.busy) return;
+    sfx(open ? "uiSelect" : "uiCancel");
+    this.moreOpen = open;
+    if (!open) {
+      if (this.aim?.kind === "ready" || this.aim?.kind === "order") this.aim = null;
+      if (this.selected && !this.selected.mana && /\.(disparada|ajudar|vigiar|esconder|agarrar|empurrar|derrubar|desarmar)$/.test(this.selected.id)) this.selected = null;
+    }
     this.refresh();
   }
 
@@ -918,6 +951,7 @@ export class CombatController {
     const usable = encounter.props.filter(
       (prop) => prop.hp > 0 && !prop.used && propTemplate(prop).interact !== undefined && (wanted.has(prop.id) || inReach.includes(prop)),
     );
+    const COMMON_VERB = /\.(disparada|ajudar|vigiar|esconder|agarrar|empurrar|derrubar|desarmar)$/;
     const buttons: ActionButton[] = [
       {
         label: "Mover",
@@ -929,7 +963,7 @@ export class CombatController {
         selected: this.selected === null && !this.aim,
         onClick: () => this.select(null),
       },
-      ...unit.abilities.map((ability): ActionButton => {
+      ...unit.abilities.map((ability): ActionButton => secondary(COMMON_VERB.test(ability.id) && !ability.mana, (() => {
         // Preparando: o botão é o da habilidade que fica pronta, e só acende o que se prepara.
         if (this.aim?.kind === "ready") {
           const fits = readyable(ability) && readiness(unit, ability, true) === "ready";
@@ -956,11 +990,11 @@ export class CombatController {
           selected: this.selected?.id === ability.id,
           onClick: () => this.select(ability),
         };
-      }),
+      })())),
       // Preparar: o Vigiar de outra habilidade. Escolhe-se depois qual, num dos botões delas.
       ...(unit.team === "party" && unit.abilities.some(readyable)
         ? [
-            {
+            secondary(true, {
               label: this.aim?.kind === "ready" ? "Preparar: escolha o quê" : "Preparar",
               icon: "ready",
               tag: "Ação",
@@ -970,7 +1004,7 @@ export class CombatController {
               why: unit.turn.action ? `O voto da Ipojy: ${unit.name} não dá o primeiro golpe da luta. Espere alguém abrir.` : "A ação deste turno já foi gasta.",
               selected: this.aim?.kind === "ready",
               onClick: () => this.chooseReady(),
-            } satisfies ActionButton,
+            } satisfies ActionButton),
           ]
         : []),
       ...(usable.length > 0
@@ -1006,7 +1040,7 @@ export class CombatController {
       ...encounter.units
         .filter((other) => other.team === unit.team && other !== unit && isAlive(other) && this.playsItself(other))
         .map(
-          (other): ActionButton => ({
+          (other): ActionButton => secondary(true, {
             label: `${other.name}: ${orderLabel(other.order, this.encounter)}`,
             icon: orderIcon(other.order),
             tag: "Ordem  ·  não gasta nada",
@@ -1051,7 +1085,37 @@ export class CombatController {
       ),
     ];
 
-    this.hud.setActions(buttons, this.resourcesOf(unit, true), () => this.endTurn());
+    // A barra numa fileira só: o que é de quem age fica à vista, e os verbos de todo mundo (e as ordens) atrás de "Mais ações".
+    const common = buttons.filter((button) => SECONDARY.has(button));
+    const shown =
+      common.length === 0
+        ? buttons
+        : this.moreOpen || common.some((button) => button.selected)
+          ? [
+              {
+                label: "Voltar",
+                icon: "back",
+                tag: "As habilidades de quem age",
+                cost: "free",
+                enabled: true,
+                onClick: () => this.toggleMore(false),
+              } satisfies ActionButton,
+              ...common,
+            ]
+          : [
+              ...buttons.filter((button) => !SECONDARY.has(button)),
+              {
+                label: "Mais ações",
+                icon: "more",
+                tag: common.map((button) => button.label.split(":")[0]).join(", "),
+                body: "Os verbos que todo mundo sabe (correr, ajudar, vigiar, agarrar, empurrar, derrubar...), o Preparar e as ordens aos companheiros.",
+                cost: "free",
+                enabled: true,
+                onClick: () => this.toggleMore(true),
+              } satisfies ActionButton,
+            ];
+    SECONDARY.clear();
+    this.hud.setActions(shown, this.resourcesOf(unit, true), () => this.endTurn());
     if (this.aim?.kind === "interact") this.options = inReach.map((prop) => prop.pos);
     else if (this.aim?.kind === "item") {
       const slot = findInventorySlot(unit, this.aim.itemId);
@@ -1289,6 +1353,7 @@ export class CombatController {
         return;
 
       case "turnStarted": {
+        this.moreOpen = false;
         const actor = this.actor(event.unit);
         for (const other of this.host.actors.values()) other.setTurn(false);
         actor?.setTurn(true, this.unit(event.unit).team === "party" ? COLORS.goldBright : COLORS.hpLow);
@@ -1327,29 +1392,48 @@ export class CombatController {
         const unit = this.unit(event.unit);
         this.hud.log(`${unit.name} usa ${event.name}${event.reaction ? " (reação)" : ""}.`);
         this.blow = { actor: event.unit };
+        // A magia que vinha sendo recitada sai agora: o círculo do chão se apaga.
+        this.circles.get(event.unit)?.destroy();
+        this.circles.delete(event.unit);
         if (!actor) return;
+        const ability = unit.abilities.find((candidate) => candidate.id === event.abilityId);
+        if (ability?.mana) {
+          await this.castSpell(actor, ability, event.target);
+          return;
+        }
 
         const home = actor.pos;
         const target = pixelOfTile(this.host.map, event.target);
         if (target.x === home.x && target.y === home.y) {
-          await this.wait(200);
+          // Em si mesmo: a guarda fecha a casca; o resto, um anel no chão.
+          sfx("support");
+          if (ability?.effects.some((effect) => effect.kind === "status")) this.fx.shield(actor, COLORS.guard);
+          else this.ring(actor.pos, COLORS.goldBright);
+          await this.wait(260);
           return;
         }
-        // Um bote curto na direção do alvo, e de volta. A reação (o Contragolpe) é mais larga e mais rápida.
-        // Antes do bote, o corpo se prepara: recua um palmo (a reação não tem tempo pra isso).
         actor.faceToward(target);
         const span = Math.hypot(target.x - home.x, target.y - home.y);
+        const aimAt = { x: target.x, y: target.y - this.host.map.tileSize * 0.4 };
+        const damage = ability?.effects.find((effect) => effect.kind === "damage");
+        // O tiro (besta, arma de alcance): o corpo firma, e o virote voa.
+        if (ability && !ability.mana && ability.range >= 3 && damage) {
+          sfx("swing");
+          await this.fx.arrow(this.center(actor), aimAt);
+          return;
+        }
+        // O bote: o corpo se prepara (recua um palmo, a reação não tem tempo pra isso), avança e volta.
         if (!event.reaction) {
-          const back = { x: home.x - ((target.x - home.x) / span) * 2.5, y: home.y - ((target.y - home.y) / span) * 2.5 };
-          await this.glide(actor, back, 70, false);
+          const back = { x: home.x - ((target.x - home.x) / span) * 4, y: home.y - ((target.y - home.y) / span) * 4 };
+          await this.glide(actor, back, 120, false);
         }
         sfx("swing");
-        const ability = unit.abilities.find((candidate) => candidate.id === event.abilityId);
-        this.trail(ability, this.center(actor), { x: target.x, y: target.y - this.host.map.tileSize * 0.4 });
-        const reach = Math.min(1, (event.reaction ? 10 : 6) / span);
+        const reach = Math.min(0.75, (event.reaction ? 12 : 10) / span);
         const lunge = { x: home.x + (target.x - home.x) * reach, y: home.y + (target.y - home.y) * reach };
-        await this.glide(actor, lunge, event.reaction ? 50 : 70, false);
-        await this.glide(actor, home, 90, false);
+        await this.glide(actor, lunge, event.reaction ? 55 : 80, false);
+        this.trail(ability, this.center(actor), aimAt);
+        await this.wait(60);
+        await this.glide(actor, home, 140, false);
         return;
       }
 
@@ -1361,8 +1445,16 @@ export class CombatController {
       case "recitationStarted": {
         // Começou a ler: a magia sai no próximo turno dele, e até lá o texto está à vista de quem quiser quebrá-lo.
         if (this.unit(event.unit).team === "party") this.tip("recite");
-        sfx("uiOpen");
-        this.floatOver(event.unit, "Recitando...", TEXT_COLORS.goldBright, -30, 20);
+        sfx("chant");
+        const reader = this.actor(event.unit);
+        if (reader) {
+          reader.faceToward(pixelOfTile(this.host.map, event.target));
+          reader.flash(COLOR_FORCE, 160);
+          await this.fx.chargeUp(this.center(reader), COLOR_FORCE, 220);
+          this.circles.get(event.unit)?.destroy();
+          this.circles.set(event.unit, this.fx.castCircle(reader, COLOR_FORCE));
+        }
+        this.floatOver(event.unit, `Recitando ${event.name}`, TEXT_COLORS.goldBright, -30, 20);
         this.hud.log(`${this.unit(event.unit).name} começa a recitar ${event.name}.`);
         this.refreshRoster();
         await this.wait(200);
@@ -1370,7 +1462,9 @@ export class CombatController {
       }
 
       case "recitationBroken": {
-        sfx("deny");
+        sfx("fizzle");
+        this.circles.get(event.unit)?.destroy(true);
+        this.circles.delete(event.unit);
         const why = { hit: "o golpe quebrou o texto", lost: "o alvo sumiu", skipped: "perdeu a vez", spent: "faltou com que pagar" }[event.reason];
         this.floatOver(event.unit, "Recitação perdida", TEXT_COLORS.inkDim, -30, 20);
         this.hud.log(`${this.unit(event.unit).name} perde ${event.name}: ${why}.`);
@@ -1419,7 +1513,6 @@ export class CombatController {
 
       case "breathDrained":
         sfx("sting");
-        this.floatOver(event.unit, `-${event.amount} fôlego`, TEXT_COLORS.inkDim, -22, 20);
         this.hud.log(`${this.unit(event.unit).name} perde ${event.amount} de Fôlego.`);
         return;
 
@@ -1484,10 +1577,10 @@ export class CombatController {
       case "costPaid": {
         const name = this.unit(event.unit).name;
         if (event.first) {
-          this.floatOver(event.unit, "Primeiro!", TEXT_COLORS.goldBright, -22);
           this.hud.log(`${name} paga ${event.amount} de Fôlego pra agir antes de todos.`);
         } else {
-          this.floatOver(event.unit, COST_FLOAT[event.kind], TEXT_COLORS.danger, -22);
+          // Só o custo que se vê no corpo sobe da cabeça; o resto (Fôlego, mana) fica no registro e na barra.
+          if (event.kind === "wound" || event.kind === "gear" || event.kind === "bystander") this.floatOver(event.unit, COST_FLOAT[event.kind], TEXT_COLORS.danger, -22);
           const payer = this.actor(event.unit);
           if (payer && event.kind === "gear") this.spark(this.center(payer), COLORS.goldBright, 8);
           this.hud.log(`O custo: ${this.costLine(event, name)}.`);
@@ -1522,7 +1615,7 @@ export class CombatController {
 
       case "chained": {
         if (this.unit(event.unit).team === "party") this.tip("chain");
-        this.floatOver(event.unit, event.feint ? "Troca!" : `Cadeia ${event.verbs}`, TEXT_COLORS.goldBright, -22);
+        if (event.feint) this.floatOver(event.unit, "Troca!", TEXT_COLORS.goldBright, -22);
         const paid = event.breath > 0 ? `${event.breath} de Fôlego` : "sem Fôlego";
         this.hud.log(`${this.unit(event.unit).name} emenda o ${event.verbs}º verbo (${paid}${event.feint ? ", trocando de verbo" : ""}).`);
         await this.wait(60);
@@ -1891,6 +1984,8 @@ export class CombatController {
 
       case "death": {
         this.forgetForeseen(event.unit);
+        this.circles.get(event.unit)?.destroy(true);
+        this.circles.delete(event.unit);
         sfx("death");
         this.hud.log(`${this.unit(event.unit).name} cai.`);
         const actor = this.actor(event.unit);
@@ -2031,55 +2126,66 @@ export class CombatController {
     const push = ability.effects.find((effect) => effect.kind === "push");
     const kind = ability.mana ? "atracao_repulsao" : damage?.kind === "damage" ? damage.type : undefined;
     if (!kind && !push) return;
-    const { scene } = this.host;
-    const fx = this.host.addWorld(scene.add.graphics().setDepth(FX_DEPTH));
     const angle = Math.atan2(to.y - from.y, to.x - from.x);
-    const fade = (duration: number) =>
-      scene.tweens.add({ targets: fx, alpha: { from: 1, to: 0 }, duration, ease: "Cubic.easeIn", onComplete: () => fx.destroy() });
-
     if (kind === "atracao_repulsao" || (!kind && push)) {
-      // As linhas da força: três arcos que correm pela reta, pra fora (empurrão) ou pra dentro (puxão).
-      const inward = push?.kind === "push" && push.distance < 0;
-      const steps = 4;
-      for (let i = 0; i < steps; i++) {
-        const t = inward ? 1 - i / (steps - 1) : i / (steps - 1);
-        const at = { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
-        scene.time.delayedCall(i * 40, () => {
-          const arc = this.host.addWorld(scene.add.graphics().setDepth(FX_DEPTH).setPosition(at.x, at.y).setRotation(angle + (inward ? Math.PI : 0)));
-          arc.lineStyle(1.5, COLOR_FORCE, 1);
-          arc.beginPath();
-          arc.arc(0, 0, 5, -0.9, 0.9);
-          arc.strokePath();
-          scene.tweens.add({ targets: arc, scale: { from: 0.6, to: 1.6 }, alpha: { from: 1, to: 0 }, duration: 260, onComplete: () => arc.destroy() });
-        });
-      }
-      fx.destroy();
+      // O tranco do corpo (empurrar, a ombrada) ou a força: um choque onde chega, e as setas no puxão.
+      this.fx.shockwave(to, COLOR_FORCE, 0.6);
+      if (push?.kind === "push" && push.distance < 0) this.fx.pullLines(to, from, COLOR_FORCE);
       return;
     }
+    const heavy = (damage?.kind === "damage" ? (damage.multiplier ?? 1) : 1) > 1.2;
     if (kind === "corte") {
-      // O arco do corte, atravessado na frente de quem leva.
-      fx.lineStyle(2, 0xffffff, 0.95);
-      fx.beginPath();
-      fx.arc(to.x, to.y, 9, angle + Math.PI - 1.1, angle + Math.PI + 1.1);
-      fx.strokePath();
-      fx.lineStyle(1, COLORS.goldBright, 0.8);
-      fx.beginPath();
-      fx.arc(to.x, to.y, 11, angle + Math.PI - 0.9, angle + Math.PI + 0.9);
-      fx.strokePath();
-      fade(220);
+      this.fx.slash(to, angle, heavy);
       return;
     }
     if (kind === "perfuracao") {
-      // A risca da estocada (e do virote), de perto de quem bate até o alvo.
-      const start = { x: from.x + Math.cos(angle) * 6, y: from.y + Math.sin(angle) * 6 };
-      fx.lineStyle(1.5, 0xffffff, 1).lineBetween(start.x, start.y, to.x, to.y);
-      fade(160);
+      const start = { x: from.x + Math.cos(angle) * 4, y: from.y + Math.sin(angle) * 4 };
+      this.fx.thrust(start, to);
       return;
     }
-    // A pancada: um anel duro onde chega.
-    fx.lineStyle(2, 0xffffff, 0.9);
-    fx.strokeCircle(to.x, to.y, 5);
-    scene.tweens.add({ targets: fx, alpha: { from: 1, to: 0 }, duration: 200, onComplete: () => fx.destroy() });
+    this.fx.bash(to);
+  }
+
+  /**
+   * A magia saindo da página: a força junta na mão de quem lê, e então vai até
+   * o alvo — o empurrão como uma bola de força que estoura num choque, o puxão
+   * com as setas voltando, a cura como luz verde subindo em quem recebe. Em si
+   * mesmo, a casca da guarda.
+   */
+  private async castSpell(actor: MapActor, ability: Ability, tile: Pos): Promise<void> {
+    const target = pixelOfTile(this.host.map, tile);
+    const hand = this.center(actor);
+    const aimAt = { x: target.x, y: target.y - this.host.map.tileSize * 0.4 };
+    const heals = ability.effects.some((effect) => effect.kind === "heal");
+    const push = ability.effects.find((effect) => effect.kind === "push");
+    const pulls = push?.kind === "push" && push.distance < 0;
+    const color = heals ? COLOR_HEAL : COLOR_FORCE;
+    const self = target.x === actor.pos.x && target.y === actor.pos.y;
+    if (!self) actor.faceToward(target);
+
+    sfx("cast");
+    actor.flash(color, 140);
+    await this.fx.chargeUp(hand, color, 240);
+    if (self) {
+      if (heals) this.fx.motes(actor.pos, color);
+      else this.fx.shield(actor, color);
+      sfx(heals ? "heal" : "support");
+      await this.wait(300);
+      return;
+    }
+    if (heals) {
+      await this.fx.bolt(hand, aimAt, color, undefined, 0.8);
+      this.fx.motes(target, color);
+      sfx("heal");
+      await this.wait(260);
+      return;
+    }
+    await this.fx.bolt(hand, aimAt, color, undefined, 1.2);
+    sfx("force");
+    this.fx.shockwave(aimAt, color, 1.1);
+    if (pulls) this.fx.pullLines(aimAt, hand, color);
+    this.shake(160, 0.004);
+    await this.wait(pulls ? 200 : 120);
   }
 
   /** Gotas que saltam do ponto do golpe, pro lado contrário a quem bateu, e caem. */

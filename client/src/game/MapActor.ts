@@ -56,6 +56,8 @@ export class MapActor {
   private immersion: Immersion = "none";
   /** Quantos pixels do corpo ficam abaixo dos pés (o que a água esconde). */
   private sink = 0;
+  /** Quantos pixels o corpo está no ar (o pulo): a sombra fica no chão. */
+  private lift = 0;
   private bleeding?: Phaser.Time.TimerEvent;
   private walking = false;
   /** A caminhada acabou, e ela ainda toca até este tempo passar. */
@@ -124,12 +126,29 @@ export class MapActor {
 
   place(pos: PixelPos): void {
     this.feet = { ...pos };
-    this.sprite.setPosition(pos.x, pos.y + this.sink).setDepth(pos.y);
+    this.sprite.setPosition(pos.x, pos.y + this.sink - this.lift).setDepth(pos.y);
     this.shadow.setPosition(pos.x, pos.y - 1).setDepth(pos.y - 0.5);
+    // No ar, a sombra encolhe e clareia.
+    const air = Math.min(1, this.lift / 24);
+    this.shadow.setScale(1 - air * 0.45).setAlpha(1 - air * 0.5);
     this.turnRing.setPosition(pos.x, pos.y - 1).setDepth(pos.y - 0.4);
     // A água fica na frente do corpo: é a linha que o corta.
     this.ripple.setPosition(pos.x, pos.y).setDepth(pos.y + 0.1);
-    this.hpBar.setPosition(pos.x, this.top.y - 4);
+    this.hpBar.setPosition(pos.x, this.top.y - this.lift - 4);
+  }
+
+  /** Põe o corpo `pixels` acima do chão (o arco do pulo), com a sombra onde os pés estão. */
+  setLift(pixels: number): void {
+    this.lift = Math.max(0, pixels);
+    this.place(this.feet);
+  }
+
+  /** Amassa o corpo por um instante (o impulso e a chegada do pulo): `amount` 0.2 = 20% mais baixo e mais largo. */
+  squash(amount: number, duration = 140): void {
+    const scaleX = this.scale;
+    const scaleY = this.scale * (this.crouched ? 0.88 : 1);
+    this.sprite.setScale(scaleX * (1 + amount * 0.6), scaleY * (1 - amount));
+    this.scene.tweens.add({ targets: this.sprite, scaleX, scaleY, duration, ease: "Back.easeOut" });
   }
 
   face(facing: Facing): void {
@@ -299,6 +318,8 @@ export class MapActor {
     const { hp, barWidth } = this;
     this.hpBar.clear();
     if (!hp) return;
+    // Vida cheia não precisa de barra (a não ser na vez dele): o mapa fica limpo até alguém se ferir.
+    if (hp.ratio >= 1 && hp.trail >= 1 && !this.turnRing.visible) return;
 
     this.hpBar.fillStyle(0x000000, 0.8);
     this.hpBar.fillRect(-barWidth / 2 - 1, -1, barWidth + 2, 4);
@@ -318,6 +339,7 @@ export class MapActor {
   /** Acende (ou apaga) o anel no chão de quem está na vez. */
   setTurn(active: boolean, color = 0xffffff): void {
     this.turnRing.setVisible(active).setStrokeStyle(1, color, 0.9);
+    this.drawHp();
   }
 
   /** Clarão breve no sprite (levou dano, foi curado...). */

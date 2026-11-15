@@ -208,6 +208,12 @@ const SFX = {
   // Mundo
   step: { noises: [{ dur: 0.06, gain: 0.1, filter: "lowpass", freq: 650 }] },
   rest: { tones: [{ freq: 392, dur: 0.7, gain: 0.08, attack: 0.1 }, { freq: 523, dur: 0.9, gain: 0.08, attack: 0.1, delay: 0.3 }, { freq: 659, dur: 1.1, gain: 0.07, attack: 0.1, delay: 0.6 }] },
+  /** O impulso do pulo e a chegada no chão. */
+  jump: { noises: [{ dur: 0.14, gain: 0.12, filter: "bandpass", freq: 500, to: 1400, q: 1, attack: 0.02 }] },
+  land: {
+    tones: [{ freq: 120, to: 60, dur: 0.12, gain: 0.25 }],
+    noises: [{ dur: 0.12, gain: 0.18, filter: "lowpass", freq: 900, to: 200 }],
+  },
   travel: { noises: [{ dur: 0.4, gain: 0.07, filter: "bandpass", freq: 300, to: 1400, q: 0.8, attack: 0.15 }] },
 
   // Luta
@@ -220,17 +226,41 @@ const SFX = {
     noises: [{ dur: 0.32, gain: 0.12, filter: "bandpass", freq: 500, to: 3000, attack: 0.25 }],
   },
   turn: { tones: [{ freq: 784, dur: 0.1, gain: 0.05 }, { freq: 1047, dur: 0.16, gain: 0.05, delay: 0.07 }] },
-  swing: { noises: [{ dur: 0.13, gain: 0.12, filter: "bandpass", freq: 1600, to: 500, q: 1.4, attack: 0.03 }] },
+  swing: { noises: [{ dur: 0.16, gain: 0.3, filter: "bandpass", freq: 2200, to: 450, q: 1.2, attack: 0.04 }] },
+  /** Começar a recitar: um acorde que sobe e brilha, enquanto a página abre. */
+  chant: {
+    tones: [
+      { freq: 330, to: 392, wave: "triangle", dur: 0.7, gain: 0.09, attack: 0.08 },
+      { freq: 494, to: 587, wave: "triangle", dur: 0.7, gain: 0.07, attack: 0.1, delay: 0.08 },
+      { freq: 659, to: 784, wave: "sine", dur: 0.8, gain: 0.06, attack: 0.12, delay: 0.16 },
+    ],
+    noises: [{ dur: 0.6, gain: 0.06, filter: "bandpass", freq: 3000, to: 6000, q: 2, attack: 0.2 }],
+  },
+  /** A magia sai da página: o ar puxado de uma vez, subindo. */
+  cast: {
+    tones: [{ freq: 180, to: 720, wave: "sawtooth", dur: 0.28, gain: 0.06, attack: 0.05 }, { freq: 360, to: 1440, dur: 0.28, gain: 0.08, attack: 0.05 }],
+    noises: [{ dur: 0.3, gain: 0.22, filter: "bandpass", freq: 400, to: 2800, q: 0.9, attack: 0.12 }],
+  },
+  /** A força batendo: um baque fundo e o ar estourando. */
+  force: {
+    tones: [{ freq: 110, to: 38, dur: 0.4, gain: 0.55 }, { freq: 880, to: 220, wave: "triangle", dur: 0.18, gain: 0.07 }],
+    noises: [{ dur: 0.35, gain: 0.35, filter: "lowpass", freq: 2400, to: 160 }],
+  },
+  /** O texto quebrou no meio: a luz apaga, chiando. */
+  fizzle: {
+    tones: [{ freq: 700, to: 140, wave: "square", dur: 0.3, gain: 0.04 }],
+    noises: [{ dur: 0.35, gain: 0.14, filter: "highpass", freq: 3500, to: 900, attack: 0.01 }],
+  },
   hit: {
-    tones: [{ freq: 170, to: 70, dur: 0.13, gain: 0.35 }],
-    noises: [{ dur: 0.1, gain: 0.3, filter: "lowpass", freq: 2200, to: 300 }],
+    tones: [{ freq: 170, to: 70, dur: 0.15, gain: 0.45 }],
+    noises: [{ dur: 0.12, gain: 0.4, filter: "lowpass", freq: 2800, to: 300 }],
   },
   heavyHit: {
     tones: [{ freq: 130, to: 42, dur: 0.3, gain: 0.5 }],
     noises: [{ dur: 0.2, gain: 0.4, filter: "lowpass", freq: 3000, to: 200 }],
   },
   crit: { tones: [{ freq: 1320, to: 1980, wave: "triangle", dur: 0.18, gain: 0.1 }, { freq: 1760, wave: "triangle", dur: 0.25, gain: 0.07, delay: 0.06 }] },
-  miss: { noises: [{ dur: 0.16, gain: 0.07, filter: "highpass", freq: 2400, attack: 0.06 }] },
+  miss: { noises: [{ dur: 0.18, gain: 0.14, filter: "highpass", freq: 2400, attack: 0.06 }] },
   block: { tones: [{ freq: 940, wave: "square", dur: 0.05, gain: 0.05 }, { freq: 1410, wave: "triangle", dur: 0.12, gain: 0.08 }] },
   immune: { tones: [{ freq: 220, to: 207, dur: 0.4, gain: 0.1, attack: 0.05 }, { freq: 311, to: 293, dur: 0.4, gain: 0.07, attack: 0.05 }] },
   heal: { tones: [{ freq: 523, dur: 0.2, gain: 0.08 }, { freq: 659, dur: 0.2, gain: 0.08, delay: 0.07 }, { freq: 784, dur: 0.32, gain: 0.08, delay: 0.14 }] },

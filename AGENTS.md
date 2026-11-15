@@ -916,6 +916,20 @@ Quem ou o que bloquear o caminho com fala ou fato novo vai como proposta pro aut
   de rio, na medida do golpe. Quem cai tomba pro lado contrário ao último golpe, com poeira (na água, afunda como
   antes). A beira que prensa respinga, e a lâmina que lasca solta faísca. Vistos no navegador.
 
+- **A luta que se vê, o pulo mirado e a tela mais limpa** (pedidos do autor em 2026-11-14: "conjuro uma magia e nada
+  acontece, nem barulho sai"; "o pulo, igual BG3"; "a UI tá muito poluída"). Os efeitos que existiam eram riscos de um
+  pixel que sumiam em 0,2 s, e recitar só tocava um bip. Agora recitar junta a força na mão e acende um círculo girando aos
+  pés de Endyru até a magia sair; ela sai como uma bola de força que voa e estoura num choque (a Cura, em luz verde
+  subindo), com sons próprios (`chant`, `cast`, `force`, `fizzle`); o texto quebrado estoura o círculo em cacos. O golpe de
+  arma prepara, avança e deixa uma meia-lua de corte, a risca da estocada ou o anel da pancada, grandes e legíveis; o tiro
+  voa (`client/src/game/combat/fx.ts`). O pulo é mirado: Espaço (ou o botão Pular) mostra o alcance e o arco, verde onde dá
+  e vermelho com o motivo onde não dá, e o clique pula, num arco com a sombra no chão; sobe um degrau, desce quantos houver,
+  passa por cima da água funda e da mureta, nunca da parede (`leapCheck`, com teste). A barra da luta virou uma fileira:
+  os verbos de todo mundo, o Preparar e as ordens foram pra "Mais ações"; barra de vida só em quem está ferido; o registro
+  some quando a luta fica quieta; os textos que sobem não se cobrem e o custo de Fôlego e a cadeia saíram de cima das
+  cabeças. Na exploração, as habilidades só aparecem com inimigo perto. Vistos no navegador, por script; o som, só pelo
+  código (o navegador sem tela não toca).
+
 ## 9. Onde isto está no cânone
 
 Gravado no repositório da história com a aprovação de 2026-10-19:

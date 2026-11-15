@@ -38,6 +38,8 @@ import {
   tileOfPixel,
   unusedItems,
   walk,
+  leapCheck,
+  LEAP_RANGE,
   type AreaCue,
   type AreaEnemy,
   type AreaMap,
@@ -391,6 +393,26 @@ test("andar desliza pela parede em vez de travar, e nunca atravessa", () => {
   assert.equal(isBlocked(map, pos, body), false);
   assert.equal(pos.x, 28);
   assert.equal(pos.y, 40);
+});
+
+test("o pulo mirado: alcance, um degrau pra cima, por cima da água, nunca pela parede", () => {
+  const map = room();
+  const body = { halfWidth: 4, height: 4 };
+  const tile = (x: number, y: number) => map.grid.tiles[y * map.grid.width + x]!;
+  // Coluna 4: água funda (barra o passo, não a vista). Coluna 8: parede. Linha 10: patamar de 1; (11,10) patamar de 2.
+  for (let y = 0; y < 12; y++) Object.assign(tile(4, y), { blocksMove: true, water: true });
+  for (let y = 0; y < 6; y++) Object.assign(tile(8, y), { blocksMove: true, blocksSight: true });
+  for (let x = 0; x < 12; x++) tile(x, 10).elevation = 1;
+  tile(2, 11).elevation = 2;
+  const at = (x: number, y: number) => ({ x: x * 16 + 8, y: y * 16 + 12 });
+
+  assert.deepEqual(leapCheck(map, at(3, 2), at(5, 2), body), { ok: true }, "por cima da água");
+  assert.equal(leapCheck(map, at(7, 2), at(9, 2), body).ok, false, "a parede barra");
+  assert.equal(leapCheck(map, at(3, 2), at(4, 2), body).ok, false, "não se cai na água funda");
+  assert.equal(leapCheck(map, at(0, 2), at(0 + LEAP_RANGE / 16 + 1, 2), body).ok, false, "longe demais");
+  assert.deepEqual(leapCheck(map, at(1, 9), at(1, 10), body), { ok: true }, "sobe um degrau");
+  assert.equal(leapCheck(map, at(2, 9), at(2, 11), body).ok, false, "dois degraus, não");
+  assert.deepEqual(leapCheck(map, at(2, 11), at(2, 8), body), { ok: true }, "desce quantos houver");
 });
 
 // --- Quem está no mapa, gatilhos e emboscada ---------------------------------

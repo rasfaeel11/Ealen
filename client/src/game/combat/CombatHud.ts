@@ -87,6 +87,8 @@ const TILE_H = 60;
 const TILE_GAP = 4;
 const TILE_Y = 12;
 /** O tamanho do registro, conforme as opções. */
+/** Quanto tempo o registro fica na tela depois da última linha. */
+const LOG_FADE_MS = 5000;
 const LOG_SIZES = { curto: { lines: 5, height: 104 }, longo: { lines: 12, height: 196 }, nenhum: { lines: 0, height: 0 } } as const;
 
 /** Um quadro da ordem dos turnos: rosto, cor do lado e a vida embaixo. Anda sozinho quando a ordem gira. */
@@ -187,6 +189,9 @@ export class CombatHud {
   private endHover = false;
   private rows = 0;
   private logLines: string[] = [];
+  private recentFloats: { x: number; at: number }[] = [];
+  /** O registro some sozinho quando a luta fica quieta, e volta na próxima linha. */
+  private logFade?: Phaser.Time.TimerEvent;
   private readonly logSize: { lines: number; height: number };
   private readonly resultObjects: Phaser.GameObjects.GameObject[] = [];
   private hasGoals = false;
@@ -482,14 +487,12 @@ export class CombatHud {
     g.fillCircle(x + 8, top + 9, 8);
     g.lineStyle(1, COLORS.action, 1);
     g.strokeCircle(x + 8, top + 9, 8);
-    this.label(x + 20, top, "Ação", turn.action ? TEXT_COLORS.ink : TEXT_COLORS.inkDim);
-    x += 62;
+    x += 24;
     g.fillStyle(COLORS.bonus, turn.bonus ? 1 : 0.18);
     g.fillTriangle(x, top + 17, x + 17, top + 17, x + 8.5, top + 1);
     g.lineStyle(1, COLORS.bonus, 1);
     g.strokeTriangle(x, top + 17, x + 17, top + 17, x + 8.5, top + 1);
-    this.label(x + 21, top, "Bônus", turn.bonus ? TEXT_COLORS.ink : TEXT_COLORS.inkDim);
-    x += 72;
+    x += 30;
 
     const meter = (width: number, name: string, now: number, max: number, color: number) => {
       drawBar(g, x, top + 2, width, 14, max > 0 ? now / max : 0, color);
@@ -501,8 +504,11 @@ export class CombatHud {
     if (turn.mana) {
       // Quem conjura vê a mana e quanto do limite do turno já gastou: passar dele cobra do corpo.
       meter(90, "Mana", turn.mana.now, turn.mana.max, COLORS.mana);
-      const over = turn.mana.spent >= turn.mana.limit;
-      this.label(x, top, `limite ${turn.mana.spent}/${turn.mana.limit}`, over ? TEXT_COLORS.danger : TEXT_COLORS.inkDim, 12);
+      // O limite do turno só aparece quando já se gastou alguma coisa: é ele que diz quando o corpo cobra.
+      if (turn.mana.spent > 0) {
+        const over = turn.mana.spent >= turn.mana.limit;
+        this.label(x, top, `limite ${turn.mana.spent}/${turn.mana.limit}`, over ? TEXT_COLORS.danger : TEXT_COLORS.inkDim, 12);
+      }
     }
   }
 
@@ -585,6 +591,13 @@ export class CombatHud {
     if (this.logSize.lines === 0) return;
     this.logLines = [...this.logLines, line].slice(-this.logSize.lines);
     this.logText.setText(this.logLines.join("\n"));
+    this.scene.tweens.killTweensOf([this.logFrame, this.logText]);
+    this.logFrame.setAlpha(1);
+    this.logText.setAlpha(1);
+    this.logFade?.remove();
+    this.logFade = this.scene.time.delayedCall(LOG_FADE_MS, () =>
+      this.scene.tweens.add({ targets: [this.logFrame, this.logText], alpha: 0, duration: 600 }),
+    );
     // Fala comprida quebra em mais de uma linha: o que passa do quadro sai por cima.
     while (this.logText.height > this.logSize.height - 20 && this.logLines.length > 1) {
       this.logLines.shift();
@@ -601,6 +614,12 @@ export class CombatHud {
 
   /** Número ou palavra que sobe e some a partir de um ponto da TELA. */
   float(x: number, y: number, text: string, color: string, size = 26): void {
+    // Dois textos quase juntos no mesmo boneco não se cobrem: o segundo nasce em cima do primeiro.
+    const now = this.scene.time.now;
+    this.recentFloats = this.recentFloats.filter((recent) => now - recent.at < 420);
+    const stacked = this.recentFloats.filter((recent) => Math.abs(recent.x - x) < 60).length;
+    this.recentFloats.push({ x, at: now });
+    y -= stacked * (size + 2);
     const label = this.addHud(
       addTitleText(this.scene, x, y, text, {
         fontSize: `${size}px`,
@@ -711,6 +730,7 @@ export class CombatHud {
   }
 
   destroy(): void {
+    this.logFade?.remove();
     this.scene.tweens.killTweensOf(this.warning);
     this.party.destroy();
     this.tip.destroy();
