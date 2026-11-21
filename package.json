@@ -2,7 +2,7 @@
   "name": "tres-na-estrada",
   "private": true,
   "version": "0.1.0",
-  "description": "Três na Estrada (título provisório) — RPG tático de navegador",
+  "description": "Três na Estrada (título provisório) — action RPG 3D de navegador",
   "workspaces": [
     "client",
     "shared",
