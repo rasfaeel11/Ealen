@@ -3,6 +3,12 @@
 O que entrou, tarefa por tarefa, da mais nova para a mais velha. Uma ou duas frases cada: o que mudou, o que foi
 visto e o que não foi. O histórico do jogo 2D está na tag `tatico-2d` (o `AGENTS.md` de lá, seção Feito).
 
+- **2026-11-21 — 1. Os pacotes.** Workspaces `sim` e `game`, `content/`, `npm run check` (tipos e testes) e
+  `npm run dev`. A sim tem o tick, o RNG com semente e o nível em JSON validado; o Rapier sobe em Node (teste: a
+  caixa cai e para no chão). A sala de treino greybox (chão, paredes, plataforma com rampa, degraus, pilares,
+  mureta, poço, caixas, barris, bonecos) é desenhada pelo three.js, vista na tela com câmera parada. Sem Blender:
+  não há Blender nem MCP nesta máquina.
+
 - **2026-11-20 — O repositório enxuto.** Saíram `client/`, `shared/`, `desktop/`, `art/`, os docs do 2D
   (`legado`, `escolhas`, `arte`, `mundo`), a skill `gerar-arte`, o `launch.json`, o `package-lock.json` e os
   `node_modules`; tudo continua na tag `tatico-2d`. A arte bruta foi para `../Ealen-arte-bruta`. O `AGENTS.md`

@@ -10,8 +10,10 @@ assunto por doc.
 
 ## 0. Fase atual
 
-> **Fase: 0, só documentação.** Não existe código. A arquitetura, a luta e o caminho dos assets estão
-> decididos no papel (`docs/`); a história nova ainda não. O próximo passo é a tarefa 1 do TODO (§7).
+> **Fase: Marco 1, o brinquedo.** A tarefa 1 está feita: `sim/` (RNG, nível, Rapier testado em Node), `game/`
+> (three.js desenhando a sala greybox, ainda com câmera parada) e `content/levels/sala/`. `npm run check` e
+> `npm run dev` funcionam. Não há Blender nem MCP do Blender nesta máquina: a sala é greybox em JSON, como
+> `docs/assets.md` permite. O próximo passo é a tarefa 2 do TODO (§7).
 >
 > *Atualizado em 2026-11-20.* Quem terminar uma tarefa atualiza esta caixa e o TODO no mesmo commit.
 
@@ -66,8 +68,8 @@ Toda mecânica nova se mede por estes cinco. São proposta do co-autor (`docs/de
 
 ## 4. Arquitetura
 
-O detalhe e os motivos estão em `docs/arquitetura.md`. Hoje nenhuma dessas pastas existe; elas nascem pelas
-tarefas do TODO.
+O detalhe e os motivos estão em `docs/arquitetura.md`. Hoje existem `sim/`, `game/` e `content/`; as outras nascem pelas tarefas do
+TODO.
 
 ```
 sim/       A simulação. TypeScript puro + Rapier (física, WASM, roda em Node). Sem three.js, sem DOM, sem window,
@@ -158,6 +160,8 @@ A arte gerada bruta do 2D foi para fora do repositório, em `../Ealen-arte-bruta
 "Visto na tela" quer dizer jogado no navegador.
 
 ### Esperando o autor
+- [ ] Instalar o Blender e o MCP dele, se quiser modelar por IA: no Blender, o addon do `blender-mcp`; depois
+  `claude mcp add blender -- uvx blender-mcp` (pede o `uv`). Bloqueia só o Marco 4 e os níveis com arte.
 - [ ] Aprovar ou trocar o conceito do protagonista: atração e repulsão (`docs/decisoes.md`). Bloqueia a tarefa 5.
 - [ ] Aprovar as três faixas da Camada 1 decididas pela recitação (`docs/decisoes.md`). Bloqueia a tarefa 7.
 - [ ] **H1. A história nova**: responder às perguntas de `docs/historia.md` §1. O co-autor pode trazer
@@ -168,11 +172,12 @@ A arte gerada bruta do 2D foi para fora do repositório, em `../Ealen-arte-bruta
 Uma sala greybox com caixas, barris, uma beirada e água, e bonecos de treino. Sem história e sem menu. Andar,
 mirar e jogar coisas com magia tem de ser gostoso antes de qualquer outra coisa.
 
-- [ ] **1. Os pacotes.** Workspaces `sim/`, `game/`, `content/`; `npm run check` na raiz (tipos e testes);
+- [x] **1. Os pacotes.** Workspaces `sim/`, `game/`, `content/`; `npm run check` na raiz (tipos e testes);
   `npm run dev` abre `game/`; `.claude/launch.json` para o preview. *Pronto:* `check` passa; a página abre com
   uma cena vazia do three.js.
-- [ ] **2. O laço da sim.** Tick fixo, RNG com semente, Rapier carregado, mundo e entidades, a sala em
-  `level.json`. *Pronto:* testes em Node; a mesma semente dá o mesmo resultado.
+- [ ] **2. O laço da sim.** O tick (`sim/src/time.ts`), o RNG e a sala (`content/levels/sala/level.json`) já
+  existem. Falta: `createWorld` montando o Rapier a partir do nível (blocos, rampa, água, objetos), entidades,
+  `step(world, intents)` com eventos. *Pronto:* testes em Node; a mesma semente dá o mesmo resultado.
 - [ ] **3. Andar.** Controlador cinemático (rampa, degrau, pulo, queda), `move` e `jump`, esquiva com Fôlego.
   *Pronto:* testes de rampa, parede e degrau.
 - [ ] **4. A câmera no ombro.** Render da sala, manequim com animações de biblioteca em oito direções, câmera com

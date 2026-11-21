@@ -3,8 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "description": "Jogo de ação 3D em terceira pessoa para navegador, no mundo da série de Karuã (título a definir)",
-  "workspaces": [],
-  "scripts": {},
+  "workspaces": ["sim", "game"],
+  "scripts": {
+    "dev": "npm run dev --workspace=game",
+    "build": "npm run build --workspace=game",
+    "check": "tsc -p sim --noEmit && tsc -p game --noEmit && npm test --workspace=sim"
+  },
   "devDependencies": {
     "@types/node": "^20.14.10",
     "tsx": "^4.16.2",

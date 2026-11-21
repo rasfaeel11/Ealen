@@ -1,0 +1,35 @@
+{
+  "id": "sala",
+  "name": "A sala de treino (greybox)",
+  "blocks": [
+    { "id": "chao", "kind": "ground", "pos": [0, -0.5, 0], "size": [32, 1, 32] },
+    { "id": "parede_n", "kind": "wall", "pos": [0, 2, -16.5], "size": [34, 4, 1] },
+    { "id": "parede_s", "kind": "wall", "pos": [0, 2, 16.5], "size": [34, 4, 1] },
+    { "id": "parede_l", "kind": "wall", "pos": [16.5, 2, 0], "size": [1, 4, 32] },
+    { "id": "parede_o", "kind": "wall", "pos": [-16.5, 2, 0], "size": [1, 4, 32] },
+    { "id": "plataforma", "kind": "ledge", "pos": [-10, 1, -10], "size": [10, 2, 10] },
+    { "id": "rampa", "kind": "ramp", "pos": [-10, 1, -2.6], "size": [4, 0.3, 5.4], "rotY": 0 },
+    { "id": "degrau_baixo", "kind": "ledge", "pos": [4, 0.2, -10], "size": [3, 0.4, 3] },
+    { "id": "degrau_alto", "kind": "ledge", "pos": [8, 0.6, -10], "size": [3, 1.2, 3] },
+    { "id": "pilar_1", "kind": "wall", "pos": [3, 1.5, 4], "size": [1.2, 3, 1.2] },
+    { "id": "pilar_2", "kind": "wall", "pos": [-3, 1.5, 4], "size": [1.2, 3, 1.2] },
+    { "id": "mureta", "kind": "wall", "pos": [0, 0.5, 9], "size": [6, 1, 0.5] }
+  ],
+  "water": [
+    { "id": "poco", "pos": [10, -0.03, 9], "size": [8, 0.1, 8], "depth": 2.5 }
+  ],
+  "props": [
+    { "id": "caixa_1", "kind": "crate", "pos": [2, 0.5, 0], "mass": 20 },
+    { "id": "caixa_2", "kind": "crate", "pos": [3.2, 0.5, 0.4], "mass": 20 },
+    { "id": "caixa_3", "kind": "crate", "pos": [2.6, 1.5, 0.2], "mass": 20 },
+    { "id": "caixa_alto", "kind": "crate", "pos": [-12, 2.5, -12], "mass": 20 },
+    { "id": "barril_1", "kind": "barrel", "pos": [-2, 0.6, 1], "mass": 60 },
+    { "id": "barril_2", "kind": "barrel", "pos": [6, 0.6, 6], "mass": 60 },
+    { "id": "boneco_1", "kind": "dummy", "pos": [0, 0.9, -6], "mass": 70 },
+    { "id": "boneco_2", "kind": "dummy", "pos": [-9, 2.9, -9], "mass": 70 },
+    { "id": "boneco_3", "kind": "dummy", "pos": [9, 0.9, 5], "mass": 70 }
+  ],
+  "spawns": [
+    { "id": "player", "pos": [0, 0, 10], "facing": 3.14159 }
+  ]
+}
