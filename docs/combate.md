@@ -1,116 +1,122 @@
 # A luta
 
-Como a Camada 1 da história (`../historiav2/referencias/combate.md`) vira luta de action RPG. A Camada 1 manda:
-este doc só diz como ela se joga com controle na mão. Os números moram em `content/`, não aqui.
+Como a magia do cânone (`../historiav2/referencias/magia.md`) e a Camada 1 do combate (`referencias/combate.md`)
+viram luta de ação em terceira pessoa. O cânone manda; este doc só diz como se joga com mouse e controle. Os
+números moram em `content/`, não aqui.
 
-> **Estado: proposta do co-autor (2026-11-20), esperando o autor.** A Camada 1 foi escrita para o dado; aqui
-> quem decide a faixa é o tempo e a posição do jogador. O que muda de sentido está marcado com ⚠.
+> **Estado: proposta do co-autor (2026-11-20), esperando o autor.** Supõe um protagonista mago de atração e
+> repulsão, que é o conceito com mais detalhe no cânone e o que mais rende num jogo de física (`docs/historia.md`
+> diz por quê). O que muda de sentido em relação ao livro está marcado com ⚠.
 
 ## 1. Os controles
 
-| Tecla | Controle | O que faz |
+| Teclado e mouse | Controle | O que faz |
 |---|---|---|
-| WASD | analógico esquerdo | anda |
-| mouse | analógico direito | mira |
-| botão esquerdo | RT | Bordão: golpe de perto, fraco, sem mana |
-| botão direito (segurar) | LT | **Puxão**: recita enquanto segura, solta para sair |
-| Q (segurar) | LB | **Empurrão**: o mesmo, para longe |
-| Espaço | A | esquiva (gasta Fôlego); pula um degrau baixo |
+| WASD | analógico esquerdo | anda (de lado, quando mira) |
+| mouse | analógico direito | olha |
+| botão direito (segurar) | LT | mira: a câmera aproxima e o personagem encara a mira |
+| botão esquerdo (segurar) | RT | **recita** o feitiço escolhido; soltar conjura |
+| botão esquerdo (toque) | RT (toque) | **cântico encurtado**: sai na hora e cobra mais (§3) |
+| roda do mouse, 1 a 4 | cruz | escolhe o feitiço |
+| Espaço | A | pula |
+| Shift | B | esquiva (gasta Fôlego) |
+| V | RB | Bordão: golpe de perto, sem mana |
 | F | X | ativa a gravada mais perto |
-| E | Y | interage, fala |
-| 1, 2 | cruz | item |
-| Tab | RB | ordem aos companheiros |
+| E | Y | interage |
+| Q | L3 | troca de ombro |
 
-O que vem com o Círculo (Arremesso, Desarmar, Desviar, Puxar-se) entra nos mesmos botões, com segurar mais longo
-ou com modificador; o desenho fica para a tarefa da magia.
+## 2. Os feitiços (atração e repulsão)
 
-## 2. As três faixas
+O repertório cresce com o nível de mago (`magia` §3.6, §7.1). Começa na Página, chega ao Círculo; o Tomo fica
+fora do alcance.
 
-Toda ação de luta termina numa faixa, e o evento leva a faixa.
+| Feitiço | Nível | O que faz no jogo |
+|---|---|---|
+| Puxão | Verso | puxa o que está na mira até perto. Objeto leve chega à mão; gente tropeça e cai |
+| Empurrão | Verso | empurra para longe, em cone curto. Contra parede, prensa; da beirada, derruba |
+| Arremesso | Círculo | segura um objeto no ar diante do corpo e o atira para onde se mira, com força de impacto |
+| Desarmar | Círculo | arranca a arma da mão do alvo, e a arma vira objeto no chão |
+| Desviar | Círculo | segurando, o primeiro projétil que viria passa ao lado, ou volta |
+| Puxar-se | Círculo | puxa o próprio corpo até o ponto mirado numa superfície: subir, fugir, cruzar o vão |
+| Cura | Página | primeiros socorros: acelera, e quem paga é o corpo (fome, Fôlego) (`magia` §4.3) |
 
-| Ação | Plena | Com custo | Falha |
-|---|---|---|---|
-| Golpe (de qualquer um) | entra limpo: alvo sem guarda, de costas, de cima, Prensado, Caído | alvo de guarda: entra pouco, e quem bateu paga Fôlego | aparado ou esquivado: quem bateu fica **Exposto** |
-| Recitação de Endyru | lida até o fim, dentro do limite | **solta antes do fim**: sai inteira, mas custa mais mana (pode passar do limite) | apanhou no meio: o texto quebra, e a mana da linha lida se perde |
-| Esquiva | na janela: nada pega | fora da janela: pega pela metade | sem Fôlego: não sai |
-| Aparar (espadachim) | na janela: o golpe para e o outro fica Exposto | tarde: para, e quem aparou paga Fôlego | fora: pega inteiro |
+O feitiço age entre dois corpos que o mago escolhe, perto e rápido (`magia` §3.6). Por isso todo feitiço tem
+alcance curto ou médio, e a massa decide: pedra pesada se puxa devagar; barco não se puxa sem passar do limite.
 
-- ⚠ **O dado quase sai.** No livro, rola-se a pergunta; no jogo, a mão do jogador é a pergunta. O dado fica só no
-  **improvável** (`combate` §5.2): uma chance pequena de o golpe sair dobrado, que some com diferença grande de
-  nível, como na Camada 1.
-- **Soltar antes do fim é a pressa.** É o cap-01 do roteiro do livro (Karuã encurta o cântico e paga): o botão
-  que o jogador apressa é o que chama o bicho.
-- **A falha nunca é "nada acontece"** (`combate` §2.3): Exposto é uma janela curta em que o golpe seguinte nele
-  sai pleno.
+## 3. Recitar
 
-## 3. Os custos
+O cântico tem ordem (`magia` §2.6), e o jogo a mostra numa faixa embaixo da mira, linha por linha, enquanto se
+segura o botão:
 
-Do mundo, nunca um número solto (`combate` §2.2). Cada custo é um evento com a sua resposta na tela.
+1. **Duas saudações**, à força que puxa e à que empurra. Não fazem nada, mas são o que deixa o feitiço barato.
+2. **Os dois corpos nomeados.** Nesse momento o alvo **trava** onde a mira estiver. Mirar bem é mirar nessa hora.
+3. **A medida**, dita em voz alta. É aqui que se escolhe o **tamanho** (§4).
+4. **As rimas de lembrar.** Ao fim delas, soltar conjura pelo custo padrão.
 
-- **Fôlego**: a barra dos espadachins e da esquiva. Volta parado, devagar.
-- **Mana**: a de Endyru. **Não volta na luta**; só o descanso devolve.
-- **A marca**: passou do limite (mana gasta numa janela curta acima do nível de mago), vem sangue pelo nariz e
-  tremor (a mira treme) e o limite cai. **E o Ykuruã sente**, onde estiver.
-- **Tempo**: a recitação longa deixa Endyru parado e à mostra.
-- **Posição**: quem bate de cima desce; quem bate de costas para a parede sai Prensado.
-- **Gente em volta**: o que cai em quem estava perto. É o preço de Oryndu.
+- **Apanhou no meio, quebrou**, e recomeça do começo (`magia` §2.7). Quem recita fica à mostra.
+- **Cântico encurtado** (toque em vez de segurar): larga as saudações e as rimas e fica só com os dois corpos e o
+  verbo. Sai quase na hora e cobra no corpo: mais mana, e mais perto da marca (`magia` §2.6).
+- **A gravada** (círculo riscado no chão, objeto) se escreve fora da luta, nos pontos de descanso, e na luta só se
+  ativa (`F`): sai na hora, no tamanho padrão, e serve uma vez (`magia` §2.5). Chegar preparado é a vantagem.
 
-## 4. Verbos e condições
+## 4. O tamanho
 
-A cadeia da Camada 1 (`combate` §3) vira **combo**: o verbo que pega abre uma janela curta, e o verbo seguinte
-no mesmo alvo sai mais barato e mais forte.
+Todo feitiço tem um tamanho padrão escrito na medida (`magia` §2.8). Durante a medida, um anel cresce em volta da
+mira e passa por uma marca: o padrão.
 
-- Endyru encadeia com magia: Puxão (tira do lugar) → Bordão no que chegou; Empurrão contra a parede → Prensado →
-  o golpe de Jarupã entra pleno.
-- Os espadachins e a gente das lutas encadeiam com o corpo: Agarrar → Empurrar → Golpear.
+- Soltar **no padrão** sai pelo custo padrão.
+- **Maior** que o padrão empurra mais longe e puxa mais peso, e custa mais mana.
+- **Menor** que o padrão também custa mais (as escolas ensinam isso sem explicar, e o jogo também não explica).
+- A gravada sai sempre no padrão.
 
-As condições são estado da entidade, com duração curta e um sinal claro na tela:
+## 5. As três faixas
 
-| Condição | O que faz |
+Toda conjuração termina numa faixa da Camada 1 (`combate` §2), e o evento `spellCast` leva a faixa.
+
+| Faixa | Quando |
 |---|---|
-| Exposto | o próximo golpe nele sai pleno |
-| Prensado | não se mexe, não apara |
-| Caído | levanta devagar; golpe nele sai pleno |
-| Agarrado | não anda nem recita |
-| Desarmado | só verbos do corpo |
-| Marca da mana | mira treme, limite menor |
+| **Plena** | cântico inteiro, solto no tamanho padrão |
+| **Com custo** | cântico encurtado, ou fora do padrão: sai inteira e cobra mana a mais, que pode dar a marca |
+| **Falha** | o texto quebrou: o tempo foi perdido, e quem recitava fica à mostra |
 
-## 5. As escolas
+⚠ No livro a faixa sai do dado; aqui, da mão do jogador. O dado fica só no **improvável** (`combate` §5.2): uma
+chance pequena de um impacto sair muito acima do esperado, que some contra quem está muito acima no nível.
 
-O triângulo sai do jeito de encadear (`combate` §4), não de bônus.
+## 6. O custo e a marca
 
-- **Ipojy, a Espera (Xanduí, a lança de Ymboripe).** Nunca dá o primeiro golpe da luta. Apara, e quando o outro
-  falha, o contragolpe sai pleno sem rolar nada. Na IA de Xanduí: ela fica perto, de guarda, e pune.
-- **Gryskar, o Bate-Primeiro (Jarupã, a espada de Ymboripe).** Toda a força no primeiro golpe: avança antes de
-  todos, golpe pesado; o segundo da sequência sai fraco. Não recua antes do primeiro golpe.
-- **Tsvirana, a Correnteza (Mbyraku, os batedores).** Troca de golpe no meio da sequência, e o golpe trocado não
-  se apara. **Pune quem repete**: o jogador que faz a mesma coisa três vezes seguidas fica Exposto. É o inimigo que
-  ensina a não apertar sempre o mesmo botão.
+- **Mana**: volta devagar quando não se gasta; o descanso enche. Os números estão em `content/tuning.json`.
+- **Fôlego**: a esquiva, o pulo longo e o Bordão. Volta rápido.
+- **O limite**: gastar numa janela curta mais do que o nível de mago aguenta passa do limite. Vem a **marca
+  leve** de atração e repulsão: sangue pelo nariz e pelos olhos e tremor (a mira treme, o limite cai), até o
+  descanso (`magia` §4.2).
+- **O que sente mana vem.** Gasto grande de uma vez se sente de longe: o Ykuruã e as criaturas que o autor
+  aprovar com essa regra vêm até onde a mana bateu (`bestiario` §1).
+- ⚠ O gasto enorme (a marca permanente) não acontece: o jogo para antes, com o corpo do personagem recusando.
 
-## 6. A magia
+## 7. Quem se enfrenta
 
-- **Recitada** (§2): segurar, soltar. O círculo aos pés de Endyru mostra quantas linhas já saíram. Uma de cada vez.
-- **Gravada**: escrita no descanso, num objeto ou círculo; na luta, ativa na hora (`F`) e serve uma vez. O círculo
-  gravado tem lugar no mapa: é a armadilha do mago, posta antes da luta.
-- **Cura**: primeiros socorros, separada do conceito. Quem paga é o paciente (Fôlego, fome).
-- Nos níveis baixos o espadachim amassa o mago (`magia` §5.3): Endyru é controle e preparo; quem mata são os dois.
+- **Espadachins.** Nos níveis baixos, o espadachim amassa o mago (`magia` §5.3, §7.3). Perto, eles são o maior
+  perigo; o mago luta mantendo distância, usando o cenário e preparando o chão. As escolas viram jeitos de lutar
+  (`combate` §4):
+  - **Gryskar (Bate-Primeiro)**: avança direto e pesado; o segundo golpe sai fraco. Empurrão no avanço vira
+    abertura.
+  - **Ipojy (a Espera)**: nunca dá o primeiro golpe. Quem chega perto dela e erra leva o contragolpe pleno. Não se
+    luta de perto com ela: se arremessa coisa.
+  - **Tsvirana (a Correnteza)**: troca de golpe no meio e **pune quem repete**: o jogador que usa o mesmo feitiço
+    três vezes seguidas fica exposto. Ensina a variar.
+- **Besteiros e arqueiros**: o Desviar e a cobertura respondem a eles.
+- **Magos**: recitam como o jogador, e quebram quando apanham, como o jogador.
+- **Criaturas**: só as do bestiário da história. Hoje há uma, o Ykuruã: na água se cura e não se fere; se vence
+  tirando-o da água aos poucos, sem passar do limite. Criatura nova vai para o autor antes (AGENTS §1).
 
-## 7. Os companheiros
+## 8. As condições
 
-- Jarupã e Xanduí jogam pela IA, com as mesmas intenções do jogador. A ordem (`Tab`) troca o jeito: seguir,
-  segurar posição, ir num alvo.
-- Caído não morre: levanta com um aliado do lado. Todos caídos é derrota.
-- ⚠ Jogar com eles (trocar de personagem) fica fora por enquanto: quem joga é Endyru (`docs/decisoes.md`).
+Estado curto, com sinal claro na tela.
 
-## 8. O Ykuruã
-
-O chefe do jogo e a prova dos pilares (`docs/historia.md`, `bestiario` §1).
-
-- **Na água**: só as costas à mostra, couro duro (quase nada entra), se refaz. Escolhe onde subir; Oryndu, na
-  margem, **lê a água** e o lugar aparece marcado no chão um pouco antes.
-- **Sente a pressa**: a cada marca (§3), vai direto em quem conjurou.
-- **Se vence tirando da água**: Puxão aos poucos, sem passar do limite, e os círculos gravados na margem. Em
-  seco fica lento; depois de uns segundos fora d'água o couro racha, e aí a espada entra. Volta para a água, o
-  couro se refaz.
-- **O ato 3** continua de roteiro: na metade da vida dele, Endyru solta a página inteira, o bicho vem, o barco de
-  Oryndu vira. Depois, só o jeito lento vence.
+| Condição | O que faz | Vem de |
+|---|---|---|
+| Caído | levanta devagar; golpe nele sai pleno | Puxão, impacto |
+| Prensado | não se mexe | Empurrão contra parede |
+| Desarmado | sem arma até pegar de volta | Desarmar |
+| Exposto | o próximo golpe nele sai pleno | falha, Tsvirana |
+| Marca da mana | mira treme, limite menor | passar do limite |

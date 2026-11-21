@@ -1,110 +1,126 @@
 # Arquitetura
 
-Como o jogo é montado e por quê. Mudou uma peça daqui, muda este doc.
+Como o jogo é montado e por quê. Quem mudar uma peça daqui muda este doc também.
 
 ## As pastas
 
 | Pasta | Pacote | Depende de | Roda em |
 |---|---|---|---|
-| `sim/` | `@jogo/sim` | `content/` (dados), `inkjs` | Node e navegador |
+| `sim/` | `@jogo/sim` | Rapier, `inkjs`, os dados de `content/` | Node e navegador |
 | `game/` | `@jogo/game` | `sim/`, `three`, `preact` | navegador, Electron |
-| `content/` | — (só dados) | nada | é lido pelos dois |
-| `tools/` | — | `sim/`, Blender (por linha de comando) | Node |
+| `content/` | (só dados) | nada | lido pelos dois |
+| `tools/` | (scripts) | `sim/`, Blender por linha de comando, recast | Node |
 | `desktop/` | `@jogo/desktop` | o build de `game/` | Electron |
 
-`client/` e `shared/` são do jogo 2D e ficam até a história e o save passarem para cá; depois saem.
+`client/` e `shared/` são do jogo 2D. Ficam até o runner de Ink e o save passarem para cá, e depois saem.
 
 ## A simulação (`sim/`)
 
 ### O laço
 
-- **Passo fixo de 60 Hz** (`TICK = 1/60`). Cada tick recebe as intenções daquele tick e avança o mundo.
-- O tempo é contado em ticks, nunca em segundos de relógio. Duração em `content/` vem em segundos e a sim
+- **Passo fixo de 60 Hz** (`TICK = 1/60`). Cada tick recebe as intenções daquele tick, roda a regra e dá um passo
+  na física.
+- O tempo se conta em ticks, nunca em segundos de relógio. As durações em `content/` vêm em segundos, e a sim
   converte na carga.
-- **Determinística**: RNG com semente (`sim/rng.ts`), sem `Math.random`, sem `Date.now`. Mesma semente e mesmas
-  intenções dão o mesmo jogo. É o que permite repetir uma luta, reproduzir um bug e rodar bot em lote.
+- **Determinística na mesma plataforma**: RNG com semente (`sim/rng.ts`), sem `Math.random` e sem `Date.now`.
+  Com a mesma semente e as mesmas intenções, o jogo sai igual. É o que deixa repetir uma luta, reproduzir um bug
+  e rodar bot em lote.
 
 ```ts
 // a forma, não o código final
-const world = createWorld(level, content, seed);
+const world = await createWorld(level, content, seed);
 const events = step(world, intents);   // um tick
 ```
 
 ### Estado
 
-- Entidades são objetos simples num array (`world.entities`), com componentes opcionais (`body`, `health`,
-  `folego`, `mana`, `brain`, `weapon`...). Sistemas são funções que passam pelas entidades na ordem fixa do
-  tick: intenção → IA → movimento → colisão → ataques → condições → morte → gatilhos.
-- Sem biblioteca de ECS: o jogo é pequeno e a forma simples se lê melhor por qualquer IA.
-- O estado é serializável (JSON): o save é um retrato do mundo fora de luta, e um teste pode montar um estado
-  na mão.
+- As entidades são objetos simples (`world.entities`) com componentes opcionais (`body`, `health`, `mana`,
+  `folego`, `caster`, `brain`, `prop`...). Os sistemas são funções que rodam numa ordem fixa a cada tick:
+  intenção → IA → controlador → feitiços → física → colisões e dano → condições → morte → gatilhos.
+- Sem biblioteca de ECS: o jogo é pequeno, e a forma simples se lê melhor por qualquer IA.
+- O estado lógico é serializável (JSON). O save é um retrato dele fora de luta, e o mundo físico se monta de novo
+  a partir dele.
+
+### A física (Rapier)
+
+- `@dimforge/rapier3d-compat` (WASM embutido, roda em Node e no navegador). Ela vive só dentro da sim.
+- **Personagem**: cápsula com o controlador cinemático do Rapier (subir degrau, rampa, grudar no chão, pular).
+- **Inimigos**: cápsulas cinemáticas que andam pela navmesh; viram corpo dinâmico enquanto voam (puxados,
+  arremessados) e voltam a cinemático quando param.
+- **Objetos**: corpos dinâmicos com massa. A massa decide quanto o feitiço move e quanto o golpe machuca.
+- **Nível**: colisores estáticos gerados dos objetos `col_*` do Blender (ou de primitivas, no greybox).
+- **Dano por impacto**: dois corpos que batem acima de uma velocidade se machucam pela energia do choque. É o que
+  torna o cenário munição.
+- A mira é um raycast na sim, a partir da origem e da direção que o client manda.
+
+### A IA e a navmesh
+
+- A navmesh sai do nível no build (`tools/navmesh`, recast-navigation em WASM) e fica em `content/levels/<nível>/`.
+- A IA gera intenções, como o jogador, e não tem atalho na regra. Ela pede caminho à navmesh e enxerga por
+  raycast.
 
 ### Intenções (entram)
 
-Do jogador ou da IA, sempre a mesma forma: `move {x,z}`, `aim {x,z}`, `attack`, `heavy`, `recite {spell}`
-(segurar) e `release`, `dash`, `parry`, `use {item}`, `interact`, `command {companion, order}`. A IA dos inimigos
-e dos companheiros gera intenções como o jogador: não tem atalho na regra.
+`move {x, z}` (relativo à câmera, já convertido), `aim {origem, direção}`, `recite {feitiço}` (segurar),
+`release`, `cancel`, `jump`, `dodge`, `activate` (gravada), `interact`, `use {item}`.
 
 ### Eventos (saem)
 
-O que aconteceu naquele tick, em ordem: `hit`, `blocked`, `parried`, `countered`, `pulled`, `pushed`,
-`slammed`, `fell`, `recitationStarted`, `recitationBroken`, `spellCast`, `manaBurst`, `conditionApplied`,
-`died`, `triggerEntered`, `cue`... Cada evento tem a faixa (`plena`, `custo`, `falha`) quando houver.
-
-### Colisão e terreno
-
-- A regra é **2D no plano do chão** (x, z) mais a altura do terreno. Corpo é círculo; parede, pedra e casa são
-  polígonos estáticos; água é área no chão com profundidade.
-- A altura vem de uma grade de alturas do nível. Degrau acima de 0,5 m barra o passo (pula-se com o `dash`
-  quando der); queda de barranco machuca.
-- Empurrão e puxão são velocidade com atrito. Bater em parede, corpo ou destrutível com velocidade causa dano e
-  deixa Prensado. Cair na água funda tira do chão.
-- Sem motor de física. Se uma cena pedir coisa que rola, empilha e quebra de verdade, avalia-se Rapier (roda em
-  Node também) e registra-se em `docs/decisoes.md`.
+O que aconteceu no tick, em ordem: `recitationStarted`, `recitationLine`, `recitationBroken`, `spellCast`
+(com tamanho e faixa), `pulled`, `pushed`, `thrown`, `impact` (com energia), `hit`, `deflected`, `manaSpent`,
+`manaBurst`, `conditionApplied`, `died`, `triggerEntered`, `cue`...
 
 ## O client (`game/`)
 
-- **Render em three.js.** A cena reflete o estado da sim; entre dois ticks, posição e rotação são interpoladas.
-- **Câmera fixa**, inclinada uns 50°, seguindo Endyru com um pouco de antecipação para onde ele mira. Sem
-  rotação livre. Paredes entre a câmera e o grupo ficam transparentes.
-- **Input**: teclado e mouse (WASD anda, o mouse mira) e controle. O input vira intenção; o client não sabe
-  regra nenhuma.
-- **Juice sai dos eventos**: parada curta no golpe (hit-stop), tremida, número de dano, partícula, som. Cada
-  evento tem a resposta dele em `game/feedback/`. É aqui que mora boa parte da diversão: um golpe sem peso não se
-  salva com modelo bonito.
-- **HUD e menus em DOM** (Preact) por cima do canvas: mais fácil de fazer, de ler por IA, de traduzir e de tornar
-  acessível do que UI desenhada no WebGL.
-- **Áudio** pelo WebAudio. Som sintetizado até ter o gravado; a troca é num lugar só.
+- **Render em three.js.** A cena reflete o estado da sim, com posição e rotação interpoladas entre dois ticks.
+- **Câmera no ombro.** Braço de mola atrás do ombro direito, com colisão (raycast do personagem até a câmera: a
+  parede puxa a câmera para perto em vez de atravessar). Troca de ombro numa tecla. Ao mirar, o zoom aproxima e
+  o personagem passa a encarar a mira. O mouse fica preso (pointer lock).
+- **A mira**: a mira no meio da tela é um raio a partir da câmera. O client manda origem e direção; a sim acha o
+  ponto e faz o feitiço sair da mão até ele (o jeito de todo shooter em terceira pessoa).
+- **Animação**: `AnimationMixer` do three.js. Locomoção em oito direções misturada pela velocidade (o personagem
+  anda de lado mirando), camada de cima do corpo para mirar e recitar, inclinação pela altura da mira. O tempo do
+  clipe se estica para caber no tempo da regra.
+- **Juice sai dos eventos**: parada curta no impacto, tremida, distorção da recitação, partícula, som. Cada evento
+  tem a resposta dele em `game/feedback/`. É aqui que mora boa parte da diversão.
+- **HUD e menus em DOM** (Preact) por cima do canvas: mira, mana, vida, a recitação, o tamanho do feitiço.
+- **Áudio** no WebAudio, posicional, com som sintetizado até ter o gravado; a troca fica num lugar só.
 - **Painel de ajuste** (`F1`, só no dev): mexe nos números de `content/` com o jogo rodando.
+- **Desempenho**: WebGL2, 60 fps num notebook médio. Low-poly, poucas luzes com sombra, instancing no que se
+  repete, nada de pós-processamento caro.
 
 ## Conteúdo (`content/`)
 
 - JSON validado na carga (o esquema mora em `sim/content/`), com erro claro se faltar campo.
-- `content/story/*.ink`: a história, compilada para JSON no build, como no 2D.
-- `content/levels/<nome>/`: o nível. Enquanto não tem arte, é greybox descrito em JSON (blocos, rampas, água,
-  pontos de spawn, gatilhos), que o client desenha com caixas. Quando tiver arte, o visual vem de um GLB e a
-  parte de jogo (colisão, spawn, gatilho) continua no JSON, gerada a partir de objetos marcados no Blender.
+- `content/spells/`, `content/enemies/`, `content/items/`, `content/tuning.json`.
+- `content/story/*.ink`: a história, compilada para JSON no build.
+- `content/levels/<nível>/`: `level.json` (spawns, gatilhos, água, áreas, com a referência ao GLB), `navmesh.bin`,
+  e o GLB visual em `game/public/assets/levels/`. O greybox é feito no Blender com primitivas, ou descrito à mão
+  em `level.json` (caixas e rampas) para as arenas de teste.
 
 ## Ferramentas (`tools/`)
 
-- `tools/sim-lote`: roda N lutas com bots dos dois lados, em Node, e imprime taxa de vitória, tempo de luta, dano
-  tomado. Toda mudança de número de luta passa por aqui.
-- `tools/blender`: scripts Python que exportam GLB no padrão de `docs/assets.md` e extraem os marcadores do nível.
-- `tools/assets-check`: confere escala, origem e nomes de clipes de todo GLB.
+- `tools/bots`: roda N lutas com um bot no lugar do jogador, em Node, e imprime vitória, tempo, dano tomado,
+  mana gasta, marcas. Toda mudança de número de luta passa por aqui.
+- `tools/blender`: Python que exporta GLB no padrão de `docs/assets.md` e extrai os marcadores do nível.
+- `tools/navmesh`: gera a navmesh de cada nível.
+- `tools/assets-check`: confere escala, origem, esqueleto e nomes de clipes de todo GLB.
 
 ## Testes
 
 - `npm run check` na raiz: tipos de todos os pacotes e testes da sim (`tsx --test`, como no 2D).
-- Teste de luta é cenário: monta o mundo, manda intenções por N ticks, confere eventos e estado.
-- O teste do roteiro joga a história inteira na sim, sem tela, do primeiro gatilho ao fim.
+- Teste de jogo é cenário: monta o mundo, manda intenções por N ticks, confere eventos e estado.
+- O teste da história joga a história inteira na sim, sem tela.
 
 ## Por quê
 
-- **Sim separada do render**: o jogo 2D já provou que regra pura com eventos aguenta trocar a tela inteira. Agora
-  ela também é o que deixa bot testar a diversão (tempo de luta, dano) sem ninguém jogar.
-- **Plano do chão em vez de 3D completo**: quase todo action RPG de câmera de cima faz assim. Corta pela metade o
-  trabalho de colisão, IA e nível, e não se vê diferença na tela.
-- **Câmera fixa**: a arte pode ser simples (vista de longe, de cima), o controle é direto e o nível não precisa
-  ser bonito de todo ângulo.
+- **Sim separada do render**: o jogo 2D provou que regra pura com eventos aguenta trocar a tela inteira. Aqui ela
+  também é o que deixa bot testar a diversão sem ninguém jogar, e o que deixa várias IAs mexerem na regra com
+  teste, sem abrir o navegador.
+- **Rapier dentro da sim**: num jogo em que a magia é física, a física é regra, não enfeite. Por isso ela fica do
+  lado da regra, testável em Node.
+- **Animação sem root motion**: com animação provisória ou feita por IA, o tempo do golpe não pode depender do
+  clipe. A regra manda, e o clipe se ajusta.
+- **Câmera no client**: ela não muda regra nenhuma; a sim só recebe o raio da mira.
 - **Números em `content/`**: a diversão se acha ajustando. Ajuste sem recompilar e sem tocar em regra.
-- **DOM para UI**: three.js não tem UI; fazer UI no WebGL é caro e ruim de manter.
+- **DOM para a UI**: o three.js não tem UI, e UI desenhada no WebGL é cara e ruim de manter.
