@@ -1,22 +1,10 @@
 {
-  "name": "tres-na-estrada",
+  "name": "jogo",
   "private": true,
-  "version": "0.1.0",
-  "description": "Três na Estrada (título provisório) — jogo de ação 3D em terceira pessoa para navegador",
-  "workspaces": [
-    "client",
-    "shared",
-    "desktop"
-  ],
-  "scripts": {
-    "dev": "npm run dev --workspace=client",
-    "test": "npm run test --workspace=shared && npm run test --workspace=client",
-    "balance:matrix": "npm run balance:matrix --workspace=client --",
-    "balance:grupo": "npm run balance:grupo --workspace=client --",
-    "desktop": "npm run build --workspace=client && npm run start --workspace=desktop",
-    "desktop:pack": "npm run build --workspace=client && npm run pack --workspace=desktop",
-    "desktop:dist": "npm run build --workspace=client && npm run dist --workspace=desktop"
-  },
+  "version": "0.0.0",
+  "description": "Jogo de ação 3D em terceira pessoa para navegador, no mundo da série de Karuã (título a definir)",
+  "workspaces": [],
+  "scripts": {},
   "devDependencies": {
     "@types/node": "^20.14.10",
     "tsx": "^4.16.2",

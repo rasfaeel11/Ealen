@@ -12,7 +12,8 @@ Como o jogo é montado e por quê. Quem mudar uma peça daqui muda este doc tamb
 | `tools/` | (scripts) | `sim/`, Blender por linha de comando, recast | Node |
 | `desktop/` | `@jogo/desktop` | o build de `game/` | Electron |
 
-`client/` e `shared/` são do jogo 2D. Ficam até o runner de Ink e o save passarem para cá, e depois saem.
+Nenhuma delas existe ainda: nascem pelas tarefas do TODO (`AGENTS.md` §7). O código do jogo 2D (o runner de Ink,
+o save, o Electron) se traz da tag `tatico-2d` quando a tarefa pedir (`AGENTS.md` §5).
 
 ## A simulação (`sim/`)
 

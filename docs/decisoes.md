@@ -1,8 +1,15 @@
 # Decisões
 
 Uma entrada por decisão, da mais nova para a mais velha: data, o que, por quê, quem. Decisão que toca o cânone
-espera o autor e diz isso. As decisões do tempo do jogo 2D estão em `docs/escolhas.md` e em
-`docs/legado/AGENTS-tatico-2d.md`.
+espera o autor e diz isso. As decisões do tempo do jogo 2D ficaram na tag `tatico-2d` (`docs/escolhas.md` e
+`AGENTS.md` de lá).
+
+## 2026-11-20 — O repositório enxuto (autor)
+
+Sai tudo o que o jogo novo não usa agora: o código, a arte e os docs do jogo 2D (que ficam na tag `tatico-2d`), o
+`package-lock.json` e os `node_modules` velhos. A arte bruta gerada foi para `../Ealen-arte-bruta`, fora do
+repositório. Motivo: as IAs se perdiam no contexto de milhares de arquivos que não servem mais. O `AGENTS.md`
+ganhou a caixa da fase atual e o TODO, que substitui o `docs/tarefas.md`.
 
 ## 2026-11-20 — Atração e repulsão para o protagonista (co-autor, espera o autor)
 

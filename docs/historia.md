@@ -4,8 +4,8 @@
 Este doc reúne o que a história nova pode usar e o que ela precisa respeitar. Quando o autor aprovar a história,
 ela entra aqui (o resumo) e em `docs/roteiro.md` (cena a cena), e os fatos novos vão para `../historiav2`.
 
-A história anterior (*Três na Estrada*: Endyru, Jarupã, Xanduí e o Ykuruã) está em
-`docs/legado/historia-tres-na-estrada.md` e `docs/legado/roteiro-tres-na-estrada.md`. Os fatos dela que já foram
+A história anterior (*Três na Estrada*: Endyru, Jarupã, Xanduí e o Ykuruã) está na tag `tatico-2d`
+(`docs/roteiro.md` e o `AGENTS.md` de lá; ver `AGENTS.md` §5). Os fatos dela que já foram
 gravados no cânone (os lugares, Mbyraku, Jurendy, Thrykar, o Ykuruã) continuam valendo como mundo e podem
 aparecer.
 
@@ -45,7 +45,7 @@ aparecer.
 
 ## 4. O mundo à mão
 
-- O mapa do mundo, na descrição do autor: `docs/mundo.md` (e `referencias/mapa-do-mundo.md`).
+- O mapa do mundo, na descrição do autor: `../historiav2/referencias/mapa-do-mundo.md`.
 - **Xerumbetyba** (rios, universidade em Kuatiarape, cidades livres, Ymboripe) já tem fichas, lugares e gente
   aprovados do jogo anterior. É o lugar mais pronto para um jogo.
 - **Tanguratyba** (Itamoguá e a escola de magia Jekuatyba) aparece nos livros: tudo o que acontecer lá tem de
